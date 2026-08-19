@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergens OSINT — Social Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
+    <style>
+        :root {
+            --font-display: 'Playfair Display', serif;
+            --font-ui: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1e40af;
+            --blue-800: #172554;
+            --blue-glow: rgba(59,130,246,0.28);
+            --blue-glow-soft: rgba(59,130,246,0.12);
+            --gold: #d4a574;
+            --gold-light: #e7cd9f;
+            --gold-glow: rgba(212,165,116,0.2);
+            --green: #4fb488;
+            --red: #ef4444;
+            --radius-sm: 12px;
+            --radius-md: 18px;
+            --radius-xl: 30px;
+            --transition-fast: 180ms cubic-bezier(0.4,0,0.2,1);
+            --transition-med: 340ms cubic-bezier(0.16,1,0.3,1);
+            --transition-slow: 600ms cubic-bezier(0.16,1,0.3,1);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #020617;
+            --bg-secondary: rgba(11,18,32,0.75);
+            --bg-tertiary: rgba(17,24,39,0.6);
+            --bg-elevated: rgba(30,41,59,0.5);
+            --border-color: rgba(30,41,59,0.6);
+            --border-subtle: rgba(51,65,85,0.4);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --shadow-lg: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,130,246,0.05);
+            --glass-bg: rgba(11,18,32,0.65);
+            --glass-border: rgba(30,41,59,0.7);
+            --glass-backdrop: blur(16px);
+        }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: rgba(255,255,255,0.85);
+            --bg-tertiary: rgba(241,245,249,0.7);
+            --bg-elevated: rgba(255,255,255,0.9);
+            --border-color: rgba(203,213,225,0.6);
+            --border-subtle: rgba(226,232,240,0.7);
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --shadow-lg: 0 20px 50px rgba(30,41,59,0.08), 0 0 0 1px rgba(59,130,246,0.05);
+            --glass-bg: rgba(255,255,255,0.75);
+            --glass-border: rgba(203,213,225,0.6);
+            --glass-backdrop: blur(16px);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow-x: hidden;
+            transition: background var(--transition-slow), color var(--transition-slow);
+            -webkit-font-smoothing: antialiased;
+        }
+        #auroraCanvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            width: 100%;
+            height: 100%;
+            opacity: 0.7;
+        }
+        .content-wrap {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        [hidden] { display: none !important; }
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--glass-bg);
+            border-bottom: 1px solid var(--glass-border);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+        }
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+        .header-logo svg {
+            width: 32px;
+            height: 32px;
+            filter: drop-shadow(0 0 12px var(--blue-glow));
+            transition: filter var(--transition-med);
+        }
+        .header-logo svg:hover { filter: drop-shadow(0 0 24px var(--blue-glow)); }
+        .logo-text {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 17px;
+            color: var(--blue-400);
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+        }
+        .logo-text span { color: var(--gold); }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        .theme-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+        }
+        .theme-btn:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            transform: translateY(-1px);
+        }
+
+        /* Main */
+        .main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 28px 70px;
+            width: 100%;
+        }
+        .hero {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(28px, 5vw, 40px);
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--blue-400), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        /* Search Section */
+        .search-section {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: 26px;
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            margin-bottom: 36px;
+        }
+        .search-row {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .input-group {
+            flex: 1;
+            min-width: 220px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: 0 16px;
+            transition: all var(--transition-fast);
+            backdrop-filter: blur(8px);
+        }
+        .input-group:focus-within {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 0 4px var(--blue-glow-soft);
+            background: var(--bg-elevated);
+        }
+        .input-group i { color: var(--text-muted); font-size: 0.95rem; }
+        .input-group input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            padding: 14px 0;
+            font-size: 0.95rem;
+            outline: none;
+            font-weight: 500;
+        }
+        .input-group input::placeholder { color: var(--text-muted); }
+        .search-btn {
+            padding: 14px 24px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-700));
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all var(--transition-med);
+            box-shadow: 0 4px 20px var(--blue-glow);
+        }
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px var(--blue-glow);
+        }
+        .search-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Platform Selector */
+        .platform-selector {
+            margin-top: 22px;
+        }
+        .platform-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .platform-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            border-radius: 999px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            user-select: none;
+            backdrop-filter: blur(8px);
+        }
+        .chip i { font-size: 0.95rem; }
+        .chip:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            transform: translateY(-1px);
+        }
+        .chip.active {
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-600));
+            color: #fff;
+            border-color: var(--blue-500);
+            box-shadow: 0 0 16px var(--blue-glow);
+        }
+        .chip.all-chip {
+            background: transparent;
+            border-style: dashed;
+        }
+        .chip.all-chip.active {
+            background: linear-gradient(135deg, var(--gold), #b98a5a);
+            color: #000;
+            border-color: var(--gold);
+            box-shadow: 0 0 16px var(--gold-glow);
+        }
+
+        /* Results */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+        .result-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            transition: all var(--transition-med);
+            animation: fadeSlideUp 0.4s ease both;
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .result-card:hover {
+            border-color: var(--blue-500);
+            box-shadow: 0 14px 40px rgba(0,0,0,0.35), 0 0 0 1px var(--blue-glow-soft);
+            transform: translateY(-3px);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .platform-badge {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            background: var(--blue-glow-soft);
+            color: var(--blue-400);
+            flex-shrink: 0;
+        }
+        .platform-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .platform-name {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .platform-name i.verified-icon {
+            color: var(--blue-400);
+            font-size: 0.85rem;
+        }
+        .platform-username {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .card-body {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.65;
+        }
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--blue-500);
+            box-shadow: 0 0 20px var(--blue-glow);
+            margin: 0 auto 14px;
+            display: block;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 8px;
+            margin: 14px 0;
+        }
+        .stat-box {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: 12px 8px;
+            text-align: center;
+            backdrop-filter: blur(8px);
+        }
+        .stat-value {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--text-primary);
+        }
+        .stat-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .info-row {
+            display: flex;
+            gap: 8px;
+            padding: 5px 0;
+            align-items: flex-start;
+        }
+        .info-row i {
+            width: 18px;
+            color: var(--blue-400);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .info-row span {
+            flex: 1;
+            word-break: break-word;
+        }
+        .social-links {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .social-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all var(--transition-fast);
+        }
+        .social-link:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-muted);
+        }
+        .empty-state i {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .loading-spinner {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 3px solid var(--glass-border);
+            border-top-color: var(--blue-500);
+            animation: spin 0.8s linear infinite;
+            margin: 30px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error-text {
+            color: var(--red);
+            font-size: 0.8rem;
+            margin-top: 6px;
+        }
+        .raw-json-toggle {
+            margin-top: 14px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color var(--transition-fast);
+        }
+        .raw-json-toggle:hover { color: var(--blue-400); }
+        .raw-json {
+            margin-top: 8px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            max-height: 220px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: var(--text-secondary);
+            display: none;
+        }
+        .raw-json.open { display: block; }
+
+        @media (max-width: 600px) {
+            .header { padding: 0 16px; }
+            .main { padding: 24px 16px 50px; }
+            .search-section { padding: 20px; }
+            .results-grid { grid-template-columns: 1fr; }
+            .search-row { flex-direction: column; }
+            .search-btn { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="auroraCanvas"></canvas>
+
+    <div class="content-wrap">
+        <header class="header">
+            <a href="/" class="header-logo">
+                <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="headerGrad" x1="0" y1="0" x2="60" y2="60">
+                            <stop offset="0" stop-color="#60a5fa"/>
+                            <stop offset="1" stop-color="#1e40af"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#headerGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+                <div class="logo-text">EMER<span>GENS</span></div>
+            </a>
+            <div class="header-right">
+                <button id="themeToggle" class="theme-btn" data-theme-icon>
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="hero">
+                <h1>Social <span>Intelligence</span> OSINT</h1>
+                <p>Search usernames across multiple platforms simultaneously. Data retrieved via public API.</p>
+            </div>
+
+            <section class="search-section">
+                <div class="search-row">
+                    <div class="input-group">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input type="text" id="usernameInput" placeholder="Enter username" autocomplete="off">
+                    </div>
+                    <button class="search-btn" id="searchBtn">
+                        <i class="fas fa-search"></i>
+                        <span>Search</span>
+                    </button>
+                </div>
+
+                <div class="platform-selector">
+                    <div class="platform-label">Select platforms</div>
+                    <div class="platform-chips" id="platformChips">
+                        <div class="chip all-chip active" data-platform="all">
+                            <i class="fas fa-globe"></i> All
+                        </div>
+                        <div class="chip" data-platform="tiktok">
+                            <i class="fab fa-tiktok"></i> TikTok
+                        </div>
+                        <div class="chip" data-platform="youtube">
+                            <i class="fab fa-youtube"></i> YouTube
+                        </div>
+                        <div class="chip" data-platform="pinterest">
+                            <i class="fab fa-pinterest"></i> Pinterest
+                        </div>
+                        <div class="chip" data-platform="twitter">
+                            <i class="fab fa-x-twitter"></i> Twitter
+                        </div>
+                        <div class="chip" data-platform="github">
+                            <i class="fab fa-github"></i> GitHub
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div id="resultsArea" class="results-grid"></div>
+        </main>
+    </div>
+
+    <script>
+        const BASE_URL = 'https://api.siputzx.my.id/';
+        const PLATFORMS = [
+            { id: 'tiktok', label: 'TikTok', icon: 'fab fa-tiktok', endpoint: 'api/stalk/tiktok' },
+            { id: 'youtube', label: 'YouTube', icon: 'fab fa-youtube', endpoint: 'api/stalk/youtube' },
+            { id: 'pinterest', label: 'Pinterest', icon: 'fab fa-pinterest', endpoint: 'api/stalk/pinterest' },
+            { id: 'twitter', label: 'Twitter', icon: 'fab fa-x-twitter', endpoint: 'api/stalk/twitter' },
+            { id: 'github', label: 'GitHub', icon: 'fab fa-github', endpoint: 'api/stalk/github' }
+        ];
+
+        let selectedPlatforms = new Set(['all']);
+        const resultsArea = document.getElementById('resultsArea');
+        const searchBtn = document.getElementById('searchBtn');
+        const usernameInput = document.getElementById('usernameInput');
+
+        // Theme toggle
+        (function() {
+            const root = document.documentElement;
+            const stored = localStorage.getItem('emergens-theme') || 'dark';
+            root.setAttribute('data-theme', stored);
+            const icon = document.querySelector('#themeToggle i');
+            icon.className = stored === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                root.setAttribute('data-theme', next);
+                localStorage.setItem('emergens-theme', next);
+                icon.className = next === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+            });
+        })();
+
+        // Aurora background
+        (function() {
+            const canvas = document.getElementById('auroraCanvas');
+            const ctx = canvas.getContext('2d');
+            let width, height, time = 0;
+            const colors = ['#1e3a8a', '#3b82f6', '#1e40af', '#60a5fa', '#172554'];
+
+            function resize() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, width, height);
+                time += 0.005;
+
+                const blobs = [
+                    { x: width * 0.3, y: height * 0.4, r: width * 0.45, c: 0 },
+                    { x: width * 0.7, y: height * 0.6, r: width * 0.4, c: 1 },
+                    { x: width * 0.5, y: height * 0.2, r: width * 0.35, c: 2 },
+                    { x: width * 0.8, y: height * 0.3, r: width * 0.3, c: 3 },
+                    { x: width * 0.2, y: height * 0.8, r: width * 0.3, c: 4 },
+                ];
+
+                for (const blob of blobs) {
+                    const grad = ctx.createRadialGradient(blob.x, blob.y, 0, blob.x, blob.y, blob.r);
+                    grad.addColorStop(0, colors[blob.c] + '30');
+                    grad.addColorStop(0.5, colors[blob.c] + '15');
+                    grad.addColorStop(1, colors[blob.c] + '00');
+                    ctx.beginPath();
+                    ctx.arc(blob.x, blob.y, blob.r, 0, Math.PI * 2);
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                }
+
+                requestAnimationFrame(draw);
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+            draw();
+        })();
+
+        function initPlatformChips() {
+            const chips = document.querySelectorAll('.chip');
+            chips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const platform = chip.dataset.platform;
+                    if (platform === 'all') {
+                        const isActive = chip.classList.contains('active');
+                        if (isActive) {
+                            selectedPlatforms = new Set();
+                        } else {
+                            selectedPlatforms = new Set(['all']);
+                        }
+                        chips.forEach(c => c.classList.remove('active'));
+                        if (selectedPlatforms.size > 0) {
+                            if (selectedPlatforms.has('all')) {
+                                chip.classList.add('active');
+                                chips.forEach(c => { if (c.dataset.platform !== 'all') c.classList.add('active'); });
+                            }
+                        }
+                    } else {
+                        if (chip.classList.contains('active')) {
+                            chip.classList.remove('active');
+                            selectedPlatforms.delete(platform);
+                            if (selectedPlatforms.has('all')) selectedPlatforms.delete('all');
+                            if (selectedPlatforms.size === 0) {
+                                chips.forEach(c => c.classList.remove('active'));
+                            }
+                        } else {
+                            chip.classList.add('active');
+                            selectedPlatforms.add(platform);
+                            if (PLATFORMS.every(p => selectedPlatforms.has(p.id))) {
+                                selectedPlatforms.add('all');
+                                document.querySelector('.chip[data-platform="all"]').classList.add('active');
+                            }
+                        }
+                    }
+                });
+            });
+        }
+        initPlatformChips();
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return 'N/A';
+            return Number(num).toLocaleString();
+        }
+
+        function renderVerifiedIcon(isVerified) {
+            if (isVerified) return '<i class="fas fa-circle-check verified-icon" style="color:var(--blue-400);"></i>';
+            return '';
+        }
+
+        function renderTikTok(data) {
+            const d = data.data || {};
+            const isVerified = d.verified || false;
+            const avatar = d.avatar || d.avatarLarger || d.avatarMedium || d.avatarThumb || d.image?.original || '';
+            const stats = d.stats || {};
+            let html = '';
+            if (avatar) html += `<img class="profile-avatar" src="${escapeHtml(avatar)}" alt="avatar">`;
+            html += `<div class="info-row"><i class="fas fa-user"></i><span>${escapeHtml(d.nickname || d.uniqueId || 'Unknown')}</span></div>`;
+            html += `<div class="info-row"><i class="fas fa-at"></i><span>${escapeHtml(d.uniqueId || d.username || '')}</span></div>`;
+            html += `<div class="info-row"><i class="fas fa-id-badge"></i><span>${escapeHtml(d.id || '')}</span></div>`;
+            if (d.signature) html += `<div class="info-row"><i class="fas fa-quote-left"></i><span>${escapeHtml(d.signature)}</span></div>`;
+            html += `<div class="stats-grid">`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.followerCount)}</div><div class="stat-label">Followers</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.followingCount)}</div><div class="stat-label">Following</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.heartCount)}</div><div class="stat-label">Likes</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.videoCount)}</div><div class="stat-label">Videos</div></div>`;
+            html += `</div>`;
+            return html;
+        }
+
+        function renderYouTube(data) {
+            const d = data.data?.channel || {};
+            let html = '';
+            if (d.avatarUrl) html += `<img class="profile-avatar" src="${escapeHtml(d.avatarUrl)}" alt="avatar">`;
+            html += `<div class="info-row"><i class="fas fa-user"></i><span>${escapeHtml(d.name || d.username || 'Unknown')}</span></div>`;
+            html += `<div class="info-row"><i class="fas fa-subscript"></i><span>${escapeHtml(d.subscriberCount || 'N/A')}</span></div>`;
+            html += `<div class="info-row"><i class="fas fa-video"></i><span>${escapeHtml(d.videoCount || 'N/A')}</span></div>`;
+            if (d.description) html += `<div class="info-row"><i class="fas fa-align-left"></i><span>${escapeHtml(d.description)}</span></div>`;
+            if (d.channelUrl) html += `<div class="info-row"><i class="fas fa-link"></i><a href="${escapeHtml(d.channelUrl)}" target="_blank" style="color:var(--blue-400);">Visit Channel</a></div>`;
+            if (d.latest_videos && d.latest_videos.length > 0) {
+                html += `<div class="info-row"><i class="fas fa-clock"></i><span>Latest videos:</span></div>`;
+                d.latest_videos.slice(0,3).forEach(v => {
+                    html += `<div class="info-row" style="padding-left:20px;"><i class="fas fa-circle" style="font-size:0.4rem;"></i><span>${escapeHtml(v.title || 'Untitled')}</span></div>`;
+                });
+            }
+            return html;
+        }
+
+        function renderPinterest(data) {
+            const d = data.data || {};
+            const isVerified = Boolean(d.is_verified && Object.keys(d.is_verified).length > 0) || d.verified === true;
+            const avatar = d.image?.original || d.image?.large || d.image?.medium || '';
+            let html = '';
+            if (avatar) html += `<img class="profile-avatar" src="${escapeHtml(avatar)}" alt="avatar">`;
+            html += `<div class="info-row"><i class="fas fa-user"></i><span>${escapeHtml(d.full_name || d.username || 'Unknown')}</span></div>`;
+            html += `<div class="info-row"><i class="fas fa-at"></i><span>${escapeHtml(d.username || '')}</span></div>`;
+            if (d.bio) html += `<div class="info-row"><i class="fas fa-quote-left"></i><span>${escapeHtml(d.bio)}</span></div>`;
+            const stats = d.stats || {};
+            html += `<div class="stats-grid">`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.pins)}</div><div class="stat-label">Pins</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.followers)}</div><div class="stat-label">Followers</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.following)}</div><div class="stat-label">Following</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.boards)}</div><div class="stat-label">Boards</div></div>`;
+            html += `</div>`;
+            if (d.website) html += `<div class="info-row"><i class="fas fa-link"></i><a href="${escapeHtml(d.website)}" target="_blank" style="color:var(--blue-400);">Website</a></div>`;
+            if (d.location) html += `<div class="info-row"><i class="fas fa-location-dot"></i><span>${escapeHtml(d.location)}</span></div>`;
+            const socials = d.social_links || {};
+            const socialEntries = Object.entries(socials).filter(([k,v]) => v);
+            if (socialEntries.length > 0) {
+                html += `<div class="social-links">`;
+                socialEntries.forEach(([platform, url]) => {
+                    html += `<a class="social-link" href="${escapeHtml(url)}" target="_blank"><i class="fab fa-${platform}"></i>${escapeHtml(platform)}</a>`;
+                });
+                html += `</div>`;
+            }
+            return html;
+        }
+
+        function renderTwitter(data) {
+            const d = data.data || {};
+            const isVerified = d.verified === true;
+            const avatar = d.profile?.image || '';
+            let html = '';
+            if (d.profile?.banner) html += `<div style="height:80px;border-radius:var(--radius-sm);background-image:url('${escapeHtml(d.profile.banner)}');background-size:cover;background-position:center;margin-bottom:10px;"></div>`;
+            if (avatar) html += `<img class="profile-avatar" src="${escapeHtml(avatar)}" alt="avatar" style="margin-top:-30px;">`;
+            html += `<div class="info-row"><i class="fas fa-user"></i><span>${escapeHtml(d.name || 'Unknown')} ${renderVerifiedIcon(isVerified)}</span></div>`;
+            html += `<div class="info-row"><i class="fas fa-at"></i><span>${escapeHtml(d.username || '')}</span></div>`;
+            if (d.description) html += `<div class="info-row"><i class="fas fa-quote-left"></i><span>${escapeHtml(d.description)}</span></div>`;
+            if (d.location) html += `<div class="info-row"><i class="fas fa-location-dot"></i><span>${escapeHtml(d.location)}</span></div>`;
+            if (d.created_at) html += `<div class="info-row"><i class="fas fa-calendar"></i><span>${escapeHtml(d.created_at)}</span></div>`;
+            const stats = d.stats || {};
+            html += `<div class="stats-grid">`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.tweets)}</div><div class="stat-label">Tweets</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.following)}</div><div class="stat-label">Following</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.followers)}</div><div class="stat-label">Followers</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(stats.likes)}</div><div class="stat-label">Likes</div></div>`;
+            html += `</div>`;
+            return html;
+        }
+
+        function renderGitHub(data) {
+            const d = data.data || {};
+            const avatar = d.profile_pic || d.avatar_url || '';
+            let html = '';
+            if (avatar) html += `<img class="profile-avatar" src="${escapeHtml(avatar)}" alt="avatar">`;
+            html += `<div class="info-row"><i class="fas fa-user"></i><span>${escapeHtml(d.nickname || d.name || d.username || 'Unknown')}</span></div>`;
+            html += `<div class="info-row"><i class="fas fa-at"></i><span>${escapeHtml(d.username || '')}</span></div>`;
+            if (d.bio) html += `<div class="info-row"><i class="fas fa-quote-left"></i><span>${escapeHtml(d.bio)}</span></div>`;
+            if (d.company) html += `<div class="info-row"><i class="fas fa-building"></i><span>${escapeHtml(d.company)}</span></div>`;
+            if (d.blog) html += `<div class="info-row"><i class="fas fa-link"></i><a href="${escapeHtml(d.blog)}" target="_blank" style="color:var(--blue-400);">Blog</a></div>`;
+            if (d.location) html += `<div class="info-row"><i class="fas fa-location-dot"></i><span>${escapeHtml(d.location)}</span></div>`;
+            if (d.email) html += `<div class="info-row"><i class="fas fa-envelope"></i><span>${escapeHtml(d.email)}</span></div>`;
+            html += `<div class="stats-grid">`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(d.public_repo)}</div><div class="stat-label">Repos</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(d.public_gists)}</div><div class="stat-label">Gists</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(d.followers)}</div><div class="stat-label">Followers</div></div>`;
+            html += `<div class="stat-box"><div class="stat-value">${formatNumber(d.following)}</div><div class="stat-label">Following</div></div>`;
+            html += `</div>`;
+            if (d.created_at) html += `<div class="info-row"><i class="fas fa-calendar-plus"></i><span>Joined: ${escapeHtml(d.created_at)}</span></div>`;
+            return html;
+        }
+
+        function renderGeneric(data) {
+            return `<pre style="font-family:var(--font-mono);font-size:0.75rem;white-space:pre-wrap;word-break:break-all;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+        }
+
+        function renderPlatformResult(platform, data) {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            const platformLabel = PLATFORMS.find(p => p.id === platform)?.label || platform;
+            const platformIcon = PLATFORMS.find(p => p.id === platform)?.icon || 'fas fa-globe';
+            let bodyHtml = '';
+            switch (platform) {
+                case 'tiktok': bodyHtml = renderTikTok(data); break;
+                case 'youtube': bodyHtml = renderYouTube(data); break;
+                case 'pinterest': bodyHtml = renderPinterest(data); break;
+                case 'twitter': bodyHtml = renderTwitter(data); break;
+                case 'github': bodyHtml = renderGitHub(data); break;
+                default: bodyHtml = renderGeneric(data);
+            }
+            if (!bodyHtml) bodyHtml = renderGeneric(data);
+            const username = data.data?.username || data.data?.uniqueId || data.data?.channel?.username || 'Unknown';
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="platform-badge"><i class="${platformIcon}"></i></div>
+                    <div class="platform-info">
+                        <div class="platform-name">${escapeHtml(platformLabel)}</div>
+                        <div class="platform-username">@${escapeHtml(username)}</div>
+                    </div>
+                </div>
+                <div class="card-body">${bodyHtml}</div>
+                <div class="raw-json-toggle" data-toggle>View Raw JSON</div>
+                <pre class="raw-json">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
+            `;
+            const rawToggle = card.querySelector('.raw-json-toggle');
+            const rawJson = card.querySelector('.raw-json');
+            rawToggle.addEventListener('click', () => {
+                rawJson.classList.toggle('open');
+                rawToggle.textContent = rawJson.classList.contains('open') ? 'Hide Raw JSON' : 'View Raw JSON';
+            });
+            return card;
+        }
+
+        async function performSearch() {
+            const username = usernameInput.value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            let platformsToSearch = [];
+            if (selectedPlatforms.has('all')) {
+                platformsToSearch = PLATFORMS.map(p => p.id);
+            } else {
+                platformsToSearch = Array.from(selectedPlatforms);
+            }
+            if (platformsToSearch.length === 0) {
+                alert('Please select at least one platform');
+                return;
+            }
+            resultsArea.innerHTML = '<div class="loading-spinner"></div>';
+            searchBtn.disabled = true;
+            searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Searching...</span>';
+
+            const promises = platformsToSearch.map(async (platform) => {
+                const platformInfo = PLATFORMS.find(p => p.id === platform);
+                const endpoint = `${BASE_URL}${platformInfo.endpoint}?username=${encodeURIComponent(username)}`;
+                try {
+                    const response = await fetch(endpoint);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const data = await response.json();
+                    if (!data.status) throw new Error(data.error || 'Failed');
+                    return { platform, data, success: true };
+                } catch (error) {
+                    return { platform, error: error.message, success: false };
+                }
+            });
+
+            const results = await Promise.all(promises);
+            resultsArea.innerHTML = '';
+            const successful = results.filter(r => r.success);
+            const failed = results.filter(r => !r.success);
+
+            if (successful.length === 0) {
+                resultsArea.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>No results found</p></div>';
+            } else {
+                successful.forEach(result => {
+                    resultsArea.appendChild(renderPlatformResult(result.platform, result.data));
+                });
+            }
+            if (failed.length > 0) {
+                failed.forEach(f => {
+                    const card = document.createElement('div');
+                    card.className = 'result-card';
+                    const platformInfo = PLATFORMS.find(p => p.id === f.platform);
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div class="platform-badge"><i class="${platformInfo.icon}"></i></div>
+                            <div class="platform-info">
+                                <div class="platform-name">${escapeHtml(platformInfo.label)}</div>
+                                <div class="platform-username">Error</div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="error-text">${escapeHtml(f.error)}</div>
+                        </div>
+                    `;
+                    resultsArea.appendChild(card);
+                });
+            }
+
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = '<i class="fas fa-search"></i><span>Search</span>';
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        usernameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+    </script>
+</body>
+</html>

@@ -1,22 +1,414 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <title>LOST AREA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log In — Emergens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
     <style>
-        body {
-            background-color: #000000;
-            color: #ffffff;
-            font-family: monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
+        :root {
+            --font-display: 'Playfair Display', serif;
+            --font-ui: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-700: #1e40af; --blue-800: #172554;
+            --blue-glow: rgba(59,130,246,0.28); --blue-glow-soft: rgba(59,130,246,0.12);
+            --gold: #d4a574; --gold-light: #e7cd9f; --gold-glow: rgba(212,165,116,0.2);
+            --green: #4fb488; --green-glow: rgba(79,180,136,0.2);
+            --radius-sm: 8px; --radius-md: 12px; --radius-xl: 26px;
+            --transition-fast: 180ms cubic-bezier(0.4,0,0.2,1);
+            --transition-med: 340ms cubic-bezier(0.16,1,0.3,1);
+            --transition-slow: 560ms cubic-bezier(0.16,1,0.3,1);
         }
+        [data-theme="dark"] {
+            --bg-primary: #020617; --bg-secondary: #0b1220; --bg-tertiary: #111827;
+            --bg-elevated: #1e293b; --border-color: #1e293b; --border-subtle: #334155;
+            --text-primary: #e2e8f0; --text-secondary: #94a3b8; --text-muted: #64748b;
+            --shadow-lg: 0 20px 60px rgba(0,0,0,0.65); --sheen: rgba(255,255,255,0.03);
+        }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9;
+            --bg-elevated: #ffffff; --border-color: #cbd5e1; --border-subtle: #e2e8f0;
+            --text-primary: #0f172a; --text-secondary: #334155; --text-muted: #64748b;
+            --shadow-lg: 0 20px 50px rgba(30,41,59,0.1); --sheen: rgba(255,255,255,0.7);
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        html,body{height:100%}
+        body{
+            font-family:var(--font-ui);background:var(--bg-primary);color:var(--text-primary);
+            transition:background var(--transition-slow),color var(--transition-slow);
+            -webkit-font-smoothing:antialiased;overflow-x:hidden;
+            display:flex;align-items:center;justify-content:center;min-height:100vh;position:relative;
+        }
+        button,input{font-family:inherit} button{cursor:pointer}
+        button:focus-visible,input:focus-visible{outline:2px solid var(--blue-500);outline-offset:2px}
+        [hidden]{display:none!important}
+        .bg-grid{
+            position:fixed;inset:0;z-index:0;
+            background-image:linear-gradient(var(--border-color) 1px,transparent 1px),linear-gradient(90deg,var(--border-color) 1px,transparent 1px);
+            background-size:44px 44px;
+            -webkit-mask-image:radial-gradient(ellipse 80% 60% at center,black 0%,transparent 72%);
+            mask-image:radial-gradient(ellipse 80% 60% at center,black 0%,transparent 72%);
+            opacity:0.45;pointer-events:none;
+        }
+        .bg-glow{position:fixed;z-index:0;pointer-events:none;width:600px;height:600px;border-radius:50%;filter:blur(90px);opacity:0.4}
+        .bg-glow--one{top:-10%;left:5%;background:radial-gradient(circle,var(--blue-glow) 0%,transparent 60%);animation:softFloat 9s ease-in-out infinite}
+        .bg-glow--two{bottom:-16%;right:4%;background:radial-gradient(circle,var(--blue-glow-soft) 0%,transparent 60%);animation:softFloat 11s ease-in-out infinite reverse}
+        [data-theme="light"] .bg-glow{opacity:0.28}
+        @keyframes softFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+        @keyframes fadeSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulseGlow{0%,100%{box-shadow:0 8px 24px var(--blue-glow)}50%{box-shadow:0 8px 44px var(--blue-glow)}}
+        @keyframes spin{to{transform:rotate(360deg)}} .spin{animation:spin 1s linear infinite}
+        @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+        @keyframes modalIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+
+        .theme-toggle{
+            position:fixed;top:22px;right:22px;z-index:50;width:40px;height:40px;
+            display:inline-flex;align-items:center;justify-content:center;border-radius:50%;
+            border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-secondary);
+            cursor:pointer;transition:all var(--transition-med);font-size:0.95rem;
+            box-shadow:0 2px 8px rgba(0,0,0,0.35);
+        }
+        .theme-toggle:hover{color:var(--blue-500);border-color:var(--blue-500);background:var(--blue-glow-soft);transform:translateY(-2px) rotate(15deg);box-shadow:0 0 20px var(--blue-glow)}
+
+        .adb-btn{
+            position:fixed;top:22px;right:70px;z-index:50;height:40px;padding:0 16px;
+            display:inline-flex;align-items:center;gap:8px;border-radius:20px;
+            border:1px solid var(--blue-500);background:var(--blue-glow-soft);color:var(--blue-400);
+            cursor:pointer;transition:all var(--transition-med);font-size:0.8rem;font-weight:700;
+            letter-spacing:1px;text-transform:uppercase;box-shadow:0 2px 8px rgba(0,0,0,0.35);
+        }
+        .adb-btn:hover{background:var(--blue-500);color:#fff;box-shadow:0 0 20px var(--blue-glow);transform:translateY(-2px)}
+
+        .login-wrapper{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+        .login-card{
+            position:relative;width:100%;max-width:420px;background:var(--bg-secondary);
+            border:1px solid var(--border-color);border-radius:var(--radius-xl);padding:40px 34px;
+            box-shadow:var(--shadow-lg);animation:fadeSlideUp 0.7s var(--transition-slow) both;
+        }
+        .login-card::before{
+            content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+            background:linear-gradient(155deg,var(--blue-glow) 0%,transparent 28%,transparent 72%,var(--gold-glow) 100%);
+            -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+            -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;
+        }
+        .login-brand{text-align:center;margin-bottom:30px}
+        .brand-icon{width:60px;height:60px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;border-radius:16px;animation:pulseGlow 3.5s ease-in-out infinite}
+        .brand-icon svg{width:60px;height:60px;filter:drop-shadow(0 0 16px var(--blue-glow))}
+        .login-brand h1{font-family:var(--font-display);font-size:1.6rem;letter-spacing:2px;font-weight:800;color:var(--blue-400);margin-bottom:4px}
+        .login-brand h1 span{color:var(--gold)}
+        .login-brand .tagline{color:var(--text-secondary);font-size:0.82rem;margin-top:6px}
+
+        .login-form label{display:block;font-size:0.72rem;color:var(--text-secondary);margin-bottom:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em}
+        .input-group{
+            display:flex;align-items:center;gap:10px;background:var(--bg-tertiary);
+            border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0 14px;
+            transition:all var(--transition-fast);
+        }
+        .input-group:focus-within{border-color:var(--blue-500);box-shadow:0 0 0 4px var(--blue-glow-soft);background:var(--bg-elevated)}
+        .input-group.error{border-color:var(--blue-500);box-shadow:0 0 0 4px var(--blue-glow-soft)}
+        .input-group i:first-child{color:var(--text-muted);font-size:0.88rem}
+        .input-group:focus-within i:first-child{color:var(--blue-500)}
+        .input-group input{
+            flex:1;border:none;background:transparent;color:var(--text-primary);
+            padding:13px 0;font-size:0.93rem;outline:none;
+        }
+        .input-group input::placeholder{color:var(--text-muted)}
+        .input-group .icon-btn{
+            width:30px;height:30px;border:none;background:transparent;display:inline-flex;
+            align-items:center;justify-content:center;border-radius:50%;color:var(--text-muted);
+            cursor:pointer;font-size:0.82rem;
+        }
+        .input-group .icon-btn:hover{color:var(--blue-500);background:var(--blue-glow-soft)}
+        .input-group.shake{animation:shake 0.4s ease}
+
+        .error-message{
+            margin-top:12px;padding:10px 13px;border-radius:var(--radius-sm);
+            background:rgba(96,165,250,0.08);border:1px solid var(--blue-glow);
+            color:var(--blue-400);font-size:0.82rem;display:flex;align-items:center;gap:8px;
+        }
+        .btn-primary{
+            position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;
+            gap:8px;background:linear-gradient(135deg,var(--blue-400),var(--blue-700));color:#fff;
+            border:none;border-radius:var(--radius-sm);padding:13px 20px;font-weight:600;font-size:0.93rem;
+            cursor:pointer;transition:all var(--transition-med);box-shadow:0 4px 16px var(--blue-glow);
+            width:100%;margin-top:20px;
+        }
+        .btn-primary::after{
+            content:"";position:absolute;inset:0;
+            background:linear-gradient(135deg,var(--sheen),transparent 60%);opacity:0;transition:opacity var(--transition-fast);
+        }
+        .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 32px var(--blue-glow)}
+        .btn-primary:hover::after{opacity:1}
+        .btn-primary:disabled{opacity:0.55;cursor:not-allowed;transform:none;box-shadow:none}
+
+        .session-footnote{
+            margin-top:26px;text-align:center;font-size:0.68rem;color:var(--text-muted);
+            display:flex;align-items:center;justify-content:center;gap:6px;
+        }
+        .session-footnote i{color:var(--green)}
+
+        /* ADB Modal */
+        .adb-modal-overlay{
+            position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;
+            display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);
+        }
+        .adb-modal-overlay.open{display:flex}
+        .adb-modal{
+            background:var(--bg-secondary);border:1px solid var(--blue-500);border-radius:var(--radius-xl);
+            padding:32px 28px;width:90%;max-width:380px;box-shadow:var(--shadow-lg);
+            animation:modalIn 0.3s ease;position:relative;
+        }
+        .adb-modal-title{
+            font-family:var(--font-display);font-size:1.2rem;font-weight:800;
+            color:var(--blue-400);text-align:center;margin-bottom:4px;
+        }
+        .adb-modal-sub{
+            text-align:center;font-size:0.78rem;color:var(--text-secondary);margin-bottom:20px;
+        }
+        .adb-modal .input-group{margin-bottom:12px}
+        .adb-modal .btn-primary{margin-top:8px}
+        .adb-modal-close{
+            position:absolute;top:14px;right:14px;width:30px;height:30px;
+            border:none;background:transparent;color:var(--text-muted);font-size:1rem;
+            cursor:pointer;border-radius:50%;transition:all var(--transition-fast);
+        }
+        .adb-modal-close:hover{color:var(--blue-500);background:var(--blue-glow-soft)}
+
+        @media(max-width:480px){
+            .login-card{padding:30px 20px;border-radius:20px}
+            .brand-icon svg{width:50px;height:50px}
+            .login-brand h1{font-size:1.4rem}
+            .adb-btn{top:16px;right:62px;padding:0 12px;font-size:0.7rem}
+            .theme-toggle{top:16px;right:16px}
+        }
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
     </style>
 </head>
 <body>
-    LOST AREA
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow--one"></div>
+    <div class="bg-glow bg-glow--two"></div>
+
+    <!-- ADB Button -->
+    <button id="adbBtn" class="adb-btn" type="button">
+        <i class="fas fa-terminal"></i> ADB
+    </button>
+
+    <!-- Theme Toggle -->
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme" type="button">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <!-- Login Wrapper -->
+    <main class="login-wrapper">
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="boltGrad" x1="0" y1="0" x2="60" y2="60">
+                                <stop offset="0" stop-color="#60a5fa"/>
+                                <stop offset="1" stop-color="#1e40af"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#boltGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h1>EMER<span>GENS</span></h1>
+                <p class="tagline">Security Testing &amp; OSINT Platform</p>
+            </div>
+
+            <!-- Login form -->
+            <form id="loginForm" class="login-form" autocomplete="off">
+                <label for="loginUsername">Username</label>
+                <div class="input-group" id="usernameGroup">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="loginUsername" placeholder="Enter your username" required>
+                </div>
+                <label for="loginPassword" style="margin-top:16px;">Password</label>
+                <div class="input-group" id="passwordGroup">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                    <button type="button" id="togglePw" class="icon-btn"><i class="fas fa-eye"></i></button>
+                </div>
+                <div id="loginError" class="error-message" hidden></div>
+                <button type="submit" class="btn-primary" id="loginBtn">
+                    <span>Log In</span>
+                    <i class="fas fa-arrow-right-to-bracket"></i>
+                </button>
+            </form>
+
+            <div class="session-footnote">
+                <i class="fas fa-lock"></i> Encrypted connection · session verified server-side
+            </div>
+        </div>
+    </main>
+
+    <!-- ADB Modal -->
+    <div class="adb-modal-overlay" id="adbModal">
+        <div class="adb-modal">
+            <button class="adb-modal-close" id="adbModalClose" type="button">
+                <i class="fas fa-xmark"></i>
+            </button>
+            <div class="adb-modal-title">ADB Access</div>
+            <div class="adb-modal-sub">Enter your access code to continue</div>
+            <div class="input-group" id="adbCodeGroup">
+                <i class="fas fa-key"></i>
+                <input type="password" id="adbCodeInput" placeholder="Enter ADB code" autocomplete="off">
+                <button type="button" id="toggleAdbPw" class="icon-btn"><i class="fas fa-eye"></i></button>
+            </div>
+            <div id="adbError" class="error-message" hidden></div>
+            <button type="button" class="btn-primary" id="adbSubmitBtn">
+                <i class="fas fa-terminal"></i> Connect
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ===== Theme =====
+        (function(){
+            const r = document.documentElement;
+            const s = localStorage.getItem('emergens-theme') || 'dark';
+            r.setAttribute('data-theme', s);
+            function updateIcon(){
+                const b = document.getElementById('themeToggle');
+                b.querySelector('i').className = r.getAttribute('data-theme') === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+            }
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                const n = r.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                r.setAttribute('data-theme', n);
+                localStorage.setItem('emergens-theme', n);
+                updateIcon();
+            });
+            updateIcon();
+        })();
+
+        // ===== Password visibility =====
+        document.getElementById('togglePw').addEventListener('click', function(){
+            const i = document.getElementById('loginPassword');
+            const t = i.type === 'password';
+            i.type = t ? 'text' : 'password';
+            this.querySelector('i').className = t ? 'fas fa-eye-slash' : 'fas fa-eye';
+        });
+
+        document.getElementById('toggleAdbPw').addEventListener('click', function(){
+            const i = document.getElementById('adbCodeInput');
+            const t = i.type === 'password';
+            i.type = t ? 'text' : 'password';
+            this.querySelector('i').className = t ? 'fas fa-eye-slash' : 'fas fa-eye';
+        });
+
+        // ===== ADB Modal =====
+        const adbModal = document.getElementById('adbModal');
+        const adbCodeInput = document.getElementById('adbCodeInput');
+        const adbError = document.getElementById('adbError');
+
+        document.getElementById('adbBtn').addEventListener('click', () => {
+            adbModal.classList.add('open');
+            adbCodeInput.value = '';
+            adbError.hidden = true;
+            document.getElementById('adbCodeGroup').classList.remove('error');
+            setTimeout(() => adbCodeInput.focus(), 100);
+        });
+
+        document.getElementById('adbModalClose').addEventListener('click', () => {
+            adbModal.classList.remove('open');
+        });
+
+        adbModal.addEventListener('click', (e) => {
+            if (e.target === adbModal) {
+                adbModal.classList.remove('open');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && adbModal.classList.contains('open')) {
+                adbModal.classList.remove('open');
+            }
+        });
+
+        adbCodeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('adbSubmitBtn').click();
+            }
+        });
+
+        document.getElementById('adbSubmitBtn').addEventListener('click', async () => {
+            const code = adbCodeInput.value.trim().toUpperCase();
+            if (!code) {
+                showAdbError('Please enter the ADB access code.');
+                return;
+            }
+            const btn = document.getElementById('adbSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner spin"></i> Connecting...';
+            try {
+                const resp = await fetch('/api/adb_login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code })
+                });
+                const data = await resp.json();
+                if (resp.ok && data.success) {
+                    window.location.href = '/dashboard.html';
+                } else {
+                    showAdbError(data.error === 'invalid_code' ? 'Invalid ADB code. Access denied.' : (data.error || 'ADB access failed.'));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-terminal"></i> Connect';
+                    document.getElementById('adbCodeGroup').classList.add('shake');
+                    setTimeout(() => document.getElementById('adbCodeGroup').classList.remove('shake'), 400);
+                }
+            } catch (err) {
+                showAdbError('Could not reach server.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-terminal"></i> Connect';
+            }
+        });
+
+        function showAdbError(msg) {
+            adbError.textContent = msg;
+            adbError.hidden = false;
+        }
+
+        // ===== Login form submit =====
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const eb = document.getElementById('loginError');
+            eb.hidden = true;
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner spin"></i><span>Verifying...</span>';
+            const typedUsername = document.getElementById('loginUsername').value.trim();
+            try {
+                const resp = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: typedUsername,
+                        password: document.getElementById('loginPassword').value
+                    })
+                });
+                const data = await resp.json();
+                if (resp.ok && data.success) {
+                    window.location.href = '/dashboard.html';
+                } else {
+                    eb.textContent = data.error === 'invalid_credentials' ? 'Incorrect username or password.' : 'Login failed.';
+                    eb.hidden = false;
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                }
+            } catch (err) {
+                eb.textContent = 'Could not reach the server.';
+                eb.hidden = false;
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        });
+    </script>
 </body>
 </html>
