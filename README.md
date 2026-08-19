@@ -1,138 +1,92 @@
-# Oxysintx — Security Testing & OSINT Dashboard
+# Emergens — Security Testing & OSINT Dashboard
 
-Dashboard peribadi untuk security testing pasif dan OSINT ke atas domain yang
-anda **miliki atau ada kebenaran bertulis untuk diuji**.
+A private dashboard for passive security testing and OSINT on domains you own or have written authorization to test.
 
-## Ciri-ciri
+## Features
 
-- Login username + password, dengan **role** (Owner / Analyst / Viewer) —
-  tiada pendaftaran akaun awam. Akaun `Yanxzyx` (role Owner) dicipta
-  automatik oleh `app.py` pada kali pertama dijalankan, password
-  dipaparkan sekali di console
-- **Settings (Owner sahaja):** create akaun baru — kena pilih role dahulu,
-  password dijana automatik dan dipaparkan sekali sahaja; senarai semua
-  akaun; padam akaun (tak boleh padam Owner terakhir yang tinggal)
-- **Role Analyst** — akses penuh ke semua tools, tapi tiada akses Settings
-- **Role Viewer** — read-only: boleh tengok History/Docs/hasil scan, tapi
-  butang Start Scan / Quick Scan / delete / AI Chat send-clear disekat
-  (server-side, bukan sekadar sorok UI)
-- `login.html` dan `dashboard.html` kini **self-contained** — semua CSS/JS
-  kepunyaan projek ini di-inline terus dalam fail HTML (tiada fail
-  `static/css` atau `static/js` berasingan lagi). Backend (`app.py`,
-  `modules/`, dll.) kekal modular/berasingan seperti asal.
-- Tema merah-hitam, mod gelap/terang, animasi halus, ikon Font Awesome,
-  tiada emoji
-- 10 recon/security tool (mod Basic & Expert): WHOIS, DNS, SSL/TLS, HTTP
-  Security Headers, Subdomain Discovery, Tech Fingerprint, IP/ASN Info,
-  Email Security (SPF/DKIM/DMARC), Port Scan, Connectivity Check
-- Overview: Quick Scan + senarai Recent Scans terus di halaman utama
-- History: carian/filter ikut target, muat turun (download) hasil sebagai
-  JSON, boleh padam setiap entry
-- Console server (log tail) + monitor CPU/RAM/Disk secara live
-- Code/text viewer dengan syntax highlighting gaya VS Code (highlight.js),
-  extract & klik terus script/CSS/image link dari HTML yang di-fetch
-- AI Chat (guna Anthropic API key anda sendiri, model `claude-sonnet-5`) —
-  boleh padam sejarah chat
-- Dokumentasi terperinci — 6 kategori, setiap tool dijelaskan (apa, kenapa,
-  macam mana baca hasil), plus bahagian konsep keselamatan
-- Toast notification, mobile-responsive (hamburger menu), skeleton loading
-- Backend seni bina modular/plugin — tambah tool baru sekadar letak fail
-  dalam folder `modules/`
+- Username and password login with roles: Owner, Analyst, Viewer. No public account registration. The `Yanxzyx` account with Owner role is created automatically by `app.py` on first run. The password is shown once in the console.
+- Settings available to Owner only: create a new account after selecting a role first. The password is generated automatically and shown once. List all accounts. Delete accounts. The last remaining Owner cannot be deleted.
+- Analyst role has full access to all tools but no access to Settings.
+- Viewer role is read-only: can view History, Docs, and scan results, but Start Scan, Quick Scan, Delete, and AI Chat send/clear are blocked server-side, not just hidden in the UI.
+- `login.html` and `dashboard.html` are self-contained. All project CSS and JavaScript are inline directly inside the HTML files. There are no separate `static/css` or `static/js` files. The backend (`app.py`, `modules/`, and others) remains modular and separate.
+- Red and black theme, dark and light mode, smooth animations, Font Awesome icons, no emoji.
+- 10 reconnaissance and security tools with Basic and Expert modes: WHOIS, DNS, SSL/TLS, HTTP Security Headers, Subdomain Discovery, Tech Fingerprint, IP/ASN Info, Email Security (SPF/DKIM/DMARC), Port Scan, Connectivity Check.
+- Overview: Quick Scan and Recent Scans list directly on the main page.
+- History: search and filter by target, download results as JSON, delete individual entries.
+- Live server console with log tail and CPU, RAM, and Disk monitoring.
+- Code and text viewer with VS Code-style syntax highlighting using highlight.js. Extract and directly open script, CSS, and image links from fetched HTML.
+- AI Chat using your own Anthropic API key with the `claude-sonnet-5` model. Chat history can be cleared.
+- Detailed documentation in 6 categories. Each tool is explained with what it does, why it matters, and how to read the results, plus security concepts.
+- Toast notifications, mobile responsive with hamburger menu, skeleton loading.
+- Modular plugin backend. Add a new tool by placing a file in the `modules/` folder.
 
-## Apa yang SENGAJA tidak dimasukkan
+All tools are passive and read-only. They only read public information similar to securityheaders.com, crt.sh, or the `whois` command. No exploits are sent.
 
-- **Proxy scraper / proxy rotation** — boleh disalahguna untuk elak
-  rate-limit/IP-ban semasa scan besar-besaran ke website lain
-- **Cloudflare real-IP / bypass proteksi** — untuk serang origin server terus
-- **Brute force** (login/password)
-- **Upload & jalankan sebarang fail Python** sebagai ciri terbuka — risiko
-  *arbitrary code execution*. Sebagai ganti, gunakan seni bina plugin di
-  `modules/` untuk tambah tool anda sendiri yang telah disemak
-- **Pendaftaran akaun awam / pelan berbayar untuk orang luar** — Settings
-  di sini untuk pemilik urus akaun pasukan sendiri, bukan platform terbuka
-
-Semua tool yang dibina bersifat **pasif/read-only** — ia hanya membaca
-maklumat awam (sama seperti securityheaders.com, crt.sh, atau arahan
-`whois`), tiada exploit dihantar.
-
-## Pasang & Jalankan
+## Install and Run
 
 ```bash
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# (pilihan) untuk AI Chat, salin .env.example -> .env dan isi ANTHROPIC_API_KEY
+# Optional for AI Chat: copy .env.example to .env and set ANTHROPIC_API_KEY
 cp .env.example .env
 
 python app.py
 ```
 
-Kali pertama dijalankan, akaun `Yanxzyx` (role **Owner**) akan dicipta
-automatik dan password dipaparkan di terminal — **simpan password ini**, ia
-tidak dipaparkan semula. Untuk jana password baru untuk akaun ini pada bila-
-bila masa (role dikekalkan):
+On first run, the `Yanxzyx` account with Owner role is created automatically and the password is displayed in the terminal. Save this password because it is not shown again. To generate a new password for this account at any time while keeping the role:
 
 ```bash
 python app.py reset-password
 ```
 
-Buka `http://localhost:5000`, log masuk dengan username `Yanxzyx` dan
-password tersebut. Startup log juga akan bagitahu jika ada tool yang gagal
-loaded (biasanya bermakna `pip install` tak lengkap).
+Open `http://localhost:5000` and log in with username `Yanxzyx` and the displayed password. The startup log also reports if any tools failed to load, which usually means the `pip install` step was incomplete.
 
-## Role & Settings
+## Roles and Settings
 
 | Role    | Tools (scan/history/chat) | Delete/Clear | Settings |
 |---------|:--------------------------:|:------------:|:--------:|
-| Owner   | ✔                          | ✔            | ✔        |
-| Analyst | ✔                          | ✔            | ✘        |
-| Viewer  | lihat sahaja                | ✘            | ✘        |
+| Owner   | Yes                        | Yes          | Yes      |
+| Analyst | Yes                        | Yes          | No       |
+| Viewer  | Read only                  | No           | No       |
 
-Sebagai Owner, pergi ke **Settings** untuk create akaun baru: masukkan
-username, **pilih role dahulu**, submit — username + password baru terus
-dipaparkan (sekali sahaja, tiada cara lihat semula password lama). Owner
-terakhir yang tinggal tidak boleh dipadam, supaya anda tak boleh terkunci
-keluar sepenuhnya.
+As an Owner, go to Settings to create a new account. Enter a username, select the role first, then submit. The new username and password are displayed once. There is no way to view an old password again. The last remaining Owner cannot be deleted, preventing complete account lockout.
 
-## Tambah Tool Sendiri
+## Add Your Own Tool
 
-Cipta fail baru dalam `modules/`, contohnya `modules/my_tool.py`:
+Create a new file in `modules/`, for example `modules/my_tool.py`:
 
 ```python
-TOOL_INFO = {"name": "My Tool", "description": "Penjelasan ringkas."}
+TOOL_INFO = {"name": "My Tool", "description": "Short description."}
 
 def run(target: str, mode: str = "basic") -> dict:
-    # logik anda di sini (mode: "basic" atau "expert")
+    # Your logic here. mode can be "basic" or "expert".
     return {"tool": "my_tool", "target": target, "data": {}, "error": None}
 ```
 
-Tool akan auto-detect dan terus muncul dalam senarai di dashboard — tiada
-perlu edit `app.py` atau `scan_orchestrator.py`.
+The tool is auto-detected and appears in the dashboard tool list. No edits to `app.py` or `scan_orchestrator.py` are required.
 
-## Struktur Projek
+## Project Structure
 
 ```
-oxysintx/
-├── app.py             # routing sahaja (backend kekal berasingan/modular)
-├── config.py          # paths, secrets, .env
+emergens/
+├── app.py             # Routing only. Backend remains separate and modular.
+├── config.py          # Paths, secrets, .env
 ├── requirements.txt
-├── auth/              # user_store.py - username/password + role (SQLite)
-├── core/              # logging, system monitor, history (SQLite)
-├── modules/           # setiap fail = satu recon tool (plugin-style)
-├── ai_chat/           # wrapper Anthropic API
-└── templates/         # login.html, dashboard.html - SELF-CONTAINED
-                        # (CSS + JS projek ini di-inline terus, tiada
-                        #  static/css atau static/js berasingan)
+├── auth/              # user_store.py - username/password and role using SQLite
+├── core/              # Logging, system monitor, history using SQLite
+├── modules/           # Each file is one reconnaissance tool in plugin style
+├── ai_chat/           # Anthropic API wrapper
+└── templates/         # login.html and dashboard.html, self-contained
+                        # Project CSS and JavaScript are inline
+                        # No separate static/css or static/js folders
 ```
 
-## Nota Keselamatan
+## Security Notes
 
-- Password disimpan sebagai hash (bukan plaintext) menggunakan Werkzeug
-- Setiap endpoint API disemak role di server (bukan sekadar sorok butang
-  di frontend) — Viewer yang cuba panggil endpoint tulis terus dapat 403
-- Endpoint `/api/login` ada rate-limit (5 percubaan gagal → lockout 5 minit)
-- Jalankan di belakang HTTPS/reverse proxy jika didedahkan ke internet
-  (papan tanda "Not secure" di browser bermaksud anda belum buat ini)
-- Gunakan hanya pada domain yang anda miliki atau ada kebenaran bertulis
-  untuk diuji — ini adalah tanggungjawab anda sepenuhnya
+- Passwords are stored as hashes using Werkzeug, not plaintext.
+- Every API endpoint checks the role on the server. Viewers trying to call write endpoints receive HTTP 403.
+- The `/api/login` endpoint has rate limiting with 5 failed attempts causing a 5 minute lockout.
+- Run behind HTTPS or a reverse proxy if exposed to the internet. The browser not secure warning means you have not done this yet.
+- Use only on domains you own or have written authorization to test. This is entirely your responsibility.
