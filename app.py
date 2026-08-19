@@ -1,5 +1,5 @@
 """
-Oxysintx - Main Flask Application (v3.3.1)
+Oxysintx - Main Flask Application (v3.4.1)
 
 Routing only lives here; actual logic is split across auth/, core/,
 modules/, and ai_chat/.
@@ -271,6 +271,26 @@ def MyEspT_page():
 @login_required
 def quick_menu_setting_page():
     return render_template("quick_menu_setting.html")
+
+# ===== NEW: Emergens OSINT page =====
+@app.route("/Emergens_osint.html")
+@login_required
+def emergens_osint_page():
+    """OSINT Social Intelligence page."""
+    return render_template("Emergens_osint.html")
+
+# ===== NEW: Structure folder page =====
+@app.route("/structure_folder_file.html")
+@login_required
+def structure_folder_file_page():
+    """Project structure tree page."""
+    return render_template("structure_folder_file.html")
+
+# ===== NEW: Password lock page =====
+@app.route("/password_lock.html")
+def password_lock_page():
+    """Password-protected lock page."""
+    return render_template("password_lock.html")
 
 # ===== Leak Data / Emergens DB page =====
 @app.route("/Emergens_DB.html")
@@ -1286,6 +1306,9 @@ if __name__ == "__main__":
         _banner("Quick Menu bridge (root-level) available at /status, /menu, /actions, /action")
     else:
         _banner("Quick Menu module NOT available - place modules/quick_menu.py to enable.")
+
+    _banner("OSINT Social Intelligence available at /Emergens_osint.html")
+    _banner("Leak Data Search available at /Emergens_DB.html")
 
     port = int(Config.PORT) if hasattr(Config, 'PORT') else 3052
     print(f"Starting Oxysintx at http://localhost:{port} ...", flush=True)
