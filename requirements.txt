@@ -7,3 +7,7 @@ python-whois>=0.9.4
 anthropic>=0.40.0
 python-dotenv>=1.0.1
 beautifulsoup4>=4.12.3
+cryptography>=42.0.0
+python-telegram-bot>=20.0
+mysql-connector-python>=9.0.0
+cloudscraper>=1.2.71
