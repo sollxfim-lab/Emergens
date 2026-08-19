@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergens — API Request</title>
+    <meta name="description" content="Emergens developer API access — generate tokens and test endpoints.">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%230b1220'/%3E%3Cpath d='M33 4L14 34h11l-4 22 22-30H32l5-22z' fill='%2360a5fa'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
+    <style>
+        :root {
+            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-700: #1e40af; --blue-800: #172554;
+            --blue-glow: rgba(59,130,246,0.30); --blue-glow-soft: rgba(59,130,246,0.14);
+            --gold: #d4a574; --gold-light: #e7cd9f; --gold-glow: rgba(212,165,116,0.22);
+            --green: #4fb488; --green-glow: rgba(79,180,136,0.18);
+            --amber: #f59e0b; --amber-glow: rgba(245,158,11,0.18);
+            --steel: #5a9aa6; --steel-glow: rgba(90,154,166,0.2);
+            --radius-sm: 8px; --radius-md: 14px; --radius-lg: 22px; --radius-xl: 28px;
+            --shadow-md: 0 10px 32px rgba(0,0,0,0.5), 0 2px 10px rgba(0,0,0,0.35);
+            --shadow-lg: 0 26px 70px rgba(0,0,0,0.6), 0 6px 20px rgba(0,0,0,0.4);
+            --transition-fast: 180ms cubic-bezier(0.4,0,0.2,1);
+            --transition-med: 360ms cubic-bezier(0.16,1,0.3,1);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #020617; --bg-secondary: #0b1220; --bg-tertiary: #111827; --bg-elevated: #1e293b;
+            --border-color: #1e293b; --border-subtle: #334155; --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8; --text-muted: #64748b;
+            --red-glow: rgba(59,130,246,0.30); --red-glow-soft: rgba(59,130,246,0.14);
+        }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --bg-elevated: #ffffff;
+            --border-color: #cbd5e1; --border-subtle: #e2e8f0; --text-primary: #0f172a;
+            --text-secondary: #334155; --text-muted: #64748b;
+            --red-glow: rgba(59,130,246,0.2); --red-glow-soft: rgba(59,130,246,0.1);
+        }
+        * { box-sizing: border-box; margin:0; padding:0; }
+        html,body{height:100%;}
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+            position: relative;
+            background-image:
+                radial-gradient(1200px 780px at 12% -10%, var(--blue-glow-soft), transparent 60%),
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+        }
+        ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:3px;}
+        button,input,select{font-family:inherit;} button{cursor:pointer;}
+        button:focus-visible,input:focus-visible{outline:2px solid var(--blue-400);outline-offset:2px;border-radius:4px;}
+
+        .ambient-orb{position:fixed;border-radius:50%;filter:blur(70px);pointer-events:none;z-index:0;}
+        .orb-1{width:420px;height:420px;background:var(--blue-600);opacity:0.28;top:-140px;left:-120px;animation:driftA 22s ease-in-out infinite;}
+        .orb-2{width:320px;height:320px;background:var(--gold);opacity:0.14;bottom:-110px;right:-90px;animation:driftB 26s ease-in-out infinite;}
+        .orb-3{width:260px;height:260px;background:var(--steel);opacity:0.10;bottom:20%;left:-100px;animation:driftA 30s ease-in-out infinite reverse;}
+        @keyframes driftA{0%,100%{transform:translate(0,0);}50%{transform:translate(50px,35px);}}
+        @keyframes driftB{0%,100%{transform:translate(0,0);}50%{transform:translate(-40px,-45px);}}
+
+        .container {
+            position: relative; z-index: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 36px 32px;
+            width: 580px;
+            max-width: 100%;
+            box-shadow: var(--shadow-lg);
+            animation: fadeSlideUp 0.5s cubic-bezier(0.16,1,0.3,1) both;
+        }
+        @keyframes fadeSlideUp { from { opacity:0; transform: translateY(22px); } to { opacity:1; transform: translateY(0); } }
+        @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+        @keyframes shake { 0%,100%{ transform: translateX(0); } 20%,60%{ transform: translateX(-6px); } 40%,80%{ transform: translateX(6px); } }
+        .shake { animation: shake 0.4s ease; }
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.35s ease both; }
+        .section-leaving{ animation: sectionOut 260ms ease both; }
+        @keyframes sectionOut{ to{ opacity:0; transform:translateY(-8px) scale(0.98); } }
+
+        .brand {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 26px; justify-content: center;
+        }
+        .brand svg { width: 42px; height:42px; filter: drop-shadow(0 0 12px var(--blue-glow)); animation: crestBreathe 3.6s ease-in-out infinite; }
+        @keyframes crestBreathe{ 0%,100%{ filter:drop-shadow(0 0 10px var(--blue-glow)); } 50%{ filter:drop-shadow(0 0 20px var(--blue-glow)); } }
+        .brand-text { font-family: var(--font-display); font-size: 1.42rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-primary); }
+        .brand-text span { color: var(--blue-400); }
+        .brand-sub { text-align:center; font-size:0.68rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-top:-20px; margin-bottom:24px; }
+
+        .card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 22px;
+            margin-bottom: 16px;
+            transition: all var(--transition-fast);
+            animation: cardIn 0.45s cubic-bezier(0.16,1,0.3,1) both;
+        }
+        @keyframes cardIn{ from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+        #authSection .card:nth-child(1){animation-delay:.03s;}
+        #loggedInSection .card:nth-child(1){animation-delay:.02s;}
+        #loggedInSection .card:nth-child(2){animation-delay:.08s;}
+        #loggedInSection .card:nth-child(3){animation-delay:.14s;}
+        #loggedInSection .card:nth-child(4){animation-delay:.20s;}
+        #loggedInSection .card:nth-child(5){animation-delay:.26s;}
+        .card:hover { border-color: var(--blue-500); box-shadow: 0 0 20px var(--blue-glow-soft); }
+        .card-title {
+            font-family: var(--font-display); font-size: 1.05rem; font-weight: 700;
+            margin-bottom: 14px; display: flex; align-items: center; gap: 8px; color: var(--gold);
+        }
+        .card-title i { color: var(--blue-400); }
+        .card-title .card-title-extra{ margin-left:auto; font-family:var(--font-ui); }
+
+        .seg-tabs{ position:relative; display:flex; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:999px; padding:4px; margin-bottom:16px; }
+        .seg-tab{ flex:1; position:relative; z-index:2; text-align:center; padding:9px 8px; font-size:0.78rem; font-weight:700; color:var(--text-secondary); background:transparent; border:none; border-radius:999px; display:flex; align-items:center; justify-content:center; gap:6px; transition:color var(--transition-fast); white-space:nowrap; }
+        .seg-tab.active{ color:#fff; }
+        .seg-tab-indicator{ position:absolute; top:4px; bottom:4px; left:4px; background:linear-gradient(135deg,var(--blue-400),var(--blue-700)); border-radius:999px; box-shadow:0 3px 12px var(--blue-glow); transition:transform var(--transition-med), width var(--transition-med); z-index:1; }
+        .tab-panel{ display:none; }
+        .tab-panel.active{ display:block; animation: fadeIn 0.25s ease both; }
+
+        .input-group {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--bg-primary); border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm); padding: 0 14px; margin-bottom: 12px;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+        .input-group.error { border-color: var(--blue-500); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+        .input-group.success { border-color: var(--green); box-shadow: 0 0 0 3px rgba(79,180,136,0.2); }
+        .input-group:focus-within:not(.error):not(.success) { border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-glow); }
+        .input-group i.field-icon { color: var(--text-muted); width:16px; text-align:center; }
+        .input-group input, .input-group select {
+            flex:1; background: transparent; border: none; color: var(--text-primary);
+            padding: 12px 0; font-size: 0.88rem; outline: none; font-family: var(--font-ui);
+        }
+        .input-group input::placeholder { color: var(--text-muted); }
+        .toggle-visibility{ color:var(--text-muted); padding:4px; border-radius:4px; transition:color var(--transition-fast); background:transparent; border:none; }
+        .toggle-visibility:hover{ color:var(--gold-light); }
+        .field-hint{ font-size:0.7rem; color:var(--text-muted); margin:-6px 0 12px 2px; line-height:1.5; }
+
+        .btn {
+            width: 100%; padding: 12px; border: none; border-radius: var(--radius-sm);
+            font-weight: 700; cursor: pointer; font-size: 0.9rem; margin-top: 4px;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            transition: all var(--transition-fast); font-family: var(--font-ui);
+            position: relative; overflow: hidden;
+        }
+        .btn::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent 60%);
+            opacity: 0; transition: opacity var(--transition-fast);
+        }
+        .btn:hover::after { opacity: 1; }
+        .btn:active{ transform: scale(0.98); }
+        .btn-auth { background: linear-gradient(135deg, var(--blue-400), var(--blue-600)); color: #fff; box-shadow: 0 3px 14px var(--blue-glow); }
+        .btn-auth:hover { transform: translateY(-2px); box-shadow: 0 8px 26px var(--blue-glow); }
+        .btn-scan { background: linear-gradient(135deg, var(--green), #2d8a5a); color: #fff; }
+        .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 8px 26px rgba(79,180,136,0.25); }
+        .btn-ghost{ background:var(--bg-tertiary); color:var(--text-secondary); border:1px solid var(--border-color); box-shadow:none; }
+        .btn-ghost:hover{ border-color:var(--blue-500); color:var(--blue-400); background:var(--blue-glow-soft); transform:translateY(-1px); }
+        .btn:disabled { opacity:0.6; cursor:not-allowed; transform:none; box-shadow:none; }
+
+        .error-msg { color: var(--blue-400); font-size: 0.78rem; display:flex; align-items:center; gap:6px; }
+        .success-panel{ text-align:center; padding:6px 0 2px; }
+        .success-check{ width:52px; height:52px; margin:0 auto 6px; display:block; }
+        .check-circle{ stroke:var(--green); stroke-width:2.5; fill:none; stroke-dasharray:151; stroke-dashoffset:151; animation:circleDraw 0.5s ease forwards; }
+        .check-mark{ stroke:var(--green); stroke-width:3; fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:36; stroke-dashoffset:36; animation:checkDraw 0.35s 0.42s ease forwards; }
+        @keyframes circleDraw{ to{ stroke-dashoffset:0; } }
+        @keyframes checkDraw{ to{ stroke-dashoffset:0; } }
+        .success-msg { color: var(--green); font-size: 0.8rem; font-weight:600; }
+        .success-sub{ color:var(--text-muted); font-size:0.7rem; margin-top:3px; }
+
+        .code-block-wrap{ position:relative; }
+        .code-block {
+            background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+            padding: 14px; padding-right:70px; font-family: var(--font-mono); font-size: 0.72rem; line-height:1.65;
+            color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; overflow-x: auto;
+        }
+        .tok-com{ color:var(--text-muted); font-style:italic; }
+        .tok-str{ color:var(--green); }
+        .tok-kw{ color:var(--blue-400); font-weight:600; }
+        .tok-num{ color:var(--gold); }
+        .copy-btn {
+            display:inline-flex; align-items:center; gap:5px; font-size:0.64rem; font-weight:700;
+            padding:5px 9px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-secondary);
+            color:var(--text-muted); cursor:pointer; transition:all var(--transition-fast); white-space:nowrap;
+        }
+        .copy-btn:hover{ color:var(--gold-light); border-color:var(--gold-glow); }
+        .copy-btn.copied{ color:var(--green); border-color:var(--green-glow); }
+        .code-block-wrap .copy-btn{ position:absolute; top:9px; right:9px; }
+
+        .steps-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; margin:2px 0 4px; }
+        .step-card{ background:var(--bg-primary); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:13px; transition:all var(--transition-fast); }
+        .step-card:hover{ border-color:var(--blue-glow); transform:translateY(-2px); }
+        .step-num{ width:22px;height:22px;border-radius:50%; background:linear-gradient(135deg,var(--blue-400),var(--blue-700)); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.68rem; font-weight:800; margin-bottom:8px; }
+        .step-card strong{ display:block; font-size:0.76rem; color:var(--text-primary); margin-bottom:3px; }
+        .step-card span{ font-size:0.68rem; color:var(--text-muted); line-height:1.5; }
+        .step-card code{ font-family:var(--font-mono); background:var(--bg-tertiary); padding:1px 5px; border-radius:4px; font-size:0.66rem; color:var(--gold-light); }
+
+        .endpoint-table-wrap{ overflow-x:auto; }
+        table.endpoint-table{ width:100%; border-collapse:collapse; font-size:0.78rem; }
+        .endpoint-table th{ text-align:left; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); padding:8px 10px; border-bottom:1px solid var(--border-color); white-space:nowrap; }
+        .endpoint-table td{ padding:9px 10px; border-bottom:1px solid var(--border-subtle); color:var(--text-secondary); vertical-align:top; }
+        .endpoint-table tr:last-child td{ border-bottom:none; }
+        .method-badge{ display:inline-block; font-family:var(--font-mono); font-size:0.62rem; font-weight:700; padding:2px 7px; border-radius:5px; letter-spacing:0.02em; white-space:nowrap; }
+        .method-badge.get{ color:var(--steel); background:rgba(90,154,166,0.12); border:1px solid var(--steel-glow); }
+        .method-badge.post{ color:var(--gold-light); background:rgba(212,165,116,0.12); border:1px solid var(--gold-glow); }
+        .endpoint-path{ font-family:var(--font-mono); font-size:0.74rem; color:var(--text-primary); white-space:nowrap; }
+
+        .callout{ display:flex; gap:9px; align-items:flex-start; padding:11px 13px; border-radius:var(--radius-sm); background:var(--blue-glow-soft); border:1px solid var(--blue-glow); color:var(--text-secondary); font-size:0.74rem; line-height:1.55; margin-top:14px; }
+        .callout i{ color:var(--blue-400); margin-top:1px; }
+
+        .acct-avatar-row{ display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+        .acct-avatar{ position:relative; width:52px;height:52px;flex-shrink:0; }
+        .acct-avatar svg{ width:100%;height:100%; animation:ringSpin 6s linear infinite; }
+        .acct-avatar-core{ position:absolute; inset:6px; border-radius:50%; background:linear-gradient(135deg,var(--blue-400),var(--blue-800)); display:flex;align-items:center;justify-content:center; color:#fff; font-family:var(--font-display); font-weight:800; font-size:1.1rem; box-shadow:0 4px 14px var(--blue-glow); }
+        @keyframes ringSpin{ to{ transform:rotate(360deg); } }
+        .acct-name{ font-size:0.98rem; font-weight:700; color:var(--text-primary); }
+        .acct-badges{ display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
+            font-size: 0.66rem; font-weight: 700; border: 1px solid var(--border-color); color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.03em;
+        }
+        .status-badge.online { color: var(--green); border-color: rgba(79,180,136,0.3); background: rgba(79,180,136,0.08); }
+        .status-badge.token-badge { color: var(--gold-light); border-color: rgba(212,165,116,0.3); background: rgba(212,165,116,0.08); }
+        .status-dot{ width:6px;height:6px;border-radius:50%; background:var(--green); box-shadow:0 0 0 2px var(--green-glow); animation:dotPulse 2.2s ease-in-out infinite; }
+        @keyframes dotPulse{ 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+        .token-row{ display:flex; align-items:center; gap:8px; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:9px 12px; margin-top:12px; }
+        .token-row code{ flex:1; font-family:var(--font-mono); font-size:0.72rem; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .latency-note{ font-size:0.68rem; color:var(--text-muted); margin-top:8px; display:flex; align-items:center; gap:5px; }
+        .latency-note i{ color:var(--green); font-size:0.6rem; }
+
+        .result-box {
+            max-height: 280px; overflow: auto; background: var(--bg-primary); border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm); padding: 12px; font-family: var(--font-mono); font-size: 0.7rem;
+            color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; margin-top: 10px;
+        }
+        .json-key{ color:var(--steel); } .json-str{ color:var(--green); } .json-num{ color:var(--gold); } .json-bool{ color:var(--blue-400); }
+        .progress-bar { height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden; margin: 8px 0; }
+        .progress-fill { position:relative; height: 100%; background: linear-gradient(90deg,var(--blue-600),var(--blue-400)); border-radius: 999px; transition: width 0.5s ease; overflow:hidden; }
+        .progress-fill::after{ content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent); animation:shimmerSweep 1.3s linear infinite; }
+        @keyframes shimmerSweep{ from{ transform:translateX(-100%);} to{ transform:translateX(100%);} }
+        .progress-meta{ display:flex; align-items:center; justify-content:space-between; font-size:0.72rem; color:var(--text-secondary); }
+        .progress-meta .muted{ color:var(--text-muted); }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+
+        @media (prefers-reduced-motion: reduce){ *,*::before,*::after{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; } }
+        @media (max-width:640px){ .container{ padding:26px 18px; } .seg-tab{ font-size:0.72rem; padding:9px 4px; } .code-block{ font-size:0.66rem; padding-right:14px; } .code-block-wrap .copy-btn{ position:static; margin-top:8px; } }
+    </style>
+</head>
+<body>
+<div class="ambient-orb orb-1"></div>
+<div class="ambient-orb orb-2"></div>
+<div class="ambient-orb orb-3"></div>
+
+<div class="container" id="mainContainer">
+    <div class="brand">
+        <svg viewBox="0 0 44 44" fill="none"><defs><linearGradient id="crn" x1="6" y1="6" x2="38" y2="38"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#1e40af"/></linearGradient></defs><path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#crn)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/></svg>
+        <div class="brand-text">EMER<span>GENS</span></div>
+    </div>
+    <div class="brand-sub">Developer API Access</div>
+
+    <!-- ==================================================================
+         AUTH SECTION
+         ================================================================== -->
+    <div id="authSection" class="fade-in">
+        <div class="card" id="authCard">
+            <div class="card-title"><i class="fas fa-shield-halved"></i>Authentication</div>
+
+            <div class="seg-tabs" id="authTabs">
+                <div class="seg-tab-indicator" id="authTabIndicator"></div>
+                <button type="button" class="seg-tab active" data-tab="password"><i class="fas fa-key"></i> Password</button>
+                <button type="button" class="seg-tab" data-tab="apikey"><i class="fas fa-fingerprint"></i> API Key</button>
+            </div>
+
+            <!-- Password tab -->
+            <div class="tab-panel active" id="panel-password">
+                <div class="input-group" id="usernameGroup">
+                    <i class="fas fa-user field-icon"></i><input type="text" id="username" placeholder="Username" autocomplete="username">
+                </div>
+                <div class="input-group" id="passwordGroup">
+                    <i class="fas fa-lock field-icon"></i><input type="password" id="password" placeholder="Password" autocomplete="current-password">
+                    <button type="button" class="toggle-visibility" id="togglePassword" aria-label="Show password"><i class="fas fa-eye"></i></button>
+                </div>
+                <div class="field-hint">Sign in with your Emergens dashboard credentials. A <strong>bearer token</strong> (valid for 1 hour) will be generated and used for all subsequent API calls on this page.</div>
+            </div>
+
+            <!-- API Key tab -->
+            <div class="tab-panel" id="panel-apikey">
+                <div class="input-group" id="apikeyGroup">
+                    <i class="fas fa-fingerprint field-icon"></i><input type="text" id="apikey" placeholder="oxsk_live_..." autocomplete="off">
+                </div>
+                <div class="field-hint">Paste an API key generated from <strong>Dashboard &rarr; API Keys &rarr; Generate New Key</strong>. API keys are long-lived and do not expire.</div>
+            </div>
+
+            <button class="btn btn-auth" id="authBtn"><i class="fas fa-sign-in-alt"></i> Authenticate</button>
+            <div id="authFeedback" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         LOGGED-IN SECTION
+         ================================================================== -->
+    <div id="loggedInSection" class="hidden fade-in">
+        <!-- Account card -->
+        <div class="card" id="userInfoCard">
+            <div class="card-title"><i class="fas fa-user-circle"></i>Account</div>
+            <div id="userInfoContent"></div>
+        </div>
+
+        <!-- Getting started -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-rocket"></i>Getting Started</div>
+            <div class="steps-grid">
+                <div class="step-card"><div class="step-num">1</div><strong>Authenticate</strong><span>Use your <code>username</code> + <code>password</code> above to receive a bearer token. Or paste an existing API key.</span></div>
+                <div class="step-card"><div class="step-num">2</div><strong>Set the header</strong><span>Send <code>Authorization: Bearer &lt;token&gt;</code> on every request.</span></div>
+                <div class="step-card"><div class="step-num">3</div><strong>Call an endpoint</strong><span>Start with <code>POST /api/scan/start</code> — see the reference below.</span></div>
+                <div class="step-card"><div class="step-num">4</div><strong>Poll for results</strong><span>Check <code>/api/scan/&#123;job_id&#125;/status</code> every second until it completes.</span></div>
+            </div>
+        </div>
+
+        <!-- Endpoint reference -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-book"></i>Endpoint Reference</div>
+            <div class="endpoint-table-wrap">
+                <table class="endpoint-table">
+                    <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td><span class="method-badge post">POST</span></td><td><span class="endpoint-path">/api/token</span></td><td>Exchange username + password for a bearer token (valid 1 hour).</td></tr>
+                        <tr><td><span class="method-badge get">GET</span></td><td><span class="endpoint-path">/api/me</span></td><td>Verify a token or API key; returns account info.</td></tr>
+                        <tr><td><span class="method-badge post">POST</span></td><td><span class="endpoint-path">/api/scan/start</span></td><td>Start a scan job. Returns a <code>job_id</code>.</td></tr>
+                        <tr><td><span class="method-badge get">GET</span></td><td><span class="endpoint-path">/api/scan/&#123;job_id&#125;/status</span></td><td>Poll a scan job for progress and results.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Code examples -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fas fa-code"></i>Using Your Token
+                <span class="card-title-extra" id="tokenSourceNote" style="font-size:0.66rem;color:var(--text-muted);font-weight:600;"></span>
+            </div>
+            <div class="seg-tabs" id="codeTabs">
+                <div class="seg-tab-indicator" id="codeTabIndicator"></div>
+                <button type="button" class="seg-tab active" data-lang="curl"><i class="fas fa-terminal"></i> cURL</button>
+                <button type="button" class="seg-tab" data-lang="js"><i class="fab fa-js"></i> JavaScript</button>
+                <button type="button" class="seg-tab" data-lang="python"><i class="fab fa-python"></i> Python</button>
+            </div>
+            <div class="tab-panel active" id="code-curl">
+                <div class="code-block-wrap"><button class="copy-btn" data-copy-target="code-curl-pre"><i class="fas fa-copy"></i> Copy</button><pre class="code-block" id="code-curl-pre"></pre></div>
+            </div>
+            <div class="tab-panel" id="code-js">
+                <div class="code-block-wrap"><button class="copy-btn" data-copy-target="code-js-pre"><i class="fas fa-copy"></i> Copy</button><pre class="code-block" id="code-js-pre"></pre></div>
+            </div>
+            <div class="tab-panel" id="code-python">
+                <div class="code-block-wrap"><button class="copy-btn" data-copy-target="code-python-pre"><i class="fas fa-copy"></i> Copy</button><pre class="code-block" id="code-python-pre"></pre></div>
+            </div>
+            <div class="callout"><i class="fas fa-triangle-exclamation"></i><span>Treat your token like a password. Keep it in an environment variable or secrets manager. Never commit it to source control.</span></div>
+        </div>
+
+        <!-- Quick scan -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-play-circle"></i>Quick Scan</div>
+            <div class="input-group"><i class="fas fa-globe field-icon"></i><input type="text" id="scanTarget" placeholder="target.com"></div>
+            <div class="input-group">
+                <i class="fas fa-layer-group field-icon"></i>
+                <select id="scanMode">
+                    <option value="basic">Basic Mode</option>
+                    <option value="expert">Expert Mode</option>
+                </select>
+            </div>
+            <button class="btn btn-scan" id="scanBtn"><i class="fas fa-play"></i> Start Scan</button>
+            <div id="scanProgress" style="margin-top:10px;"></div>
+            <div class="result-box" id="scanResult" style="display:none;"></div>
+        </div>
+
+        <button class="btn btn-ghost" id="logoutBtn" style="margin-top:4px;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </div>
+</div>
+
+<script>
+// ===========================================================================
+// Session persistence
+// ===========================================================================
+var STORAGE_KEY = 'emergens_session';
+
+function saveSession(token, user, authMethod) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: token, user: user, authMethod: authMethod }));
+}
+function loadSession() {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    try {
+        var data = JSON.parse(raw);
+        if (data.token && data.user) return data;
+    } catch (e) {}
+    return null;
+}
+function clearSession() {
+    localStorage.removeItem(STORAGE_KEY);
+}
+
+// ===========================================================================
+// App state
+// ===========================================================================
+var authToken = '';
+var currentUser = null;
+var currentAuthTab = 'password';
+var lastAuthLatencyMs = null;
+var authMethod = ''; // 'password' or 'apikey'
+
+// ===========================================================================
+// Small utilities
+// ===========================================================================
+function escapeHtmlText(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function timedFetch(url, opts) {
+    var t0 = performance.now();
+    return fetch(url, opts).then(function(res) {
+        var ms = Math.round(performance.now() - t0);
+        return { res: res, ms: ms };
+    });
+}
+
+function copyToClipboard(text, btn) {
+    if (!text) return;
+    var done = function() {
+        var original = btn.innerHTML;
+        btn.classList.add('copied');
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied';
+        setTimeout(function() { btn.classList.remove('copied'); btn.innerHTML = original; }, 1600);
+    };
+    var fail = function() {
+        var original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-xmark"></i> Failed';
+        setTimeout(function() { btn.innerHTML = original; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(fail);
+    } else {
+        // Fallback
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); } catch(e) { fail(); }
+        document.body.removeChild(ta);
+    }
+}
+
+// ===========================================================================
+// Syntax highlighting
+// ===========================================================================
+function highlightCode(code) {
+    var pattern = /(#[^\n]*|\/\/[^\n]*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b(?:const|let|var|async|await|function|return|import|from|new|def|as|do|while|True|False|None|print|requests|fetch|headers|json|time|f"|Bearer|Authorization|Content-Type|application\/json|POST|GET)\b)|(\b\d+(?:\.\d+)?\b)/g;
+    var out = '', last = 0, m;
+    while ((m = pattern.exec(code))) {
+        out += escapeHtmlText(code.slice(last, m.index));
+        if (m[1] !== undefined) out += '<span class="tok-com">' + escapeHtmlText(m[1]) + '</span>';
+        else if (m[2] !== undefined) out += '<span class="tok-str">' + escapeHtmlText(m[2]) + '</span>';
+        else if (m[3] !== undefined) out += '<span class="tok-kw">' + escapeHtmlText(m[3]) + '</span>';
+        else if (m[4] !== undefined) out += '<span class="tok-num">' + escapeHtmlText(m[4]) + '</span>';
+        last = pattern.lastIndex;
+    }
+    out += escapeHtmlText(code.slice(last));
+    return out;
+}
+
+function colorizeJson(jsonString) {
+    var pattern = /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?)|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
+    var out = '', last = 0, m;
+    while ((m = pattern.exec(jsonString))) {
+        out += escapeHtmlText(jsonString.slice(last, m.index));
+        var whole = m[0];
+        if (m[1] !== undefined) {
+            var isKey = /:\s*$/.test(whole);
+            out += '<span class="' + (isKey ? 'json-key' : 'json-str') + '">' + escapeHtmlText(whole) + '</span>';
+        } else if (m[4] !== undefined) {
+            out += '<span class="json-bool">' + escapeHtmlText(whole) + '</span>';
+        } else if (m[5] !== undefined) {
+            out += '<span class="json-num">' + escapeHtmlText(whole) + '</span>';
+        } else {
+            out += escapeHtmlText(whole);
+        }
+        last = pattern.lastIndex;
+    }
+    out += escapeHtmlText(jsonString.slice(last));
+    return out;
+}
+
+// ===========================================================================
+// Segmented tabs
+// ===========================================================================
+function setupSegTabs(containerId, indicatorId, onSelect) {
+    var container = document.getElementById(containerId);
+    var indicator = document.getElementById(indicatorId);
+    var btns = Array.from(container.querySelectorAll('.seg-tab'));
+    function activate(btn, fire) {
+        btns.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        indicator.style.width = btn.offsetWidth + 'px';
+        indicator.style.transform = 'translateX(' + (btn.offsetLeft - 4) + 'px)';
+        if (fire) onSelect(btn.dataset.tab || btn.dataset.lang);
+    }
+    btns.forEach(function(b) {
+        b.addEventListener('click', function() { activate(b, true); });
+    });
+    container._reposition = function() {
+        var active = container.querySelector('.seg-tab.active') || btns[0];
+        activate(active, false);
+    };
+    requestAnimationFrame(function() { container._reposition(); });
+    return container;
+}
+
+setupSegTabs('authTabs', 'authTabIndicator', function(tabName) {
+    document.querySelectorAll('#authSection .tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    var target = document.getElementById('panel-' + tabName);
+    if (target) target.classList.add('active');
+    currentAuthTab = tabName;
+    clearErrors();
+});
+
+setupSegTabs('codeTabs', 'codeTabIndicator', function(lang) {
+    document.querySelectorAll('#loggedInSection .tab-panel[id^="code-"]').forEach(function(p) { p.classList.remove('active'); });
+    var target = document.getElementById('code-' + lang);
+    if (target) target.classList.add('active');
+});
+
+window.addEventListener('resize', function() {
+    var at = document.getElementById('authTabs'); if (at && at._reposition) at._reposition();
+    var ct = document.getElementById('codeTabs'); if (ct && ct._reposition) ct._reposition();
+});
+
+// ===========================================================================
+// UI helpers
+// ===========================================================================
+function clearErrors() {
+    document.querySelectorAll('#authSection .input-group').forEach(function(g) { g.classList.remove('error', 'success', 'shake'); });
+    var fb = document.getElementById('authFeedback');
+    if (fb) fb.innerHTML = '';
+}
+
+function showError(msg) {
+    var fb = document.getElementById('authFeedback');
+    fb.innerHTML = '<div class="error-msg"><i class="fas fa-circle-exclamation"></i><span></span></div>';
+    fb.querySelector('span').textContent = msg;
+    document.querySelectorAll('#authSection .input-group').forEach(function(g) {
+        g.classList.add('error', 'shake');
+        setTimeout(function() { g.classList.remove('shake'); }, 420);
+    });
+}
+
+function showAuthSuccess(ms, method) {
+    var fb = document.getElementById('authFeedback');
+    var methodLabel = method === 'password' ? 'Bearer token generated' : 'API key validated';
+    fb.innerHTML =
+        '<div class="success-panel">' +
+        '<svg class="success-check" viewBox="0 0 52 52"><circle class="check-circle" cx="26" cy="26" r="24"/><path class="check-mark" d="M14 27l7 7 16-16"/></svg>' +
+        '<div class="success-msg">' + methodLabel + '</div>' +
+        '<div class="success-sub" id="authSuccessSub"></div>' +
+        '</div>';
+    document.getElementById('authSuccessSub').textContent = (typeof ms === 'number') ? ('Completed in ' + ms + 'ms') : 'Signed in';
+    document.querySelectorAll('#authSection .input-group').forEach(function(g) { g.classList.remove('error'); g.classList.add('success'); });
+}
+
+function switchSection(hideEl, showEl) {
+    hideEl.classList.add('section-leaving');
+    setTimeout(function() {
+        hideEl.classList.add('hidden');
+        hideEl.classList.remove('section-leaving');
+        showEl.classList.remove('hidden');
+        if (showEl.id === 'loggedInSection') {
+            renderUserInfo();
+            buildCodeExamples();
+            requestAnimationFrame(function() { var ct = document.getElementById('codeTabs'); if (ct && ct._reposition) ct._reposition(); });
+        }
+    }, 260);
+}
+
+function showAuthSection() {
+    switchSection(document.getElementById('loggedInSection'), document.getElementById('authSection'));
+    clearErrors();
+    ['username', 'password', 'apikey'].forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
+}
+
+function showMainSection() {
+    switchSection(document.getElementById('authSection'), document.getElementById('loggedInSection'));
+}
+
+// ===========================================================================
+// Render account info
+// ===========================================================================
+function renderUserInfo() {
+    var div = document.getElementById('userInfoContent');
+    if (!currentUser) return;
+    var initial = (currentUser.username || '?').trim().charAt(0).toUpperCase() || '?';
+    var tokenLabel = authMethod === 'password' ? 'Bearer Token' : 'API Key';
+    var tokenBadgeClass = authMethod === 'password' ? 'token-badge' : 'online';
+
+    div.innerHTML =
+        '<div class="acct-avatar-row">' +
+        '  <div class="acct-avatar">' +
+        '    <svg viewBox="0 0 52 52"><defs><linearGradient id="acctRingGrad" x1="0" y1="0" x2="52" y2="52"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#d4a574"/></linearGradient></defs><circle cx="26" cy="26" r="23" fill="none" stroke="var(--border-color)" stroke-width="1.6"/><circle cx="26" cy="26" r="23" fill="none" stroke="url(#acctRingGrad)" stroke-width="2" stroke-dasharray="36 108" stroke-linecap="round"/></svg>' +
+        '    <div class="acct-avatar-core" id="acctAvatarInitial"></div>' +
+        '  </div>' +
+        '  <div>' +
+        '    <div class="acct-name" id="acctNameText"></div>' +
+        '    <div class="acct-badges">' +
+        '      <span class="status-badge online"><span class="status-dot"></span>Active</span>' +
+        '      <span class="status-badge ' + tokenBadgeClass + '" id="acctTokenBadge"></span>' +
+        '      <span class="status-badge" id="acctRoleBadge"></span>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>' +
+        '<div class="token-row">' +
+        '  <i class="fas fa-key field-icon"></i>' +
+        '  <code id="acctTokenMasked"></code>' +
+        '  <button class="copy-btn" id="copyTokenBtn"><i class="fas fa-copy"></i> Copy</button>' +
+        '</div>' +
+        '<div class="latency-note" id="acctLatencyNote" style="display:none;"><i class="fas fa-bolt"></i><span></span></div>';
+
+    document.getElementById('acctAvatarInitial').textContent = initial;
+    document.getElementById('acctNameText').textContent = currentUser.username || '--';
+    document.getElementById('acctRoleBadge').textContent = currentUser.role || '--';
+    document.getElementById('acctTokenBadge').textContent = tokenLabel;
+    document.getElementById('acctTokenMasked').textContent = authToken ? (authToken.substring(0, 18) + '...') : '--';
+    document.getElementById('copyTokenBtn').addEventListener('click', function() { copyToClipboard(authToken, this); });
+    if (lastAuthLatencyMs !== null) {
+        var note = document.getElementById('acctLatencyNote');
+        note.style.display = 'flex';
+        note.querySelector('span').textContent = 'Authenticated in ' + lastAuthLatencyMs + 'ms';
+    }
+}
+
+// ===========================================================================
+// Build code examples (pre-filled with live token)
+// ===========================================================================
+function buildCodeExamples() {
+    var base = window.location.origin || 'https://your-host';
+    var token = authToken || 'YOUR_TOKEN';
+
+    var curlLines = [
+        '# 1) Start a scan',
+        'curl -X POST ' + base + '/api/scan/start \\',
+        '  -H "Authorization: Bearer ' + token + '" \\',
+        '  -H "Content-Type: application/json" \\',
+        '  -d \'{"target":"example.com","mode":"basic","tools":[]}\'',
+        '# response -> { "job_id": "abc123" }',
+        '',
+        '# 2) Poll for the result',
+        'curl ' + base + '/api/scan/abc123/status \\',
+        '  -H "Authorization: Bearer ' + token + '"'
+    ];
+
+    var jsLines = [
+        'const BASE = "' + base + '";',
+        'const TOKEN = "' + token + '";',
+        '',
+        'async function runScan(target) {',
+        '  const start = await fetch(`${BASE}/api/scan/start`, {',
+        '    method: "POST",',
+        '    headers: {',
+        '      "Authorization": `Bearer ${TOKEN}`,',
+        '      "Content-Type": "application/json"',
+        '    },',
+        '    body: JSON.stringify({ target, mode: "basic", tools: [] })',
+        '  }).then(r => r.json());',
+        '',
+        '  let job;',
+        '  do {',
+        '    await new Promise(r => setTimeout(r, 1000));',
+        '    job = await fetch(`${BASE}/api/scan/${start.job_id}/status`, {',
+        '      headers: { "Authorization": `Bearer ${TOKEN}` }',
+        '    }).then(r => r.json());',
+        '  } while (job.status !== "completed" && job.status !== "failed");',
+        '',
+        '  return job.results;',
+        '}'
+    ];
+
+    var pyLines = [
+        'import time',
+        'import requests',
+        '',
+        'BASE = "' + base + '"',
+        'TOKEN = "' + token + '"',
+        'headers = {"Authorization": f"Bearer {TOKEN}"}',
+        '',
+        'start = requests.post(',
+        '    f"{BASE}/api/scan/start",',
+        '    headers=headers,',
+        '    json={"target": "example.com", "mode": "basic", "tools": []},',
+        ').json()',
+        '',
+        'job = {"status": "queued"}',
+        'while job.get("status") not in ("completed", "failed"):',
+        '    time.sleep(1)',
+        '    job = requests.get(',
+        '        f"{BASE}/api/scan/{start[\'job_id\']}/status",',
+        '        headers=headers',
+        '    ).json()',
+        '',
+        'print(job.get("results"))'
+    ];
+
+    document.getElementById('code-curl-pre').innerHTML = highlightCode(curlLines.join('\n'));
+    document.getElementById('code-js-pre').innerHTML = highlightCode(jsLines.join('\n'));
+    document.getElementById('code-python-pre').innerHTML = highlightCode(pyLines.join('\n'));
+
+    var note = document.getElementById('tokenSourceNote');
+    if (note) note.textContent = authToken ? 'pre-filled with your live token' : '';
+}
+
+// ===========================================================================
+// Copy buttons
+// ===========================================================================
+document.querySelectorAll('.copy-btn[data-copy-target]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var target = document.getElementById(this.dataset.copyTarget);
+        if (target) copyToClipboard(target.textContent, this);
+    });
+});
+
+// ===========================================================================
+// Password visibility toggle
+// ===========================================================================
+document.getElementById('togglePassword').addEventListener('click', function() {
+    var input = document.getElementById('password');
+    var show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    this.innerHTML = show ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+    this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+});
+
+// ===========================================================================
+// API: verify token
+// ===========================================================================
+function verifyToken(token) {
+    return fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(res) {
+            if (res.ok) return res.json();
+            return null;
+        })
+        .catch(function() { return null; });
+}
+
+// ===========================================================================
+// API: authenticate with password (generates a bearer token)
+// ===========================================================================
+function authenticateWithPassword(username, password) {
+    return timedFetch('/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+    }).then(function(timing) {
+        return timing.res.json().then(function(data) {
+            if (!timing.res.ok || !data.token) {
+                throw new Error(data.error || 'Invalid username or password.');
+            }
+            return { token: data.token, user: { username: data.username, role: data.role }, ms: timing.ms };
+        });
+    }).catch(function(err) {
+        if (err instanceof TypeError) throw new Error('Could not reach the server.');
+        throw err;
+    });
+}
+
+// ===========================================================================
+// API: authenticate with API key (validates the key directly)
+// ===========================================================================
+function authenticateWithApiKey(apikey) {
+    return timedFetch('/api/me', {
+        headers: { 'Authorization': 'Bearer ' + apikey }
+    }).then(function(timing) {
+        return timing.res.json().then(function(user) {
+            if (!timing.res.ok) {
+                throw new Error(user.error || 'That API key is invalid or has been revoked.');
+            }
+            return { token: apikey, user: user, ms: timing.ms };
+        });
+    }).catch(function(err) {
+        if (err instanceof TypeError) throw new Error('Could not reach the server.');
+        throw err;
+    });
+}
+
+// ===========================================================================
+// Auth button handler
+// ===========================================================================
+document.getElementById('authBtn').addEventListener('click', function() {
+    clearErrors();
+    var btn = document.getElementById('authBtn');
+    var result;
+
+    function handleSuccess(r) {
+        authToken = r.token;
+        currentUser = r.user;
+        lastAuthLatencyMs = r.ms;
+        authMethod = currentAuthTab;
+        saveSession(authToken, currentUser, authMethod);
+        showAuthSuccess(r.ms, authMethod);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Authenticate';
+        setTimeout(function() { showMainSection(); }, 900);
+    }
+
+    function handleError(errMsg) {
+        showError(errMsg);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Authenticate';
+    }
+
+    if (currentAuthTab === 'password') {
+        var username = document.getElementById('username').value.trim();
+        var password = document.getElementById('password').value.trim();
+        if (!username || !password) { showError('Username and password are required.'); return; }
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner spin"></i> Generating token...';
+        authenticateWithPassword(username, password).then(handleSuccess).catch(function(err) { handleError(err.message); });
+    } else {
+        var apikey = document.getElementById('apikey').value.trim();
+        if (!apikey) { showError('Enter an API key.'); return; }
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner spin"></i> Validating...';
+        authenticateWithApiKey(apikey).then(handleSuccess).catch(function(err) { handleError(err.message); });
+    }
+});
+
+// ===========================================================================
+// Enter key triggers auth
+// ===========================================================================
+['username', 'password', 'apikey'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('authBtn').click(); } });
+});
+
+// ===========================================================================
+// Logout
+// ===========================================================================
+document.getElementById('logoutBtn').addEventListener('click', function() {
+    authToken = '';
+    currentUser = null;
+    lastAuthLatencyMs = null;
+    authMethod = '';
+    clearSession();
+    showAuthSection();
+    document.getElementById('scanResult').style.display = 'none';
+    document.getElementById('scanProgress').innerHTML = '';
+});
+
+// ===========================================================================
+// Quick Scan
+// ===========================================================================
+function pollScan(jobId) {
+    var progressDiv = document.getElementById('scanProgress');
+    var resultBox = document.getElementById('scanResult');
+    resultBox.style.display = 'none';
+    var startedAt = Date.now();
+    progressDiv.innerHTML =
+        '<div class="progress-bar"><div class="progress-fill" style="width:6%" id="progressFill"></div></div>' +
+        '<div class="progress-meta"><span id="progressText">Initializing...</span><span class="muted" id="progressMeta"></span></div>';
+
+    var interval = setInterval(function() {
+        timedFetch('/api/scan/' + jobId + '/status', {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        }).then(function(result) {
+            return result.res.json().then(function(job) {
+                var pct = job.percent || 0;
+                var elapsedS = ((Date.now() - startedAt) / 1000).toFixed(1);
+                document.getElementById('progressFill').style.width = Math.max(pct, 6) + '%';
+                document.getElementById('progressText').textContent = pct + '% - ' + (job.current_tool || 'working');
+                document.getElementById('progressMeta').textContent = elapsedS + 's elapsed / ' + result.ms + 'ms';
+                if (job.status === 'completed') {
+                    clearInterval(interval);
+                    document.getElementById('progressText').textContent = 'Scan completed';
+                    resultBox.style.display = 'block';
+                    resultBox.innerHTML = colorizeJson(JSON.stringify(job.results, null, 2));
+                    document.getElementById('scanBtn').disabled = false;
+                } else if (['failed', 'error', 'cancelled', 'timeout'].indexOf(job.status) !== -1) {
+                    clearInterval(interval);
+                    document.getElementById('progressText').textContent = 'Scan ' + job.status;
+                    resultBox.style.display = 'block';
+                    resultBox.textContent = job.error || JSON.stringify(job.results, null, 2);
+                    document.getElementById('scanBtn').disabled = false;
+                }
+            });
+        }).catch(function() {
+            clearInterval(interval);
+            document.getElementById('progressText').textContent = 'Connection error.';
+            document.getElementById('scanBtn').disabled = false;
+        });
+    }, 800);
+}
+
+document.getElementById('scanBtn').addEventListener('click', function() {
+    var target = document.getElementById('scanTarget').value.trim();
+    var mode = document.getElementById('scanMode').value;
+    if (!target) {
+        document.getElementById('scanProgress').innerHTML = '<span style="color:var(--blue-400);">Enter a target.</span>';
+        return;
+    }
+    var btn = document.getElementById('scanBtn');
+    btn.disabled = true;
+    document.getElementById('scanResult').style.display = 'none';
+    document.getElementById('scanProgress').innerHTML = '<span style="color:var(--text-muted);"><i class="fas fa-spinner spin"></i> Starting scan...</span>';
+    timedFetch('/api/scan/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+        body: JSON.stringify({ target: target, mode: mode, tools: [] })
+    }).then(function(result) {
+        return result.res.json().then(function(data) {
+            if (data.job_id) {
+                pollScan(data.job_id);
+            } else {
+                document.getElementById('scanProgress').innerHTML = '<span style="color:var(--blue-400);">Error: ' + escapeHtmlText(data.error || 'unknown') + '</span>';
+                btn.disabled = false;
+            }
+        });
+    }).catch(function() {
+        document.getElementById('scanProgress').innerHTML = '<span style="color:var(--blue-400);">Request failed.</span>';
+        btn.disabled = false;
+    });
+});
+
+// ===========================================================================
+// Initial load — restore session if token is still valid
+// ===========================================================================
+(function init() {
+    var session = loadSession();
+    if (session) {
+        verifyToken(session.token).then(function(user) {
+            if (user) {
+                authToken = session.token;
+                currentUser = user;
+                authMethod = session.authMethod || '';
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('loggedInSection').classList.remove('hidden');
+                renderUserInfo();
+                buildCodeExamples();
+                requestAnimationFrame(function() { var ct = document.getElementById('codeTabs'); if (ct && ct._reposition) ct._reposition(); });
+                return;
+            }
+            // Token expired or invalid — clear and show auth
+            clearSession();
+        });
+    }
+})();
+</script>
+</body>
+</html>
