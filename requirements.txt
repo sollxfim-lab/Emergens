@@ -11,3 +11,5 @@ cryptography>=42.0.0
 python-telegram-bot>=20.0
 mysql-connector-python>=9.0.0
 cloudscraper>=1.2.71
+gunicorn>=21.2.0
+asgiref>=3.8.1
