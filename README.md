@@ -19,6 +19,7 @@ A private dashboard for passive security testing and OSINT on domains you own or
 - Detailed documentation in 6 categories. Each tool is explained with what it does, why it matters, and how to read the results, plus security concepts.
 - Toast notifications, mobile responsive with hamburger menu, skeleton loading.
 - Modular plugin backend. Add a new tool by placing a file in the `modules/` folder.
+- **Emergens DB / Leak Data Search**: a dedicated search page (`/Emergens_DB.html`) that reads JSON files from the `userdata/` folder and searches leaked personal records by full name, IC number, class name, or student number. The search runs entirely locally through the backend and returns matches in a clean, responsive table. The page includes its own session verification overlay before allowing access.
 
 All tools are passive and read-only. They only read public information similar to securityheaders.com, crt.sh, or the `whois` command. No exploits are sent.
 
@@ -53,6 +54,55 @@ Open `http://localhost:5000` and log in with username `Yanxzyx` and the displaye
 
 As an Owner, go to Settings to create a new account. Enter a username, select the role first, then submit. The new username and password are displayed once. There is no way to view an old password again. The last remaining Owner cannot be deleted, preventing complete account lockout.
 
+## Emergens DB / Leak Data Search
+
+This feature is a private lookup tool for searching JSON data placed in the `userdata/` folder. It is designed for internal OSINT research and data analysis during authorized testing.
+
+### How it works
+
+- JSON files must be placed in the `userdata/` folder in the project root.
+- The search module supports two layouts:
+  1. **School structure** with `school`, `classes`, and `students` arrays.
+  2. **Legacy flat records** with `nama_penuh` or `name` fields.
+- The search matches query text case-insensitively against:
+  - Full name
+  - IC number
+  - Class name
+  - Student number
+  - School name
+- The results are returned as JSON by the backend and rendered in a table by `Emergens_DB.html`.
+
+### Access
+
+- Log in with a valid account.
+- Open `http://localhost:5000/Emergens_DB.html`.
+- The page verifies your session before displaying any content.
+- If the session is invalid, you are redirected to the login page.
+
+### Supported JSON example
+
+```json
+{
+  "school": {
+    "name": "SMK (L) METHODIST",
+    "alias": "Methodist Boys' School",
+    "address": "250 Jalan Air Itam, 10460 George Town, Malaysia",
+    "year": 2026
+  },
+  "classes": [
+    {
+      "className": "1A",
+      "teacher": "IRDINA BATRISYIA BINTI MOHAMAD ZAHIR",
+      "students": [
+        {"no": 1, "name": "ADAM INDRA MIKAIL BIN SHARAIZHI", "ic": "130728070155"}
+      ]
+    }
+  ]
+}
+```
+
+The backend flattens this structure into individual student records before searching, so you can search by any student detail and get the full context back.
+
 ## Add Your Own Tool
 
 Create a new file in `modules/`, for example `modules/my_tool.py`:
@@ -77,9 +127,11 @@ emergens/
 ├── auth/              # user_store.py - username/password and role using SQLite
 ├── core/              # Logging, system monitor, history using SQLite
 ├── modules/           # Each file is one reconnaissance tool in plugin style
+│   └── search_user.py # Leak data search (Emergens DB)
 ├── ai_chat/           # Anthropic API wrapper
-└── templates/         # login.html and dashboard.html, self-contained
-                        # Project CSS and JavaScript are inline
+├── userdata/          # JSON files for leak data search
+└── templates/         # login.html, dashboard.html, Emergens_DB.html
+                        # Self-contained. Project CSS and JavaScript are inline
                         # No separate static/css or static/js folders
 ```
 
