@@ -1,5 +1,5 @@
 """
-Oxysintx - Main Flask Application (v3.3.0)
+Oxysintx - Main Flask Application (v3.3.1)
 
 Routing only lives here; actual logic is split across auth/, core/,
 modules/, and ai_chat/.
@@ -34,6 +34,7 @@ from core.history_store import HistoryStore
 from core.system_monitor import get_system_stats
 from modules.scan_orchestrator import ScanOrchestrator, TOOL_MAP
 from modules.source_viewer import run as fetch_source
+from modules.search_user import run as search_user_run
 from modules.telegram import (
     connect_bot, disconnect_bot, get_bot_status,
     update_bot_settings, broadcast_message, auto_restart_bot,
@@ -271,6 +272,13 @@ def MyEspT_page():
 def quick_menu_setting_page():
     return render_template("quick_menu_setting.html")
 
+# ===== Leak Data / Emergens DB page =====
+@app.route("/Emergens_DB.html")
+@login_required
+def emergens_db_page():
+    """Emergency / leak data search page."""
+    return render_template("Emergens_DB.html")
+
 # ---------------------------------------------------------------------------
 # Quick Menu compatibility routes
 # ---------------------------------------------------------------------------
@@ -502,6 +510,34 @@ def api_scan_tool_direct(tool_name):
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": "tool_execution_failed", "detail": str(e)}), 500
+
+# ---------------------------------------------------------------------------
+# Leak Data Search API (for Emergens_DB.html)
+# ---------------------------------------------------------------------------
+@app.route("/api/leakdata/search", methods=["GET", "POST"])
+@api_login_required
+def api_leakdata_search():
+    """
+    Search leaked personal records by name, IC, class, or student number.
+    Accepts:
+        POST JSON: {"target": "query"} or {"query": "query"}
+        GET query string: /api/leakdata/search?q=query
+    """
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        target = data.get("target", data.get("query", ""))
+    else:
+        target = request.args.get("q", "")
+
+    target = target.strip()
+    if not target:
+        return jsonify({"error": "query_required"}), 400
+
+    try:
+        result = search_user_run(target)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": "search_failed", "detail": str(e)}), 500
 
 # ---------------------------------------------------------------------------
 # History API
