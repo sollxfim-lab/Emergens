@@ -1,0 +1,159 @@
+{
+  "school": {
+    "name": "SMK (L) METHODIST",
+    "alias": "Methodist Boys' School",
+    "address": "250 Jalan Air Itam, 10460 George Town, Malaysia",
+    "year": 2026
+  },
+  "classes": [
+    {
+      "className": "5SN2",
+      "teacher": "MIZAN ADILLIAH BINTI RUDI",
+      "students": [
+        {"no": 1, "name": "ARYAN RAMADHANI BIN ARIEF RAMADHAN", "ic": "090913070065"},
+        {"no": 2, "name": "BHAVIN SINGH A/L SERAVANAH SINGH", "ic": "090706070687"},
+        {"no": 3, "name": "DESHANDRANAATH A/L SELVA", "ic": "091210011039"},
+        {"no": 4, "name": "FATHUL NUR IMAN BIN NOOR AZMAN", "ic": "091021020497"},
+        {"no": 5, "name": "HONG LER THONG", "ic": "091009070707"},
+        {"no": 6, "name": "IRTIDHA AHMAD BIN MUHAMMAD NOOR", "ic": "090212070679"},
+        {"no": 7, "name": "JAYDEN KHOO EE SOON", "ic": "090504070769"},
+        {"no": 8, "name": "LEE CHUN HONG", "ic": "090313070387"},
+        {"no": 9, "name": "MOHAMAD AIRIEL EZRIE BIN MOHAMAD SHAHRIEL", "ic": "090625070327"},
+        {"no": 10, "name": "MUHAMMAD SYAFRUL NIYAZ BIN MOHD SYAHIR", "ic": "091114070557"},
+        {"no": 11, "name": "NISHANT A/L RAVINDERAN", "ic": "091215070361"},
+        {"no": 12, "name": "SYAHIN HULAIF BIN SYED ABU HASSAN", "ic": "090420070155"},
+        {"no": 13, "name": "TARSHEEN A/L SURESH", "ic": "090325070499"},
+        {"no": 14, "name": "TEOH SHAO ERN", "ic": "090316070673"}
+      ]
+    },
+    {
+      "className": "5SN1",
+      "teacher": "SHAMEEM SYAZWANI BINTI SHAN JAHAN",
+      "students": [
+        {"no": 1, "name": "ARON KEVIN RAJ A/L KANNAN", "ic": "090221081265"},
+        {"no": 2, "name": "DANIEL SEOW YAN YANG", "ic": "091014070437"},
+        {"no": 3, "name": "DARWIN JEEVA NYANAM", "ic": "091223070433"},
+        {"no": 4, "name": "FAIDZRUL ADZIZUDDIN BIN FAKHRUL RADZI", "ic": "090816070215"},
+        {"no": 5, "name": "JAGATHES A/L SIVAKUMAR", "ic": "091026070477"},
+        {"no": 6, "name": "JAYSEN OOI TERNG SENG", "ic": "090701070389"},
+        {"no": 7, "name": "JEY SHAAKTIVELL A/L JEYANTHIRAN", "ic": "091223070513"},
+        {"no": 8, "name": "KESHWEIN A/L PRAKASH", "ic": "090223070949"},
+        {"no": 9, "name": "KEVIN ANDREAN", "ic": "AU367362"},
+        {"no": 10, "name": "KOAY WEI ZHE", "ic": "090721070589"},
+        {"no": 11, "name": "MANICKAVVEL RAVICHANDRAN", "ic": "090121070737"},
+        {"no": 12, "name": "MOHAMAD AIMAN SYAFIQ BIN MOHD RAFIZAN", "ic": "090612080833"},
+        {"no": 13, "name": "MUHAMMAD MU'IZZ BIN ZAKARIA", "ic": "090807070635"},
+        {"no": 14, "name": "NAVEN KUMAR A/L SUKANTHAN", "ic": "090217080745"},
+        {"no": 15, "name": "RUEBEN ANTHONY JOSEPH", "ic": "090905020527"},
+        {"no": 16, "name": "RYAN AIDEN WILSON", "ic": "091119070521"},
+        {"no": 17, "name": "SAATISHWARAN A/L KESAVAN", "ic": "090614070591"},
+        {"no": 18, "name": "SAMUEL LEE KAY JERN", "ic": "090606070399"},
+        {"no": 19, "name": "SANTOSDH A/L VISVANATHAN", "ic": "091029070579"},
+        {"no": 20, "name": "SITTHIKDEJ A/L SAN CHAT", "ic": "090213070531"},
+        {"no": 21, "name": "VOON KANG UY", "ic": "091126070511"},
+        {"no": 22, "name": "YASHARN NAIR A/L SARGUNAM", "ic": "090318071119"}
+      ]
+    },
+    {
+      "className": "5SENI",
+      "teacher": "CHUAH KOON HOOI",
+      "students": [
+        {"no": 1, "name": "DURAIMURUGAN A/L GABALA KRISHNAN", "ic": "091213070069"},
+        {"no": 2, "name": "FOONG ZHENG NING", "ic": "081126070141"},
+        {"no": 3, "name": "HEMANTH RAJ A/L POOMATHAN", "ic": "091206070271"},
+        {"no": 4, "name": "JACK LIM ZHAN FENG", "ic": "081024070757"},
+        {"no": 5, "name": "JUSTIN NG SZE KHAI", "ic": "090128070465"},
+        {"no": 6, "name": "LE ANH KIET", "ic": "N2129798"},
+        {"no": 7, "name": "LOW EE KHANG", "ic": "090421070827"},
+        {"no": 8, "name": "LUKE LIAN DOMINIC", "ic": "090105130197"},
+        {"no": 9, "name": "MOHAMMAD MUNAWWIR BIN ZAKARIA", "ic": "090824070987"},
+        {"no": 10, "name": "MUHAMMAD ALIF DANIAL BIN MOHAMED ASYRAF", "ic": "091109070667"},
+        {"no": 11, "name": "MUHAMMAD AQIL HAZIQ BIN BADRUL HISHAM", "ic": "090701070661"},
+        {"no": 12, "name": "PEK CHECK LUNG", "ic": "090620101841"},
+        {"no": 13, "name": "SHARWIN A/L JEYA KUMAR", "ic": "091011101533"},
+        {"no": 14, "name": "SOO HOO YONG ZHE", "ic": "090611070529"},
+        {"no": 15, "name": "SUVVAN A/L S S RAMACHANTIRAN", "ic": "090619080887"},
+        {"no": 16, "name": "TEOH RUEY HANG", "ic": "090503070783"},
+        {"no": 17, "name": "TIRAN RAJ A/L PATHAMANATHAN", "ic": "090316070155"},
+        {"no": 18, "name": "VIJAYA MIKILAN A/L GUNASEGARAN", "ic": "090621080093"},
+        {"no": 19, "name": "VIKNESWARAN A/L PUSPANATHAN", "ic": "090703070577"}
+      ]
+    },
+    {
+      "className": "5P",
+      "teacher": "LAM MEE CHAN",
+      "students": [
+        {"no": 1, "name": "ABISHAAI RAVI", "ic": "091211070823"},
+        {"no": 2, "name": "ADRIAN OOI JIAN HAO", "ic": "080710070445"},
+        {"no": 3, "name": "ASHVVIN A/L RAJASEGARAN", "ic": "090814070377"},
+        {"no": 4, "name": "CHOW KAI YI", "ic": "091010070325"},
+        {"no": 5, "name": "KHOO JIA SHEN", "ic": "090710070727"},
+        {"no": 6, "name": "MUHAMAD IEMAN HAKIMIE BIN ABDULLAH", "ic": "090821071095"},
+        {"no": 7, "name": "MUHAMMAD DANISH BIN MUHAMMAD FAZLIEH", "ic": "090312070553"},
+        {"no": 8, "name": "MUHAMMAD DARWISH AQIL BIN MOHD IZWAN", "ic": "090511070097"},
+        {"no": 9, "name": "MUHAMMAD FARISH AKMAL BIN MOHD FHAIZAL", "ic": "090516070571"},
+        {"no": 10, "name": "MUHAMMAD MIKHAIL IRSYAD BIN RIZAL AMIN", "ic": "090821070471"},
+        {"no": 11, "name": "MUHAMMAD ZAYEEM BIN MOHD ZAIN", "ic": "090404070577"},
+        {"no": 12, "name": "NAGULAN A/L GUNASEGARAN", "ic": "080520070647"},
+        {"no": 13, "name": "NAREEN A/L THEIVENTHIRAN", "ic": "090329070437"},
+        {"no": 14, "name": "OOI HONG KEAT", "ic": "091029070923"},
+        {"no": 15, "name": "PRAVEIN A/L MANIVANNAN", "ic": "090919070453"},
+        {"no": 16, "name": "RISHI KARTIKEYEAN A/L KUMARESAN", "ic": "090920070557"},
+        {"no": 17, "name": "SASHEIN A/L THILAIMUTHU", "ic": "091002070827"},
+        {"no": 18, "name": "SHAMMRAJ A/L PRABAGARAN", "ic": "090630070831"},
+        {"no": 19, "name": "SHIVATHASS A/L KALITHASS", "ic": "090129070555"},
+        {"no": 20, "name": "SUVNESHVELLAAN SHIVALI", "ic": "091005071059"},
+        {"no": 21, "name": "SYAMIM AMSYAR BIN SAIPUL AZAHAR", "ic": "090714030829"},
+        {"no": 22, "name": "TENG ZI XUAN", "ic": "090810070687"},
+        {"no": 23, "name": "ZULHUZAIMY BIN ZULKEFLI", "ic": "091122070135"}
+      ]
+    },
+    {
+      "className": "5ASAS",
+      "teacher": "MUHAMMAD AIDIL ASYRAAF BIN SHOHAIZEE",
+      "students": [
+        {"no": 1, "name": "AARON ANDREW WILLIAM", "ic": "090725010233"},
+        {"no": 2, "name": "ABDULLAH BIN TUAN ROSLAN", "ic": "080521060491"},
+        {"no": 3, "name": "ABDUR RAHMAN BIN TUAN ROSLAN", "ic": "080521060539"},
+        {"no": 4, "name": "ABDUR RAUF BIN TUAN ROSLAN", "ic": "090909060075"},
+        {"no": 5, "name": "DARSHAN A/L SIVAGURU", "ic": "090819070819"},
+        {"no": 6, "name": "IVAN TEOH WEI CHEN", "ic": "091230070351"},
+        {"no": 7, "name": "LIM JIAN CHAO", "ic": "080623070121"},
+        {"no": 8, "name": "LIM YONG BIN", "ic": "090430020805"},
+        {"no": 9, "name": "LOH ZHONG XIAN", "ic": "090605070215"},
+        {"no": 10, "name": "MARCUS TAN KHAI YANG", "ic": "090615070147"},
+        {"no": 11, "name": "MOHAMAD AL-AFIS BIN ABDULLAH", "ic": "090426070447"},
+        {"no": 12, "name": "MUHAMMAD ADAM HARIS BIN AHMAD BORHAN", "ic": "090402020277"},
+        {"no": 13, "name": "MUHAMMAD ALIF DANIAL BIN YUSMAN", "ic": "091230070407"},
+        {"no": 14, "name": "MUHAMMAD HISYAM BIN ABDULLAH", "ic": "90208070457"},
+        {"no": 15, "name": "MUHAMMAD HUZAIMY HAIQAL BIN FAIRUZ IKWAN", "ic": "090925070871"},
+        {"no": 16, "name": "MUHAMMAD IKHWAN ATRISY BIN MUHAMMAD DOFFY SATRYA", "ic": "091202070135"},
+        {"no": 17, "name": "MUHAMMAD SHAHIN BIN MOHAMED ISMAIL", "ic": "090918070865"},
+        {"no": 18, "name": "NEOH YOU QUAN", "ic": "091031020861"}
+      ]
+    },
+    {
+      "className": "5AK",
+      "teacher": "NOOR AMIRA BINTI MOHD SUBRI",
+      "students": [
+        {"no": 1, "name": "ANAND A/L SUBRAMANIAM", "ic": "090307070647"},
+        {"no": 2, "name": "ATHANASIUS JOACHIM A/L MATHEWS", "ic": "090610070295"},
+        {"no": 3, "name": "GOH KAI ZE", "ic": "090702070313"},
+        {"no": 4, "name": "JAYAPRAKASH EMMANUAL CHANDRAMOGAN", "ic": "090515070297"},
+        {"no": 5, "name": "KOAY SEAN CHUEN", "ic": "090130140987"},
+        {"no": 6, "name": "MUHAMMAD ADAM MUKHRIZ BIN MOHAMMAD RAZIF", "ic": "091231070505"},
+        {"no": 7, "name": "MUHAMMAD ALIFF BIN ZABIDI", "ic": "090201070315"},
+        {"no": 8, "name": "MUHAMMAD AMIRUL IMAN BIN JOZALI", "ic": "090121070593"},
+        {"no": 9, "name": "MUHAMMAD FARHAN BIN MUHAMAD FIRDOUS", "ic": "091203070137"},
+        {"no": 10, "name": "MUHAMMAD IN'AAMUL HASAN BIN MOHAMED JAFFARULLAH", "ic": "090809070305"},
+        {"no": 11, "name": "MUHAMMAD IRFAN BIN ABDUL RASHID", "ic": "090110070491"},
+        {"no": 12, "name": "MUHAMMAD NAUFAL HADIF BIN MOHD HAZLI HARIANTO", "ic": "090908070423"},
+        {"no": 13, "name": "NICK TAN PIN XIAN", "ic": "091225070111"},
+        {"no": 14, "name": "ONG SIN LONG", "ic": "091009070811"},
+        {"no": 15, "name": "RAASVIN", "ic": "090824070821"},
+        {"no": 16, "name": "WONG CHIN LIM", "ic": "090713071135"},
+        {"no": 17, "name": "YEOH SONG YI", "ic": "091212070251"}
+      ]
+    }
+  ]
+}
