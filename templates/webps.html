@@ -1,0 +1,614 @@
+<!-- =============================================================================
+     templates/webps.html — Emergens WhatsApp Bot Console (v6.1.0) · No Emoji
+     =============================================================================
+     Authentication‑gated dashboard:
+       - Use an existing Sync API Key, or
+       - Generate a new one with your Emergens username + password.
+     Once authenticated, you can upload creds.json, monitor bot status,
+     and view live logs and chat messages.
+     Theme aligned with Emergens login page (blue + gold).
+     ============================================================================= -->
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bot — Emergens</title>
+    <meta name="description" content="Secure console for your WhatsApp bot.">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="dark light">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%230b1220'/%3E%3Cpath d='M27 6 14 25h9l-3 13 13-19h-9l3-13z' fill='%2360a5fa'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
+    <style>
+        :root {
+            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-700: #1e40af; --blue-800: #172554;
+            --blue-glow: rgba(59, 130, 246, 0.30); --blue-glow-soft: rgba(59, 130, 246, 0.13);
+            --gold: #d4a574; --gold-light: #e7cd9f; --gold-glow: rgba(212, 165, 116, 0.22);
+            --green: #4fb488; --green-glow: rgba(79, 180, 136, 0.18);
+            --amber: #d1a350; --amber-glow: rgba(209, 163, 80, 0.18);
+            --steel: #5a9aa6; --steel-glow: rgba(90, 154, 166, 0.2);
+            --radius-sm: 8px; --radius-md: 13px; --radius-lg: 20px; --radius-xl: 28px;
+            --transition-fast: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-med: 360ms cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-slow: 600ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #020617; --bg-secondary: #0b1220; --bg-tertiary: #111827; --bg-elevated: #1e293b;
+            --border-color: #1e293b; --border-subtle: #334155; --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8; --text-muted: #64748b;
+            --shadow-md: 0 10px 32px rgba(0,0,0,0.5), 0 2px 10px rgba(0,0,0,0.35);
+            --shadow-lg: 0 26px 70px rgba(0,0,0,0.6), 0 6px 20px rgba(0,0,0,0.4);
+            --sheen: rgba(255,255,255,0.035);
+        }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --bg-elevated: #ffffff;
+            --border-color: #cbd5e1; --border-subtle: #e2e8f0; --text-primary: #0f172a;
+            --text-secondary: #334155; --text-muted: #64748b;
+            --shadow-md: 0 10px 26px rgba(30,41,59,0.08), 0 2px 8px rgba(30,41,59,0.05);
+            --shadow-lg: 0 24px 60px rgba(30,41,59,0.12), 0 6px 16px rgba(30,41,59,0.06);
+            --sheen: rgba(255,255,255,0.8);
+        }
+        * { box-sizing: border-box; margin:0; padding:0; }
+        html,body{height:100%;}
+        body {
+            font-family: var(--font-ui); color: var(--text-primary); background-color: var(--bg-primary);
+            background-image: radial-gradient(1200px 780px at 12% -10%, var(--blue-glow-soft), transparent 60%),
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat, repeat; background-blend-mode: normal, overlay;
+            transition: background-color var(--transition-slow), color var(--transition-slow);
+            -webkit-font-smoothing: antialiased; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        button, input { font-family: inherit; } button { cursor: pointer; }
+        button:focus-visible, input:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 2px; border-radius: 4px; }
+        [hidden] { display: none !important; }
+        ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:3px;}
+
+        .theme-toggle{position:fixed;top:22px;right:22px;z-index:50;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;transition:all var(--transition-med);font-size:0.9rem;box-shadow:0 2px 8px rgba(0,0,0,0.35)}
+        .theme-toggle:hover{color:var(--blue-500);border-color:var(--blue-500);background:var(--blue-glow-soft);transform:translateY(-2px) rotate(15deg);box-shadow:0 0 20px var(--blue-glow)}
+
+        @keyframes fadeSlideUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+        .spin { animation: spin 1s linear infinite; }
+        .shake { animation: shake 0.4s ease; }
+
+        .ws-card {
+            width: 100%; max-width: 520px;
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl); padding: 38px 32px; box-shadow: var(--shadow-lg);
+            animation: fadeSlideUp 0.55s var(--transition-slow) both;
+        }
+        .ws-brand { text-align:center; margin-bottom:22px; }
+        .ws-brand svg { width:46px; height:46px; }
+
+        .btn-primary {
+            position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;
+            gap:8px; width:100%; background: linear-gradient(135deg, var(--blue-400), var(--blue-800));
+            color:#fff; border:none; border-radius: var(--radius-sm); padding:13px 20px;
+            font-weight:600; font-size:0.92rem; cursor:pointer;
+            transition: all var(--transition-med); box-shadow: 0 4px 16px var(--blue-glow); margin-top:18px;
+        }
+        .btn-primary::after { content:""; position:absolute; inset:0; background: linear-gradient(135deg, var(--sheen), transparent 60%); opacity:0; transition: opacity var(--transition-fast); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 32px var(--blue-glow); }
+        .btn-primary:hover::after { opacity:1; }
+        .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; box-shadow:none; }
+
+        .input-group { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+        .input-group input {
+            background: var(--bg-primary); border:1px solid var(--border-color);
+            border-radius: var(--radius-sm); padding:10px 12px; color: var(--text-primary);
+            font-size:0.85rem;
+        }
+        .input-group input::placeholder { color: var(--text-muted); }
+
+        .error-box { margin-top:12px; padding:10px 13px; border-radius:var(--radius-sm); background:rgba(59,130,246,0.08); border:1px solid var(--blue-glow); color:var(--blue-400); font-size:0.82rem; display:flex; align-items:flex-start; gap:8px; }
+        .error-box i { margin-top:2px; }
+
+        .auth-section h2 { font-size:1.1rem; margin-bottom:6px; }
+        .auth-section p { font-size:0.78rem; color: var(--text-secondary); margin-bottom:20px; line-height:1.5; }
+
+        .keygen-result {
+            margin-top:14px; background: var(--bg-primary); border:1px solid var(--border-color);
+            border-radius: var(--radius-sm); padding:12px; font-family:var(--font-mono);
+            word-break: break-all; font-size:0.8rem; color: var(--green);
+        }
+        .keygen-result .profile-info { color: var(--text-secondary); margin-bottom:8px; font-size:0.78rem; }
+
+        .status-view { text-align: center; animation: fadeSlideUp 0.45s ease both; }
+        .device-icon-wrap {
+            display: flex; align-items: center; justify-content: center;
+            width:80px; height:80px; margin:0 auto 18px;
+            border-radius:50%; background: var(--bg-tertiary); border:2px solid var(--border-color);
+            transition: all var(--transition-med);
+        }
+        .device-icon-wrap i { font-size:2.4rem; color: var(--text-muted); }
+        .device-icon-wrap.online { border-color: var(--green); box-shadow:0 0 24px var(--green-glow); }
+        .device-icon-wrap.online i { color: var(--green); }
+        .device-icon-wrap.offline { border-color: var(--blue-400); box-shadow:0 0 24px rgba(59,130,246,0.4); }
+        .device-icon-wrap.offline i { color: var(--blue-400); }
+        .phone-display { font-family:var(--font-mono); font-size:1.4rem; font-weight:700; }
+        .info-grid { display: grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+        .info-box { background: var(--bg-tertiary); border:1px solid var(--border-color); border-radius: var(--radius-sm); padding:12px; text-align:left; }
+        .info-label { font-size:0.62rem; text-transform:uppercase; color: var(--text-muted); }
+        .info-value { font-size:0.84rem; font-weight:600; color: var(--text-primary); font-family:var(--font-mono); }
+
+        .logs-section { margin-top:4px; }
+        .log-tab {
+            background: none; border: 1px solid var(--border-color); color: var(--text-secondary);
+            padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer;
+            font-size: 0.75rem; transition: background var(--transition-fast);
+        }
+        .log-tab.active { background: var(--blue-500); color: #fff; border-color: var(--blue-500); }
+        .logs-container {
+            background: var(--bg-primary); border:1px solid var(--border-color);
+            border-radius: var(--radius-sm); padding:10px 14px;
+            font-family:var(--font-mono); font-size:0.68rem; color:var(--text-secondary);
+            max-height:300px; overflow-y:auto; display:block;
+        }
+        .logs-container.open { display:block; }
+        .logs-toggle {
+            display: flex; align-items: center; justify-content: space-between; width: 100%;
+            background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+            padding: 10px 14px; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary);
+            cursor: pointer; transition: all var(--transition-fast);
+        }
+        .logs-toggle:hover { border-color: var(--blue-500); color: var(--blue-400); }
+    </style>
+</head>
+<body>
+<button id="themeToggle" class="theme-toggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
+
+<div id="sessionExpiredOverlay" class="session-expired-overlay" hidden>
+    <div class="session-expired-dialog" style="background:var(--bg-secondary); padding:32px; border-radius:var(--radius-lg); text-align:center;">
+        <h3>Session Expired</h3>
+        <p>Please sign in again.</p>
+        <a href="/login.html" class="btn-primary" style="display:inline-flex; text-decoration:none;">Go to Login</a>
+    </div>
+</div>
+
+<!-- ===================== AUTHENTICATION CARD ===================== -->
+<div id="authCard" class="ws-card">
+    <div class="ws-brand">
+        <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="boltGrad" x1="6" y1="6" x2="38" y2="38">
+                    <stop offset="0" stop-color="#60a5fa"/>
+                    <stop offset="1" stop-color="#1e40af"/>
+                </linearGradient>
+            </defs>
+            <path d="M27 6 14 25h9l-3 13 13-19h-9l3-13z" fill="url(#boltGrad)" stroke="#60a5fa" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+        <div style="font-family:var(--font-display); font-weight:800;">EMER<span style="color:var(--blue-400);">GENS</span> WhatsApp Bot</div>
+    </div>
+    <div class="auth-section">
+        <h2><i class="fas fa-lock"></i> Authenticate to continue</h2>
+        <p>
+            You need a <strong>Sync API Key</strong> to access this console.<br>
+            - If you already have a key, enter it below and click <strong>Login</strong>.<br>
+            - If not, generate a new one with your Emergens credentials.<br>
+            <em>One key per account. The key is used by the WhatsApp bot to sync credentials.</em>
+        </p>
+        <div class="input-group">
+            <input type="text" id="apiKeyInput" placeholder="Paste your Sync API Key here" autocomplete="off">
+            <button class="btn-primary" id="loginWithKeyBtn" style="margin-top:0;"><i class="fas fa-sign-in-alt"></i> Login with Key</button>
+        </div>
+        <hr style="border-color:var(--border-color); margin:20px 0;">
+        <h3 style="font-size:0.9rem; margin-bottom:12px;"><i class="fas fa-key"></i> Generate New Key</h3>
+        <div class="input-group">
+            <input type="text" id="oxyUser" placeholder="Emergens Username" autocomplete="off">
+            <input type="password" id="oxyPass" placeholder="Emergens Password" autocomplete="off">
+        </div>
+        <button class="btn-primary" id="genKeyBtn"><i class="fas fa-sync-alt"></i> Generate Key</button>
+        <div id="authResult" class="keygen-result" hidden></div>
+        <div class="error-box" id="authError" hidden></div>
+    </div>
+</div>
+
+<!-- ===================== MAIN DASHBOARD (hidden initially) ===================== -->
+<div id="mainDashboard" class="ws-card" hidden>
+    <div class="ws-brand">
+        <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="boltGrad2" x1="6" y1="6" x2="38" y2="38">
+                    <stop offset="0" stop-color="#60a5fa"/>
+                    <stop offset="1" stop-color="#1e40af"/>
+                </linearGradient>
+            </defs>
+            <path d="M27 6 14 25h9l-3 13 13-19h-9l3-13z" fill="url(#boltGrad2)" stroke="#60a5fa" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+        <div style="font-family:var(--font-display); font-weight:800;">EMER<span style="color:var(--blue-400);">GENS</span> WhatsApp Bot</div>
+    </div>
+
+    <!-- UPLOAD STATE -->
+    <div id="uploadState">
+        <div class="ws-steps" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:24px;">
+            <div class="ws-step current" data-step="1"><div class="ws-step-num">1</div><span>Upload</span></div>
+            <div class="ws-step" data-step="2"><div class="ws-step-num">2</div><span>Send</span></div>
+            <div class="ws-step" data-step="3"><div class="ws-step-num">3</div><span>Connected</span></div>
+        </div>
+        <div class="upload-area" id="dropZone" style="border:2px dashed var(--border-color); padding:36px; text-align:center; border-radius:var(--radius-md); background:var(--bg-tertiary); cursor:pointer;">
+            <i class="fas fa-cloud-upload-alt" style="font-size:2.4rem; color:var(--text-muted);"></i>
+            <div style="font-weight:600;">Drop creds.json here</div>
+            <input type="file" id="fileInput" accept=".json,application/json" style="position:absolute;inset:0;opacity:0;">
+        </div>
+        <div class="file-info" id="fileInfo" hidden>
+            <div class="fi-icon"><i class="fas fa-file-code"></i></div>
+            <div>
+                <div id="fileName" class="fi-name">—</div>
+                <div id="fileSize" class="fi-meta">—</div>
+            </div>
+            <button id="removeFileBtn"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="error-box" id="formError" hidden></div>
+        <button class="btn-primary" id="uploadBtn" disabled><i class="fas fa-upload"></i> Upload & Connect</button>
+        <div style="margin-top:18px; background:var(--bg-tertiary); padding:12px; border-radius:var(--radius-sm);">
+            <div style="font-size:0.7rem; color:var(--text-muted);">Current Sync Key</div>
+            <div id="currentKeyDisplay" style="font-family:var(--font-mono); font-size:0.8rem; color:var(--green); word-break:break-all;">...</div>
+            <button id="copyKeyBtn" style="margin-top:6px; background:none; border:1px solid var(--border-color); color:var(--text-secondary); padding:6px 12px; border-radius:4px; cursor:pointer;"><i class="fas fa-copy"></i> Copy</button>
+        </div>
+    </div>
+
+    <!-- STATUS STATE (hidden initially) -->
+    <div id="statusState" class="status-view" hidden>
+        <div class="device-icon-wrap" id="deviceIcon"><i class="fas fa-mobile-alt"></i></div>
+        <div class="phone-display" id="phoneText">—</div>
+        <div class="phone-name" id="nameText"></div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin:16px 0;">
+            <span class="status-dot" id="statusDot"></span>
+            <span class="status-text" id="statusLabel">Checking...</span>
+        </div>
+        <div class="info-grid">
+            <div class="info-box">
+                <div class="info-label">Uptime</div>
+                <div class="info-value" id="uptimeVal">—</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">Last Upload</div>
+                <div class="info-value" id="lastUploadVal">—</div>
+            </div>
+        </div>
+
+        <!-- Logs & Chat Tabs -->
+        <div class="logs-section" id="logsSection">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="display:flex; gap:12px;">
+                    <button class="log-tab active" data-tab="logs"><i class="fas fa-terminal"></i> Server Logs</button>
+                    <button class="log-tab" data-tab="chats"><i class="fas fa-comments"></i> Chats</button>
+                </div>
+                <button id="refreshLogsBtn" style="background:none; border:1px solid var(--border-color); padding:6px 12px; border-radius:4px; cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+            <div class="logs-container" id="logsContainer" style="display:block;">
+                <div id="logsDisplay">No logs yet.</div>
+            </div>
+        </div>
+
+        <button class="btn-primary" id="changeCredsBtn" style="margin-top:18px;"><i class="fas fa-upload"></i> Change Credentials</button>
+    </div>
+
+    <a href="/dashboard.html" style="display:block; text-align:center; margin-top:26px; color:var(--text-muted); text-decoration:none;">Back to Dashboard</a>
+</div>
+
+<script>
+"use strict";
+// Theme toggle
+(function(){
+    const root = document.documentElement;
+    const stored = localStorage.getItem("emergens-theme") || "dark";
+    root.setAttribute("data-theme", stored);
+    const icon = document.querySelector("#themeToggle i");
+    icon.className = stored === "dark" ? "fas fa-moon" : "fas fa-sun";
+    document.getElementById("themeToggle").addEventListener("click", ()=>{
+        const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        root.setAttribute("data-theme", next);
+        localStorage.setItem("emergens-theme", next);
+        icon.className = next === "dark" ? "fas fa-moon" : "fas fa-sun";
+    });
+})();
+
+// DOM elements
+const authCard = document.getElementById("authCard");
+const mainDashboard = document.getElementById("mainDashboard");
+const apiKeyInput = document.getElementById("apiKeyInput");
+const loginWithKeyBtn = document.getElementById("loginWithKeyBtn");
+const oxyUser = document.getElementById("oxyUser");
+const oxyPass = document.getElementById("oxyPass");
+const genKeyBtn = document.getElementById("genKeyBtn");
+const authResult = document.getElementById("authResult");
+const authError = document.getElementById("authError");
+const currentKeyDisplay = document.getElementById("currentKeyDisplay");
+const copyKeyBtn = document.getElementById("copyKeyBtn");
+
+let activeSyncKey = "";
+
+// Helpers
+function showAuthError(msg) {
+    authError.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${msg}`;
+    authError.hidden = false;
+}
+function hideAuthError() { authError.hidden = true; }
+
+// Login with existing key
+loginWithKeyBtn.addEventListener("click", async () => {
+    const key = apiKeyInput.value.trim();
+    if (!key) return showAuthError("Please enter an API key.");
+    hideAuthError();
+    try {
+        const resp = await fetch(`/api/validate-sync-key?key=${encodeURIComponent(key)}`);
+        const data = await resp.json();
+        if (data.valid) {
+            activeSyncKey = key;
+            currentKeyDisplay.textContent = key;
+            authCard.hidden = true;
+            mainDashboard.hidden = false;
+            initDashboard();
+        } else {
+            showAuthError("Invalid API key.");
+        }
+    } catch {
+        showAuthError("Unable to verify key. Check connection.");
+    }
+});
+
+// Generate new key
+genKeyBtn.addEventListener("click", async () => {
+    const user = oxyUser.value.trim();
+    const pass = oxyPass.value;
+    if (!user || !pass) return showAuthError("Username and password are required.");
+    hideAuthError();
+    genKeyBtn.disabled = true;
+    genKeyBtn.innerHTML = '<i class="fas fa-spinner spin"></i> Generating...';
+    try {
+        const resp = await fetch("/api/generate-sync-key", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await resp.json();
+        if (resp.status === 401) {
+            document.getElementById("sessionExpiredOverlay").hidden = false;
+            throw new Error("session");
+        }
+        if (!resp.ok || !data.success) throw new Error(data.error || "Generation failed.");
+        activeSyncKey = data.sync_key;
+        authResult.innerHTML = `<div class="profile-info">User: ${data.profile.username} | Role: ${data.profile.role}</div>
+                                <strong>Your new Sync Key:</strong><br>${data.sync_key}`;
+        authResult.hidden = false;
+        currentKeyDisplay.textContent = data.sync_key;
+        // Auto-login with the new key
+        apiKeyInput.value = data.sync_key;
+        setTimeout(() => {
+            authCard.hidden = true;
+            mainDashboard.hidden = false;
+            initDashboard();
+        }, 1500);
+    } catch (err) {
+        if (err.message !== "session") showAuthError(err.message);
+    } finally {
+        genKeyBtn.disabled = false;
+        genKeyBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Generate Key';
+    }
+});
+
+// Copy key button
+copyKeyBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(activeSyncKey).then(() => alert("Key copied!"));
+});
+
+// Dashboard logic (same as before but adapted)
+let selectedFile = null, statusInterval = null;
+const uploadState = document.getElementById("uploadState");
+const statusState = document.getElementById("statusState");
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const fileInfo = document.getElementById("fileInfo");
+const fileName = document.getElementById("fileName");
+const fileSize = document.getElementById("fileSize");
+const removeFileBtn = document.getElementById("removeFileBtn");
+const uploadBtn = document.getElementById("uploadBtn");
+const formError = document.getElementById("formError");
+
+const phoneText = document.getElementById("phoneText");
+const nameText = document.getElementById("nameText");
+const deviceIcon = document.getElementById("deviceIcon");
+const statusDot = document.getElementById("statusDot");
+const statusLabel = document.getElementById("statusLabel");
+const uptimeVal = document.getElementById("uptimeVal");
+const lastUploadVal = document.getElementById("lastUploadVal");
+const changeCredsBtn = document.getElementById("changeCredsBtn");
+const logsContainer = document.getElementById("logsContainer");
+const logTabs = document.querySelectorAll(".log-tab");
+const refreshLogsBtn = document.getElementById("refreshLogsBtn");
+
+let logsTab = "logs";
+let logRefreshInterval = null;
+
+function initDashboard() {
+    // Check if bot already configured
+    fetch("/api/bot-status")
+        .then(r => r.json())
+        .then(data => {
+            if (data.phone) {
+                uploadState.hidden = true;
+                statusState.hidden = false;
+                fetchStatus();
+                statusInterval = setInterval(fetchStatus, 10000);
+                fetchAndDisplayLogs();
+                startLogAutoRefresh();
+            }
+        });
+
+    // File upload handlers
+    dropZone.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => { if (fileInput.files.length) selectFile(fileInput.files[0]); });
+    removeFileBtn.addEventListener("click", (e) => { e.stopPropagation(); clearFile(); });
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+    dropZone.addEventListener("dragleave", e => { dropZone.classList.remove("dragover"); });
+    dropZone.addEventListener("drop", e => {
+        e.preventDefault(); dropZone.classList.remove("dragover");
+        if (e.dataTransfer.files.length) selectFile(e.dataTransfer.files[0]);
+    });
+
+    uploadBtn.addEventListener("click", () => {
+        if (!selectedFile) return;
+        clearFormError();
+        uploadBtn.disabled = true; uploadBtn.innerHTML = '<i class="fas fa-spinner spin"></i> Uploading...';
+        const fd = new FormData(); fd.append("creds", selectedFile, selectedFile.name);
+        fetch("/api/upload-creds", { method: "POST", body: fd })
+            .then(async res => {
+                if (res.status === 401) { document.getElementById("sessionExpiredOverlay").hidden = false; throw new Error("session"); }
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Upload failed.");
+                return data;
+            })
+            .then(() => {
+                uploadState.hidden = true;
+                statusState.hidden = false;
+                fetchStatus();
+                if (statusInterval) clearInterval(statusInterval);
+                statusInterval = setInterval(fetchStatus, 10000);
+            })
+            .catch(err => {
+                if (err.message !== "session") showFormError(err.message);
+            })
+            .finally(() => {
+                uploadBtn.disabled = false; uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload & Connect';
+            });
+    });
+
+    changeCredsBtn.addEventListener("click", () => {
+        if (statusInterval) clearInterval(statusInterval);
+        statusState.hidden = true;
+        uploadState.hidden = false;
+        clearFile();
+        stopLogAutoRefresh();
+    });
+
+    // Logs and chats tab switching
+    logTabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            logTabs.forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            logsTab = tab.dataset.tab;
+            fetchAndDisplayLogs();
+        });
+    });
+
+    refreshLogsBtn.addEventListener("click", fetchAndDisplayLogs);
+}
+
+// Helper functions
+function selectFile(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".json") && file.type !== "application/json") {
+        return showFormError("Only .json files accepted.");
+    }
+    if (file.size > 1024*1024) return showFormError("File too large.");
+    selectedFile = file;
+    clearFormError();
+    fileName.textContent = file.name;
+    fileSize.textContent = formatSize(file.size) + " — " + new Date(file.lastModified).toLocaleString();
+    fileInfo.hidden = false;
+    dropZone.classList.add("has-file");
+    uploadBtn.disabled = false;
+}
+function clearFile() {
+    selectedFile = null;
+    fileInput.value = "";
+    fileInfo.hidden = true;
+    dropZone.classList.remove("has-file");
+    uploadBtn.disabled = true;
+    clearFormError();
+}
+function showFormError(msg) {
+    formError.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${msg}`;
+    formError.hidden = false;
+    dropZone.classList.add("shake");
+    setTimeout(() => dropZone.classList.remove("shake"), 420);
+}
+function clearFormError() { formError.hidden = true; }
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return (bytes/1024).toFixed(1) + " KB";
+    return (bytes/1048576).toFixed(2) + " MB";
+}
+function fetchStatus() {
+    fetch("/api/bot-status")
+        .then(r => r.json())
+        .then(data => {
+            phoneText.textContent = data.phone || "Unknown";
+            nameText.textContent = data.name || "";
+            uptimeVal.textContent = data.online ? data.uptime : "—";
+            lastUploadVal.textContent = data.last_upload ? new Date(data.last_upload).toLocaleString() : "—";
+            if (data.online) {
+                deviceIcon.className = "device-icon-wrap online";
+                statusDot.className = "status-dot";
+                statusLabel.className = "status-text online";
+                statusLabel.textContent = "Connected";
+            } else {
+                deviceIcon.className = "device-icon-wrap offline";
+                statusDot.className = "status-dot offline";
+                statusLabel.className = "status-text offline";
+                statusLabel.textContent = "Connection lost";
+            }
+        });
+}
+
+async function fetchAndDisplayLogs() {
+    try {
+        const resp = await fetch("/api/bot-logs");
+        const data = await resp.json();
+        let html = "";
+        if (logsTab === "logs") {
+            const logs = data.logs || [];
+            if (logs.length === 0) html = '<div style="color:var(--text-muted);">No log entries.</div>';
+            else html = logs.map(log => `<div><span style="color:var(--gold);">${log.time}</span> <span style="color:var(--blue-400);">[${log.level.toUpperCase()}]</span> ${escapeHtml(log.msg)}</div>`).join("\n");
+        } else {
+            const chats = data.chats || [];
+            if (chats.length === 0) html = '<div style="color:var(--text-muted);">No chat messages recorded.</div>';
+            else html = chats.map(chat => `<div><span style="color:var(--steel);">${chat.time}</span> <strong style="color:var(--green);">${chat.sender}</strong>: ${escapeHtml(chat.text)}</div>`).join("\n");
+        }
+        logsContainer.innerHTML = html;
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+    } catch (err) {
+        logsContainer.innerHTML = '<div style="color:var(--blue-400);">Failed to load logs.</div>';
+    }
+}
+
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+function startLogAutoRefresh() {
+    if (logRefreshInterval) clearInterval(logRefreshInterval);
+    logRefreshInterval = setInterval(fetchAndDisplayLogs, 8000);
+}
+function stopLogAutoRefresh() {
+    if (logRefreshInterval) clearInterval(logRefreshInterval);
+}
+
+// Initial check for existing bot
+(function init(){
+    fetch("/api/bot-status")
+        .then(r => r.json())
+        .then(data => {
+            if (data.phone){
+                uploadState.hidden = true;
+                statusState.hidden = false;
+                fetchStatus();
+                statusInterval = setInterval(fetchStatus, 10000);
+            }
+        })
+        .catch(()=>{});
+})();
+</script>
+</body>
+</html>

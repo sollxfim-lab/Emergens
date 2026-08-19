@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Framework Stress Testing · Emergens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400..700&family=Playfair+Display:ital,wght@0,600..800;1,500..700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --font-ui: 'Inter', system-ui, sans-serif;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-700: #1e40af; --blue-800: #172554;
+            --blue-glow: rgba(59,130,246,0.35); --blue-glow-soft: rgba(59,130,246,0.15);
+            --gold: #d4a574; --gold-light: #e7cd9f;
+            --green: #4fb488; --green-glow: rgba(79,180,136,0.18);
+            --steel: #5a9aa6;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --radius-sm: 8px; --radius-md: 14px; --radius-lg: 20px; --radius-xl: 28px;
+            --transition-fast: 180ms cubic-bezier(0.4,0,0.2,1);
+            --transition-med: 360ms cubic-bezier(0.16,1,0.3,1);
+            --transition-slow: 600ms cubic-bezier(0.16,1,0.3,1);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #020617; --bg-secondary: #0b1220; --bg-tertiary: #111827; --bg-elevated: #1e293b;
+            --border-color: rgba(30,41,59,0.7); --border-subtle: rgba(51,65,85,0.4);
+            --text-primary: #e2e8f0; --text-secondary: #94a3b8; --text-muted: #64748b;
+            --shadow-md: 0 12px 32px rgba(0,0,0,0.4); --shadow-lg: 0 28px 70px rgba(0,0,0,0.6);
+            --glass-bg: rgba(11,18,32,0.65); --glass-bg-hover: rgba(17,24,39,0.7); --glass-bg-light: rgba(30,41,59,0.45);
+            --glass-border: rgba(30,41,59,0.7); --glass-backdrop: blur(14px);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: var(--font-ui); color: var(--text-primary); background: var(--bg-primary);
+            background-image: radial-gradient(1200px 780px at 12% -10%, var(--blue-glow-soft), transparent 60%),
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; overflow-x: hidden; -webkit-font-smoothing: antialiased; position: relative;
+        }
+        #snowCanvas {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            width: 100%; height: 100%;
+        }
+        .content-wrap {
+            position: relative; z-index: 1; width: 100%; max-width: 1200px;
+            display: flex; flex-direction: column; gap: 20px;
+            animation: fadeSlideIn 0.6s cubic-bezier(0.16,1,0.3,1) forwards;
+        }
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 20px var(--blue-glow); } 50% { box-shadow: 0 0 40px var(--blue-glow); } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--blue-500); }
+
+        .overlay {
+            position: fixed; inset: 0; background: rgba(2,6,23,0.92); z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+        .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .spinner {
+            width: 50px; height: 50px; border-radius: 50%;
+            border: 2px solid var(--border-color); border-top-color: var(--blue-500);
+            animation: spin 0.8s linear infinite; margin-bottom: 20px;
+            box-shadow: 0 0 25px var(--blue-glow);
+        }
+        .verify-text { font-family: var(--font-display); font-size: 1.1rem; color: var(--text-secondary); }
+
+        .denied-card {
+            text-align: center; padding: 40px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+            background: rgba(11,18,32,0.9); box-shadow: var(--shadow-md); max-width: 400px; width: 100%;
+        }
+        .denied-icon { font-size: 2.5rem; color: var(--blue-500); margin-bottom: 16px; }
+        .denied-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 12px; }
+        .denied-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 20px; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px;
+            border-radius: var(--radius-sm); font-weight: 600; font-size: 0.85rem;
+            cursor: pointer; transition: all var(--transition-fast); border: none;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-800));
+            color: #fff; box-shadow: 0 2px 10px var(--blue-glow); text-decoration: none;
+            position: relative; overflow: hidden;
+        }
+        .btn::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transform: translateX(-100%); transition: transform 0.6s;
+        }
+        .btn:hover::after { transform: translateX(100%); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--blue-glow); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-outline { background: transparent; border: 1px solid var(--border-subtle); color: var(--text-primary); box-shadow: none; }
+        .btn-outline:hover { border-color: var(--blue-500); color: var(--blue-400); background: var(--blue-glow-soft); }
+
+        .card {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg); padding: 20px 24px;
+            box-shadow: var(--shadow-md); position: relative; overflow: hidden;
+            backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
+            transition: border-color var(--transition-med), box-shadow var(--transition-med);
+        }
+        .card:hover { border-color: var(--blue-500); box-shadow: var(--shadow-lg); }
+        .card::before {
+            content: ""; position: absolute; top: -20%; right: -20%; width: 200px; height: 200px;
+            background: radial-gradient(circle, var(--blue-glow-soft) 0%, transparent 70%);
+            pointer-events: none; opacity: 0.3; transition: opacity var(--transition-med);
+        }
+        .card:hover::before { opacity: 0.6; }
+        .section-title {
+            font-weight: 600; font-size: 0.8rem; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;
+            position: relative; z-index: 1;
+        }
+        .input-group {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--glass-bg-light); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm); padding: 0 14px; margin-bottom: 12px;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+        .input-group:focus-within { border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-glow-soft); }
+        .input-group i { color: var(--text-muted); font-size: 0.85rem; width: 18px; text-align: center; }
+        .input-group input, .input-group select {
+            flex: 1; border: none; background: transparent; color: var(--text-primary);
+            padding: 13px 0; font-size: 0.9rem; outline: none; font-family: var(--font-ui);
+        }
+        .input-group select option { background: var(--bg-secondary); color: var(--text-primary); }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+        .checkbox-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; }
+        .checkbox-item input[type="checkbox"] { accent-color: var(--blue-500); width: 16px; height: 16px; cursor: pointer; }
+
+        .port-scan-area { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+        .port-scan-area input { flex: 1; }
+
+        /* Scrollable port results */
+        .port-results {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+            max-height: 280px; overflow-y: auto; overflow-x: hidden;
+            padding: 4px; animation: fadeSlideIn 0.3s ease;
+            scrollbar-width: thin; scrollbar-color: var(--border-color) transparent;
+        }
+        .port-results::-webkit-scrollbar { width: 6px; }
+        .port-results::-webkit-scrollbar-track { background: transparent; }
+        .port-results::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        .port-results::-webkit-scrollbar-thumb:hover { background: var(--blue-500); }
+
+        .port-chip {
+            padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600;
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);
+            display: flex; align-items: center; gap: 6px; animation: fadeSlideIn 0.3s ease;
+            white-space: nowrap;
+        }
+        .port-chip:hover { border-color: var(--blue-500); color: var(--text-primary); transform: translateY(-2px); }
+        .port-chip.selected { background: var(--blue-glow-soft); border-color: var(--blue-500); color: var(--blue-400); animation: glowPulse 2s ease-in-out infinite; }
+        .port-chip.open { border-left: 3px solid var(--green); }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+        .stat-box {
+            background: var(--glass-bg-light); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm); padding: 14px;
+            display: flex; align-items: center; gap: 10px; transition: all var(--transition-fast);
+        }
+        .stat-box:hover { border-color: var(--blue-500); transform: translateY(-2px); }
+        .stat-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .icon-success { background: var(--green-glow); color: var(--green); }
+        .icon-blocked { background: var(--blue-glow-soft); color: var(--blue-500); }
+        .stat-value { font-family: var(--font-mono); font-weight: 600; font-size: 1.2rem; color: var(--text-primary); }
+        .stat-label { font-size: 0.72rem; color: var(--text-secondary); }
+
+        .progress-bar { width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+        .fill-success { background: var(--green); }
+        .fill-blocked { background: var(--blue-500); }
+        .fill-warning { background: var(--orange); }
+        .fill-danger { background: var(--red); }
+
+        .log-container {
+            background: var(--glass-bg-light); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm); padding: 12px; max-height: 200px; overflow-y: auto;
+            font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary);
+        }
+        .log-entry { padding: 4px 0; border-bottom: 1px solid var(--border-subtle); animation: fadeSlideIn 0.2s ease; }
+        .log-entry:last-child { border-bottom: none; }
+        .log-success { color: var(--green); }
+        .log-blocked { color: var(--blue-400); }
+
+        .attack-btn { padding: 12px 24px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; transition: all var(--transition-med); display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden; }
+        .attack-btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent); transform: translateX(-100%); transition: transform 0.6s; }
+        .attack-btn:hover::after { transform: translateX(100%); }
+        .attack-btn.start { background: linear-gradient(135deg, var(--blue-400), var(--blue-800)); color: #fff; box-shadow: 0 4px 18px var(--blue-glow); animation: glowPulse 2.5s ease-in-out infinite; }
+        .attack-btn.stop { background: linear-gradient(135deg, var(--green), #1a4d2e); color: #fff; box-shadow: 0 4px 18px var(--green-glow); }
+        .attack-btn:hover { transform: translateY(-2px); }
+        .attack-btn:disabled { opacity: 0.5; pointer-events: none; animation: none; }
+
+        .preset-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+        .preset-btn {
+            padding: 8px 16px; border-radius: 20px; font-size: 0.7rem; font-weight: 700;
+            background: var(--glass-bg-light); border: 1px solid var(--glass-border);
+            color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);
+            display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .preset-btn:hover { border-color: var(--blue-500); color: var(--blue-400); background: var(--blue-glow-soft); transform: translateY(-2px); }
+        .preset-btn.overkill { border-color: #8b5cf6; color: #a78bfa; background: rgba(139,92,246,0.1); }
+        .preset-btn.overkill:hover { background: rgba(139,92,246,0.2); }
+
+        .attack-intensity {
+            display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+            border-radius: 20px; font-size: 0.8rem; font-weight: 700; transition: all var(--transition-fast);
+        }
+        .intensity-low { background: var(--green-glow); color: var(--green); }
+        .intensity-medium { background: rgba(245,158,11,0.15); color: var(--orange); animation: pulse 1.5s ease-in-out infinite; }
+        .intensity-high { background: rgba(239,68,68,0.15); color: var(--red); animation: pulse 0.8s ease-in-out infinite; }
+
+        @media (max-width: 700px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .port-scan-area { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="snowCanvas"></canvas>
+
+<div class="content-wrap">
+    <div class="overlay" id="verifyingOverlay">
+        <div class="spinner"></div>
+        <div class="verify-text">Verifying session...</div>
+    </div>
+    <div class="overlay hidden" id="deniedOverlay">
+        <div class="denied-card">
+            <div class="denied-icon"><i class="fas fa-shield-halved"></i></div>
+            <div class="denied-title">Session Not Verified</div>
+            <div class="denied-desc">You must be logged in to access the Stress Testing Framework.</div>
+            <a href="/dashboard.html" class="btn"><i class="fas fa-right-to-bracket"></i> Go to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="container" id="mainPanel" style="display:none;">
+        <!-- Header -->
+        <div class="card" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+                    <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:38px;height:38px;filter:drop-shadow(0 0 10px var(--blue-glow));">
+                        <defs><linearGradient id="hdrBoltGrad" x1="0" y1="0" x2="60" y2="60"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#1e40af"/></linearGradient></defs>
+                        <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#hdrBoltGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 style="font-family:var(--font-display); font-size:1.4rem; font-weight:800;">Framework <span style="color:var(--blue-400);">Stress Testing</span></h2>
+                    <div style="font-size:0.7rem; color:var(--text-muted);">EMERGENS · Network Load Generator</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn btn-outline" id="btnExportProxy" onclick="exportProxy()">
+                    <i class="fas fa-file-export"></i> Export proxy.txt
+                </button>
+                <button class="btn btn-outline" onclick="handleLogout()"><i class="fas fa-right-from-bracket"></i> Logout</button>
+            </div>
+        </div>
+
+        <!-- Two-column layout -->
+        <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:20px;">
+            <!-- Attack Configuration -->
+            <div class="card">
+                <div class="section-title">Attack Configuration</div>
+
+                <div class="input-group">
+                    <i class="fas fa-crosshairs"></i>
+                    <input type="text" id="targetInput" placeholder="Target IP or domain (e.g. 203.0.113.5)">
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-bolt"></i>
+                    <select id="methodSelect" onchange="updateMethodOptions()">
+                        <option value="udp-flood">UDP Flood</option>
+                        <option value="syn-flood">SYN Flood</option>
+                        <option value="http-flood">HTTP Flood</option>
+                        <option value="https-flood">HTTPS Flood</option>
+                        <option value="slowloris">Slowloris</option>
+                        <option value="icmp-flood">ICMP Flood</option>
+                        <option value="tcp-flood">TCP Flood</option>
+                        <option value="ack-flood">ACK Flood</option>
+                        <option value="memcache-flood">Memcached Amplification</option>
+                        <option value="dns-flood">DNS Amplification</option>
+                        <option value="ntp-flood">NTP Amplification</option>
+                        <option value="http2-flood">HTTP/2 Rapid Reset</option>
+                        <option value="tls-flood">TLS Handshake Flood</option>
+                        <option value="mixed">Mixed Attack</option>
+                    </select>
+                </div>
+                <div id="extraOptions" style="display:none;"></div>
+
+                <div style="display:flex; gap:10px;">
+                    <div class="input-group" style="flex:1;">
+                        <i class="fas fa-sliders"></i>
+                        <input type="number" id="threadsInput" placeholder="Threads" value="10" min="1" max="500">
+                    </div>
+                    <div class="input-group" style="flex:1;">
+                        <i class="fas fa-weight-hanging"></i>
+                        <input type="number" id="packetSizeInput" placeholder="Packet size (bytes)" value="1024">
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top:10px;">Presets</div>
+                <div class="preset-grid">
+                    <button class="preset-btn" onclick="applyPreset('fast')"><i class="fas fa-tachometer-alt"></i> Fast</button>
+                    <button class="preset-btn" onclick="applyPreset('heavy')"><i class="fas fa-gavel"></i> Heavy</button>
+                    <button class="preset-btn overkill" onclick="applyPreset('overkill')"><i class="fas fa-skull"></i> OVERKILL</button>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-user-secret"></i>
+                    <input type="text" id="spoofIpInput" placeholder="Spoof IP (leave empty for real IP)">
+                </div>
+
+                <div class="section-title" style="margin-top:10px;">Bypass & Evasion</div>
+                <div class="checkbox-group">
+                    <label class="checkbox-item"><input type="checkbox" id="bypassDetection" checked> Bypass detection</label>
+                    <label class="checkbox-item"><input type="checkbox" id="randomUserAgent"> Randomize User-Agent</label>
+                    <label class="checkbox-item"><input type="checkbox" id="useProxy"> Use proxy list</label>
+                    <label class="checkbox-item"><input type="checkbox" id="fragmentPackets"> Fragment packets</label>
+                    <label class="checkbox-item"><input type="checkbox" id="zeroDayMode"> Zero-day evasion</label>
+                </div>
+
+                <button class="attack-btn start" id="attackBtn" onclick="toggleAttack()">
+                    <i class="fas fa-play"></i> Start Attack
+                </button>
+            </div>
+
+            <!-- Port Scanner -->
+            <div class="card">
+                <div class="section-title">Port Scanner</div>
+
+                <div class="input-group">
+                    <i class="fas fa-list-check"></i>
+                    <select id="scanModeSelect" onchange="togglePortRangeInput()">
+                        <option value="range">Custom Range</option>
+                        <option value="common">Common Ports</option>
+                        <option value="file" selected>Port File (port2.txt)</option>
+                    </select>
+                </div>
+
+                <div id="portRangeWrapper" class="port-scan-area">
+                    <div class="input-group" style="flex:1; margin-bottom:0;">
+                        <i class="fas fa-network-wired"></i>
+                        <input type="text" id="portRangeInput" placeholder="Port range (e.g. 1-1000 or 80,443)">
+                    </div>
+                </div>
+
+                <button class="btn btn-outline" id="scanPortsBtn" onclick="startPortScan()">
+                    <i class="fas fa-search"></i> Scan Ports
+                </button>
+
+                <div id="scanProgressContainer" style="display:none; margin-top:12px;">
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-blocked" id="scanProgressFill" style="width:0%"></div>
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;" id="scanProgressText">0%</div>
+                </div>
+
+                <div class="port-results" id="portResults">
+                    <span style="font-size:0.8rem; color:var(--text-muted);">No scan yet.</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">
+                    <i class="fas fa-info-circle"></i> Select an open port to attack that service specifically.
+                </div>
+            </div>
+        </div>
+
+        <!-- Proxy Manager Card -->
+        <div class="card">
+            <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
+                <span>Proxy Manager</span>
+                <span id="proxyCountDisplay" style="font-size:0.8rem; color:var(--text-muted);">0 proxies</span>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-outline" id="btnScrapeProxies" onclick="scrapeProxies()">
+                    <i class="fas fa-download"></i> Scrape Proxies
+                </button>
+                <button class="btn btn-outline" id="btnExportProxies" onclick="exportProxies()">
+                    <i class="fas fa-file-export"></i> Export proxy.txt
+                </button>
+            </div>
+            <div id="proxyProgressContainer" style="display:none; margin-top:12px;">
+                <div class="progress-bar">
+                    <div class="progress-fill fill-success" id="proxyProgressFill" style="width:0%"></div>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;" id="proxyProgressText">0%</div>
+            </div>
+        </div>
+
+        <!-- Live Monitoring -->
+        <div class="card">
+            <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
+                <span>Live Monitoring</span>
+                <div id="attackIntensity" class="attack-intensity intensity-low">
+                    <i class="fas fa-circle"></i> Intensity: Low
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-icon icon-success"><i class="fas fa-check"></i></div>
+                    <div>
+                        <div class="stat-value" id="packetsSent">0</div>
+                        <div class="stat-label">Packets Sent</div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon icon-blocked"><i class="fas fa-shield-virus"></i></div>
+                    <div>
+                        <div class="stat-value" id="errorsCount">0</div>
+                        <div class="stat-label">Errors</div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon icon-blocked"><i class="fas fa-gauge-high"></i></div>
+                    <div>
+                        <div class="stat-value" id="bpsDisplay">0</div>
+                        <div class="stat-label">Est. Bandwidth</div>
+                    </div>
+                </div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill fill-success" id="successBar" style="width:0%"></div></div>
+            <div class="progress-bar" style="margin-top:10px;"><div class="progress-fill fill-blocked" id="errorBar" style="width:0%"></div></div>
+            <div class="log-container" id="logContainer" style="margin-top:10px;">
+                <div class="log-entry">System ready.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const $ = (s) => document.querySelector(s);
+    let attackActive = false;
+    let pollInterval = null;
+    let selectedPort = null;
+    let previousPacketsSent = 0;
+    let previousTime = Date.now();
+
+    // Common services mapping
+    const COMMON_SERVICES = {
+        21: 'FTP', 22: 'SSH', 23: 'Telnet', 25: 'SMTP', 53: 'DNS', 80: 'HTTP',
+        110: 'POP3', 111: 'RPCBind', 135: 'MSRPC', 139: 'NetBIOS', 143: 'IMAP',
+        443: 'HTTPS', 445: 'SMB', 993: 'IMAPS', 995: 'POP3S', 1723: 'PPTP',
+        3306: 'MySQL', 3389: 'RDP', 5432: 'PostgreSQL', 5900: 'VNC', 6379: 'Redis',
+        8080: 'HTTP-Proxy', 8443: 'HTTPS-Alt', 8888: 'HTTP-Alt', 9000: 'PHP-FPM',
+        9200: 'Elasticsearch', 11211: 'Memcached', 27017: 'MongoDB'
+    };
+
+    function getServiceName(port) {
+        return COMMON_SERVICES[port] || 'Unknown Service';
+    }
+
+    // ===== Snowfall background =====
+    (function initSnow() {
+        const canvas = $('#snowCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        const flakes = [];
+        const FLAKE_COUNT = 150;
+        let animationId;
+
+        function resizeCanvas() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        function createFlakes() {
+            flakes.length = 0;
+            for (let i = 0; i < FLAKE_COUNT; i++) {
+                flakes.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 2.5 + 0.5,
+                    speedY: Math.random() * 1.5 + 0.5,
+                    speedX: (Math.random() - 0.5) * 0.5,
+                    alpha: Math.random() * 0.6 + 0.2,
+                    sway: Math.random() * Math.PI * 2,
+                    swaySpeed: Math.random() * 0.02 + 0.005
+                });
+            }
+        }
+
+        function drawSnow() {
+            ctx.clearRect(0, 0, width, height);
+            for (const flake of flakes) {
+                flake.y += flake.speedY;
+                flake.sway += flake.swaySpeed;
+                flake.x += Math.sin(flake.sway) * 0.3 + flake.speedX;
+                if (flake.y > height + 10) {
+                    flake.y = -10;
+                    flake.x = Math.random() * width;
+                }
+                if (flake.x > width + 10) flake.x = -10;
+                if (flake.x < -10) flake.x = width + 10;
+                ctx.beginPath();
+                ctx.arc(flake.x, flake.y, flake.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(147, 197, 253, ${flake.alpha})`;
+                ctx.fill();
+            }
+            animationId = requestAnimationFrame(drawSnow);
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            createFlakes();
+        });
+
+        resizeCanvas();
+        createFlakes();
+        drawSnow();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            cancelAnimationFrame(animationId);
+        });
+    })();
+
+    // ===== Session =====
+    async function verifySession() {
+        try {
+            const resp = await fetch('/api/me', { credentials:'same-origin' });
+            if (!resp.ok) throw new Error('Not authenticated');
+            document.getElementById('verifyingOverlay').classList.add('hidden');
+            document.getElementById('mainPanel').style.display = 'block';
+            updateProxyCount();
+        } catch(e) {
+            document.getElementById('verifyingOverlay').classList.add('hidden');
+            document.getElementById('deniedOverlay').classList.remove('hidden');
+        }
+    }
+    async function handleLogout() {
+        try { await fetch('/api/logout', { method:'POST', credentials:'same-origin' }); } catch(e) {}
+        window.location.href = '/login.html';
+    }
+
+    // ===== Method options & presets =====
+    function updateMethodOptions() {
+        const method = $('#methodSelect').value;
+        const extra = $('#extraOptions');
+        extra.innerHTML = '';
+        if (method === 'dns-flood') extra.innerHTML = `<div class="input-group"><i class="fas fa-server"></i><input type="text" id="dnsServer" placeholder="DNS Server IP (amplifier)" value="8.8.8.8"></div>`;
+        else if (method === 'ntp-flood') extra.innerHTML = `<div class="input-group"><i class="fas fa-server"></i><input type="text" id="ntpServer" placeholder="NTP Server IP (amplifier)" value="pool.ntp.org"></div>`;
+        else if (method === 'memcache-flood') extra.innerHTML = `<div class="input-group"><i class="fas fa-server"></i><input type="text" id="memcacheServer" placeholder="Memcached Server IP" value="127.0.0.1"></div>`;
+        extra.style.display = extra.innerHTML ? 'block' : 'none';
+    }
+
+    function applyPreset(preset) {
+        if (preset === 'fast') {
+            $('#threadsInput').value = 50;
+            $('#packetSizeInput').value = 512;
+            $('#randomUserAgent').checked = true;
+            $('#fragmentPackets').checked = false;
+            $('#zeroDayMode').checked = false;
+        } else if (preset === 'heavy') {
+            $('#threadsInput').value = 150;
+            $('#packetSizeInput').value = 4096;
+            $('#randomUserAgent').checked = true;
+            $('#fragmentPackets').checked = true;
+            $('#zeroDayMode').checked = false;
+        } else if (preset === 'overkill') {
+            $('#threadsInput').value = 500;
+            $('#packetSizeInput').value = 65500;
+            $('#randomUserAgent').checked = true;
+            $('#fragmentPackets').checked = true;
+            $('#zeroDayMode').checked = true;
+            $('#bypassDetection').checked = true;
+            $('#useProxy').checked = true;
+        }
+        addLog(`Preset applied: ${preset.toUpperCase()}`, 'info');
+    }
+
+    // ===== Port scanner mode toggle =====
+    function togglePortRangeInput() {
+        const mode = $('#scanModeSelect').value;
+        const wrapper = $('#portRangeWrapper');
+        if (mode === 'range') {
+            wrapper.style.display = 'flex';
+        } else {
+            wrapper.style.display = 'none';
+        }
+    }
+
+    // ===== Port Scanning with progress =====
+    async function startPortScan() {
+        const target = $('#targetInput').value.trim();
+        if (!target) { alert('Please enter target IP first.'); return; }
+        const mode = $('#scanModeSelect').value;
+        let portsParam = '';
+        if (mode === 'range') {
+            portsParam = $('#portRangeInput').value.trim() || '1-1000';
+        } else if (mode === 'common') {
+            portsParam = 'common';
+        } else if (mode === 'file') {
+            portsParam = 'file';
+        }
+
+        const btn = $('#scanPortsBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+
+        const progressContainer = $('#scanProgressContainer');
+        const progressFill = $('#scanProgressFill');
+        const progressText = $('#scanProgressText');
+        progressContainer.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.textContent = '0%';
+
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            if (progress < 90) {
+                progress += Math.random() * 8;
+                if (progress > 90) progress = 90;
+                progressFill.style.width = progress + '%';
+                progressText.textContent = Math.floor(progress) + '%';
+            }
+        }, 200);
+
+        addLog(`Scanning ports (${mode}) on ${target}...`, 'info');
+
+        try {
+            const resp = await fetch(`/api/adios/portscan?target=${encodeURIComponent(target)}&ports=${encodeURIComponent(portsParam)}`, {
+                credentials: 'same-origin'
+            });
+            const data = await resp.json();
+
+            clearInterval(progressInterval);
+            progressFill.style.width = '100%';
+            progressText.textContent = '100%';
+
+            if (data.success && data.open_ports) {
+                displayPortResults(data.open_ports);
+                addLog(`Port scan completed: ${data.open_ports.length} open ports found.`, 'success');
+            } else {
+                alert('Scan failed: ' + (data.error || 'No open ports returned'));
+                displayPortResults([]);
+            }
+        } catch (err) {
+            clearInterval(progressInterval);
+            alert('Request error: ' + err.message);
+            displayPortResults([]);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-search"></i> Scan Ports';
+            setTimeout(() => { progressContainer.style.display = 'none'; }, 1000);
+        }
+    }
+
+    function displayPortResults(ports) {
+        const container = $('#portResults');
+        container.innerHTML = '';
+        if (!ports || ports.length === 0) {
+            container.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">No open ports found.</span>';
+            selectedPort = null;
+            return;
+        }
+        ports.forEach(port => {
+            const chip = document.createElement('div');
+            chip.className = 'port-chip open';
+            const service = getServiceName(port);
+            chip.innerHTML = `<i class="fas fa-circle"></i> ${port} · ${service}`;
+            chip.title = `${service} (Port ${port})`;
+            chip.addEventListener('click', () => {
+                container.querySelectorAll('.port-chip').forEach(c => c.classList.remove('selected'));
+                chip.classList.add('selected');
+                selectedPort = port;
+                addLog(`Selected port ${port} (${service}) for attack.`, 'info');
+            });
+            container.appendChild(chip);
+        });
+        const firstChip = container.querySelector('.port-chip');
+        if (firstChip) firstChip.click();
+    }
+
+    // ===== Proxy functions =====
+    async function scrapeProxies() {
+        const btn = $('#btnScrapeProxies');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scraping...';
+        showProxyProgress(0);
+        try {
+            const resp = await fetch('/api/adios/scrape_proxies', { credentials:'same-origin' });
+            const data = await resp.json();
+            if (data.success) {
+                showProxyProgress(100);
+                updateProxyCount(data.total);
+                addLog(`Proxy scrape completed: ${data.total} proxies from ${data.sources_scanned} sources.`, 'success');
+            } else {
+                showProxyProgress(0);
+                addLog(`Proxy scrape failed: ${data.error || 'Unknown error'}`, 'blocked');
+            }
+        } catch (err) {
+            showProxyProgress(0);
+            addLog(`Request error: ${err.message}`, 'blocked');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download"></i> Scrape Proxies';
+            setTimeout(() => { $('#proxyProgressContainer').style.display = 'none'; }, 1000);
+        }
+    }
+
+    async function exportProxies() {
+        const btn = $('#btnExportProxies');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
+        showProxyProgress(0);
+        try {
+            const resp = await fetch('/api/adios/export_proxies', { credentials:'same-origin' });
+            const data = await resp.json();
+            if (data.success) {
+                showProxyProgress(100);
+                updateProxyCount(data.total);
+                addLog(`Proxy export completed: ${data.total} proxies written to proxy.txt`, 'success');
+            } else {
+                showProxyProgress(0);
+                addLog(`Proxy export failed: ${data.error || 'Unknown error'}`, 'blocked');
+            }
+        } catch (err) {
+            showProxyProgress(0);
+            addLog(`Request error: ${err.message}`, 'blocked');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-file-export"></i> Export proxy.txt';
+            setTimeout(() => { $('#proxyProgressContainer').style.display = 'none'; }, 1000);
+        }
+    }
+
+    function showProxyProgress(percent) {
+        const container = $('#proxyProgressContainer');
+        const fill = $('#proxyProgressFill');
+        const text = $('#proxyProgressText');
+        container.style.display = 'block';
+        fill.style.width = percent + '%';
+        text.textContent = percent + '%';
+    }
+
+    async function updateProxyCount() {
+        try {
+            const resp = await fetch('/api/adios/proxy_count', { credentials:'same-origin' });
+            const data = await resp.json();
+            const count = data.count || 0;
+            $('#proxyCountDisplay').textContent = `${count} proxies`;
+        } catch(e) {
+            $('#proxyCountDisplay').textContent = '?';
+        }
+    }
+
+    // ===== Attack Control =====
+    async function toggleAttack() {
+        if (!attackActive) {
+            const target = $('#targetInput').value.trim();
+            if (!target) { alert('Please enter a target'); return; }
+            const method = $('#methodSelect').value;
+            const threads = parseInt($('#threadsInput').value) || 10;
+            const packetSize = parseInt($('#packetSizeInput').value) || 1024;
+            const spoofIp = $('#spoofIpInput').value.trim() || '';
+            const bypassDetection = $('#bypassDetection').checked;
+            const randomUserAgent = $('#randomUserAgent').checked;
+            const useProxy = $('#useProxy').checked;
+            const fragmentPackets = $('#fragmentPackets').checked;
+            const zeroDayMode = $('#zeroDayMode').checked;
+
+            let extraParams = {
+                spoof_ip: spoofIp,
+                bypass: bypassDetection,
+                random_ua: randomUserAgent,
+                use_proxy: useProxy,
+                fragment: fragmentPackets,
+                zero_day: zeroDayMode
+            };
+            if (method === 'dns-flood') extraParams.dns_server = $('#dnsServer')?.value || '8.8.8.8';
+            if (method === 'ntp-flood') extraParams.ntp_server = $('#ntpServer')?.value || 'pool.ntp.org';
+            if (method === 'memcache-flood') extraParams.memcache_server = $('#memcacheServer')?.value || '127.0.0.1';
+            if (selectedPort) extraParams.target_port = selectedPort;
+
+            const body = JSON.stringify({ target, method, threads, packet_size: packetSize, ...extraParams });
+            try {
+                const resp = await fetch('/api/adios/start', {
+                    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    attackActive = true;
+                    previousPacketsSent = 0;
+                    previousTime = Date.now();
+                    $('#attackBtn').innerHTML = '<i class="fas fa-stop"></i> Stop Attack';
+                    $('#attackBtn').classList.remove('start'); $('#attackBtn').classList.add('stop');
+                    addLog(`Attack started: ${method} on ${target}${selectedPort ? ':'+selectedPort : ''}${spoofIp ? ' (spoof: '+spoofIp+')' : ''}${zeroDayMode ? ' [ZERO-DAY MODE]' : ''}`, 'success');
+                    pollInterval = setInterval(fetchStatus, 1000);
+                } else {
+                    alert('Failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch(err) { alert('Request error: ' + err.message); }
+        } else {
+            try {
+                const resp = await fetch('/api/adios/stop', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin' });
+                const data = await resp.json();
+                clearInterval(pollInterval); pollInterval = null; attackActive = false;
+                $('#attackBtn').innerHTML = '<i class="fas fa-play"></i> Start Attack';
+                $('#attackBtn').classList.remove('stop'); $('#attackBtn').classList.add('start');
+                addLog('Attack stopped.', 'info');
+                $('#attackIntensity').className = 'attack-intensity intensity-low';
+                $('#attackIntensity').innerHTML = '<i class="fas fa-circle"></i> Intensity: Low';
+            } catch(err) { alert('Stop error: ' + err.message); }
+        }
+    }
+
+    function updateIntensity(packetsPerSecond) {
+        const intensityEl = $('#attackIntensity');
+        let level = 'Low';
+        let cssClass = 'intensity-low';
+        if (packetsPerSecond >= 10000) { level = 'High'; cssClass = 'intensity-high'; }
+        else if (packetsPerSecond >= 1000) { level = 'Medium'; cssClass = 'intensity-medium'; }
+        intensityEl.className = 'attack-intensity ' + cssClass;
+        intensityEl.innerHTML = `<i class="fas fa-circle"></i> Intensity: ${level}`;
+    }
+
+    async function fetchStatus() {
+        try {
+            const resp = await fetch('/api/adios/status', { credentials:'same-origin' });
+            const status = await resp.json();
+            if (!status.active) {
+                clearInterval(pollInterval); pollInterval = null; attackActive = false;
+                $('#attackBtn').innerHTML = '<i class="fas fa-play"></i> Start Attack';
+                $('#attackBtn').classList.remove('stop'); $('#attackBtn').classList.add('start');
+                addLog('Attack ended.', 'info');
+                return;
+            }
+            const sent = status.packets_sent || 0;
+            const errors = status.errors || 0;
+            $('#packetsSent').textContent = sent;
+            $('#errorsCount').textContent = errors;
+            const max = Math.max(sent + errors, 1);
+            $('#successBar').style.width = ((sent / max) * 100) + '%';
+            $('#errorBar').style.width = ((errors / max) * 100) + '%';
+            const bps = (sent * 1024 * 8) / 1024 / 1024;
+            $('#bpsDisplay').textContent = bps.toFixed(1) + ' Mbps';
+
+            const now = Date.now();
+            const elapsedSeconds = (now - previousTime) / 1000;
+            if (elapsedSeconds > 0) {
+                const pps = (sent - previousPacketsSent) / elapsedSeconds;
+                updateIntensity(pps);
+            }
+            previousPacketsSent = sent;
+            previousTime = now;
+        } catch(err) { console.error('Status fetch error:', err); }
+    }
+
+    function addLog(message, type) {
+        const container = $('#logContainer');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry ' + (type === 'success' ? 'log-success' : (type === 'blocked' ? 'log-blocked' : ''));
+        entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + message;
+        container.appendChild(entry);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    window.addEventListener('load', () => {
+        verifySession();
+        updateMethodOptions();
+        togglePortRangeInput();
+    });
+</script>
+</body>
+</html>

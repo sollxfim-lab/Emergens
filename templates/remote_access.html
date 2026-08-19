@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monitor Perangkat Android · Emergens</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-ui: 'Exo 2', sans-serif;
+            --font-display: 'Rajdhani', sans-serif;
+            --font-serif: 'Playfair Display', serif;
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --transition-fast: 180ms cubic-bezier(0.4,0,0.2,1);
+            --transition-med: 360ms cubic-bezier(0.16,1,0.3,1);
+            --transition-slow: 600ms cubic-bezier(0.16,1,0.3,1);
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1e40af;
+            --blue-800: #172554;
+            --blue-glow: rgba(59,130,246,0.35);
+            --blue-glow-soft: rgba(59,130,246,0.15);
+            --gold: #d4a574;
+            --gold-light: #e7cd9f;
+            --green: #4fb488;
+            --green-glow: rgba(79,180,136,0.18);
+            --red: #ef4444;
+            --red-glow: rgba(239,68,68,0.2);
+            --orange: #f59e0b;
+            --orange-glow: rgba(245,158,11,0.2);
+            --purple: #8b5cf6;
+            --purple-glow: rgba(139,92,246,0.2);
+            --pink: #ec4899;
+            --pink-glow: rgba(236,72,153,0.2);
+            --cyan: #06b6d4;
+            --cyan-glow: rgba(6,182,212,0.2);
+            --teal: #14b8a6;
+            --teal-glow: rgba(20,184,166,0.2);
+            --glass-bg: rgba(15,15,15,0.65);
+            --glass-bg-light: rgba(30,30,30,0.45);
+            --glass-border: rgba(60,60,60,0.6);
+            --glass-backdrop: blur(14px);
+        }
+        :root[data-theme="dark"] {
+            --bg-primary: #080808;
+            --bg-secondary: #0f0f0f;
+            --bg-card: rgba(20,20,20,0.75);
+            --bg-card2: rgba(26,26,26,0.75);
+            --bg-card3: rgba(31,31,31,0.75);
+            --border: rgba(70,70,70,0.6);
+            --border-strong: rgba(100,100,100,0.4);
+            --border-red: rgba(239,68,68,0.35);
+            --text-primary: #f2f2f2;
+            --text-secondary: #aaaaaa;
+            --text-muted: #666666;
+            --nav-bg: rgba(10,10,10,0.9);
+            --online: #22c55e;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --accent: #3b82f6;
+            --accent-dark: #1e40af;
+            --accent-light: #60a5fa;
+            --accent-glow: rgba(59,130,246,0.35);
+            --accent-glow2: rgba(59,130,246,0.15);
+            --shadow: 0 4px 32px rgba(0,0,0,0.6);
+            --shadow-glow: 0 0 30px rgba(59,130,246,0.25);
+            --overlay: rgba(0,0,0,0.9);
+        }
+        :root[data-theme="light"] {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ebebeb;
+            --bg-card: rgba(255,255,255,0.85);
+            --bg-card2: rgba(250,250,250,0.85);
+            --bg-card3: rgba(245,245,245,0.85);
+            --border: rgba(200,200,200,0.6);
+            --border-strong: rgba(180,180,180,0.4);
+            --border-red: rgba(239,68,68,0.3);
+            --text-primary: #111111;
+            --text-secondary: #555555;
+            --text-muted: #999999;
+            --nav-bg: rgba(255,255,255,0.9);
+            --online: #16a34a;
+            --warning: #d97706;
+            --info: #2563eb;
+            --accent: #3b82f6;
+            --accent-dark: #1e40af;
+            --accent-light: #60a5fa;
+            --accent-glow: rgba(59,130,246,0.2);
+            --accent-glow2: rgba(59,130,246,0.08);
+            --shadow: 0 4px 32px rgba(0,0,0,0.08);
+            --shadow-glow: 0 0 30px rgba(59,130,246,0.15);
+            --overlay: rgba(255,255,255,0.95);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            font-family: var(--font-ui);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.3s, color 0.3s;
+            position: relative;
+        }
+
+        #particleCanvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .content-wrap {
+            position: relative;
+            z-index: 1;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
+        /* ===== TOP HEADER ===== */
+        .top-header {
+            background: var(--bg-secondary);
+            border-bottom: 2px solid var(--blue-500);
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 20px var(--blue-glow);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+        }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .logo-wrap {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-800));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; color: #fff;
+            box-shadow: 0 0 20px var(--blue-glow);
+            flex-shrink: 0;
+            animation: glowPulse 2.5s ease-in-out infinite;
+        }
+        .header-title {
+            font-family: var(--font-display);
+            font-size: 17px; font-weight: 700; letter-spacing: 1px;
+            color: var(--text-primary); line-height: 1.1;
+        }
+        .header-title span { color: var(--blue-400); }
+        .header-sub { font-size: 9px; color: var(--text-secondary); letter-spacing: 2px; text-transform: uppercase; }
+        .header-right { display: flex; align-items: center; gap: 8px; }
+        .lang-sel {
+            background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-primary); padding: 5px 8px; border-radius: 6px;
+            font-family: var(--font-ui); font-size: 11px; cursor: pointer; outline: none;
+            transition: border-color 0.2s;
+        }
+        .lang-sel:focus { border-color: var(--accent); }
+        .hdr-btn {
+            background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-secondary); width: 32px; height: 32px; border-radius: 8px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 13px; transition: all 0.2s; position: relative;
+        }
+        .hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .notif-dot {
+            position: absolute; top: 5px; right: 5px; width: 6px; height: 6px;
+            background: var(--accent); border-radius: 50%; border: 1.5px solid var(--bg-secondary);
+            animation: pulse-dot 1.5s infinite;
+        }
+        @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+        @keyframes glowPulse { 0%,100%{box-shadow:0 0 20px var(--blue-glow)} 50%{box-shadow:0 0 40px var(--blue-glow)} }
+
+        /* ===== BANNER ===== */
+        .banner-wrap {
+            margin: 14px 14px 0;
+            border-radius: 16px; overflow: hidden;
+            border: 1px solid var(--blue-500);
+            box-shadow: 0 0 30px var(--blue-glow);
+            position: relative; background: #000;
+            animation: fadeIn 0.6s ease;
+        }
+        .banner-wrap img {
+            width: 100%; display: block;
+            max-height: 200px; object-fit: cover;
+        }
+        .banner-overlay {
+            position: absolute; inset: 0;
+            background: linear-gradient(0deg, rgba(0,0,0,0.65) 0%, transparent 60%);
+            display: flex; flex-direction: column;
+            justify-content: flex-end; padding: 12px 16px;
+        }
+        .banner-tag {
+            font-family: var(--font-display); font-size: 11px;
+            font-weight: 700; color: var(--blue-400); letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .banner-title-txt {
+            font-family: var(--font-display); font-size: 20px;
+            font-weight: 700; color: #fff; letter-spacing: 1px;
+        }
+
+        /* ===== MAIN ===== */
+        .main { padding: 14px 14px 80px; }
+
+        /* ===== SECTION HEADING ===== */
+        .sec-hd {
+            font-family: var(--font-display); font-size: 12px; font-weight: 600;
+            color: var(--text-secondary); letter-spacing: 3px; text-transform: uppercase;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+        }
+        .sec-hd i { color: var(--blue-400); font-size: 11px; }
+        .sec-hd::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-left: 6px; }
+
+        /* ===== STATUS BAR ===== */
+        .status-bar {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 14px; padding: 12px 16px;
+            display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            box-shadow: var(--shadow);
+        }
+        .live-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: var(--online);
+            animation: pulse-dot 1.5s infinite; flex-shrink: 0;
+        }
+        .status-txt { font-size: 12px; color: var(--text-secondary); flex: 1; }
+        .status-ct {
+            font-family: var(--font-display); font-size: 14px;
+            font-weight: 700; color: var(--blue-400);
+        }
+
+        /* ===== STATS GRID ===== */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 14px; padding: 16px;
+            display: flex; align-items: center; gap: 12px;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; cursor: default;
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            box-shadow: var(--shadow);
+        }
+        .stat-card:hover {
+            border-color: var(--blue-500);
+            box-shadow: var(--shadow-glow);
+            transform: translateY(-2px);
+        }
+        .stat-ico {
+            width: 42px; height: 42px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
+        }
+        .ic-red { background: var(--red-glow); color: var(--red); }
+        .ic-green { background: var(--green-glow); color: var(--green); }
+        .ic-blue { background: var(--blue-glow); color: var(--blue-400); }
+        .ic-orange { background: var(--orange-glow); color: var(--orange); }
+        .ic-purple { background: var(--purple-glow); color: var(--purple); }
+        .ic-pink { background: var(--pink-glow); color: var(--pink); }
+        .ic-cyan { background: var(--cyan-glow); color: var(--cyan); }
+        .stat-n {
+            font-family: var(--font-display); font-size: 22px; font-weight: 700;
+            color: var(--text-primary); line-height: 1.1;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .stat-lb { font-size: 10px; color: var(--text-secondary); margin-top: 4px; }
+
+        /* ===== ACTIVITY ===== */
+        .sec-card {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 16px; padding: 16px; margin-bottom: 20px;
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            box-shadow: var(--shadow);
+        }
+        .act-list { display: flex; flex-direction: column; gap: 0; }
+        .act-item {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 12px 0; border-bottom: 1px solid var(--border);
+            animation: fadeUp 0.35s ease;
+        }
+        .act-item:last-child { border-bottom: none; }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        .act-ico {
+            width: 34px; height: 34px; border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; flex-shrink: 0; margin-top: 1px;
+        }
+        .a-chrome { background: var(--blue-glow); color: var(--blue-400); }
+        .a-wa { background: var(--green-glow); color: var(--online); }
+        .a-cam { background: var(--orange-glow); color: var(--warning); }
+        .a-lock { background: var(--purple-glow); color: var(--purple); }
+        .a-call { background: var(--green-glow); color: var(--online); }
+        .a-loc { background: var(--red-glow); color: var(--red); }
+        .a-sms { background: var(--orange-glow); color: var(--warning); }
+        .a-wifi { background: var(--cyan-glow); color: var(--cyan); }
+        .act-body { flex: 1; min-width: 0; }
+        .act-dev {
+            font-family: var(--font-display); font-size: 13px; font-weight: 700;
+            color: var(--blue-400); letter-spacing: 0.5px;
+        }
+        .act-act { font-size: 11px; color: var(--text-primary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .act-time { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+        .act-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+        .d-online { background: var(--online); }
+        .d-warn { background: var(--warning); }
+        .d-red { background: var(--red); }
+        .d-blue { background: var(--blue-400); }
+
+        /* ===== LOCK CARD ===== */
+        .lock-card {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 16px; padding: 18px; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            box-shadow: var(--shadow);
+        }
+        .lock-info { flex: 1; }
+        .lock-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .lock-detail { font-size: 11px; color: var(--text-secondary); margin-top: 5px; }
+        .lock-btn {
+            padding: 12px 22px; border-radius: 10px; font-weight: 700;
+            font-size: 13px; cursor: pointer; border: none; transition: all 0.2s;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .lock-btn.locked {
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-800));
+            color: #fff; box-shadow: 0 4px 18px var(--blue-glow);
+        }
+        .lock-btn.unlocked {
+            background: linear-gradient(135deg, var(--green), #166534);
+            color: #fff; box-shadow: 0 4px 18px var(--green-glow);
+        }
+
+        /* ===== DEVICE PAGE ===== */
+        .search-box {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 12px; padding: 10px 14px;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+        .search-box:focus-within { border-color: var(--blue-500); }
+        .search-box i { color: var(--text-muted); font-size: 13px; }
+        .search-box input {
+            background: none; border: none; color: var(--text-primary);
+            font-family: var(--font-ui); font-size: 12px; flex: 1; outline: none;
+        }
+        .search-box input::placeholder { color: var(--text-muted); }
+
+        .dev-card {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 16px; padding: 16px; margin-bottom: 12px;
+            transition: border-color 0.2s, box-shadow 0.2s; position: relative; overflow: hidden;
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            box-shadow: var(--shadow);
+        }
+        .dev-card::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+            background: linear-gradient(180deg, var(--blue-400), var(--blue-700));
+            border-radius: 4px 0 0 4px;
+        }
+        .dev-card:hover { border-color: var(--blue-500); box-shadow: var(--shadow-glow); }
+        .dev-top { display: flex; align-items: flex-start; gap: 13px; }
+        .dev-info { flex: 1; min-width: 0; }
+        .dev-name {
+            font-family: var(--font-display); font-size: 15px; font-weight: 700;
+            color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .dev-model { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .dev-serial { font-size: 10px; color: var(--text-muted); margin-top: 1px; font-family: var(--font-display); letter-spacing: 0.5px; }
+        .dev-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+        .bdg {
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 3px 8px; border-radius: 20px;
+            font-size: 9px; font-weight: 700; letter-spacing: 0.5px; border: 1px solid;
+        }
+        .bdg-on { background: rgba(34,197,94,0.08); color: var(--online); border-color: rgba(34,197,94,0.25); }
+        .bdg-off { background: rgba(100,100,100,0.08); color: var(--text-muted); border-color: rgba(100,100,100,0.2); }
+        .bdg-bat { background: rgba(245,158,11,0.08); color: var(--warning); border-color: rgba(245,158,11,0.25); }
+        .bdg-batlo { background: rgba(239,68,68,0.08); color: var(--red); border-color: rgba(239,68,68,0.25); }
+        .bdg-batok { background: rgba(34,197,94,0.08); color: var(--online); border-color: rgba(34,197,94,0.25); }
+        .bdg-and { background: rgba(59,130,246,0.08); color: var(--blue-400); border-color: rgba(59,130,246,0.25); }
+
+        /* ===== CONFIG PAGE ===== */
+        .cfg-grp { margin-bottom: 18px; }
+        .cfg-grp-t {
+            font-family: var(--font-display); font-size: 10px; font-weight: 700;
+            color: var(--text-muted); letter-spacing: 3px; text-transform: uppercase;
+            margin-bottom: 8px; padding: 0 2px;
+        }
+        .cfg-item {
+            background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px;
+            padding: 14px; display: flex; align-items: center; gap: 12px;
+            margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s;
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            box-shadow: var(--shadow);
+        }
+        .cfg-item:hover { border-color: var(--blue-500); }
+        .cfg-ico {
+            width: 36px; height: 36px; border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; flex-shrink: 0;
+        }
+        .cfg-r { background: var(--blue-glow); color: var(--blue-400); }
+        .cfg-b { background: var(--blue-glow); color: var(--blue-400); }
+        .cfg-g { background: var(--green-glow); color: var(--green); }
+        .cfg-o { background: var(--orange-glow); color: var(--orange); }
+        .cfg-txt { flex: 1; }
+        .cfg-t { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .cfg-s { font-size: 10px; color: var(--text-secondary); margin-top: 3px; }
+        .cfg-arr { color: var(--text-muted); font-size: 11px; }
+
+        /* ===== SETTING PAGE ===== */
+        .profile-card {
+            background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(6,182,212,0.15));
+            border: 1px solid var(--blue-500); border-radius: 18px;
+            padding: 22px 18px; display: flex; flex-direction: column;
+            align-items: center; gap: 10px; margin-bottom: 22px;
+            position: relative; overflow: hidden;
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            box-shadow: var(--shadow-glow);
+        }
+        .profile-card::before {
+            content: ''; position: absolute; top: -40px; right: -40px;
+            width: 120px; height: 120px; border-radius: 50%;
+            background: radial-gradient(circle, var(--blue-glow) 0%, transparent 70%);
+        }
+        .prof-av {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-800));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 30px; color: #fff; border: 3px solid var(--blue-500);
+            box-shadow: 0 0 30px var(--blue-glow); z-index: 1;
+        }
+        .prof-name {
+            font-family: var(--font-display); font-size: 22px; font-weight: 700;
+            color: var(--text-primary); z-index: 1; letter-spacing: 1px;
+        }
+        .prof-role {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: rgba(59,130,246,0.12); border: 1px solid var(--blue-500);
+            color: var(--blue-400); border-radius: 20px; padding: 4px 14px;
+            font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; z-index: 1;
+        }
+        .prof-since { font-size: 10px; color: var(--text-muted); z-index: 1; }
+        .set-item {
+            background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px;
+            padding: 14px; display: flex; align-items: center; gap: 12px;
+            margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s;
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            box-shadow: var(--shadow);
+        }
+        .set-item:hover { border-color: var(--blue-500); }
+        .set-ico { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+        .set-txt { flex: 1; }
+        .set-t { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .set-s { font-size: 10px; color: var(--text-secondary); margin-top: 3px; }
+        .set-arr { color: var(--text-muted); font-size: 11px; }
+        .ver-tag { text-align: center; font-size: 10px; color: var(--text-muted); margin-top: 16px; letter-spacing: 1px; }
+        .ver-tag span { color: var(--blue-400); font-family: var(--font-display); }
+
+        /* ===== BOTTOM NAV ===== */
+        .bot-nav {
+            position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
+            background: var(--nav-bg); border-top: 2px solid var(--blue-500);
+            display: flex; align-items: stretch; z-index: 200;
+            box-shadow: 0 -3px 20px var(--blue-glow);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+        }
+        .nav-b {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 4px; cursor: pointer; background: none; border: none;
+            color: var(--text-muted); font-family: var(--font-ui); font-size: 9px;
+            font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+            transition: color 0.2s; position: relative;
+        }
+        .nav-b i { font-size: 18px; transition: transform 0.2s; }
+        .nav-b.act { color: var(--blue-400); }
+        .nav-b.act i { transform: scale(1.15); }
+        .nav-b.act::after {
+            content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 30px; height: 3px; background: var(--blue-500); border-radius: 0 0 3px 3px;
+            box-shadow: 0 0 10px var(--blue-glow);
+        }
+        .nav-b:hover:not(.act) { color: var(--text-secondary); }
+
+        /* ===== PAGES ===== */
+        .pg { display: none; }
+        .pg.act { display: block; }
+
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="particleCanvas"></canvas>
+
+<div class="content-wrap">
+    <!-- TOP HEADER -->
+    <div class="top-header">
+        <div class="header-left">
+            <div class="logo-wrap"><i class="fa-brands fa-android"></i></div>
+            <div>
+                <div class="header-title">Monitor <span>Perangkat</span></div>
+                <div class="header-sub">Android Monitoring System</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <select class="lang-sel" id="langSel" onchange="setLang(this.value)">
+                <option value="id">Indonesia</option>
+                <option value="ms">Melayu</option>
+                <option value="en">English</option>
+                <option value="ph">Filipino</option>
+            </select>
+            <button class="hdr-btn" onclick="toggleTheme()" title="Toggle Tema">
+                <i class="fa-solid fa-moon" id="themeIco"></i>
+            </button>
+            <button class="hdr-btn" id="refreshBtn" title="Muat Semula">
+                <i class="fa-solid fa-rotate"></i>
+            </button>
+            <button class="hdr-btn" id="logoutBtn" title="Keluar">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ========== HOME PAGE ========== -->
+    <div id="pgHome" class="pg act">
+        <div class="banner-wrap">
+            <img src="https://i.pinimg.com/originals/7c/12/72/7c12727320e9107bd656c581af98067f.gif" alt="Monitoring Banner" onerror="this.style.display='none'">
+            <div class="banner-overlay">
+                <div class="banner-tag">Sistem Aktif</div>
+                <div class="banner-title-txt">Monitor Perangkat Android</div>
+            </div>
+        </div>
+
+        <div class="main">
+            <!-- STATUS BAR -->
+            <div class="status-bar">
+                <div class="live-dot"></div>
+                <div class="status-txt">Pemantauan Langsung Aktif</div>
+                <div class="status-ct"><span id="lockStatusIndicator">Loading...</span></div>
+            </div>
+
+            <!-- REAL SYSTEM STATS -->
+            <div class="sec-hd"><i class="fa-solid fa-chart-bar"></i> <span>Ringkasan Sistem</span></div>
+            <div class="stats-grid" id="realStatsGrid">
+                <div class="stat-card"><div class="stat-ico ic-blue"><i class="fa-solid fa-spinner fa-spin"></i></div><div><div class="stat-n">Loading</div><div class="stat-lb">...</div></div></div>
+            </div>
+
+            <!-- LOCK / UNLOCK CONTROL -->
+            <div class="lock-card">
+                <div class="lock-info">
+                    <div class="lock-title">Kunci Jarak Jauh</div>
+                    <div class="lock-detail" id="lockDetails">Memuatkan...</div>
+                </div>
+                <button class="lock-btn locked" id="lockToggleBtn">
+                    <i class="fas fa-lock"></i>
+                    <span id="lockBtnText">Unlock</span>
+                </button>
+            </div>
+
+            <!-- ACTIVITY FEED -->
+            <div class="sec-hd"><i class="fa-solid fa-clock-rotate-left"></i> <span>Aktiviti Terkini</span></div>
+            <div class="sec-card">
+                <div class="act-list" id="actFeed">
+                    <div class="act-item" style="justify-content:center;color:var(--text-muted);">Loading activity...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DEVICE PAGE ========== -->
+    <div id="pgDevice" class="pg">
+        <div class="main">
+            <div class="sec-hd"><i class="fa-solid fa-mobile-screen-button"></i> <span>Daftar Perangkat</span></div>
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" placeholder="Cari perangkat..." onkeyup="filterDevices(this.value)">
+            </div>
+            <div id="deviceList" style="text-align:center; padding:20px; color:var(--text-muted);">Loading devices...</div>
+        </div>
+    </div>
+
+    <!-- ========== CONFIG PAGE ========== -->
+    <div id="pgConfig" class="pg">
+        <div class="main">
+            <div class="sec-hd"><i class="fa-solid fa-sliders"></i> <span>Konfigurasi Sistem</span></div>
+            <div class="cfg-grp">
+                <div class="cfg-grp-t">Konfigurasi Monitor</div>
+                <div class="cfg-item">
+                    <div class="cfg-ico cfg-r"><i class="fa-solid fa-satellite-dish"></i></div>
+                    <div class="cfg-txt"><div class="cfg-t">Interval Pembaruan</div><div class="cfg-s">5 Detik</div></div>
+                    <i class="fa-solid fa-chevron-right cfg-arr"></i>
+                </div>
+                <div class="cfg-item">
+                    <div class="cfg-ico cfg-b"><i class="fa-solid fa-wifi"></i></div>
+                    <div class="cfg-txt"><div class="cfg-t">Jenis Koneksi</div><div class="cfg-s">REST API</div></div>
+                    <i class="fa-solid fa-chevron-right cfg-arr"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SETTING PAGE ========== -->
+    <div id="pgSetting" class="pg">
+        <div class="main">
+            <div class="profile-card">
+                <div class="prof-av"><i class="fa-solid fa-user-shield"></i></div>
+                <div class="prof-name" id="profName">User</div>
+                <div class="prof-role" id="profRole">OWNER</div>
+                <div class="prof-since"><i class="fa-regular fa-calendar" style="margin-right:5px"></i>Anggota Sejak: Januari 2024</div>
+            </div>
+            <div class="sec-hd"><i class="fa-solid fa-gear"></i> <span>Pengaturan Umum</span></div>
+            <div class="set-item" onclick="toggleTheme()">
+                <div class="set-ico cfg-r"><i class="fa-solid fa-circle-half-stroke"></i></div>
+                <div class="set-txt"><div class="set-t">Mod Tema</div><div class="set-s" id="themeLbl">Gelap (Dark)</div></div>
+                <i class="fa-solid fa-chevron-right set-arr"></i>
+            </div>
+            <div class="set-item" onclick="doLogout()">
+                <div class="set-ico" style="background:rgba(239,68,68,0.1);color:var(--red)"><i class="fa-solid fa-right-from-bracket"></i></div>
+                <div class="set-txt"><div class="set-t" style="color:var(--red)">Keluar</div><div class="set-s">Akhiri sesi saat ini</div></div>
+                <i class="fa-solid fa-chevron-right set-arr"></i>
+            </div>
+            <div class="ver-tag">Monitor Perangkat Android &mdash; <span>YanxzyxNotDev</span><br><span style="font-size:9px;letter-spacing:1px">Role: OWNER &bull; v3.0.0</span></div>
+        </div>
+    </div>
+
+    <!-- ========== BOTTOM NAV ========== -->
+    <nav class="bot-nav">
+        <button class="nav-b act" id="navHome" onclick="showPg('Home')"><i class="fa-solid fa-house"></i><span>Home</span></button>
+        <button class="nav-b" id="navDevice" onclick="showPg('Device')"><i class="fa-solid fa-mobile-screen-button"></i><span>Perangkat</span></button>
+        <button class="nav-b" id="navConfig" onclick="showPg('Config')"><i class="fa-solid fa-sliders"></i><span>Konfigurasi</span></button>
+        <button class="nav-b" id="navSetting" onclick="showPg('Setting')"><i class="fa-solid fa-gear"></i><span>Pengaturan</span></button>
+    </nav>
+</div>
+
+<script>
+    // ===== NAVIGATION =====
+    function showPg(name) {
+        ['Home','Device','Config','Setting'].forEach(p => {
+            document.getElementById('pg'+p).classList.remove('act');
+            document.getElementById('nav'+p).classList.remove('act');
+        });
+        document.getElementById('pg'+name).classList.add('act');
+        document.getElementById('nav'+name).classList.add('act');
+        window.scrollTo(0,0);
+    }
+
+    // ===== THEME =====
+    function toggleTheme() {
+        const html = document.documentElement;
+        const cur = html.getAttribute('data-theme');
+        const nxt = cur === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', nxt);
+        document.getElementById('themeIco').className = nxt === 'dark' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+        document.getElementById('themeLbl').textContent = nxt === 'dark' ? 'Gelap (Dark)' : 'Terang (Light)';
+    }
+
+    // ===== LANGUAGE =====
+    function setLang(l) { /* Simplified language handling */ }
+
+    // ===== PARTICLE NETWORK BACKGROUND =====
+    (function initParticles() {
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [];
+        const colors = ['59,130,246', '96,165,250', '37,99,235', '30,64,175', '14,165,233'];
+        let mouseX = -1000, mouseY = -1000, targetMouseX = -1000, targetMouseY = -1000;
+
+        function resize() {
+            width = window.innerWidth; height = window.innerHeight;
+            canvas.width = width; canvas.height = height;
+            particles = [];
+            for (let i = 0; i < 80; i++) {
+                particles.push({
+                    x: Math.random()*width, y: Math.random()*height,
+                    vx: (Math.random()-0.5)*0.4, vy: (Math.random()-0.5)*0.4,
+                    radius: Math.random()*2+0.5, alpha: Math.random()*0.6+0.2,
+                    color: colors[Math.floor(Math.random()*colors.length)]
+                });
+            }
+        }
+        function draw() {
+            ctx.clearRect(0,0,width,height);
+            mouseX += (targetMouseX-mouseX)*0.08;
+            mouseY += (targetMouseY-mouseY)*0.08;
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0) p.x = width; if (p.x > width) p.x = 0;
+                if (p.y < 0) p.y = height; if (p.y > height) p.y = 0;
+                ctx.beginPath(); ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);
+                ctx.fillStyle = `rgba(${p.color},${p.alpha})`; ctx.fill();
+                for (let j = i+1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p.x-p2.x, dy = p.y-p2.y;
+                    const dist = Math.sqrt(dx*dx+dy*dy);
+                    if (dist < 120) {
+                        const opacity = (1-dist/120)*0.3;
+                        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p2.x,p2.y);
+                        ctx.strokeStyle = `rgba(${p.color},${opacity})`; ctx.lineWidth = 0.6; ctx.stroke();
+                    }
+                }
+                const mdx = p.x-mouseX, mdy = p.y-mouseY;
+                const mdist = Math.sqrt(mdx*mdx+mdy*mdy);
+                if (mdist < 180 && mouseX > 0) {
+                    const opacity = (1-mdist/180)*0.5;
+                    ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(mouseX,mouseY);
+                    ctx.strokeStyle = `rgba(${p.color},${opacity})`; ctx.lineWidth = 1; ctx.stroke();
+                }
+            }
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousemove', e => { targetMouseX = e.clientX; targetMouseY = e.clientY; });
+        window.addEventListener('mouseleave', () => { targetMouseX = -1000; targetMouseY = -1000; });
+        resize(); draw();
+    })();
+
+    // ===== REAL DATA FETCHING =====
+    async function fetchSession() {
+        const r = await fetch('/api/me', { credentials: 'same-origin' });
+        if (!r.ok) throw new Error('Not authenticated');
+        return r.json();
+    }
+    async function fetchSystemStats() {
+        const r = await fetch('/api/system/stats', { credentials: 'same-origin' });
+        if (!r.ok) throw new Error('Failed to fetch stats');
+        return r.json();
+    }
+    async function fetchLockStatus() {
+        const r = await fetch('/api/c2/status', { credentials: 'same-origin' });
+        if (!r.ok) throw new Error('Failed to fetch lock');
+        return r.json();
+    }
+    async function toggleLock() {
+        const r = await fetch('/api/c2/toggle_lock', { method: 'POST', credentials: 'same-origin' });
+        if (!r.ok) throw new Error('Toggle failed');
+        return r.json();
+    }
+    async function fetchDevices() {
+        try {
+            const r = await fetch('/api/c2/devices', { credentials: 'same-origin' });
+            if (!r.ok) return [];
+            const data = await r.json();
+            return data.devices || [];
+        } catch(e) {
+            return [];
+        }
+    }
+    async function fetchActivities() {
+        try {
+            const r = await fetch('/api/c2/activities', { credentials: 'same-origin' });
+            if (!r.ok) return [];
+            const data = await r.json();
+            return data.activities || [];
+        } catch(e) {
+            return [];
+        }
+    }
+
+    // ===== UI UPDATES =====
+    function renderUser(user) {
+        document.getElementById('profName').textContent = user.username;
+        document.getElementById('profRole').innerHTML = user.role === 'owner' ? '<i class="fa-solid fa-crown"></i> OWNER' : user.role.toUpperCase();
+    }
+
+    // Robust stat parser that handles both flat and nested fields
+    function renderSystemStats(stats) {
+        const grid = document.getElementById('realStatsGrid');
+        if (!stats) {
+            grid.innerHTML = '<div class="stat-card"><div class="stat-ico ic-red"><i class="fa-solid fa-exclamation-triangle"></i></div><div>Gagal memuat statistik</div></div>';
+            return;
+        }
+
+        function getVal(obj, path, fallback) {
+            if (!obj) return fallback;
+            const keys = path.split('.');
+            let val = obj;
+            for (const key of keys) {
+                if (val && typeof val === 'object' && key in val) {
+                    val = val[key];
+                } else {
+                    return fallback;
+                }
+            }
+            return (val !== undefined && val !== null) ? val : fallback;
+        }
+
+        function fmtBytes(mb) {
+            if (mb === null || mb === undefined) return 'N/A';
+            const num = Number(mb);
+            if (isNaN(num)) return 'N/A';
+            if (num >= 1024) return (num/1024).toFixed(1) + ' GB';
+            return num.toFixed(0) + ' MB';
+        }
+
+        // CPU
+        const cpu = getVal(stats, 'cpu_percent', null) ?? getVal(stats, 'cpu.percent', null);
+        const cpuDisplay = cpu !== null ? cpu + '%' : 'N/A';
+
+        // Memory
+        let memDisplay = 'N/A';
+        const memUsedFlat = getVal(stats, 'memory_used', null);
+        const memTotalFlat = getVal(stats, 'memory_total', null);
+        if (memUsedFlat !== null && memTotalFlat !== null) {
+            memDisplay = `${fmtBytes(memUsedFlat)} / ${fmtBytes(memTotalFlat)}`;
+        } else {
+            const memUsedNested = getVal(stats, 'memory.used_mb', null);
+            const memTotalNested = getVal(stats, 'memory.total_mb', null);
+            if (memUsedNested !== null && memTotalNested !== null) {
+                memDisplay = `${fmtBytes(memUsedNested)} / ${fmtBytes(memTotalNested)}`;
+            } else {
+                const memPercent = getVal(stats, 'memory.percent', null);
+                if (memPercent !== null) {
+                    memDisplay = memPercent + '%';
+                }
+            }
+        }
+
+        // Disk
+        let diskDisplay = 'N/A';
+        const diskUsedFlat = getVal(stats, 'disk_used', null);
+        const diskTotalFlat = getVal(stats, 'disk_total', null);
+        if (diskUsedFlat !== null && diskTotalFlat !== null) {
+            diskDisplay = `${fmtBytes(diskUsedFlat)} / ${fmtBytes(diskTotalFlat)}`;
+        } else {
+            const diskUsedNested = getVal(stats, 'disk.used_gb', null);
+            const diskTotalNested = getVal(stats, 'disk.total_gb', null);
+            if (diskUsedNested !== null && diskTotalNested !== null) {
+                diskDisplay = `${diskUsedNested.toFixed(1)} / ${diskTotalNested.toFixed(1)} GB`;
+            } else {
+                const diskPercent = getVal(stats, 'disk.percent', null);
+                if (diskPercent !== null) {
+                    diskDisplay = diskPercent + '%';
+                }
+            }
+        }
+
+        // Network
+        let netDisplay = 'N/A';
+        const netSentFlat = getVal(stats, 'net_sent', null);
+        const netRecvFlat = getVal(stats, 'net_recv', null);
+        if (netSentFlat !== null && netRecvFlat !== null) {
+            netDisplay = `${fmtBytes(netSentFlat)} / ${fmtBytes(netRecvFlat)}`;
+        } else {
+            const netSentNested = getVal(stats, 'network.sent_mb', null);
+            const netRecvNested = getVal(stats, 'network.recv_mb', null);
+            if (netSentNested !== null && netRecvNested !== null) {
+                netDisplay = `${netSentNested.toFixed(1)} / ${netRecvNested.toFixed(1)} MB`;
+            } else {
+                const ping = getVal(stats, 'ping_ms', null);
+                if (ping !== null) {
+                    netDisplay = ping + ' ms';
+                }
+            }
+        }
+
+        const items = [
+            { icon: 'fa-microchip', cls: 'ic-blue', label: 'CPU', value: cpuDisplay },
+            { icon: 'fa-memory', cls: 'ic-green', label: 'Memori', value: memDisplay },
+            { icon: 'fa-hard-drive', cls: 'ic-cyan', label: 'Disk', value: diskDisplay },
+            { icon: 'fa-network-wired', cls: 'ic-orange', label: 'Jaringan', value: netDisplay }
+        ];
+        grid.innerHTML = items.map(i => `
+            <div class="stat-card">
+                <div class="stat-ico ${i.cls}"><i class="fa-solid ${i.icon}"></i></div>
+                <div><div class="stat-n">${i.value}</div><div class="stat-lb">${i.label}</div></div>
+            </div>
+        `).join('');
+    }
+
+    function renderLockState(state) {
+        const btn = document.getElementById('lockToggleBtn');
+        const icon = btn.querySelector('i');
+        const span = btn.querySelector('span');
+        const details = document.getElementById('lockDetails');
+        if (state.locked) {
+            btn.className = 'lock-btn locked';
+            icon.className = 'fas fa-lock';
+            span.textContent = 'Unlock';
+            details.innerHTML = `Dikunci oleh <strong>${escapeHtml(state.locked_by || 'unknown')}</strong>`;
+        } else {
+            btn.className = 'lock-btn unlocked';
+            icon.className = 'fas fa-lock-open';
+            span.textContent = 'Lock';
+            details.textContent = 'Sistem tidak dikunci';
+        }
+        document.getElementById('lockStatusIndicator').textContent = state.locked ? 'TERKUNCI' : 'TERBUKA';
+    }
+
+    function renderDevices(devices) {
+        const container = document.getElementById('deviceList');
+        if (!devices || devices.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);"><i class="fa-solid fa-plug-circle-xmark" style="font-size:48px;margin-bottom:16px;"></i><p style="font-size:14px;">Tiada perangkat disambungkan.</p></div>';
+            return;
+        }
+        container.innerHTML = devices.map(dev => `
+            <div class="dev-card">
+                <div class="dev-top">
+                    <div class="dev-info">
+                        <div class="dev-name">${escapeHtml(dev.name)}</div>
+                        <div class="dev-model">${escapeHtml(dev.model || 'Unknown model')} · Android ${escapeHtml(dev.android || '--')}</div>
+                        <div class="dev-serial">SN: ${escapeHtml(dev.serial || '--')}</div>
+                        <div class="dev-badges">
+                            <span class="bdg ${dev.status === 'online' ? 'bdg-on' : 'bdg-off'}">${dev.status === 'online' ? '● Online' : '○ Offline'}</span>
+                            ${dev.battery !== null && dev.battery !== undefined ? `<span class="bdg ${dev.battery < 20 ? 'bdg-batlo' : dev.battery > 50 ? 'bdg-batok' : 'bdg-bat'}">🔋 ${dev.battery}%</span>` : ''}
+                            <span class="bdg bdg-and">🤖 Android ${escapeHtml(dev.android || '--')}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderActivities(activities) {
+        const feed = document.getElementById('actFeed');
+        if (!activities || activities.length === 0) {
+            feed.innerHTML = '<div class="act-item" style="justify-content:center;color:var(--text-muted);">Tiada aktiviti terkini</div>';
+            return;
+        }
+        feed.innerHTML = activities.map(act => {
+            const time = new Date(act.timestamp).toLocaleString();
+            return `
+                <div class="act-item">
+                    <div class="act-ico a-lock"><i class="fa-solid fa-satellite-dish"></i></div>
+                    <div class="act-body">
+                        <div class="act-dev">${escapeHtml(act.device_name || act.device_id)}</div>
+                        <div class="act-act">${escapeHtml(act.action)}</div>
+                        <div class="act-time"><i class="fa-regular fa-clock"></i> ${time}</div>
+                    </div>
+                    <div class="act-dot d-online"></div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function escapeHtml(text) {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function filterDevices(query) {
+        const all = document.querySelectorAll('.dev-card');
+        const q = query.toLowerCase();
+        all.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(q) ? 'block' : 'none';
+        });
+    }
+
+    // ===== EVENT HANDLERS =====
+    document.getElementById('lockToggleBtn').addEventListener('click', async () => {
+        try {
+            const res = await toggleLock();
+            if (res.lock_state) renderLockState(res.lock_state);
+        } catch(e) {
+            alert('Gagal mengubah kunci');
+        }
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+        await loadAllData();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
+        window.location.href = '/login.html';
+    });
+
+    function doLogout() { document.getElementById('logoutBtn').click(); }
+
+    // ===== DATA LOADING =====
+    async function loadAllData() {
+        try {
+            const [stats, lockStatus, devices, activities] = await Promise.all([
+                fetchSystemStats(), fetchLockStatus(), fetchDevices(), fetchActivities()
+            ]);
+            renderSystemStats(stats);
+            renderLockState(lockStatus.lock_state);
+            renderDevices(devices);
+            renderActivities(activities);
+        } catch(e) {
+            console.error('Failed to load data:', e);
+        }
+    }
+
+    // ===== INIT =====
+    window.addEventListener('load', async () => {
+        try {
+            const user = await fetchSession();
+            renderUser(user);
+            await loadAllData();
+            // Refresh every 5 seconds
+            setInterval(loadAllData, 5000);
+        } catch(e) {
+            console.error('Session check failed:', e);
+        }
+    });
+</script>
+</body>
+</html>

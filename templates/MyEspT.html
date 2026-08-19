@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyEspT · Exploit Manager — Emergens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400..700&family=Playfair+Display:ital,wght@0,600..800;1,500..700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
+    <style>
+        :root {
+            --font-ui: 'Inter', system-ui, sans-serif;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+            --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb;
+            --blue-700: #1e40af; --blue-800: #172554;
+            --blue-glow: rgba(59, 130, 246, 0.35); --blue-glow-soft: rgba(59, 130, 246, 0.13);
+            --gold: #d4a574; --gold-light: #e7cd9f; --gold-glow: rgba(212, 165, 116, 0.22);
+            --green: #4fb488; --green-glow: rgba(79, 180, 136, 0.18);
+            --steel: #5a9aa6; --steel-glow: rgba(90, 154, 166, 0.2);
+            --red: #ef4444; --red-glow: rgba(239, 68, 68, 0.2);
+            --amber: #f59e0b; --amber-glow: rgba(245, 158, 11, 0.2);
+
+            --radius-sm: 8px; --radius-md: 14px; --radius-lg: 20px; --radius-xl: 28px;
+            --transition-fast: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-med: 360ms cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-slow: 600ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #020617; --bg-secondary: #0b1220; --bg-tertiary: #111827;
+            --bg-elevated: #1e293b; --border-color: #1e293b; --border-subtle: #334155;
+            --text-primary: #e2e8f0; --text-secondary: #94a3b8; --text-muted: #64748b;
+            --shadow-md: 0 12px 32px rgba(0,0,0,0.45); --shadow-lg: 0 28px 70px rgba(0,0,0,0.65);
+        }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9;
+            --bg-elevated: #ffffff; --border-color: #cbd5e1; --border-subtle: #e2e8f0;
+            --text-primary: #0f172a; --text-secondary: #334155; --text-muted: #64748b;
+            --shadow-md: 0 10px 26px rgba(30,41,59,0.08); --shadow-lg: 0 24px 60px rgba(30,41,59,0.12);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html,body{height:100%;}
+        body {
+            font-family: var(--font-ui); color: var(--text-primary); background: var(--bg-primary);
+            background-image: radial-gradient(1200px 780px at 12% -10%, var(--blue-glow-soft), transparent 60%),
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat, repeat; background-blend-mode: normal, overlay;
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+            position: relative; transition: background-color var(--transition-slow), color var(--transition-slow);
+        }
+        #particleCanvas {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            width: 100%; height: 100%;
+        }
+        .content-wrap {
+            position: relative; z-index: 1; width: 100%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 24px;
+            animation: fadeSlideIn 0.5s ease forwards;
+        }
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+
+        .overlay {
+            position: fixed; inset: 0; background: rgba(2,6,23,0.92); z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+        .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .spinner {
+            width: 50px; height: 50px; border-radius: 50%;
+            border: 2px solid var(--border-color); border-top-color: var(--blue-500);
+            animation: spin 0.8s linear infinite; margin-bottom: 20px;
+            box-shadow: 0 0 25px var(--blue-glow);
+        }
+        .verify-text { font-family: var(--font-display); font-size: 1.1rem; color: var(--text-secondary); }
+
+        .denied-card {
+            text-align: center; padding: 40px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+            background: var(--bg-secondary); box-shadow: var(--shadow-md); max-width: 400px; width: 100%;
+        }
+        .denied-icon { font-size: 2.5rem; color: var(--blue-500); margin-bottom: 16px; }
+        .denied-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 12px; }
+        .denied-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 20px; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px;
+            border-radius: var(--radius-sm); font-weight: 600; font-size: 0.85rem;
+            cursor: pointer; transition: all var(--transition-fast); border: none;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-800));
+            color: #fff; box-shadow: 0 2px 10px var(--blue-glow); text-decoration: none;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--blue-glow); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-outline {
+            background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);
+        }
+        .btn-outline:hover { border-color: var(--blue-500); color: var(--blue-400); background: var(--blue-glow-soft); }
+
+        .card {
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg); padding: 20px 24px;
+            box-shadow: var(--shadow-md); position: relative; overflow: hidden;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+        .card:hover { border-color: var(--blue-500); box-shadow: var(--shadow-lg); }
+        .card::before {
+            content: ""; position: absolute; top: -20%; right: -20%; width: 200px; height: 200px;
+            background: radial-gradient(circle, var(--blue-glow-soft) 0%, transparent 70%);
+            pointer-events: none; opacity: 0.3;
+        }
+
+        .section-title {
+            font-weight: 600; font-size: 0.8rem; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;
+            position: relative; z-index: 1;
+        }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px;
+        }
+        .stat-box {
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm); padding: 14px;
+            display: flex; align-items: center; gap: 10px;
+            transition: transform var(--transition-fast), border-color var(--transition-fast);
+        }
+        .stat-box:hover { transform: translateY(-2px); border-color: var(--blue-500); }
+        .stat-icon {
+            width: 40px; height: 40px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 1rem;
+        }
+        .icon-blue { background: var(--blue-glow-soft); color: var(--blue-400); }
+        .icon-green { background: var(--green-glow); color: var(--green); }
+        .icon-gold { background: var(--gold-glow); color: var(--gold); }
+        .icon-red { background: var(--red-glow); color: var(--red); }
+        .stat-value { font-family: var(--font-mono); font-weight: 600; font-size: 1.2rem; color: var(--text-primary); }
+        .stat-label { font-size: 0.72rem; color: var(--text-secondary); }
+
+        .input-group {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--bg-tertiary); border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm); padding: 0 14px; margin-bottom: 12px;
+            transition: border-color var(--transition-fast);
+        }
+        .input-group:focus-within { border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-glow-soft); }
+        .input-group i { color: var(--text-muted); font-size: 0.85rem; width: 18px; text-align: center; }
+        .input-group input, .input-group select {
+            flex: 1; border: none; background: transparent; color: var(--text-primary);
+            padding: 13px 0; font-size: 0.9rem; outline: none; font-family: var(--font-ui);
+        }
+        .input-group select option { background: var(--bg-secondary); color: var(--text-primary); }
+
+        .exploit-table {
+            width: 100%; border-collapse: collapse; font-size: 0.85rem;
+        }
+        .exploit-table th, .exploit-table td {
+            padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-subtle);
+        }
+        .exploit-table th { color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; }
+        .exploit-table tr:hover td { background: var(--bg-tertiary); }
+
+        .log-container {
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm); padding: 12px; max-height: 200px; overflow-y: auto;
+            font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary);
+        }
+        .log-entry { padding: 4px 0; border-bottom: 1px solid var(--border-subtle); }
+        .log-entry:last-child { border-bottom: none; }
+        .log-success { color: var(--green); }
+        .log-error { color: var(--blue-400); }
+
+        .action-btn {
+            padding: 10px 20px; border-radius: var(--radius-sm); font-weight: 600;
+            font-size: 0.85rem; cursor: pointer; border: none; transition: all var(--transition-med);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .action-btn.start {
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-800));
+            color: #fff; box-shadow: 0 4px 18px var(--blue-glow);
+        }
+        .action-btn.stop {
+            background: linear-gradient(135deg, var(--green), #1a4d2e);
+            color: #fff; box-shadow: 0 4px 18px var(--green-glow);
+        }
+        .action-btn:hover { transform: translateY(-2px); }
+        .action-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+        .summary-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            display: none;
+            animation: fadeSlideIn 0.4s ease forwards;
+        }
+        .summary-card.visible { display: block; }
+        .summary-header {
+            font-weight: 700; font-size: 1rem; margin-bottom: 10px;
+        }
+        .criticality-badge {
+            display: inline-block; padding: 6px 14px; border-radius: 20px;
+            font-weight: 700; font-size: 0.8rem; letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .criticality-critical { background: var(--red-glow); color: var(--red); border: 1px solid var(--red); }
+        .criticality-high { background: var(--amber-glow); color: var(--amber); border: 1px solid var(--amber); }
+        .criticality-medium { background: var(--blue-glow-soft); color: var(--blue-400); border: 1px solid var(--blue-500); }
+        .criticality-low { background: var(--green-glow); color: var(--green); border: 1px solid var(--green); }
+        .criticality-unknown { background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+        .scan-progress {
+            width: 100%; height: 6px; background: var(--border-color); border-radius: 3px;
+            margin-top: 8px; overflow: hidden; display: none;
+        }
+        .scan-progress.active { display: block; }
+        .scan-progress-bar {
+            height: 100%; border-radius: 3px; background: var(--blue-500);
+            width: 0%; transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Session verification overlay -->
+<div class="overlay" id="verifyingOverlay">
+    <div class="spinner"></div>
+    <div class="verify-text">Verifying session...</div>
+</div>
+
+<!-- Access denied overlay -->
+<div class="overlay hidden" id="deniedOverlay">
+    <div class="denied-card">
+        <div class="denied-icon"><i class="fas fa-shield-halved"></i></div>
+        <div class="denied-title">Session Not Verified</div>
+        <div class="denied-desc">You must be logged in to access the Exploit Manager.</div>
+        <a href="/dashboard.html" class="btn"><i class="fas fa-right-to-bracket"></i> Go to Dashboard</a>
+    </div>
+</div>
+
+<!-- Main panel -->
+<div class="content-wrap" id="mainPanel" style="display:none;">
+    <!-- Statistics -->
+    <div class="card">
+        <div class="section-title">Exploit Statistics</div>
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-box">
+                <div class="stat-icon icon-blue"><i class="fas fa-bolt"></i></div>
+                <div><div class="stat-value" id="totalExploits">0</div><div class="stat-label">Total Exploits</div></div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon icon-red"><i class="fas fa-shield-virus"></i></div>
+                <div><div class="stat-value" id="criticalCount">0</div><div class="stat-label">Critical</div></div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon icon-gold"><i class="fas fa-triangle-exclamation"></i></div>
+                <div><div class="stat-value" id="highCount">0</div><div class="stat-label">High</div></div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon icon-green"><i class="fas fa-circle-info"></i></div>
+                <div><div class="stat-value" id="mediumCount">0</div><div class="stat-label">Medium</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exploit List -->
+    <div class="card">
+        <div class="section-title">Exploit Database</div>
+        <div class="input-group">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchQuery" placeholder="Search exploits..." oninput="searchExploits(this.value)">
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="exploit-table">
+                <thead>
+                    <tr><th>Name</th><th>Category</th><th>Service</th><th>Risk</th><th>Description</th></tr>
+                </thead>
+                <tbody id="exploitTableBody">
+                    <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Combined Vulnerability Scanner -->
+    <div class="card">
+        <div class="section-title">Vulnerability Scanner</div>
+        <div class="input-group">
+            <i class="fas fa-link"></i>
+            <input type="text" id="combinedUrl" placeholder="Target URL (e.g., http://example.com/page?id=1)">
+        </div>
+        <div style="display:flex; gap:12px;">
+            <button class="action-btn start" id="combinedScanBtn" onclick="runCombinedScan()">
+                <i class="fas fa-play"></i> Run Combined Scan
+            </button>
+        </div>
+        <div class="scan-progress" id="scanProgress">
+            <div class="scan-progress-bar" id="scanProgressBar"></div>
+        </div>
+        <!-- Summary -->
+        <div class="summary-card" id="summaryCard">
+            <div class="summary-header">Scan Summary</div>
+            <div id="summaryContent"></div>
+        </div>
+        <!-- Logs -->
+        <div class="log-container" id="combinedLog" style="margin-top:12px;">
+            <div class="log-entry">Combined scanner ready.</div>
+        </div>
+    </div>
+
+    <!-- Individual SQLi Scanner -->
+    <div class="card">
+        <div class="section-title">SQL Injection Scanner</div>
+        <div class="input-group">
+            <i class="fas fa-link"></i>
+            <input type="text" id="sqliUrl" placeholder="Target URL">
+        </div>
+        <div class="input-group">
+            <i class="fas fa-server"></i>
+            <select id="sqliMethod"><option value="GET">GET</option><option value="POST">POST</option></select>
+        </div>
+        <button class="action-btn start" id="sqliBtn" onclick="runSqlInjection()">
+            <i class="fas fa-play"></i> Scan SQL Injection
+        </button>
+        <div class="log-container" id="sqliLog" style="margin-top:12px;">
+            <div class="log-entry">SQL injection scanner ready.</div>
+        </div>
+    </div>
+
+    <!-- XSS Scanner -->
+    <div class="card">
+        <div class="section-title">XSS Scanner</div>
+        <div class="input-group">
+            <i class="fas fa-link"></i>
+            <input type="text" id="xssUrl" placeholder="Target URL">
+        </div>
+        <div class="input-group">
+            <i class="fas fa-server"></i>
+            <select id="xssMethod"><option value="GET">GET</option><option value="POST">POST</option></select>
+        </div>
+        <button class="action-btn start" id="xssBtn" onclick="runXss()">
+            <i class="fas fa-play"></i> Scan XSS
+        </button>
+        <div class="log-container" id="xssLog" style="margin-top:12px;">
+            <div class="log-entry">XSS scanner ready.</div>
+        </div>
+    </div>
+
+    <!-- Brute Force -->
+    <div class="card">
+        <div class="section-title">Brute Force</div>
+        <div class="input-group">
+            <i class="fas fa-crosshairs"></i>
+            <input type="text" id="bfTarget" placeholder="Target IP or Hostname">
+        </div>
+        <div class="input-group">
+            <i class="fas fa-list"></i>
+            <input type="text" id="bfProtocols" placeholder="Protocols (comma-separated)" value="http,ftp,ssh">
+        </div>
+        <button class="action-btn start" id="bfBtn" onclick="runBruteForce()">
+            <i class="fas fa-play"></i> Start Brute Force
+        </button>
+        <div class="log-container" id="bfLog" style="margin-top:12px;">
+            <div class="log-entry">Brute force ready.</div>
+        </div>
+    </div>
+
+    <button class="btn btn-outline" onclick="handleLogout()" style="align-self:flex-end;">
+        <i class="fas fa-right-from-bracket"></i> Logout
+    </button>
+</div>
+
+<script>
+    const $ = (s) => document.querySelector(s);
+
+    // ---------- Session Check ----------
+    async function verifySession() {
+        try {
+            const resp = await fetch('/api/me', { credentials: 'same-origin' });
+            if (!resp.ok) throw new Error('Not authenticated');
+            document.getElementById('verifyingOverlay').classList.add('hidden');
+            document.getElementById('mainPanel').style.display = 'flex';
+            loadStats();
+            loadExploits();
+        } catch (e) {
+            document.getElementById('verifyingOverlay').classList.add('hidden');
+            document.getElementById('deniedOverlay').classList.remove('hidden');
+        }
+    }
+
+    async function handleLogout() {
+        try { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
+        window.location.href = '/login.html';
+    }
+
+    // ---------- Load Stats ----------
+    async function loadStats() {
+        try {
+            const resp = await fetch('/api/exploit/stats', { credentials: 'same-origin' });
+            const data = await resp.json();
+            $('#totalExploits').textContent = data.total_exploits;
+            $('#criticalCount').textContent = data.risk_levels.critical;
+            $('#highCount').textContent = data.risk_levels.high;
+            $('#mediumCount').textContent = data.risk_levels.medium;
+        } catch (e) {
+            console.error('Stats load error:', e);
+        }
+    }
+
+    // ---------- Load Exploits ----------
+    async function loadExploits() {
+        try {
+            const resp = await fetch('/api/exploit/list', { credentials: 'same-origin' });
+            const data = await resp.json();
+            renderExploitTable(data.exploits || []);
+        } catch (e) {
+            $('#exploitTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--blue-400);">Failed to load exploits</td></tr>';
+        }
+    }
+
+    function renderExploitTable(exploits) {
+        const tbody = $('#exploitTableBody');
+        if (!exploits.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No exploits found</td></tr>';
+            return;
+        }
+        tbody.innerHTML = exploits.map(e => `
+            <tr>
+                <td>${escapeHtml(e.name)}</td>
+                <td>${escapeHtml(e.category)}</td>
+                <td>${escapeHtml(e.service)}</td>
+                <td>${escapeHtml(e.risk_level)}</td>
+                <td>${escapeHtml(e.description)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // ---------- Search Exploits ----------
+    async function searchExploits(query) {
+        if (!query.trim()) {
+            loadExploits();
+            return;
+        }
+        try {
+            const resp = await fetch('/api/exploit/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ query })
+            });
+            const data = await resp.json();
+            renderExploitTable(data.exploits || []);
+        } catch (e) {
+            console.error('Search error:', e);
+        }
+    }
+
+    // ---------- SQL Injection ----------
+    async function runSqlInjection() {
+        const url = $('#sqliUrl').value.trim();
+        if (!url) return;
+        const method = $('#sqliMethod').value;
+        const log = $('#sqliLog');
+        log.innerHTML = '<div class="log-entry">Running SQL injection scan...</div>';
+        try {
+            const resp = await fetch('/api/exploit/sql_inject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ url, method })
+            });
+            const data = await resp.json();
+            const findings = data.results?.findings || [];
+            if (!findings.length) {
+                log.innerHTML = '<div class="log-entry">No SQL injection vulnerabilities found.</div>';
+            } else {
+                log.innerHTML = findings.map(f =>
+                    `<div class="log-entry log-error">[${f.indicator}] ${escapeHtml(f.payload)}</div>`
+                ).join('');
+            }
+        } catch (err) {
+            log.innerHTML = `<div class="log-entry log-error">Error: ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    // ---------- XSS ----------
+    async function runXss() {
+        const url = $('#xssUrl').value.trim();
+        if (!url) return;
+        const method = $('#xssMethod').value;
+        const log = $('#xssLog');
+        log.innerHTML = '<div class="log-entry">Running XSS scan...</div>';
+        try {
+            const resp = await fetch('/api/exploit/xss', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ url, method })
+            });
+            const data = await resp.json();
+            const findings = data.results?.findings || [];
+            if (!findings.length) {
+                log.innerHTML = '<div class="log-entry">No XSS vulnerabilities found.</div>';
+            } else {
+                log.innerHTML = findings.map(f =>
+                    `<div class="log-entry log-error">Reflected: ${escapeHtml(f.payload)}</div>`
+                ).join('');
+            }
+        } catch (err) {
+            log.innerHTML = `<div class="log-entry log-error">Error: ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    // ---------- Brute Force ----------
+    async function runBruteForce() {
+        const target = $('#bfTarget').value.trim();
+        if (!target) return;
+        const protocols = $('#bfProtocols').value.split(',').map(p => p.trim()).filter(Boolean);
+        const log = $('#bfLog');
+        log.innerHTML = '<div class="log-entry">Starting brute force...</div>';
+        try {
+            const resp = await fetch('/api/exploit/bruteforce', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ target, protocols })
+            });
+            const data = await resp.json();
+            const results = data.results?.results || {};
+            let html = '';
+            for (const proto in results) {
+                const r = results[proto];
+                html += `<div class="log-entry">${proto}: ${r.successful} successful</div>`;
+                r.credentials?.forEach(c => {
+                    html += `<div class="log-entry log-success">  - ${c.username || ''}${c.password ? ':' + c.password : ''}</div>`;
+                });
+            }
+            log.innerHTML = html || '<div class="log-entry">No results.</div>';
+        } catch (err) {
+            log.innerHTML = `<div class="log-entry log-error">Error: ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    // ---------- Combined Scan & Criticality ----------
+    async function runCombinedScan() {
+        const url = $('#combinedUrl').value.trim();
+        if (!url) return;
+
+        const log = $('#combinedLog');
+        const progress = $('#scanProgress');
+        const progressBar = $('#scanProgressBar');
+        const summaryCard = $('#summaryCard');
+        const summaryContent = $('#summaryContent');
+
+        log.innerHTML = '<div class="log-entry">Starting combined scan...</div>';
+        progress.classList.add('active');
+        progressBar.style.width = '0%';
+
+        let sqlFindings = [];
+        let xssFindings = [];
+
+        progressBar.style.width = '20%';
+        await sleep(200);
+
+        log.innerHTML += '<div class="log-entry">Running SQL injection...</div>';
+        try {
+            const resp = await fetch('/api/exploit/sql_inject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ url, method: 'GET' })
+            });
+            const data = await resp.json();
+            sqlFindings = data.results?.findings || [];
+            log.innerHTML += `<div class="log-entry">SQLi findings: ${sqlFindings.length}</div>`;
+        } catch (err) {
+            log.innerHTML += `<div class="log-entry log-error">SQLi error: ${escapeHtml(err.message)}</div>`;
+        }
+        progressBar.style.width = '60%';
+        await sleep(200);
+
+        log.innerHTML += '<div class="log-entry">Running XSS scan...</div>';
+        try {
+            const resp = await fetch('/api/exploit/xss', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ url, method: 'GET' })
+            });
+            const data = await resp.json();
+            xssFindings = data.results?.findings || [];
+            log.innerHTML += `<div class="log-entry">XSS findings: ${xssFindings.length}</div>`;
+        } catch (err) {
+            log.innerHTML += `<div class="log-entry log-error">XSS error: ${escapeHtml(err.message)}</div>`;
+        }
+        progressBar.style.width = '100%';
+        await sleep(300);
+        progress.classList.remove('active');
+
+        const totalFindings = sqlFindings.length + xssFindings.length;
+        let criticality = 'UNKNOWN';
+        if (totalFindings === 0) {
+            criticality = 'LOW';
+        } else {
+            const hasCriticalSql = sqlFindings.some(f => f.indicator === 'error' || f.indicator === 'time-based');
+            const hasReflectedXss = xssFindings.length > 0;
+            if (hasCriticalSql || hasReflectedXss) {
+                criticality = 'CRITICAL';
+            } else if (sqlFindings.length > 0) {
+                criticality = 'HIGH';
+            } else if (xssFindings.length > 0) {
+                criticality = 'MEDIUM';
+            }
+        }
+
+        summaryCard.classList.add('visible');
+        summaryContent.innerHTML = `
+            <div class="summary-header">Target: ${escapeHtml(url)}</div>
+            <p>Criticality: 
+                <span class="criticality-badge criticality-${criticality.toLowerCase()}">${criticality}</span>
+            </p>
+            <p>Total vulnerabilities found: ${totalFindings}</p>
+            <p>SQL Injection: ${sqlFindings.length} | XSS: ${xssFindings.length}</p>
+            <hr style="border-color: var(--border-subtle); margin: 12px 0;">
+            <p><strong>Details:</strong></p>
+            ${sqlFindings.map(f => `<div class="log-entry log-error">SQLi (${f.indicator}): ${escapeHtml(f.payload)}</div>`).join('')}
+            ${xssFindings.map(f => `<div class="log-entry log-error">XSS: ${escapeHtml(f.payload)}</div>`).join('')}
+        `;
+    }
+
+    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+    function escapeHtml(str) {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(str).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    window.addEventListener('load', verifySession);
+</script>
+</body>
+</html>

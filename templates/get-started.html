@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Started — Oxysintx | Web Security Framework</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
+    <style>
+        :root {
+            --font-display: 'Playfair Display', serif;
+            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --red-400: #ff4757;
+            --red-500: #e63946;
+            --red-600: #c92a3a;
+            --red-700: #8b1a25;
+            --red-800: #580d15;
+            --red-glow: rgba(230, 57, 70, 0.28);
+            --red-glow-soft: rgba(230, 57, 70, 0.12);
+            --gold: #d4a574;
+            --gold-glow: rgba(212, 165, 116, 0.2);
+            --green: #34d399;
+            --amber: #fbbf24;
+            --blue: #60a5fa;
+            --purple: #a78bfa;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 26px;
+            --transition-fast: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-med: 340ms cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-slow: 560ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #050102;
+            --bg-secondary: #0a0305;
+            --bg-tertiary: #100609;
+            --bg-elevated: #14080d;
+            --border-color: #1f0f15;
+            --border-subtle: #2d151e;
+            --text-primary: #f4e7ea;
+            --text-secondary: #c4a3ab;
+            --text-muted: #846870;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+            --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.35);
+            --sheen: rgba(255, 255, 255, 0.02);
+            --code-bg: #0d0508;
+            --inline-code-bg: #1a0a10;
+        }
+        [data-theme="light"] {
+            --bg-primary: #faf6f7;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f5eeef;
+            --bg-elevated: #ffffff;
+            --border-color: #e8d7da;
+            --border-subtle: #f0e3e5;
+            --text-primary: #1a0a0d;
+            --text-secondary: #5c3a40;
+            --text-muted: #8c6a70;
+            --shadow-sm: 0 2px 8px rgba(80, 10, 20, 0.04);
+            --shadow-md: 0 8px 24px rgba(80, 10, 20, 0.06), 0 2px 6px rgba(80, 10, 20, 0.03);
+            --shadow-lg: 0 20px 50px rgba(80, 10, 20, 0.1), 0 4px 12px rgba(80, 10, 20, 0.05);
+            --sheen: rgba(255, 255, 255, 0.7);
+            --code-bg: #faf4f5;
+            --inline-code-bg: #f5eaec;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background var(--transition-slow), color var(--transition-slow);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        h1,
+        h2,
+        h3 {
+            letter-spacing: -0.01em;
+        }
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+        button {
+            cursor: pointer;
+        }
+        button:focus-visible,
+        input:focus-visible,
+        a:focus-visible {
+            outline: 2px solid var(--red-500);
+            outline-offset: 2px;
+        }
+        [hidden] {
+            display: none !important;
+        }
+
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.035;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-orb-1 {
+            width: 600px;
+            height: 600px;
+            background: var(--red-500);
+            top: -150px;
+            right: -150px;
+        }
+        .bg-orb-2 {
+            width: 450px;
+            height: 450px;
+            background: var(--red-600);
+            bottom: -100px;
+            left: -80px;
+        }
+        [data-theme="light"] .bg-orb {
+            opacity: 0.02;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(5, 1, 2, 0.88);
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .header-logo svg {
+            width: 30px;
+            height: 30px;
+            filter: drop-shadow(0 0 10px var(--red-glow));
+            transition: filter var(--transition-med);
+        }
+        .header-logo:hover svg {
+            filter: drop-shadow(0 0 20px var(--red-glow));
+        }
+        .header-logo .logo-text {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 16px;
+            color: var(--red-400);
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+        }
+        .header-logo .logo-text span {
+            color: var(--gold);
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .lang-btn,
+        .theme-btn {
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .lang-btn:hover,
+        .theme-btn:hover {
+            border-color: var(--red-500);
+            color: var(--red-400);
+            background: var(--red-glow-soft);
+        }
+        .lang-btn.active {
+            background: var(--red-800);
+            border-color: var(--red-500);
+            color: var(--red-400);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all var(--transition-med);
+            border: none;
+        }
+        .btn-red {
+            background: var(--red-500);
+            color: #fff;
+            box-shadow: 0 3px 12px var(--red-glow);
+        }
+        .btn-red:hover {
+            box-shadow: 0 6px 22px var(--red-glow);
+            transform: translateY(-1px);
+            background: var(--red-400);
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+        .btn-outline:hover {
+            border-color: var(--red-500);
+            color: var(--red-400);
+            background: var(--red-glow-soft);
+        }
+        .btn-gold {
+            background: transparent;
+            color: var(--gold);
+            border: 1px solid var(--gold);
+        }
+        .btn-gold:hover {
+            background: var(--gold);
+            color: #000;
+            box-shadow: 0 0 18px var(--gold-glow);
+        }
+
+        .hero {
+            text-align: center;
+            padding: 70px 24px 40px;
+            position: relative;
+            z-index: 1;
+        }
+        .hero-logo-svg {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 14px;
+            display: block;
+            filter: drop-shadow(0 0 18px var(--red-glow));
+            animation: logoFloat 4s ease-in-out infinite;
+        }
+        @keyframes logoFloat {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-6px);
+            }
+        }
+        .hero-badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: var(--red-800);
+            color: var(--red-400);
+            border: 1px solid var(--red-700);
+            margin-bottom: 14px;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: 42px;
+            font-weight: 900;
+            letter-spacing: -1.2px;
+            color: #fff;
+            line-height: 1.15;
+            margin-bottom: 8px;
+        }
+        .hero h1 .red-text {
+            color: var(--red-400);
+        }
+        .hero h1 .gold-text {
+            color: var(--gold);
+        }
+        .hero p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 20px;
+            line-height: 1.7;
+        }
+        .hero .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .section {
+            padding: 40px 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            z-index: 1;
+            position: relative;
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .section-header h2 {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .section-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+        }
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            transition: all var(--transition-med);
+            cursor: default;
+        }
+        .card:hover {
+            border-color: var(--red-glow);
+            box-shadow: var(--shadow-md), 0 0 24px var(--red-glow-soft);
+            transform: translateY(-2px);
+        }
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--red-glow-soft);
+            color: var(--red-500);
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+        .card h4 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+        .card p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .tag {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-top: 8px;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+        }
+        .module-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 14px 10px;
+            text-align: center;
+            transition: all var(--transition-fast);
+            cursor: pointer;
+        }
+        .module-card:hover {
+            border-color: var(--red-glow);
+            box-shadow: var(--shadow-md);
+            background: var(--bg-elevated);
+            transform: translateY(-2px);
+        }
+        .module-card .mod-icon-svg {
+            width: 22px;
+            height: 22px;
+            margin: 0 auto 6px;
+            display: block;
+            stroke: var(--red-500);
+            fill: none;
+            stroke-width: 2;
+        }
+        .module-card .mod-name {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .module-card .mod-cat {
+            font-size: 8px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        /* API Key Section — Enhanced */
+        .api-hero-box {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            padding: 28px 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+        .api-hero-box::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: var(--red-glow-soft);
+            filter: blur(60px);
+            pointer-events: none;
+        }
+        .api-endpoint-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+        .api-method-badge {
+            background: var(--green);
+            color: #000;
+            font-weight: 800;
+            font-size: 9px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .api-url-text {
+            color: var(--blue);
+            word-break: break-all;
+            font-weight: 500;
+        }
+        .api-key-display {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--code-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 8px 14px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--gold);
+            letter-spacing: 0.3px;
+            position: relative;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .api-key-display:hover {
+            border-color: var(--gold);
+            box-shadow: 0 0 14px var(--gold-glow);
+        }
+        .copy-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 9px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+        }
+        .copy-btn:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: var(--bg-elevated);
+        }
+        .copy-btn.copied {
+            background: var(--green);
+            color: #000;
+            border-color: var(--green);
+        }
+
+        /* Code Tabs */
+        .code-tabs-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: -1px;
+            flex-wrap: wrap;
+        }
+        .code-tab-btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+        .code-tab-btn:hover {
+            color: var(--text-primary);
+            background: var(--bg-elevated);
+        }
+        .code-tab-btn.active {
+            background: var(--code-bg);
+            color: var(--red-400);
+            border-color: var(--border-subtle);
+            border-bottom: 2px solid var(--red-500);
+        }
+        .code-panel {
+            display: none;
+            background: var(--code-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+            padding: 18px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.8;
+            overflow-x: auto;
+            color: #c9d1d9;
+            position: relative;
+        }
+        .code-panel.active {
+            display: block;
+            animation: fadeSlideUp 0.3s ease;
+        }
+        .code-panel .comment {
+            color: #6e7681;
+            font-style: italic;
+        }
+        .code-panel .keyword {
+            color: #ff7b72;
+        }
+        .code-panel .string {
+            color: #a5d6ff;
+        }
+        .code-panel .func {
+            color: #d2a8ff;
+        }
+        .code-panel .var {
+            color: #ffa657;
+        }
+        .code-panel .url-highlight {
+            color: #7ee787;
+            font-weight: 500;
+        }
+        .code-panel .key-highlight {
+            color: var(--gold);
+            background: rgba(212, 165, 116, 0.08);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        .code-panel .response-label {
+            color: #8b949e;
+        }
+        .code-panel .json-key {
+            color: #79c0ff;
+        }
+        .code-panel .json-val {
+            color: #a5d6ff;
+        }
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .info-callout {
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--blue);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            padding: 14px 18px;
+            margin-top: 16px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        .info-callout strong {
+            color: var(--blue);
+        }
+        .info-callout i {
+            color: var(--amber);
+            margin-right: 4px;
+        }
+
+        .article-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 10px;
+            transition: all var(--transition-med);
+        }
+        .article-card:hover {
+            border-color: var(--red-glow);
+            box-shadow: var(--shadow-md);
+        }
+        .article-card h4 {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+        .article-preview {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-height: 55px;
+            overflow: hidden;
+            transition: max-height var(--transition-med);
+        }
+        .article-full {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            display: none;
+            margin-top: 8px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .article-card.expanded .article-preview {
+            max-height: 0;
+            overflow: hidden;
+        }
+        .article-card.expanded .article-full {
+            display: block;
+            animation: fadeSlideUp 0.3s ease;
+        }
+        .read-more {
+            display: inline-block;
+            margin-top: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--red-400);
+            cursor: pointer;
+            transition: color var(--transition-fast);
+        }
+        .read-more:hover {
+            color: var(--gold);
+        }
+        .star-rating {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            margin-top: 8px;
+        }
+        .star-rating .star {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            stroke: var(--text-muted);
+            fill: none;
+            stroke-width: 2;
+            transition: all var(--transition-fast);
+        }
+        .star-rating .star.filled {
+            fill: var(--gold);
+            stroke: var(--gold);
+        }
+        .star-rating .star:hover {
+            stroke: var(--gold);
+            fill: var(--gold);
+            transform: scale(1.2);
+        }
+        .rating-text {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+
+        .price-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .price-card {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 20px 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-med);
+            position: relative;
+        }
+        .price-card:hover {
+            border-color: var(--gold);
+            box-shadow: 0 0 18px var(--gold-glow);
+            transform: translateY(-2px);
+        }
+        .price-card.selected {
+            border-color: var(--gold);
+            box-shadow: 0 0 24px var(--gold-glow);
+            background: var(--bg-elevated);
+        }
+        .price-card .discount-badge {
+            position: absolute;
+            top: -7px;
+            right: -7px;
+            background: var(--red-400);
+            color: #fff;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            box-shadow: 0 0 8px var(--red-glow);
+        }
+        .plan-name {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        .plan-price {
+            font-family: var(--font-display);
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--gold);
+            margin: 6px 0;
+        }
+        .plan-price .original {
+            text-decoration: line-through;
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        .plan-features {
+            font-size: 10px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-med);
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            padding: 26px 22px;
+            width: 100%;
+            max-width: 420px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: modalIn 0.35s ease;
+            position: relative;
+        }
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.97);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .modal h3 {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .modal .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all var(--transition-fast);
+        }
+        .close-modal:hover {
+            border-color: var(--red-500);
+            color: var(--red-400);
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-size: 13px;
+            outline: none;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--red-500);
+            box-shadow: 0 0 0 3px var(--red-glow-soft);
+        }
+        .modal .btn {
+            width: 100%;
+            justify-content: center;
+            padding: 10px;
+            font-size: 13px;
+        }
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .payment-method-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 12px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .payment-method-card:hover,
+        .payment-method-card.selected {
+            border-color: var(--gold);
+            box-shadow: 0 0 12px var(--gold-glow);
+            background: var(--bg-elevated);
+        }
+        .pm-icon {
+            width: 30px;
+            height: 30px;
+            margin: 0 auto 5px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #fff;
+            font-size: 12px;
+        }
+        .pm-dana {
+            background: #108ee9;
+        }
+        .pm-tng {
+            background: #0052cc;
+        }
+        .pm-paypal {
+            background: #0070ba;
+        }
+        .qr-placeholder {
+            width: 120px;
+            height: 120px;
+            margin: 10px auto 0;
+            border: 2px dashed var(--border-subtle);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            gap: 4px;
+        }
+        .qr-placeholder svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--text-muted);
+            fill: none;
+            stroke-width: 1.5;
+            opacity: 0.5;
+        }
+        .qr-text {
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        .result-box {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            margin-top: 10px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: #34d399;
+            line-height: 1.6;
+        }
+        .result-box .label {
+            color: var(--text-muted);
+            font-size: 8px;
+            text-transform: uppercase;
+        }
+        .result-box .val {
+            color: var(--gold);
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px 24px;
+            border-top: 1px solid var(--border-color);
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 30px;
+            }
+            .header {
+                padding: 0 14px;
+            }
+            .api-endpoint-display {
+                font-size: 10px;
+            }
+            .code-tab-btn {
+                padding: 6px 10px;
+                font-size: 9px;
+            }
+            .code-panel {
+                font-size: 10px;
+                padding: 12px;
+            }
+            .api-key-display {
+                font-size: 9px;
+                padding: 6px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <a href="/" class="header-logo">
+            <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="17" stroke="#e63946" stroke-width="2.6"/><path d="M20 5v14l9 5" stroke="#ff4757" stroke-width="2.3" stroke-linecap="round"/><circle cx="20" cy="20" r="4.5" stroke="#d4a574" stroke-width="2"/><circle cx="20" cy="20" r="1.3" fill="#ff4757"/></svg>
+            <div class="logo-text">OXY<span>SINTX</span></div>
+        </a>
+        <div class="header-right">
+            <button class="lang-btn active" data-lang="en">EN</button>
+            <button class="lang-btn" data-lang="ms">BM</button>
+            <button class="lang-btn" data-lang="id">ID</button>
+            <button id="themeToggle" class="theme-btn" data-theme-icon><i class="fas fa-moon"></i></button>
+            <a href="/login.html" class="btn btn-outline">Log In</a>
+            <a href="/dashboard.html" class="btn btn-red">Dashboard</a>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <svg class="hero-logo-svg" viewBox="0 0 60 60" fill="none"><circle cx="30" cy="30" r="26" stroke="#e63946" stroke-width="3.2"/><path d="M30 6v20l14 8" stroke="#ff4757" stroke-width="3" stroke-linecap="round"/><circle cx="30" cy="30" r="7" stroke="#d4a574" stroke-width="2.5"/><circle cx="30" cy="30" r="2" fill="#ff4757"/></svg>
+        <div class="hero-badge">35 Web Security Modules</div>
+        <h1>The Ultimate <span class="red-text">Web Security</span> Testing <span class="gold-text">Framework</span></h1>
+        <p>Oxysintx combines 35 powerful web security testing modules into a single unified platform. From Nmap network scanning to advanced OSINT reconnaissance, vulnerability assessment, and comprehensive reporting — everything a security professional needs in one place. Deploy scans via our RESTful API, integrate into CI/CD pipelines, and automate your entire security testing workflow with a single API key.</p>
+        <div class="btn-group">
+            <a href="/login.html" class="btn btn-red">Get Started Free</a>
+            <button class="btn btn-gold" onclick="document.getElementById('modules').scrollIntoView({behavior:'smooth'});">Explore All 35 Modules</button>
+        </div>
+    </section>
+
+    <!-- 35 Modules -->
+    <section class="section" id="modules">
+        <div class="section-header"><h2>All 35 Web Security Modules</h2><p>Every tool integrated into Oxysintx — organized by category for efficient workflow and maximum coverage.</p></div>
+        <div style="text-align:center;margin-bottom:16px;"><button class="btn btn-red" id="showModulesBtn">Show All 35 Modules</button></div>
+        <div class="modules-grid" id="modulesGrid"></div>
+    </section>
+
+    <!-- Features -->
+    <section class="section" id="features">
+        <div class="section-header"><h2>Why Oxysintx Stands Apart</h2><p>Professional-grade security testing platform designed for real-world assessments and enterprise workflows.</p></div>
+        <div class="cards-grid">
+            <div class="card"><div class="card-icon"><i class="fas fa-magnifying-glass"></i></div><h4>Nmap Integration</h4><p>Full Nmap scanning engine built directly into the dashboard. Run SYN scans, service detection, OS fingerprinting, and NSE scripts from a clean graphical interface with real-time results and historical comparison.</p><span class="tag">Reconnaissance</span></div>
+            <div class="card"><div class="card-icon"><i class="fas fa-shield-halved"></i></div><h4>Web App Scanner</h4><p>Automated OWASP Top 10 vulnerability detection including SQL injection, XSS, CSRF, SSRF, and path traversal. Built-in proxy for manual testing workflows with request replay and payload mutation engine.</p><span class="tag">Web Security</span></div>
+            <div class="card"><div class="card-icon"><i class="fas fa-globe"></i></div><h4>OSINT Reconnaissance</h4><p>Username enumeration across 120+ platforms, email breach lookups, domain WHOIS history, social graph mapping, and reverse image search — all automated in one unified workflow with exportable reports.</p><span class="tag">OSINT</span></div>
+            <div class="card"><div class="card-icon"><i class="fas fa-code"></i></div><h4>API Security</h4><p>Test REST, GraphQL, and SOAP endpoints for authentication flaws, rate limiting, IDOR, and schema introspection. JWT analysis and OAuth flow testing included with automated fuzzing capabilities.</p><span class="tag">API</span></div>
+            <div class="card"><div class="card-icon"><i class="fas fa-file-alt"></i></div><h4>Compliance Reporting</h4><p>Generate detailed assessment reports with CVSS scoring, executive summaries, and remediation guidance mapped to PCI-DSS, HIPAA, and ISO 27001. Export as PDF, JSON, or integrate with ticketing systems.</p><span class="tag">Reporting</span></div>
+            <div class="card"><div class="card-icon"><i class="fas fa-lock"></i></div><h4>Credential Auditor</h4><p>Password strength assessment supporting NTLM, Kerberos, LDAP, and database authentication protocols. Hash identification with multiple cracking engine integrations and entropy-based analysis.</p><span class="tag">Authentication</span></div>
+        </div>
+    </section>
+
+    <!-- API Key & Integration Section — ENHANCED -->
+    <section class="section" id="api">
+        <div class="section-header">
+            <h2>API Key & Integration</h2>
+            <p>Use your API key to integrate Oxysintx into your CI/CD pipeline, automation scripts, or custom tooling. Full RESTful API with real-time scan status polling — works like Vercel API keys.</p>
+        </div>
+
+        <!-- API Hero Box -->
+        <div class="api-hero-box">
+            <h4 style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">Your Live API Endpoint</h4>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px;line-height:1.6;">
+                All requests are authenticated via <strong style="color:var(--gold);">Bearer token</strong> in the Authorization header. The base URL for all API calls is <code style="background:var(--inline-code-bg);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:10px;color:var(--blue);">http://node1.lunes.host:2381</code>. Keep your API key secure — never expose it in client-side code or public repositories.
+            </p>
+            <div class="api-endpoint-display">
+                <span class="api-method-badge">POST</span>
+                <span class="api-url-text">http://node1.lunes.host:2381/api/scan/start</span>
+            </div>
+            <div class="api-endpoint-display">
+                <span class="api-method-badge" style="background:var(--blue);">GET</span>
+                <span class="api-url-text">http://node1.lunes.host:2381/api/scan/{job_id}/status</span>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Your API Key:</span>
+                <span class="api-key-display" id="apiKeyDisplay" title="Click to copy API key">
+                    oxy_sk_live_69b215b08f66480295691864a0c9bf57bfed6903
+                </span>
+                <button class="copy-btn" id="copyApiKeyBtn"><i class="fas fa-copy"></i> Copy</button>
+                <span id="copyFeedback" style="font-size:9px;color:var(--green);opacity:0;transition:opacity 0.2s;">Copied!</span>
+            </div>
+            <div class="info-callout">
+                <i class="fas fa-lightbulb"></i> <strong>Pro Tip:</strong> The scan workflow is asynchronous. First <strong>start a scan</strong> (returns a <code style="background:var(--inline-code-bg);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:10px;">job_id</code>), then <strong>poll the status endpoint</strong> until the job reaches <code style="background:var(--inline-code-bg);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:10px;">"completed"</code> or <code style="background:var(--inline-code-bg);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:10px;">"failed"</code>. Results are returned as structured JSON with detailed findings for each tool executed.
+            </div>
+        </div>
+
+        <!-- Code Examples with Tabs -->
+        <h4 style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">Integration Examples</h4>
+        <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">Choose your preferred language below. Each example demonstrates the complete scan lifecycle: <strong>start → poll → retrieve results</strong>. The API key is passed via the <code style="background:var(--inline-code-bg);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:10px;">Authorization: Bearer</code> header on every request.</p>
+        <div class="code-tabs-nav">
+            <button class="code-tab-btn active" data-tab="tab-curl"><i class="fas fa-terminal"></i> cURL</button>
+            <button class="code-tab-btn" data-tab="tab-js"><i class="fab fa-js"></i> JavaScript</button>
+            <button class="code-tab-btn" data-tab="tab-python"><i class="fab fa-python"></i> Python</button>
+        </div>
+        <div class="code-panel active" id="tab-curl">
+            <span class="comment"># ─────────────────────────────────────────────</span><br>
+            <span class="comment"># Oxysintx API — cURL Integration Example</span><br>
+            <span class="comment"># Base URL: http://node1.lunes.host:2381</span><br>
+            <span class="comment"># Authentication: Bearer token in Authorization header</span><br>
+            <span class="comment"># ─────────────────────────────────────────────</span><br><br>
+            <span class="comment"># Step 1: Start a scan — this returns a job_id immediately</span><br>
+            <span class="keyword">curl</span> <span class="string">-X POST</span> <span class="url-highlight">http://node1.lunes.host:2381/api/scan/start</span> \<br>
+            &nbsp;&nbsp;<span class="string">-H</span> <span class="key-highlight">"Authorization: Bearer oxy_sk_live_69b215b08f66480295691864a0c9bf57bfed6903"</span> \<br>
+            &nbsp;&nbsp;<span class="string">-H</span> <span class="string">"Content-Type: application/json"</span> \<br>
+            &nbsp;&nbsp;<span class="string">-d</span> <span class="string">'{"target":"example.com","mode":"basic","tools":[]}'</span><br>
+            <span class="comment"># Response → { "job_id": "abc123" }</span><br><br>
+            <span class="comment"># Step 2: Poll for the result (repeat until status is "completed" or "failed")</span><br>
+            <span class="keyword">curl</span> <span class="url-highlight">http://node1.lunes.host:2381/api/scan/abc123/status</span> \<br>
+            &nbsp;&nbsp;<span class="string">-H</span> <span class="key-highlight">"Authorization: Bearer oxy_sk_live_69b215b08f66480295691864a0c9bf57bfed6903"</span><br>
+            <span class="comment"># Response → { "status": "completed", "results": { ... } }</span><br><br>
+            <span class="comment"># One-liner polling loop (bash):</span><br>
+            <span class="keyword">while</span> <span class="keyword">true</span>; <span class="keyword">do</span><br>
+            &nbsp;&nbsp;RESP=$(<span class="keyword">curl</span> <span class="string">-s</span> <span class="url-highlight">http://node1.lunes.host:2381/api/scan/abc123/status</span> \<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">-H</span> <span class="key-highlight">"Authorization: Bearer oxy_sk_live_69b215b08f66480295691864a0c9bf57bfed6903"</span>)<br>
+            &nbsp;&nbsp;STATUS=$(<span class="keyword">echo</span> <span class="var">$RESP</span> | <span class="keyword">jq -r</span> <span class="string">'.status'</span>)<br>
+            &nbsp;&nbsp;<span class="keyword">if</span> [ <span class="string">"$STATUS"</span> = <span class="string">"completed"</span> ] || [ <span class="string">"$STATUS"</span> = <span class="string">"failed"</span> ]; <span class="keyword">then</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">echo</span> <span class="var">$RESP</span> | <span class="keyword">jq</span> <span class="string">'.results'</span>; <span class="keyword">break</span>;<br>
+            &nbsp;&nbsp;<span class="keyword">fi</span>;<br>
+            &nbsp;&nbsp;<span class="keyword">sleep</span> 1;<br>
+            <span class="keyword">done</span>
+        </div>
+        <div class="code-panel" id="tab-js">
+            <span class="comment">// ─────────────────────────────────────────────</span><br>
+            <span class="comment">// Oxysintx API — JavaScript (fetch) Integration</span><br>
+            <span class="comment">// Base URL: http://node1.lunes.host:2381</span><br>
+            <span class="comment">// Authentication: Bearer token in Authorization header</span><br>
+            <span class="comment">// ─────────────────────────────────────────────</span><br><br>
+            <span class="keyword">const</span> <span class="var">BASE</span> = <span class="string">"http://node1.lunes.host:2381"</span>;<br>
+            <span class="keyword">const</span> <span class="var">TOKEN</span> = <span class="key-highlight">"oxy_sk_live_69b215b08f66480295691864a0c9bf57bfed6903"</span>;<br><br>
+            <span class="keyword">async function</span> <span class="func">runScan</span>(<span class="var">target</span>) {<br>
+            &nbsp;&nbsp;<span class="comment">// Step 1: Start the scan</span><br>
+            &nbsp;&nbsp;<span class="keyword">const</span> <span class="var">start</span> = <span class="keyword">await</span> <span class="func">fetch</span>(<span class="string">`${</span><span class="var">BASE</span><span class="string">}/api/scan/start`</span>, {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="var">method</span>: <span class="string">"POST"</span>,<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="var">headers</span>: {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"Authorization"</span>: <span class="string">`Bearer ${</span><span class="var">TOKEN</span><span class="string">}`</span>,<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"Content-Type"</span>: <span class="string">"application/json"</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;},<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="var">body</span>: <span class="func">JSON.stringify</span>({ <span class="var">target</span>, <span class="var">mode</span>: <span class="string">"basic"</span>, <span class="var">tools</span>: [] })<br>
+            &nbsp;&nbsp;}).<span class="func">then</span>(<span class="var">r</span> => <span class="var">r</span>.<span class="func">json</span>());<br><br>
+            &nbsp;&nbsp;<span class="comment">// Step 2: Poll until completed or failed</span><br>
+            &nbsp;&nbsp;<span class="keyword">let</span> <span class="var">job</span>;<br>
+            &nbsp;&nbsp;<span class="keyword">do</span> {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">await</span> <span class="keyword">new</span> <span class="func">Promise</span>(<span class="var">r</span> => <span class="func">setTimeout</span>(<span class="var">r</span>, <span class="var">1000</span>));<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="var">job</span> = <span class="keyword">await</span> <span class="func">fetch</span>(<span class="string">`${</span><span class="var">BASE</span><span class="string">}/api/scan/${</span><span class="var">start</span><span class="string">.job_id}/status`</span>, {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">headers</span>: { <span class="string">"Authorization"</span>: <span class="string">`Bearer ${</span><span class="var">TOKEN</span><span class="string">}`</span> }<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;}).<span class="func">then</span>(<span class="var">r</span> => <span class="var">r</span>.<span class="func">json</span>());<br>
+            &nbsp;&nbsp;} <span class="keyword">while</span> (<span class="var">job</span>.<span class="var">status</span> !== <span class="string">"completed"</span> && <span class="var">job</span>.<span class="var">status</span> !== <span class="string">"failed"</span>);<br><br>
+            &nbsp;&nbsp;<span class="comment">// Step 3: Return the results</span><br>
+            &nbsp;&nbsp;<span class="keyword">return</span> <span class="var">job</span>.<span class="var">results</span>;<br>
+            }<br><br>
+            <span class="comment">// Usage:</span><br>
+            <span class="func">runScan</span>(<span class="string">"example.com"</span>).<span class="func">then</span>(<span class="var">results</span> => <span class="func">console.log</span>(<span class="var">results</span>));
+        </div>
+        <div class="code-panel" id="tab-python">
+            <span class="comment"># ─────────────────────────────────────────────</span><br>
+            <span class="comment"># Oxysintx API — Python (requests) Integration</span><br>
+            <span class="comment"># Base URL: http://node1.lunes.host:2381</span><br>
+            <span class="comment"># Authentication: Bearer token in Authorization header</span><br>
+            <span class="comment"># ─────────────────────────────────────────────</span><br><br>
+            <span class="keyword">import</span> <span class="var">time</span><br>
+            <span class="keyword">import</span> <span class="var">requests</span><br><br>
+            <span class="var">BASE</span> = <span class="string">"http://node1.lunes.host:2381"</span><br>
+            <span class="var">TOKEN</span> = <span class="key-highlight">"oxy_sk_live_69b215b08f66480295691864a0c9bf57bfed6903"</span><br>
+            <span class="var">headers</span> = {<span class="string">"Authorization"</span>: <span class="string">f"Bearer {</span><span class="var">TOKEN</span><span class="string">}"</span>}<br><br>
+            <span class="comment"># Step 1: Start the scan</span><br>
+            <span class="var">start</span> = <span class="var">requests</span>.<span class="func">post</span>(<br>
+            &nbsp;&nbsp;<span class="string">f"{</span><span class="var">BASE</span><span class="string">}/api/scan/start"</span>,<br>
+            &nbsp;&nbsp;<span class="var">headers</span>=<span class="var">headers</span>,<br>
+            &nbsp;&nbsp;<span class="var">json</span>={<span class="string">"target"</span>: <span class="string">"example.com"</span>, <span class="string">"mode"</span>: <span class="string">"basic"</span>, <span class="string">"tools"</span>: []},<br>
+            ).<span class="func">json</span>()<br><br>
+            <span class="comment"># Step 2: Poll until completed or failed</span><br>
+            <span class="var">job</span> = {<span class="string">"status"</span>: <span class="string">"queued"</span>}<br>
+            <span class="keyword">while</span> <span class="var">job</span>.<span class="func">get</span>(<span class="string">"status"</span>) <span class="keyword">not in</span> (<span class="string">"completed"</span>, <span class="string">"failed"</span>):<br>
+            &nbsp;&nbsp;<span class="var">time</span>.<span class="func">sleep</span>(<span class="var">1</span>)<br>
+            &nbsp;&nbsp;<span class="var">job</span> = <span class="var">requests</span>.<span class="func">get</span>(<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">f"{</span><span class="var">BASE</span><span class="string">}/api/scan/{</span><span class="var">start</span><span class="string">['job_id']}/status"</span>,<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="var">headers</span>=<span class="var">headers</span>,<br>
+            &nbsp;&nbsp;).<span class="func">json</span>()<br><br>
+            <span class="comment"># Step 3: Print the results</span><br>
+            <span class="func">print</span>(<span class="var">job</span>.<span class="func">get</span>(<span class="string">"results"</span>))
+        </div>
+    </section>
+
+    <!-- Articles -->
+    <section class="section" id="articles">
+        <div class="section-header"><h2>Articles & Deep Dives</h2><p>Learn how each tool works and how to maximize its potential in your security assessments.</p></div>
+        <div class="article-card" id="article-xss">
+            <h4>Mastering XSS Detection with Oxysintx</h4>
+            <div class="article-preview">Oxysintx's XSS module uses a multi-stage detection engine that tests for reflected, stored, DOM-based, and blind cross-site scripting across all input vectors including headers, cookies, URL parameters, and POST bodies...</div>
+            <div class="article-full"><p>Oxysintx's XSS module uses a multi-stage detection engine that tests for reflected, stored, DOM-based, and blind cross-site scripting across all input vectors including headers, cookies, URL parameters, and POST bodies. The payload mutation engine generates thousands of context-aware test cases that bypass common WAF filters. Results are displayed with precise injection points highlighted, making remediation straightforward for development teams. The module also supports custom payload lists and integrates seamlessly with the API for automated CI/CD pipeline testing.</p></div>
+            <span class="read-more" data-article="article-xss">Read full article</span>
+            <div class="star-rating" data-article="article-xss">
+                <svg class="star" viewBox="0 0 24 24" data-value="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg class="star" viewBox="0 0 24 24" data-value="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg class="star" viewBox="0 0 24 24" data-value="3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg class="star" viewBox="0 0 24 24" data-value="4"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg class="star" viewBox="0 0 24 24" data-value="5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span class="rating-text">Rate this article</span>
+            </div>
+        </div>
+        <div class="article-card" id="article-api">
+            <h4>API Security Testing: REST, GraphQL & Beyond</h4>
+            <div class="article-preview">Modern web applications rely heavily on APIs. Oxysintx's API security module automatically discovers endpoints, tests authentication mechanisms, and validates authorization controls across REST, GraphQL, and SOAP interfaces...</div>
+            <div class="article-full"><p>Modern web applications rely heavily on APIs. Oxysintx's API security module automatically discovers endpoints, tests authentication mechanisms, and validates authorization controls across REST, GraphQL, and SOAP interfaces. The module performs schema introspection for GraphQL endpoints, tests for excessive data exposure, and validates rate limiting implementations. JWT tokens are analyzed for algorithm confusion, weak key usage, and expiration validation issues. Full integration with the Oxysintx API allows automated API security scans as part of your deployment pipeline.</p></div>
+            <span class="read-more" data-article="article-api">Read full article</span>
+            <div class="star-rating" data-article="article-api">
+                <svg class="star" viewBox="0 0 24 24" data-value="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg class="star" viewBox="0 0 24 24" data-value="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg class="star" viewBox="0 0 24 24" data-value="3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg class="star" viewBox="0 0 24 24" data-value="4"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg class="star" viewBox="0 0 24 24" data-value="5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span class="rating-text">Rate this article</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Plans -->
+    <section class="section" id="plans">
+        <div class="section-header"><h2>Choose Your Plan</h2><p>All plans include access to the core 35 web security modules and full API integration.</p></div>
+        <div class="price-cards" id="priceCardsContainer">
+            <div class="price-card" data-plan="free">
+                <div class="plan-name">Free</div><div class="plan-price">$0<span class="original">$9</span></div><div class="plan-features">Basic Access<br>10 Scans/day<br>Community Support<br>API Access (Limited)</div>
+            </div>
+            <div class="price-card" data-plan="partner">
+                <div class="discount-badge">-25%</div><div class="plan-name">Partner</div><div class="plan-price">$29<span class="original">$39</span></div><div class="plan-features">Advanced Tools<br>100 Scans/day<br>Priority Support<br>Full API Access<br>CI/CD Integration</div>
+            </div>
+            <div class="price-card" data-plan="premium">
+                <div class="discount-badge">-35%</div><div class="plan-name">Premium</div><div class="plan-price">$79<span class="original">$119</span></div><div class="plan-features">Full Suite<br>Unlimited Scans<br>Team Access<br>Dedicated Support<br>White Label<br>API Rate Limit: 1000/hr</div>
+            </div>
+        </div>
+        <div style="text-align:center;margin-top:16px;"><button class="btn btn-gold" id="buyPlanBtn">Buy Selected Plan</button></div>
+    </section>
+
+    <footer class="footer">Oxysintx &copy; 2026 — Professional Web Security Testing Suite. All tools for authorized use only. API endpoint: node1.lunes.host:2381 — Always keep your API key confidential and rotate it regularly.</footer>
+
+    <!-- Payment Modal -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal">
+            <button class="close-modal" id="closePaymentModal">&times;</button>
+            <h3>Complete Payment</h3>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;" id="paymentPlanInfo">Premium Plan — $79/mo</p>
+            <p style="font-size:10px;color:var(--text-muted);margin-bottom:6px;text-align:center;">Select payment method:</p>
+            <div class="payment-methods" id="paymentMethods">
+                <div class="payment-method-card selected" data-pm="dana"><div class="pm-icon pm-dana">D</div><div>Dana</div></div>
+                <div class="payment-method-card" data-pm="tng"><div class="pm-icon pm-tng">T</div><div>Touch 'n Go</div></div>
+                <div class="payment-method-card" data-pm="paypal"><div class="pm-icon pm-paypal">P</div><div>PayPal</div></div>
+            </div>
+            <div class="qr-placeholder">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span class="qr-text">Belum diisi</span>
+            </div>
+            <button class="btn btn-gold" style="margin-top:10px;" id="confirmPaymentBtn">Confirm Payment</button>
+            <button class="btn btn-outline" style="margin-top:5px;" id="cancelPaymentBtn">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // ─── Modules data ────────────────────────────────────
+        const modules = [
+            { name: "XSS Scanner", cat: "Injection" }, { name: "SQL Injection Tester", cat: "Injection" },
+            { name: "CSRF Detector", cat: "Auth" }, { name: "SSRF Probe", cat: "Server" },
+            { name: "JWT Analyzer", cat: "Auth" }, { name: "GraphQL Security", cat: "API" },
+            { name: "REST API Tester", cat: "API" }, { name: "SOAP Security", cat: "API" },
+            { name: "CORS Misconfig", cat: "Config" }, { name: "Clickjacking Test", cat: "UI" },
+            { name: "Host Header Injection", cat: "Server" }, { name: "Open Redirect", cat: "Logic" },
+            { name: "SSTI Detector", cat: "Injection" }, { name: "XXE Tester", cat: "XML" },
+            { name: "Deserialization Scan", cat: "Server" }, { name: "CRLF Injection", cat: "Server" },
+            { name: "Subdomain Takeover", cat: "Recon" }, { name: "Cookie Security", cat: "Config" },
+            { name: "CSP Analyzer", cat: "Config" }, { name: "Rate Limit Tester", cat: "Logic" },
+            { name: "Auth Bypass", cat: "Auth" }, { name: "IDOR Tester", cat: "Logic" },
+            { name: "LFI/RFI Scanner", cat: "Injection" }, { name: "Command Injection", cat: "Injection" },
+            { name: "Template Injection", cat: "Injection" }, { name: "Cache Poisoning", cat: "Server" },
+            { name: "Web Cache Deception", cat: "Server" }, { name: "Request Smuggling", cat: "Server" },
+            { name: "Param Pollution", cat: "Injection" }, { name: "XML Injection", cat: "XML" },
+            { name: "DOM XSS Finder", cat: "Injection" }, { name: "WebSocket Security", cat: "API" },
+            { name: "File Upload Test", cat: "Logic" }, { name: "Directory Traversal", cat: "Injection" },
+            { name: "Security Headers", cat: "Config" }
+        ];
+        const grid = document.getElementById('modulesGrid');
+        let allShown = false;
+
+        function renderMods(show) {
+            const items = show ? modules : modules.slice(0, 10);
+            grid.innerHTML = items.map(m =>
+                `<div class="module-card"><svg class="mod-icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8" fill="none"/><line x1="7" y1="8" x2="17" y2="8" stroke="currentColor" stroke-width="1.2"/><line x1="7" y1="12" x2="17" y2="12" stroke="currentColor" stroke-width="1.2"/><line x1="7" y1="16" x2="13" y2="16" stroke="currentColor" stroke-width="1.2"/></svg><div class="mod-name">${m.name}</div><div class="mod-cat">${m.cat}</div></div>`
+            ).join('');
+            if (show) grid.innerHTML +=
+                '<div style="text-align:center;grid-column:1/-1;padding:8px;color:var(--text-muted);font-size:10px;">All 35 modules displayed</div>';
+            allShown = show;
+            document.getElementById('showModulesBtn').textContent = show ? 'Showing All 35' : 'Show All 35 Modules';
+        }
+        renderMods(false);
+        document.getElementById('showModulesBtn').addEventListener('click', () => { renderMods(!allShown); });
+
+        // ─── Article expand/collapse ────────────────────────
+        document.querySelectorAll('.read-more').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.article;
+                const card = document.getElementById(id);
+                card.classList.toggle('expanded');
+                const lang = localStorage.getItem('oxysintx_lang') || 'en';
+                const txt = { en: { expand: 'Read full article', collapse: 'Collapse' }, ms: { expand: 'Baca artikel penuh',
+                        collapse: 'Tutup' }, id: { expand: 'Baca artikel lengkap', collapse: 'Tutup' } };
+                this.textContent = card.classList.contains('expanded') ? (txt[lang]?.collapse || 'Collapse') : (txt[
+                    lang]?.expand || 'Read full article');
+            });
+        });
+
+        // ─── Star ratings ───────────────────────────────────
+        document.querySelectorAll('.star-rating').forEach(g => {
+            const article = g.dataset.article;
+            const saved = localStorage.getItem('oxystar_' + article);
+            const stars = g.querySelectorAll('.star');
+            if (saved) {
+                stars.forEach(s => { if (+s.dataset.value <= +saved) s.classList.add('filled'); });
+                g.querySelector('.rating-text').textContent = 'Rated: ' + saved + '/5';
+            }
+            stars.forEach(s => s.addEventListener('click', function() {
+                const val = +this.dataset.value;
+                stars.forEach(st => st.classList.toggle('filled', +st.dataset.value <= val));
+                g.querySelector('.rating-text').textContent = 'Rated: ' + val + '/5';
+                localStorage.setItem('oxystar_' + article, val);
+            }));
+        });
+
+        // ─── Code Tabs ──────────────────────────────────────
+        document.querySelectorAll('.code-tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                document.querySelectorAll('.code-tab-btn').forEach(b => b.classList.remove(
+                'active'));
+                this.classList.add('active');
+                document.querySelectorAll('.code-panel').forEach(p => p.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // ─── Copy API Key ───────────────────────────────────
+        const apiKeyDisplay = document.getElementById('apiKeyDisplay');
+        const copyBtn = document.getElementById('copyApiKeyBtn');
+        const copyFeedback = document.getElementById('copyFeedback');
+        const apiKeyValue = 'oxy_sk_live_69b215b08f66480295691864a0c9bf57bfed6903';
+
+        function copyApiKey() {
+            navigator.clipboard.writeText(apiKeyValue).then(() => {
+                copyFeedback.style.opacity = '1';
+                copyBtn.classList.add('copied');
+                copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied';
+                setTimeout(() => {
+                    copyFeedback.style.opacity = '0';
+                    copyBtn.classList.remove('copied');
+                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                }, 2000);
+            }).catch(() => {
+                alert('Failed to copy. Please copy manually: ' + apiKeyValue);
+            });
+        }
+        copyBtn.addEventListener('click', copyApiKey);
+        apiKeyDisplay.addEventListener('click', copyApiKey);
+
+        // ─── Plan selection & payment ───────────────────────
+        const priceCards = document.querySelectorAll('#priceCardsContainer .price-card');
+        let selectedPlan = 'free';
+        priceCards.forEach(c => c.addEventListener('click', function() {
+            priceCards.forEach(x => x.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedPlan = this.dataset.plan;
+        }));
+        document.getElementById('buyPlanBtn').addEventListener('click', () => {
+            if (selectedPlan === 'free') {
+                window.location.href = '/login.html';
+                return;
+            }
+            const prices = { partner: { p: '$29', o: '$39' }, premium: { p: '$79', o: '$119' } };
+            const p = prices[selectedPlan];
+            document.getElementById('paymentPlanInfo').textContent =
+                `${selectedPlan.charAt(0).toUpperCase()+selectedPlan.slice(1)} Plan — ${p.p}/mo (was ${p.o})`;
+            document.getElementById('paymentModal').classList.add('active');
+        });
+        document.getElementById('closePaymentModal').addEventListener('click', () => document.getElementById(
+            'paymentModal').classList.remove('active'));
+        document.getElementById('cancelPaymentBtn').addEventListener('click', () => document.getElementById('paymentModal')
+            .classList.remove('active'));
+        document.getElementById('paymentModal').addEventListener('click', function(e) { if (e.target === this) this
+                .classList.remove('active'); });
+        document.getElementById('confirmPaymentBtn').addEventListener('click', () => {
+            alert('Payment confirmed (simulated). Thank you! Your API key is now active with full rate limits.');
+            document.getElementById('paymentModal').classList.remove('active');
+        });
+        document.querySelectorAll('#paymentMethods .payment-method-card').forEach(c => c.addEventListener('click',
+            function() {
+                document.querySelectorAll('#paymentMethods .payment-method-card').forEach(x => x.classList.remove(
+                    'selected'));
+                this.classList.add('selected');
+            }));
+
+        // ─── Theme toggle ──────────────────────────────────
+        (function() {
+            const root = document.documentElement;
+            const stored = localStorage.getItem('oxysintx-theme') || 'dark';
+            root.setAttribute('data-theme', stored);
+
+            function updateIcon() {
+                const icon = document.querySelector('#themeToggle i');
+                icon.className = root.getAttribute('data-theme') === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+            }
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                root.setAttribute('data-theme', next);
+                localStorage.setItem('oxysintx-theme', next);
+                updateIcon();
+            });
+            updateIcon();
+        })();
+
+        // ─── Language switcher ─────────────────────────────
+        const i18n = {
+            en: {
+                hero_badge: '35 Web Security Modules',
+                hero_title: 'The Ultimate <span class="red-text">Web Security</span> Testing <span class="gold-text">Framework</span>',
+                hero_desc: 'Oxysintx combines 35 powerful web security testing modules into a single unified platform. Deploy scans via our RESTful API, integrate into CI/CD pipelines, and automate your entire security testing workflow.',
+                hero_cta: 'Get Started Free',
+                hero_explore: 'Explore All 35 Modules',
+                mod_title: 'All 35 Web Security Modules',
+                mod_desc: 'Every tool integrated into Oxysintx — organized by category.',
+                feat_title: 'Why Oxysintx Stands Apart',
+                feat_desc: 'Professional-grade security testing platform.',
+                art_title: 'Articles & Deep Dives',
+                art_desc: 'Learn how each tool works.',
+                plans_title: 'Choose Your Plan',
+                plans_desc: 'All plans include 35 modules & API access.',
+                footer: 'Oxysintx © 2026 — Professional Web Security Testing Suite. API endpoint: node1.lunes.host:2381'
+            },
+            ms: {
+                hero_badge: '35 Modul Keselamatan Web',
+                hero_title: 'Rangka Kerja <span class="red-text">Keselamatan Web</span> <span class="gold-text">Terunggul</span>',
+                hero_desc: 'Oxysintx menggabungkan 35 modul ujian keselamatan web yang berkuasa ke dalam satu platform bersatu. Gunakan API RESTful kami untuk automasi penuh.',
+                hero_cta: 'Mula Percuma',
+                hero_explore: 'Terokai 35 Modul',
+                mod_title: 'Semua 35 Modul Web',
+                mod_desc: 'Setiap alat dalam Oxysintx — disusun mengikut kategori.',
+                feat_title: 'Mengapa Oxysintx Menonjol',
+                feat_desc: 'Platform ujian keselamatan gred profesional.',
+                art_title: 'Artikel & Perbincangan',
+                art_desc: 'Ketahui cara setiap alat berfungsi.',
+                plans_title: 'Pilih Pelan Anda',
+                plans_desc: 'Semua pelan termasuk 35 modul & akses API.',
+                footer: 'Oxysintx © 2026 — Suite Ujian Keselamatan Web Profesional. Endpoint API: node1.lunes.host:2381'
+            },
+            id: {
+                hero_badge: '35 Modul Keamanan Web',
+                hero_title: 'Framework <span class="red-text">Keamanan Web</span> <span class="gold-text">Terbaik</span>',
+                hero_desc: 'Oxysintx menggabungkan 35 modul pengujian keamanan web yang kuat ke dalam satu platform terpadu. Gunakan API RESTful kami untuk otomatisasi penuh.',
+                hero_cta: 'Mulai Gratis',
+                hero_explore: 'Jelajahi 35 Modul',
+                mod_title: 'Semua 35 Modul Web',
+                mod_desc: 'Setiap alat dalam Oxysintx — disusun berdasarkan kategori.',
+                feat_title: 'Mengapa Oxysintx Menonjol',
+                feat_desc: 'Platform pengujian keamanan kelas profesional.',
+                art_title: 'Artikel & Pembahasan',
+                art_desc: 'Pelajari cara setiap alat bekerja.',
+                plans_title: 'Pilih Paket Anda',
+                plans_desc: 'Semua paket termasuk 35 modul & akses API.',
+                footer: 'Oxysintx © 2026 — Suite Pengujian Keamanan Web Profesional. Endpoint API: node1.lunes.host:2381'
+            }
+        };
+        let curLang = localStorage.getItem('oxysintx_lang') || 'en';
+
+        function applyLang(lang) {
+            curLang = lang;
+            localStorage.setItem('oxysintx_lang', lang);
+            const t = i18n[lang] || i18n.en;
+            document.querySelector('.hero-badge').textContent = t.hero_badge;
+            document.querySelector('.hero h1').innerHTML = t.hero_title;
+            document.querySelector('.hero p').textContent = t.hero_desc;
+            document.querySelector('.hero .btn-red').textContent = t.hero_cta;
+            document.querySelector('.hero .btn-gold').textContent = t.hero_explore;
+            document.querySelector('#modules .section-header h2').textContent = t.mod_title;
+            document.querySelector('#modules .section-header p').textContent = t.mod_desc;
+            document.querySelector('#features .section-header h2').textContent = t.feat_title;
+            document.querySelector('#features .section-header p').textContent = t.feat_desc;
+            document.querySelector('#articles .section-header h2').textContent = t.art_title;
+            document.querySelector('#articles .section-header p').textContent = t.art_desc;
+            document.querySelector('#plans .section-header h2').textContent = t.plans_title;
+            document.querySelector('#plans .section-header p').textContent = t.plans_desc;
+            document.querySelector('.footer').textContent = t.footer;
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+            document.querySelectorAll('.read-more').forEach(b => {
+                const card = document.getElementById(b.dataset.article);
+                const expand = lang === 'ms' ? 'Baca artikel penuh' : (lang === 'id' ? 'Baca artikel lengkap' :
+                    'Read full article');
+                const collapse = lang === 'ms' ? 'Tutup' : (lang === 'id' ? 'Tutup' : 'Collapse');
+                b.textContent = card.classList.contains('expanded') ? collapse : expand;
+            });
+        }
+        document.querySelectorAll('.lang-btn').forEach(b => b.addEventListener('click', () => applyLang(b.dataset.lang)));
+        applyLang(curLang);
+    </script>
+</body>
+</html>

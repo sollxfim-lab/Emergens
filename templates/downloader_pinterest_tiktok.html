@@ -1,0 +1,1935 @@
+<!-- templates/data_main.html -->
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergens · Downloader TikTok & Pinterest</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400..700&family=Playfair+Display:ital,wght@0,600..800;1,500..700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
+
+    <style>
+        :root {
+            --font-ui: 'Inter', system-ui, sans-serif;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1e40af;
+            --blue-800: #172554;
+
+            --blue-glow: rgba(59, 130, 246, 0.3);
+            --blue-glow-soft: rgba(59, 130, 246, 0.13);
+
+            --gold: #d4a574;
+            --gold-light: #e7cd9f;
+
+            --green: #4fb488;
+            --green-glow: rgba(79, 180, 136, 0.18);
+
+            --steel: #5a9aa6;
+            --steel-glow: rgba(90, 154, 166, 0.2);
+
+            --radius-sm: 8px;
+            --radius-md: 13px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+
+            --transition-fast: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-med: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 600ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #020617;
+            --bg-secondary: #0b1220;
+            --bg-tertiary: #111827;
+            --bg-elevated: #1e293b;
+
+            --border-color: #1e293b;
+            --border-subtle: #334155;
+
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+
+            --shadow-md: 0 10px 32px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 26px 70px rgba(0, 0, 0, 0.65);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            background-image:
+                radial-gradient(1200px 780px at 12% -10%, var(--blue-glow-soft), transparent 60%),
+                radial-gradient(800px 500px at 95% 10%, rgba(90, 154, 166, 0.08), transparent 55%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            -webkit-font-smoothing: antialiased;
+            padding: 20px 20px 80px;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-subtle); }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        /* ===== Boot Loading Overlay ===== */
+        .boot-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        .boot-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .boot-logo {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .boot-logo svg {
+            width: 70px;
+            height: 70px;
+            filter: drop-shadow(0 0 20px var(--blue-glow));
+            animation: bootPulse 1.8s ease-in-out infinite;
+        }
+        @keyframes bootPulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px var(--blue-glow)); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 28px var(--blue-glow)); }
+        }
+        .boot-title {
+            font-family: var(--font-display);
+            font-size: 1.7rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: var(--text-primary);
+        }
+        .boot-title span {
+            color: var(--blue-400);
+        }
+        .boot-loader {
+            width: 220px;
+            height: 3px;
+            background: var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .boot-loader::after {
+            content: "";
+            position: absolute;
+            left: -60%;
+            top: 0;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--blue-500), var(--blue-400));
+            border-radius: 10px;
+            animation: bootSlide 1.2s ease-in-out infinite;
+        }
+        @keyframes bootSlide {
+            0% { left: -60%; }
+            100% { left: 120%; }
+        }
+        .boot-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* ===== Top Bar / Profile ===== */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            background: linear-gradient(145deg, var(--bg-secondary), var(--bg-tertiary));
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 14px 20px;
+            box-shadow: var(--shadow-md);
+        }
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .top-bar-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .top-bar-icon svg {
+            width: 34px;
+            height: 34px;
+            filter: drop-shadow(0 0 10px var(--blue-glow));
+        }
+        .top-bar-title {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+        .top-bar-title span {
+            color: var(--blue-400);
+        }
+        .profile-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 6px 14px 6px 6px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .profile-btn:hover {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 0 3px var(--blue-glow-soft);
+        }
+        .profile-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-700));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1.25;
+        }
+        .profile-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .profile-role {
+            font-size: 0.65rem;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
+        }
+        .profile-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .profile-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 240px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+            display: none;
+            overflow: hidden;
+            animation: fadeIn 0.25s ease;
+        }
+        .profile-menu.open {
+            display: block;
+        }
+        .profile-menu-header {
+            padding: 18px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .profile-menu-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-700));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 800;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .profile-menu-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+        .profile-menu-username {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+        .profile-menu-role-badge {
+            display: inline-block;
+            width: fit-content;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border: 1px solid rgba(212, 165, 116, 0.4);
+            color: var(--gold);
+            background: rgba(212, 165, 116, 0.08);
+        }
+        .profile-menu-items {
+            padding: 8px;
+        }
+        .profile-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.82rem;
+            transition: all var(--transition-fast);
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+        .profile-menu-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .profile-menu-item.danger {
+            color: var(--blue-400);
+        }
+        .profile-menu-item.danger:hover {
+            background: rgba(59, 130, 246, 0.08);
+        }
+        .profile-menu-item i {
+            width: 16px;
+            text-align: center;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: linear-gradient(145deg, var(--bg-secondary), var(--bg-tertiary));
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 26px 24px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: 10%;
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, var(--blue-glow-soft), transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .header-icon {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-icon svg {
+            width: 48px;
+            height: 48px;
+            filter: drop-shadow(0 0 12px var(--blue-glow));
+        }
+
+        .header h1 {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .header h1 span {
+            color: var(--blue-400);
+        }
+
+        .header-sub {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== Card ===== */
+        .card {
+            background: linear-gradient(160deg, var(--bg-secondary), var(--bg-tertiary));
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .card:hover {
+            border-color: var(--border-subtle);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-title {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-title i {
+            color: var(--blue-400);
+            font-size: 1.3rem;
+        }
+
+        .card-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            min-width: 240px;
+            position: relative;
+        }
+
+        .input-wrapper .fa-link,
+        .input-wrapper .fa-magnifying-glass {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 13px 16px 13px 40px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .input-wrapper input::placeholder {
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        .input-wrapper input:focus {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 0 3px var(--blue-glow);
+        }
+
+        .btn {
+            background: var(--blue-500);
+            color: #fff;
+            border: none;
+            padding: 13px 22px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: var(--blue-400);
+            box-shadow: 0 8px 26px var(--blue-glow);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-elevated);
+            border-color: var(--blue-500);
+            box-shadow: none;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .btn-outline:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        /* ===== History Section ===== */
+        .history-section {
+            margin-top: 18px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
+        }
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .history-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .history-title i {
+            color: var(--blue-400);
+        }
+        .history-clear-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color var(--transition-fast);
+            font-family: inherit;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+        }
+        .history-clear-btn:hover {
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+        }
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            transition: all var(--transition-fast);
+        }
+        .history-item:hover {
+            border-color: var(--blue-500);
+            background: var(--bg-elevated);
+        }
+        .history-item-icon {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: var(--blue-glow-soft);
+            color: var(--blue-400);
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+        .history-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .history-item-text {
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .history-item-time {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .history-item-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .history-action-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid var(--border-subtle);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            transition: all var(--transition-fast);
+        }
+        .history-action-btn:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+        }
+        .history-empty {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            padding: 16px;
+        }
+
+        /* ===== Result area ===== */
+        .result-area {
+            margin-top: 20px;
+            min-height: 60px;
+        }
+
+        .loading-spinner {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--blue-500);
+            animation: spin 0.8s linear infinite;
+            margin: 30px auto;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-msg {
+            color: var(--blue-400);
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .success-msg {
+            color: var(--green);
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 20px;
+            font-size: 0.9rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== TikTok result ===== */
+        .tiktok-result {
+            display: flex;
+            gap: 20px;
+            animation: fadeIn 0.4s ease;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .tiktok-video-wrapper {
+            position: relative;
+            flex: 1;
+            min-width: 260px;
+            max-width: 400px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            background: #000;
+        }
+
+        .tiktok-result video {
+            width: 100%;
+            display: block;
+            aspect-ratio: 9 / 16;
+            object-fit: cover;
+            background: #000;
+        }
+
+        .tiktok-info {
+            flex: 1.2;
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .tiktok-author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tiktok-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-tertiary);
+        }
+
+        .tiktok-author-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tiktok-author-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .tiktok-author-id {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .tiktok-stats {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .tiktok-stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .tiktok-stat i {
+            color: var(--blue-400);
+            font-size: 0.7rem;
+        }
+
+        .tiktok-caption {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            border: 1px solid var(--border-color);
+        }
+
+        .download-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .download-btns {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .video-meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .video-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* ===== Pinterest grid ===== */
+        .pinterest-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .pin-card {
+            position: relative;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            background: var(--bg-elevated);
+            transition: transform var(--transition-med), box-shadow var(--transition-med), border-color var(--transition-med);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pin-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--blue-500);
+        }
+
+        .pin-media {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            background: var(--bg-tertiary);
+        }
+
+        .pin-media img {
+            width: 100%;
+            height: 260px;
+            object-fit: cover;
+            display: block;
+            transition: transform var(--transition-med);
+        }
+
+        .pin-card:hover .pin-media img {
+            transform: scale(1.08);
+        }
+
+        .pin-media::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.55) 0%, transparent 40%);
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+            pointer-events: none;
+        }
+
+        .pin-card:hover .pin-media::after {
+            opacity: 1;
+        }
+
+        .pin-type-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.65);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .pin-reactions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.65);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .pin-reactions i {
+            color: var(--blue-400);
+        }
+
+        .pin-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px;
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity var(--transition-fast), transform var(--transition-fast);
+            z-index: 4;
+        }
+
+        .pin-card:hover .pin-overlay {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .pin-overlay a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 7px 12px;
+            border-radius: 6px;
+            transition: background var(--transition-fast);
+            flex: 1;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .pin-overlay a:hover {
+            background: var(--blue-500);
+        }
+
+        .pin-body {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .pin-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--text-primary);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 2.4em;
+        }
+
+        .pin-description {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .pin-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .pinner-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pinner-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-tertiary);
+        }
+
+        .pinner-details {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .pinner-name {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pinner-stats {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .board-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
+            padding: 4px 10px;
+            border-radius: 20px;
+            width: fit-content;
+        }
+
+        .board-info i {
+            color: var(--gold);
+            font-size: 0.65rem;
+        }
+
+        .pin-date {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ===== Toast ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-left: 4px solid var(--blue-500);
+            color: var(--text-primary);
+            padding: 12px 18px;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-md);
+            font-size: 0.85rem;
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.success { border-left-color: var(--green); }
+        .toast.error { border-left-color: var(--blue-400); }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ===== Modal preview ===== */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal img {
+            max-width: 90vw;
+            max-height: 85vh;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+
+        @media (max-width: 700px) {
+            .header h1 { font-size: 1.5rem; }
+            .input-group { flex-direction: column; }
+            .btn { justify-content: center; }
+            .tiktok-result { flex-direction: column; }
+            .tiktok-video-wrapper { max-width: 100%; }
+            .pinterest-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+            .pin-media img { height: 200px; }
+            .top-bar { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Boot Loading Overlay -->
+    <div class="boot-overlay" id="bootOverlay">
+        <div class="boot-logo">
+            <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="bootBoltGrad" x1="0" y1="0" x2="60" y2="60">
+                        <stop offset="0" stop-color="#60a5fa"/>
+                        <stop offset="1" stop-color="#1e40af"/>
+                    </linearGradient>
+                </defs>
+                <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#bootBoltGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <div class="boot-title">EMER<span>GENS</span></div>
+        <div class="boot-loader"></div>
+        <div class="boot-text">Memuat modul downloader…</div>
+    </div>
+
+    <div class="container">
+        <!-- Top Bar with Profile -->
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div class="top-bar-icon">
+                    <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="topBoltGrad" x1="0" y1="0" x2="60" y2="60">
+                                <stop offset="0" stop-color="#60a5fa"/>
+                                <stop offset="1" stop-color="#1e40af"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#topBoltGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="top-bar-title">EMER<span>GENS</span></div>
+            </div>
+            <div class="profile-dropdown" id="profileDropdown">
+                <button class="profile-btn" id="profileBtn" type="button">
+                    <div class="profile-avatar" id="profileAvatar">--</div>
+                    <div class="profile-info">
+                        <span class="profile-name" id="profileName">Loading...</span>
+                        <span class="profile-role" id="profileRole">--</span>
+                    </div>
+                    <i class="fas fa-chevron-down" style="font-size: 0.65rem; color: var(--text-muted);"></i>
+                </button>
+                <div class="profile-menu" id="profileMenu">
+                    <div class="profile-menu-header">
+                        <div class="profile-menu-avatar" id="profileMenuAvatar">--</div>
+                        <div class="profile-menu-details">
+                            <div class="profile-menu-username" id="profileMenuUsername">--</div>
+                            <span class="profile-menu-role-badge" id="profileMenuRole">--</span>
+                        </div>
+                    </div>
+                    <div class="profile-menu-items">
+                        <a href="/dashboard.html" class="profile-menu-item">
+                            <i class="fas fa-house"></i> Dashboard
+                        </a>
+                        <button class="profile-menu-item" id="clearAllHistoryBtn" type="button">
+                            <i class="fas fa-trash-can"></i> Clear History
+                        </button>
+                        <button class="profile-menu-item danger" id="logoutBtn" type="button">
+                            <i class="fas fa-right-from-bracket"></i> Log Out
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="header">
+            <div class="header-icon">
+                <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M30 6v24m0 0l14 8m-14-8l-14 8" stroke="#60a5fa" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M12 30v16a4 4 0 004 4h28a4 4 0 004-4V30" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+                    <circle cx="30" cy="24" r="6" stroke="#d4a574" stroke-width="2.5"/>
+                    <circle cx="30" cy="24" r="1.5" fill="#60a5fa"/>
+                </svg>
+            </div>
+            <div>
+                <h1>EMER<span>GENS</span> Downloader</h1>
+                <div class="header-sub">TikTok & Pinterest Media Downloader</div>
+            </div>
+        </div>
+
+        <!-- TikTok -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fab fa-tiktok"></i> TikTok Downloader
+            </div>
+            <p class="card-desc">Tempel URL video TikTok dan dapatkan pratinjau serta tautan unduhan.</p>
+            <div class="input-group">
+                <div class="input-wrapper">
+                    <i class="fas fa-link"></i>
+                    <input type="url" id="tiktokUrl" placeholder="Contoh: https://vt.tiktok.com/ZSjXNEnbC/" />
+                </div>
+                <button class="btn" id="tiktokBtn">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            </div>
+            <div id="tiktokResult" class="result-area"></div>
+            <!-- TikTok History -->
+            <div class="history-section" id="tiktokHistorySection">
+                <div class="history-header">
+                    <div class="history-title"><i class="fas fa-clock-rotate-left"></i> Riwayat TikTok</div>
+                    <button class="history-clear-btn" id="clearTikTokHistory" type="button"><i class="fas fa-trash-can"></i> Bersihkan</button>
+                </div>
+                <div class="history-list" id="tiktokHistoryList"></div>
+            </div>
+        </div>
+
+        <!-- Pinterest -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fab fa-pinterest"></i> Pinterest Search
+            </div>
+            <p class="card-desc">Cari gambar Pinterest berdasarkan kata kunci dan simpan dalam galeri.</p>
+            <div class="input-group">
+                <div class="input-wrapper">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" id="pinterestQuery" placeholder="Contoh: aesthetic wallpaper" />
+                </div>
+                <button class="btn" id="pinterestBtn">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            <div id="pinterestResult" class="result-area"></div>
+            <!-- Pinterest History -->
+            <div class="history-section" id="pinterestHistorySection">
+                <div class="history-header">
+                    <div class="history-title"><i class="fas fa-clock-rotate-left"></i> Riwayat Pinterest</div>
+                    <button class="history-clear-btn" id="clearPinterestHistory" type="button"><i class="fas fa-trash-can"></i> Bersihkan</button>
+                </div>
+                <div class="history-list" id="pinterestHistoryList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Preview -->
+    <div class="modal" id="imageModal">
+        <span class="modal-close" id="modalClose">&times;</span>
+        <img id="modalImage" src="" alt="Preview">
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        const $ = (selector) => document.querySelector(selector);
+
+        // ------------------------------------------------------------------
+        // History Store (localStorage)
+        // ------------------------------------------------------------------
+        const HISTORY_KEY = 'emergens_downloader_history';
+
+        function loadHistory() {
+            try {
+                const raw = localStorage.getItem(HISTORY_KEY);
+                if (raw) return JSON.parse(raw);
+            } catch (e) {}
+            return { tiktok: [], pinterest: [] };
+        }
+
+        function saveHistoryEntry(section, entry) {
+            const history = loadHistory();
+            history[section].unshift({
+                text: entry.text,
+                url: entry.url || '',
+                time: new Date().toISOString(),
+                type: entry.type || 'search'
+            });
+            // Limit to 25 entries per section
+            if (history[section].length > 25) {
+                history[section] = history[section].slice(0, 25);
+            }
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            renderHistory();
+        }
+
+        function deleteHistoryEntry(section, index) {
+            const history = loadHistory();
+            if (history[section] && history[section][index]) {
+                history[section].splice(index, 1);
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                renderHistory();
+            }
+        }
+
+        function clearHistorySection(section) {
+            const history = loadHistory();
+            history[section] = [];
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            renderHistory();
+            showToast('Riwayat dibersihkan.', 'success');
+        }
+
+        function clearAllHistory() {
+            localStorage.setItem(HISTORY_KEY, JSON.stringify({ tiktok: [], pinterest: [] }));
+            renderHistory();
+            showToast('Semua riwayat dibersihkan.', 'success');
+            closeProfileMenu();
+        }
+
+        function renderHistory() {
+            const history = loadHistory();
+            renderHistorySection('tiktok', history.tiktok, $('#tiktokHistoryList'), $('#tiktokHistorySection'));
+            renderHistorySection('pinterest', history.pinterest, $('#pinterestHistoryList'), $('#pinterestHistorySection'));
+        }
+
+        function renderHistorySection(section, items, listEl, sectionEl) {
+            if (!listEl) return;
+            if (!items || items.length === 0) {
+                listEl.innerHTML = '<div class="history-empty"><i class="fas fa-inbox"></i> Belum ada riwayat.</div>';
+                if (sectionEl) sectionEl.style.display = 'block';
+                return;
+            }
+            listEl.innerHTML = '';
+            items.forEach((item, index) => {
+                const icon = section === 'tiktok' ? 'fa-brands fa-tiktok' : 'fa-brands fa-pinterest';
+                const timeStr = formatHistoryTime(item.time);
+                const itemEl = document.createElement('div');
+                itemEl.className = 'history-item';
+                itemEl.innerHTML = `
+                    <div class="history-item-icon"><i class="fab ${icon}"></i></div>
+                    <div class="history-item-content">
+                        <div class="history-item-text">${escapeHtml(item.text)}</div>
+                        <div class="history-item-time"><i class="fas fa-clock"></i> ${escapeHtml(timeStr)}</div>
+                    </div>
+                    <div class="history-item-actions">
+                        <button class="history-action-btn" title="Salin URL" onclick="event.stopPropagation(); copyHistoryUrl(${index}, '${section}')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="history-action-btn" title="Hapus" onclick="event.stopPropagation(); deleteHistoryEntry('${section}', ${index})">
+                            <i class="fas fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+                itemEl.addEventListener('click', () => {
+                    if (section === 'tiktok') {
+                        $('#tiktokUrl').value = item.url || item.text;
+                    } else {
+                        $('#pinterestQuery').value = item.text;
+                    }
+                    showToast('Diterapkan ke input.', 'success');
+                });
+                itemEl.style.cursor = 'pointer';
+                listEl.appendChild(itemEl);
+            });
+        }
+
+        function formatHistoryTime(isoStr) {
+            try {
+                const date = new Date(isoStr);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMin = Math.floor(diffMs / 60000);
+                if (diffMin < 1) return 'Baru saja';
+                if (diffMin < 60) return `${diffMin} menit lalu`;
+                const diffHr = Math.floor(diffMin / 60);
+                if (diffHr < 24) return `${diffHr} jam lalu`;
+                const diffDay = Math.floor(diffHr / 24);
+                if (diffDay < 7) return `${diffDay} hari lalu`;
+                return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            } catch (e) {
+                return '';
+            }
+        }
+
+        window.copyHistoryUrl = function(index, section) {
+            const history = loadHistory();
+            const item = history[section] && history[section][index];
+            if (item) {
+                const textToCopy = item.url || item.text;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showToast('Tersalin ke clipboard.', 'success');
+                }).catch(() => {
+                    showToast('Gagal menyalin.', 'error');
+                });
+            }
+        };
+
+        // ------------------------------------------------------------------
+        // Utility
+        // ------------------------------------------------------------------
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatCount(value) {
+            if (value === null || value === undefined || value === '') return '0';
+            const str = String(value).trim();
+            if (/[KMB]$/i.test(str)) return str;
+            const num = Number(str);
+            if (isNaN(num)) return str;
+            return num.toLocaleString('id-ID');
+        }
+
+        function formatDuration(ms) {
+            const totalSeconds = Math.floor(Number(ms || 0) / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            if (minutes > 0) {
+                return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+            return `${seconds} detik`;
+        }
+
+        function showToast(message, type = 'info') {
+            const container = $('#toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle';
+            toast.innerHTML = `<i class="fas ${icon}"></i> ${escapeHtml(message)}`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function showLoading(container) {
+            container.innerHTML = '<div class="loading-spinner"></div>';
+        }
+
+        function setButtonLoading(btn, loading, loadingText, originalHTML) {
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${loadingText}`;
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        async function handleFetch(url, btn, resultSelector, renderFn) {
+            const resultEl = $(resultSelector);
+            const originalHTML = btn.innerHTML;
+            setButtonLoading(btn, true, 'Loading...', originalHTML);
+            showLoading(resultEl);
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) {
+                    const errData = await resp.json().catch(() => ({}));
+                    throw new Error(errData.error || `HTTP ${resp.status}`);
+                }
+                const data = await resp.json();
+                renderFn(data, resultEl);
+            } catch (err) {
+                resultEl.innerHTML = `<p class="error-msg"><i class="fas fa-exclamation-triangle"></i> Gagal memuat: ${escapeHtml(err.message)}</p>`;
+                showToast(`Gagal: ${err.message}`, 'error');
+            } finally {
+                setButtonLoading(btn, false, '', originalHTML);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // TikTok
+        // ------------------------------------------------------------------
+        $('#tiktokBtn').addEventListener('click', () => {
+            const url = $('#tiktokUrl').value.trim();
+            if (!url) {
+                showToast('Masukkan URL TikTok terlebih dahulu.', 'error');
+                return;
+            }
+            saveHistoryEntry('tiktok', { text: url, url: url, type: 'search' });
+            const btn = $('#tiktokBtn');
+            const apiUrl = `/api/downloader/tiktok?url=${encodeURIComponent(url)}`;
+            handleFetch(apiUrl, btn, '#tiktokResult', renderTikTok);
+        });
+
+        function renderTikTok(data, container) {
+            const d = data?.data || data;
+            const videoUrl = d.no_watermark_link_hd || d.no_watermark_link || d.play || d.watermark_link || '';
+            const coverUrl = d.cover_link || d.origin_cover || d.author_cover_link || '';
+
+            if (!videoUrl) {
+                container.innerHTML = '<p class="error-msg">Data tidak ditemukan. Pastikan URL valid.</p>';
+                return;
+            }
+
+            const authorName = d.author_nickname || '';
+            const authorId = d.author_unique_id || '';
+            const authorAvatar = d.author_cover_link || '';
+            const caption = d.text || '';
+            const duration = d.duration || 0;
+            const likes = d.like_count !== undefined ? d.like_count : '0';
+            const plays = d.play_count !== undefined ? d.play_count : '0';
+            const comments = d.comment_count !== undefined ? d.comment_count : '0';
+            const shares = d.share_count !== undefined ? d.share_count : '0';
+            const itemId = d.item_id || '';
+            const originalUrl = d.original || '';
+
+            if (videoUrl) {
+                saveHistoryEntry('tiktok', { text: videoUrl, url: videoUrl, type: 'download' });
+            }
+
+            const statsHtml = `
+                <span class="tiktok-stat"><i class="fas fa-play"></i> ${escapeHtml(formatCount(plays))}</span>
+                <span class="tiktok-stat"><i class="fas fa-heart"></i> ${escapeHtml(formatCount(likes))}</span>
+                <span class="tiktok-stat"><i class="fas fa-comment"></i> ${escapeHtml(formatCount(comments))}</span>
+                <span class="tiktok-stat"><i class="fas fa-share"></i> ${escapeHtml(formatCount(shares))}</span>
+            `;
+
+            let downloadButtons = '';
+            if (d.no_watermark_link_hd) {
+                downloadButtons += `
+                    <a href="${escapeHtml(d.no_watermark_link_hd)}" download target="_blank" class="btn btn-secondary">
+                        <i class="fas fa-download"></i> HD No Watermark
+                    </a>
+                `;
+            }
+            if (d.no_watermark_link) {
+                downloadButtons += `
+                    <a href="${escapeHtml(d.no_watermark_link)}" download target="_blank" class="btn btn-secondary">
+                        <i class="fas fa-download"></i> No Watermark
+                    </a>
+                `;
+            }
+            if (d.watermark_link) {
+                downloadButtons += `
+                    <a href="${escapeHtml(d.watermark_link)}" download target="_blank" class="btn btn-outline">
+                        <i class="fas fa-download"></i> Watermark
+                    </a>
+                `;
+            }
+            if (d.music_link) {
+                downloadButtons += `
+                    <a href="${escapeHtml(d.music_link)}" download target="_blank" class="btn btn-outline">
+                        <i class="fas fa-music"></i> Audio
+                    </a>
+                `;
+            }
+
+            let authorHtml = '';
+            if (authorName) {
+                authorHtml = `
+                    <div class="tiktok-author">
+                        ${authorAvatar ? `<img class="tiktok-avatar" src="${escapeHtml(authorAvatar)}" alt="${escapeHtml(authorName)}" loading="lazy" />` : '<i class="fas fa-user-circle" style="font-size: 42px; color: var(--text-muted);"></i>'}
+                        <div class="tiktok-author-info">
+                            <div class="tiktok-author-name">${escapeHtml(authorName)}</div>
+                            ${authorId ? `<div class="tiktok-author-id">@${escapeHtml(authorId)}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            let metaHtml = '';
+            if (duration) {
+                metaHtml += `<span class="video-badge"><i class="fas fa-clock"></i> ${escapeHtml(formatDuration(duration))}</span>`;
+            }
+            if (itemId) {
+                metaHtml += `<span class="video-badge"><i class="fas fa-id-badge"></i> ID: ${escapeHtml(itemId)}</span>`;
+            }
+            if (originalUrl) {
+                metaHtml += `
+                    <a href="${escapeHtml(originalUrl)}" target="_blank" class="video-badge" style="text-decoration: none; color: var(--steel);">
+                        <i class="fab fa-tiktok"></i> Lihat asli
+                    </a>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="tiktok-result">
+                    <div class="tiktok-video-wrapper">
+                        <video controls poster="${escapeHtml(coverUrl)}" src="${escapeHtml(videoUrl)}"></video>
+                    </div>
+                    <div class="tiktok-info">
+                        ${authorHtml}
+                        <div class="tiktok-stats">
+                            ${statsHtml}
+                        </div>
+                        ${caption ? `<div class="tiktok-caption">${escapeHtml(caption)}</div>` : ''}
+                        <div class="video-meta">
+                            ${metaHtml}
+                        </div>
+                        <div class="download-section">
+                            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+                                <i class="fas fa-download" style="color: var(--blue-400);"></i> Pilih Kualitas Download:
+                            </div>
+                            <div class="download-btns">
+                                ${downloadButtons || '<span class="video-badge">Tidak ada link download</span>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            showToast('TikTok berhasil dimuat.', 'success');
+        }
+
+        // ------------------------------------------------------------------
+        // Pinterest
+        // ------------------------------------------------------------------
+        $('#pinterestBtn').addEventListener('click', () => {
+            const query = $('#pinterestQuery').value.trim();
+            if (!query) {
+                showToast('Masukkan kata kunci pencarian.', 'error');
+                return;
+            }
+            saveHistoryEntry('pinterest', { text: query, url: '', type: 'search' });
+            const btn = $('#pinterestBtn');
+            const apiUrl = `/api/downloader/pinterest?q=${encodeURIComponent(query)}`;
+            handleFetch(apiUrl, btn, '#pinterestResult', renderPinterest);
+        });
+
+        function renderPinterest(data, container) {
+            let pins = [];
+            if (Array.isArray(data)) {
+                pins = data;
+            } else if (data?.data && Array.isArray(data.data)) {
+                pins = data.data;
+            } else if (data?.result && Array.isArray(data.result)) {
+                pins = data.result;
+            }
+
+            if (!pins.length) {
+                container.innerHTML = '<p class="empty-state"><i class="fas fa-inbox"></i> Tidak ada hasil ditemukan.</p>';
+                return;
+            }
+
+            const grid = document.createElement('div');
+            grid.className = 'pinterest-grid';
+
+            pins.forEach(pin => {
+                const imgUrl = pin.image_url || pin.image || pin.images?.orig?.url || pin.media?.images?.orig?.url || '';
+                const pinUrl = pin.pin || pin.link || pin.url || '#';
+                const title = pin.grid_title || pin.title || pin.seo_alt_text || pin.description || 'Pin';
+                const description = (pin.description && pin.description.trim()) ? pin.description.trim() : '';
+                const pinner = pin.pinner || {};
+                const board = pin.board || {};
+                const reactions = pin.reaction_counts || {};
+                const totalReactions = Object.values(reactions).reduce((sum, num) => sum + Number(num || 0), 0);
+                const pinType = pin.type || (pin.video_url ? 'video' : pin.gif_url ? 'gif' : 'image');
+                const pinDate = pin.created_at || '';
+                const dominantColor = pin.dominant_color || '';
+
+                if (!imgUrl) return;
+
+                const avatarUrl = pinner.image_small_url || pinner.image_medium_url || '';
+                const pinnerName = pinner.full_name || pinner.username || '';
+                const pinnerUsername = pinner.username || '';
+                const followerCount = pinner.follower_count || 0;
+                const boardName = board.name || '';
+                const boardPinCount = board.pin_count || 0;
+
+                const card = document.createElement('div');
+                card.className = 'pin-card';
+                card.style.setProperty('--dominant', dominantColor);
+
+                let typeIcon = 'fa-image';
+                if (pinType === 'video') typeIcon = 'fa-video';
+                else if (pinType === 'gif') typeIcon = 'fa-file-video';
+
+                let pinnerHtml = '';
+                if (pinnerName) {
+                    pinnerHtml = `
+                        <div class="pinner-info">
+                            ${avatarUrl ? `<img class="pinner-avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(pinnerName)}" loading="lazy" />` : '<i class="fas fa-user-circle" style="font-size: 28px; color: var(--text-muted);"></i>'}
+                            <div class="pinner-details">
+                                <div class="pinner-name">${escapeHtml(pinnerName)}</div>
+                                <div class="pinner-stats">${pinnerUsername ? '@' + escapeHtml(pinnerUsername) : ''} ${followerCount ? '· ' + formatCount(followerCount) + ' pengikut' : ''}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                let boardHtml = '';
+                if (boardName) {
+                    boardHtml = `
+                        <div class="board-info">
+                            <i class="fas fa-layer-group"></i>
+                            ${escapeHtml(boardName)} ${boardPinCount ? '· ' + formatCount(boardPinCount) + ' pin' : ''}
+                        </div>
+                    `;
+                }
+
+                let dateHtml = '';
+                if (pinDate) {
+                    dateHtml = `<div class="pin-date"><i class="fas fa-calendar-alt"></i> ${escapeHtml(pinDate)}</div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="pin-media">
+                        <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(title)}" loading="lazy" />
+                        <div class="pin-type-badge"><i class="fas ${typeIcon}"></i> ${pinType}</div>
+                        ${totalReactions ? `<div class="pin-reactions"><i class="fas fa-heart"></i> ${formatCount(totalReactions)}</div>` : ''}
+                        <div class="pin-overlay">
+                            <a href="${escapeHtml(imgUrl)}" download target="_blank" title="Unduh gambar">
+                                <i class="fas fa-download"></i> Simpan
+                            </a>
+                            <a href="${escapeHtml(pinUrl)}" target="_blank" title="Lihat di Pinterest">
+                                <i class="fab fa-pinterest"></i> Sumber
+                            </a>
+                            <a href="#" onclick="event.preventDefault(); openModal('${escapeHtml(imgUrl)}')" title="Pratinjau">
+                                <i class="fas fa-eye"></i> Lihat
+                            </a>
+                        </div>
+                    </div>
+                    <div class="pin-body">
+                        <div class="pin-title">${escapeHtml(title)}</div>
+                        ${description ? `<div class="pin-description">${escapeHtml(description)}</div>` : ''}
+                        <div class="pin-meta">
+                            ${pinnerHtml}
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                                ${boardHtml}
+                                ${dateHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('a')) return;
+                    openModal(imgUrl);
+                });
+
+                grid.appendChild(card);
+            });
+
+            container.innerHTML = '';
+            container.appendChild(grid);
+            showToast(`Ditemukan ${pins.length} pin.`, 'success');
+        }
+
+        // ------------------------------------------------------------------
+        // Modal Preview
+        // ------------------------------------------------------------------
+        function openModal(src) {
+            const modal = $('#imageModal');
+            const modalImg = $('#modalImage');
+            modalImg.src = src;
+            modal.classList.add('active');
+        }
+
+        $('#modalClose').addEventListener('click', () => {
+            $('#imageModal').classList.remove('active');
+        });
+
+        $('#imageModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                $('#imageModal').classList.remove('active');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                $('#imageModal').classList.remove('active');
+                closeProfileMenu();
+            }
+        });
+
+        // ------------------------------------------------------------------
+        // Profile Dropdown
+        // ------------------------------------------------------------------
+        function openProfileMenu() {
+            $('#profileMenu').classList.add('open');
+        }
+
+        function closeProfileMenu() {
+            $('#profileMenu').classList.remove('open');
+        }
+
+        $('#profileBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if ($('#profileMenu').classList.contains('open')) {
+                closeProfileMenu();
+            } else {
+                openProfileMenu();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.profile-dropdown')) {
+                closeProfileMenu();
+            }
+        });
+
+        // ------------------------------------------------------------------
+        // Profile data loading
+        // ------------------------------------------------------------------
+        async function loadProfile() {
+            try {
+                const res = await fetch('/api/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    const username = data.username || 'user';
+                    const role = data.role || 'member';
+                    const initial = username.trim().charAt(0).toUpperCase() || '?';
+                    $('#profileAvatar').textContent = initial;
+                    $('#profileName').textContent = username;
+                    $('#profileRole').textContent = role;
+                    $('#profileMenuAvatar').textContent = initial;
+                    $('#profileMenuUsername').textContent = username;
+                    $('#profileMenuRole').textContent = role;
+                } else {
+                    setProfileFallback();
+                }
+            } catch (e) {
+                setProfileFallback();
+            }
+        }
+
+        function setProfileFallback() {
+            $('#profileAvatar').textContent = '?';
+            $('#profileName').textContent = 'Guest';
+            $('#profileRole').textContent = 'unknown';
+            $('#profileMenuAvatar').textContent = '?';
+            $('#profileMenuUsername').textContent = 'Guest';
+            $('#profileMenuRole').textContent = 'unknown';
+        }
+
+        // ------------------------------------------------------------------
+        // Logout
+        // ------------------------------------------------------------------
+        $('#logoutBtn').addEventListener('click', async () => {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+            } catch (e) {}
+            window.location.href = '/login.html';
+        });
+
+        // ------------------------------------------------------------------
+        // Clear history buttons
+        // ------------------------------------------------------------------
+        $('#clearTikTokHistory').addEventListener('click', () => {
+            clearHistorySection('tiktok');
+        });
+
+        $('#clearPinterestHistory').addEventListener('click', () => {
+            clearHistorySection('pinterest');
+        });
+
+        $('#clearAllHistoryBtn').addEventListener('click', () => {
+            clearAllHistory();
+        });
+
+        // ------------------------------------------------------------------
+        // Boot animation + initial setup
+        // ------------------------------------------------------------------
+        async function bootApp() {
+            renderHistory();
+            loadProfile();
+
+            // Wait a bit for the boot animation to feel intentional
+            await new Promise(resolve => setTimeout(resolve, 1800));
+
+            const overlay = $('#bootOverlay');
+            overlay.classList.add('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            bootApp();
+        });
+    </script>
+</body>
+</html>
