@@ -66,6 +66,11 @@ class Config:
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
     # -------------------------------------------------------------------------
+    # DeepSeek (AI Chat)
+    # -------------------------------------------------------------------------
+    DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+
+    # -------------------------------------------------------------------------
     # Telegram
     # -------------------------------------------------------------------------
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
