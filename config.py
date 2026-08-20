@@ -1,8 +1,11 @@
 """
-Oxysintx Configuration
+Oxysintx / Emergens Configuration
 
 Values are read from environment variables first, with safe defaults.
 For local development, copy .env.example to .env and set values there.
+
+This module exposes a `Config` class so other modules can import it
+as: from config import Config
 """
 
 import os
@@ -14,60 +17,63 @@ try:
 except ImportError:
     pass
 
-# ---------------------------------------------------------------------------
-# Detect Vercel (read-only filesystem, use /tmp)
-# ---------------------------------------------------------------------------
-IS_VERCEL = os.environ.get("VERCEL") == "1"
 
-PROJECT_ROOT = Path(__file__).parent
+class Config:
+    """Central configuration for the Flask application."""
 
-# ---------------------------------------------------------------------------
-# Flask
-# ---------------------------------------------------------------------------
-SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
+    # -------------------------------------------------------------------------
+    # Paths
+    # -------------------------------------------------------------------------
+    PROJECT_ROOT = Path(__file__).parent
 
-# Port only used for local dev (not Vercel)
-PORT = int(os.environ.get("PORT", "3052"))
+    # -------------------------------------------------------------------------
+    # Flask
+    # -------------------------------------------------------------------------
+    SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
+    PORT = int(os.environ.get("PORT", "3052"))
 
-# Session config
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
-
-# ---------------------------------------------------------------------------
-# Instance & database paths
-# ---------------------------------------------------------------------------
-if IS_VERCEL:
-    INSTANCE_DIR = Path("/tmp")
-else:
+    # -------------------------------------------------------------------------
+    # Instance directory (writable local directory for SQLite, logs, etc.)
+    # -------------------------------------------------------------------------
     INSTANCE_DIR = PROJECT_ROOT / "instance"
 
+    # -------------------------------------------------------------------------
+    # Database paths
+    # -------------------------------------------------------------------------
+    USERS_DB_PATH = os.environ.get("USERS_DB_PATH", str(INSTANCE_DIR / "users.db"))
+    HISTORY_DB_PATH = os.environ.get("HISTORY_DB_PATH", str(INSTANCE_DIR / "history.db"))
+    CHAT_DB_PATH = os.environ.get("CHAT_DB_PATH", str(INSTANCE_DIR / "chat.db"))
+
+    # -------------------------------------------------------------------------
+    # Logging
+    # -------------------------------------------------------------------------
+    SERVER_LOG_FILE = os.environ.get(
+        "SERVER_LOG_FILE",
+        str(INSTANCE_DIR / "server.log")
+    )
+
+    # -------------------------------------------------------------------------
+    # Anthropic (AI Chat)
+    # -------------------------------------------------------------------------
+    ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+
+    # -------------------------------------------------------------------------
+    # Telegram
+    # -------------------------------------------------------------------------
+    TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+
+    # -------------------------------------------------------------------------
+    # Data directories
+    # -------------------------------------------------------------------------
+    USERDATA_DIR = os.environ.get("USERDATA_DIR", str(PROJECT_ROOT / "userdata"))
+    LISTSCHOOL_DIR = os.environ.get("LISTSCHOOL_DIR", str(PROJECT_ROOT / "listschool"))
+
+
+# ---------------------------------------------------------------------------
+# Ensure writable directories exist (safe for Render, local, and serverless)
+# ---------------------------------------------------------------------------
 try:
-    INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
+    Config.INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
 except OSError:
+    # Permission error or read-only filesystem — ignore during import
     pass
-
-USERS_DB_PATH = os.environ.get("USERS_DB_PATH", str(INSTANCE_DIR / "users.db"))
-HISTORY_DB_PATH = os.environ.get("HISTORY_DB_PATH", str(INSTANCE_DIR / "history.db"))
-CHAT_DB_PATH = os.environ.get("CHAT_DB_PATH", str(INSTANCE_DIR / "chat.db"))
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-SERVER_LOG_FILE = os.environ.get("SERVER_LOG_FILE", str(INSTANCE_DIR / "server.log"))
-
-# ---------------------------------------------------------------------------
-# Anthropic (AI Chat)
-# ---------------------------------------------------------------------------
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-
-# ---------------------------------------------------------------------------
-# Telegram
-# ---------------------------------------------------------------------------
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-
-# ---------------------------------------------------------------------------
-# Directories for scan data
-# ---------------------------------------------------------------------------
-USERDATA_DIR = os.environ.get("USERDATA_DIR", str(PROJECT_ROOT / "userdata"))
-LISTSCHOOL_DIR = os.environ.get("LISTSCHOOL_DIR", str(PROJECT_ROOT / "listschool"))
