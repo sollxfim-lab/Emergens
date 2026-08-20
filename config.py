@@ -26,6 +26,9 @@ class Config:
     # -------------------------------------------------------------------------
     PROJECT_ROOT = Path(__file__).parent
 
+    # Alias used by some modules (e.g. ai_chat, telegram)
+    BASE_DIR = PROJECT_ROOT
+
     # -------------------------------------------------------------------------
     # Flask
     # -------------------------------------------------------------------------
@@ -73,12 +76,16 @@ class Config:
     USERDATA_DIR = os.environ.get("USERDATA_DIR", str(PROJECT_ROOT / "userdata"))
     LISTSCHOOL_DIR = os.environ.get("LISTSCHOOL_DIR", str(PROJECT_ROOT / "listschool"))
 
+    # Generic data directory used by some modules
+    DATA_DIR = PROJECT_ROOT / "data"
+
 
 # ---------------------------------------------------------------------------
 # Ensure writable directories exist (safe for Render, local, and serverless)
 # ---------------------------------------------------------------------------
 try:
     Config.INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
+    Config.DATA_DIR.mkdir(parents=True, exist_ok=True)
 except OSError:
     # Permission error or read-only filesystem — ignore during import
     pass
