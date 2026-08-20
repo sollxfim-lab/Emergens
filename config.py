@@ -6,6 +6,9 @@ For local development, copy .env.example to .env and set values there.
 
 This module exposes a `Config` class so other modules can import it
 as: from config import Config
+
+Supports both local (Render, VPS) and Vercel (read-only filesystem)
+deployments by switching INSTANCE_DIR to /tmp when VERCEL=1.
 """
 
 import os
@@ -30,6 +33,11 @@ class Config:
     BASE_DIR = PROJECT_ROOT
 
     # -------------------------------------------------------------------------
+    # Vercel detection (read-only filesystem → use /tmp for writable files)
+    # -------------------------------------------------------------------------
+    IS_VERCEL = os.environ.get("VERCEL", "").lower() in ("1", "true", "yes")
+
+    # -------------------------------------------------------------------------
     # Flask
     # -------------------------------------------------------------------------
     SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
@@ -38,7 +46,10 @@ class Config:
     # -------------------------------------------------------------------------
     # Instance directory (writable local directory for SQLite, logs, etc.)
     # -------------------------------------------------------------------------
-    INSTANCE_DIR = PROJECT_ROOT / "instance"
+    if IS_VERCEL:
+        INSTANCE_DIR = Path("/tmp")
+    else:
+        INSTANCE_DIR = PROJECT_ROOT / "instance"
 
     # -------------------------------------------------------------------------
     # Database paths
@@ -69,6 +80,8 @@ class Config:
     # DeepSeek (AI Chat)
     # -------------------------------------------------------------------------
     DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+    DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://app.siputzx.my.id/v1")
+    DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
     # -------------------------------------------------------------------------
     # Telegram
