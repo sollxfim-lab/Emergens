@@ -44,6 +44,11 @@ class Config:
     HISTORY_DB_PATH = os.environ.get("HISTORY_DB_PATH", str(INSTANCE_DIR / "history.db"))
     CHAT_DB_PATH = os.environ.get("CHAT_DB_PATH", str(INSTANCE_DIR / "chat.db"))
 
+    # Aliases for modules that use shorter attribute names
+    USERS_DB = USERS_DB_PATH
+    HISTORY_DB = HISTORY_DB_PATH
+    CHAT_DB = CHAT_DB_PATH
+
     # -------------------------------------------------------------------------
     # Logging
     # -------------------------------------------------------------------------
