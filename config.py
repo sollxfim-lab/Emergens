@@ -15,8 +15,10 @@ except ImportError:
     pass
 
 # ---------------------------------------------------------------------------
-# Paths
+# Detect Vercel (read-only filesystem, use /tmp)
 # ---------------------------------------------------------------------------
+IS_VERCEL = os.environ.get("VERCEL") == "1"
+
 PROJECT_ROOT = Path(__file__).parent
 
 # ---------------------------------------------------------------------------
@@ -33,21 +35,21 @@ SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
 
 # ---------------------------------------------------------------------------
-# Database (SQLite for local, MySQL if configured)
+# Instance & database paths
 # ---------------------------------------------------------------------------
-DATABASE_URL = os.environ.get("DATABASE_URL", None)  # Set to MySQL URL if available
+if IS_VERCEL:
+    INSTANCE_DIR = Path("/tmp")
+else:
+    INSTANCE_DIR = PROJECT_ROOT / "instance"
 
-# SQLite paths
-INSTANCE_DIR = PROJECT_ROOT / "instance"
-USERS_DB_PATH = os.environ.get("USERS_DB_PATH", str(INSTANCE_DIR / "users.db"))
-HISTORY_DB_PATH = os.environ.get("HISTORY_DB_PATH", str(INSTANCE_DIR / "history.db"))
-CHAT_DB_PATH = os.environ.get("CHAT_DB_PATH", str(INSTANCE_DIR / "chat.db"))
-
-# Ensure instance dir exists (skip on serverless read-only FS)
 try:
     INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
 except OSError:
     pass
+
+USERS_DB_PATH = os.environ.get("USERS_DB_PATH", str(INSTANCE_DIR / "users.db"))
+HISTORY_DB_PATH = os.environ.get("HISTORY_DB_PATH", str(INSTANCE_DIR / "history.db"))
+CHAT_DB_PATH = os.environ.get("CHAT_DB_PATH", str(INSTANCE_DIR / "chat.db"))
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -68,4 +70,4 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 # Directories for scan data
 # ---------------------------------------------------------------------------
 USERDATA_DIR = os.environ.get("USERDATA_DIR", str(PROJECT_ROOT / "userdata"))
-LISTSCHOOL_DIR = os.environ.get("LISTSCHOOL_DIR", str(PROJECT_ROOT / "listschool"))
+LISTSCHOOL_DIR = os.environ.get("LISTSCHOOL_DIR", str(PROJECT_ROOT / "listschool"))L_DIR", str(PROJECT_ROOT / "listschool"))
