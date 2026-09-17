@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bot — Emergens</title>
+    <meta name="description" content="Secure console for your Emergens WhatsApp bot — authenticate, upload credentials, and monitor live status and logs.">
+    <meta name="theme-color" content="#030712">
+    <meta name="color-scheme" content="dark light">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%23030712'/%3E%3Cpath d='M33 4L14 34h11l-4 22 22-30H32l5-22z' fill='%2360a5fa'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @font-face {
+            font-family: 'Space Grotesk';
+            src: url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Road Rage';
+            src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+    </style>
+    <style>
+        /* ============================================================
+           EMERGENS — WHATSAPP BOT CONSOLE (v6.2)
+           Theme: unified with login · payment · management · privacy · terms
+           ============================================================ */
+
+        :root {
+            --font-display: 'Road Rage', 'Space Grotesk', sans-serif;
+            --font-body: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Space Grotesk', 'Courier New', monospace;
+
+            --blue-300: #93c5fd;
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1e40af;
+            --blue-800: #172554;
+            --blue-glow: rgba(59, 130, 246, 0.3);
+            --blue-glow-soft: rgba(59, 130, 246, 0.12);
+
+            --gold: #d4a574;
+            --gold-light: #e7cd9f;
+            --gold-dark: #b8945f;
+            --gold-glow: rgba(212, 165, 116, 0.25);
+            --gold-glow-soft: rgba(212, 165, 116, 0.1);
+
+            --green: #34d399;
+            --green-glow: rgba(52, 211, 153, 0.22);
+            --amber: #fbbf24;
+            --amber-glow: rgba(251, 191, 36, 0.22);
+            --red: #f87171;
+            --red-glow: rgba(248, 113, 113, 0.22);
+            --steel: #5a9aa6;
+            --steel-glow: rgba(90, 154, 166, 0.22);
+
+            --radius-xs: 6px;
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+            --radius-full: 9999px;
+
+            --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-med: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-slow: 700ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #030712;
+            --bg-secondary: #0a0f1e;
+            --bg-tertiary: #111827;
+            --bg-elevated: #1a2332;
+            --border-color: #1e293b;
+            --border-subtle: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --text-faint: #475569;
+            --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.45);
+            --card-bg: linear-gradient(160deg, rgba(26, 35, 50, 0.95), rgba(10, 15, 30, 0.98));
+            --glass-bg: rgba(10, 15, 30, 0.85);
+            --glass-border: rgba(59, 130, 246, 0.15);
+            --input-bg: #0a0f1e;
+            --code-bg: #0d0f1a;
+            --shape-opacity: 0.06;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #eef2f7;
+            --bg-elevated: #ffffff;
+            --border-color: #d1d9e6;
+            --border-subtle: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --text-faint: #94a3b8;
+            --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+            --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+            --shadow-xl: 0 32px 80px rgba(15, 23, 42, 0.15), 0 8px 24px rgba(15, 23, 42, 0.08);
+            --card-bg: linear-gradient(160deg, #ffffff, #f8fafc);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(59, 130, 246, 0.1);
+            --input-bg: #f8fafc;
+            --code-bg: #1a2234;
+            --shape-opacity: 0.03;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 76px 20px 40px;
+            transition: background var(--transition-slow), color var(--transition-slow);
+        }
+        h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); letter-spacing: -0.02em; }
+        button, input { font-family: var(--font-body); }
+        button { cursor: pointer; }
+        button:focus-visible, input:focus-visible, a:focus-visible {
+            outline: 2px solid var(--blue-500);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+        [hidden] { display: none !important; }
+        a { text-decoration: none; color: inherit; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--blue-500); }
+
+        /* ============================================================
+           BACKGROUNDS
+           ============================================================ */
+        .bg-orb {
+            position: fixed; border-radius: 50%;
+            filter: blur(140px); pointer-events: none;
+            z-index: 0; opacity: 0.04;
+        }
+        .bg-orb-1 { width: 700px; height: 700px; background: var(--blue-600); top: -200px; right: -200px; }
+        .bg-orb-2 { width: 500px; height: 500px; background: var(--blue-700); bottom: -150px; left: -100px; }
+        [data-theme="light"] .bg-orb { opacity: 0.02; }
+
+        .grid-overlay {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+        }
+
+        /* ============================================================
+           THEME TOGGLE
+           ============================================================ */
+        .theme-toggle {
+            position: fixed;
+            top: 22px; right: 22px;
+            z-index: 50;
+            width: 40px; height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-med);
+        }
+        .theme-toggle:hover {
+            color: var(--blue-400);
+            border-color: var(--blue-500);
+            background: var(--blue-glow-soft);
+            transform: translateY(-2px) rotate(15deg);
+            box-shadow: 0 0 20px var(--blue-glow);
+        }
+
+        /* ============================================================
+           CARD
+           ============================================================ */
+        .ws-card {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 560px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 36px 32px;
+            box-shadow: var(--shadow-lg);
+            animation: fadeSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(22px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ws-brand {
+            text-align: center;
+            margin-bottom: 26px;
+        }
+        .ws-brand svg {
+            width: 46px; height: 46px;
+            filter: drop-shadow(0 0 14px var(--blue-glow));
+            animation: brandPulse 4s ease-in-out infinite;
+        }
+        @keyframes brandPulse {
+            0%, 100% { filter: drop-shadow(0 0 12px var(--blue-glow)); }
+            50% { filter: drop-shadow(0 0 22px var(--blue-glow)); }
+        }
+        .ws-brand .brand-text {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-top: 8px;
+            color: var(--blue-400);
+            text-shadow: 0 0 24px var(--blue-glow-soft);
+        }
+        .ws-brand .brand-text span { color: var(--gold); }
+        .ws-brand .brand-sub {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
+        .btn-primary {
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 13px 20px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 0.2px;
+            transition: all var(--transition-med);
+            box-shadow: 0 4px 16px var(--blue-glow);
+            margin-top: 14px;
+        }
+        .btn-primary::after {
+            content: "";
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.7s ease;
+        }
+        .btn-primary:hover::after { transform: translateX(100%); }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 32px var(--blue-glow);
+        }
+        .btn-primary:active { transform: translateY(0) scale(0.98); }
+        .btn-primary:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-primary:disabled::after { display: none; }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #1a1206;
+            box-shadow: 0 4px 18px var(--gold-glow);
+        }
+        .btn-gold:hover { box-shadow: 0 10px 32px var(--gold-glow); }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+            box-shadow: none;
+            margin-top: 14px;
+            padding: 10px 16px;
+            font-size: 0.82rem;
+        }
+        .btn-ghost:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            transform: translateY(-1px);
+        }
+
+        .link-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 22px;
+            padding: 10px 16px;
+            width: 100%;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            transition: all var(--transition-fast);
+        }
+        .link-back:hover {
+            color: var(--blue-400);
+            border-color: var(--blue-500);
+            background: var(--blue-glow-soft);
+        }
+
+        /* ============================================================
+           AUTH SECTION
+           ============================================================ */
+        .auth-section h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: var(--text-primary);
+        }
+        .auth-section h2 i { color: var(--blue-400); font-size: 15px; }
+
+        .auth-section > p {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.75;
+        }
+        .auth-section > p strong { color: var(--text-primary); font-weight: 700; }
+
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 22px 0 20px;
+            color: var(--text-muted);
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        .section-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 12px;
+        }
+        .section-label i { font-size: 11px; }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .input-group input {
+            background: var(--input-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            color: var(--text-primary);
+            font-size: 0.86rem;
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+        .input-group input::placeholder { color: var(--text-faint); }
+        .input-group input:focus {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 0 3px var(--blue-glow-soft), 0 0 20px var(--blue-glow-soft);
+            background: var(--bg-tertiary);
+        }
+        .input-group input.error {
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px var(--red-glow);
+        }
+
+        /* ============================================================
+           ALERT BOXES
+           ============================================================ */
+        .error-box {
+            margin-top: 12px;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            background: rgba(248, 113, 113, 0.08);
+            border: 1px solid rgba(248, 113, 113, 0.28);
+            color: var(--red);
+            font-size: 0.8rem;
+            font-weight: 500;
+            line-height: 1.5;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: fadeSlideUp 0.3s ease both;
+        }
+        .error-box i { margin-top: 3px; flex-shrink: 0; }
+
+        .success-box {
+            margin-top: 12px;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            background: rgba(52, 211, 153, 0.08);
+            border: 1px solid rgba(52, 211, 153, 0.28);
+            color: var(--green);
+            font-size: 0.8rem;
+            font-weight: 500;
+            line-height: 1.5;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: fadeSlideUp 0.3s ease both;
+        }
+        .success-box i { margin-top: 3px; flex-shrink: 0; }
+
+        .keygen-result {
+            margin-top: 14px;
+            background: var(--code-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: var(--green);
+            word-break: break-all;
+            line-height: 1.7;
+            animation: fadeSlideUp 0.4s ease both;
+        }
+        .keygen-result .profile-info {
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-subtle);
+            font-family: var(--font-body);
+        }
+        .keygen-result .key-label {
+            color: var(--gold);
+            font-weight: 700;
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            font-family: var(--font-body);
+        }
+
+        /* ============================================================
+           STEP INDICATOR
+           ============================================================ */
+        .ws-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 26px;
+            position: relative;
+        }
+        .ws-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 6px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-med);
+            position: relative;
+        }
+        .ws-step-num {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            font-weight: 800;
+            transition: all var(--transition-med);
+        }
+        .ws-step span {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+            transition: color var(--transition-med);
+        }
+        .ws-step.current .ws-step-num {
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
+            border-color: var(--blue-500);
+            color: #fff;
+            box-shadow: 0 0 20px var(--blue-glow);
+            animation: stepPulse 2s ease-in-out infinite;
+        }
+        @keyframes stepPulse {
+            0%, 100% { box-shadow: 0 0 12px var(--blue-glow); }
+            50% { box-shadow: 0 0 24px var(--blue-glow); }
+        }
+        .ws-step.current span { color: var(--blue-400); }
+        .ws-step.done .ws-step-num {
+            background: var(--green);
+            border-color: var(--green);
+            color: #04231a;
+            box-shadow: 0 0 16px var(--green-glow);
+        }
+        .ws-step.done span { color: var(--green); }
+
+        /* ============================================================
+           UPLOAD AREA — FIX: position: relative keeps file input
+           contained inside the drop zone, not the whole page
+           ============================================================ */
+        .upload-area {
+            position: relative;            /* ← the critical fix */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: 2px dashed var(--border-color);
+            padding: 40px 24px;
+            text-align: center;
+            border-radius: var(--radius-md);
+            background: var(--bg-tertiary);
+            cursor: pointer;
+            transition: all var(--transition-med);
+            overflow: hidden;
+        }
+        .upload-area:hover {
+            border-color: var(--blue-500);
+            background: var(--bg-elevated);
+            box-shadow: 0 0 24px var(--blue-glow-soft);
+        }
+        .upload-area.dragover {
+            border-color: var(--gold);
+            background: var(--gold-glow-soft);
+            transform: scale(1.01);
+            box-shadow: 0 0 32px var(--gold-glow-soft);
+        }
+        .upload-area.has-file {
+            display: none;
+        }
+        .upload-area i.upload-icon {
+            font-size: 2.6rem;
+            color: var(--text-muted);
+            transition: color var(--transition-med), transform var(--transition-med);
+        }
+        .upload-area:hover i.upload-icon {
+            color: var(--blue-400);
+            transform: scale(1.1) translateY(-4px);
+        }
+        .upload-area .upload-title {
+            font-family: var(--font-display);
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: 0.3px;
+        }
+        .upload-area .upload-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+        .upload-area .upload-sub code {
+            font-family: var(--font-mono);
+            background: var(--code-bg);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.68rem;
+            color: var(--gold);
+            border: 1px solid rgba(212, 165, 116, 0.15);
+        }
+        /* File input — positioned relative to the drop zone only */
+        .upload-area input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        /* ============================================================
+           FILE INFO CARD
+           ============================================================ */
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            margin-top: 14px;
+            animation: fadeSlideUp 0.35s ease both;
+            position: relative;
+            overflow: hidden;
+        }
+        .file-info::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--blue-400), var(--gold));
+            box-shadow: 0 0 12px var(--blue-glow);
+        }
+        .file-info .fi-icon {
+            width: 42px; height: 42px;
+            min-width: 42px;
+            border-radius: var(--radius-sm);
+            display: grid;
+            place-items: center;
+            background: var(--blue-glow-soft);
+            color: var(--blue-400);
+            font-size: 17px;
+        }
+        .file-info > div:nth-child(2) { flex: 1; min-width: 0; }
+        .file-info .fi-name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-info .fi-meta {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            margin-top: 3px;
+        }
+        .file-info #removeFileBtn {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-elevated);
+            color: var(--text-muted);
+            font-size: 12px;
+            display: grid;
+            place-items: center;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+        }
+        .file-info #removeFileBtn:hover {
+            border-color: var(--red);
+            color: var(--red);
+            background: rgba(248, 113, 113, 0.08);
+            transform: rotate(90deg);
+        }
+
+        /* ============================================================
+           SYNC KEY DISPLAY
+           ============================================================ */
+        .sync-key-box {
+            margin-top: 18px;
+            padding: 14px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+        }
+        .sync-key-box .key-label {
+            font-size: 0.62rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sync-key-box .key-label i { color: var(--gold); }
+        .sync-key-box .key-value {
+            font-family: var(--font-mono);
+            font-size: 0.76rem;
+            color: var(--green);
+            word-break: break-all;
+            line-height: 1.6;
+            padding: 8px 10px;
+            background: var(--code-bg);
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border-subtle);
+        }
+        .sync-key-box .key-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .sync-key-box .key-actions button {
+            flex: 1;
+            padding: 7px 12px;
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border-subtle);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            font-weight: 600;
+            transition: all var(--transition-fast);
+        }
+        .sync-key-box .key-actions button:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+        }
+        .sync-key-box .key-actions button.copied {
+            border-color: var(--green);
+            color: var(--green);
+            background: rgba(52, 211, 153, 0.08);
+        }
+
+        /* ============================================================
+           STATUS VIEW
+           ============================================================ */
+        .status-view {
+            text-align: center;
+            animation: fadeSlideUp 0.45s ease both;
+        }
+        .device-icon-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 88px; height: 88px;
+            margin: 0 auto 18px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            transition: all var(--transition-med);
+            position: relative;
+        }
+        .device-icon-wrap::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            transition: all var(--transition-med);
+        }
+        .device-icon-wrap i {
+            font-size: 2.4rem;
+            color: var(--text-muted);
+            transition: color var(--transition-med);
+        }
+        .device-icon-wrap.online {
+            border-color: var(--green);
+            box-shadow: 0 0 30px var(--green-glow);
+        }
+        .device-icon-wrap.online i { color: var(--green); }
+        .device-icon-wrap.online::after {
+            border-color: rgba(52, 211, 153, 0.3);
+            animation: ringPulse 2s ease-in-out infinite;
+        }
+        @keyframes ringPulse {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.08); opacity: 1; }
+        }
+        .device-icon-wrap.offline {
+            border-color: var(--blue-400);
+            box-shadow: 0 0 24px var(--blue-glow);
+        }
+        .device-icon-wrap.offline i { color: var(--blue-400); }
+
+        .phone-display {
+            font-family: var(--font-mono);
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .phone-name {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            min-height: 18px;
+        }
+
+        .status-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 16px 0 20px;
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            position: relative;
+        }
+        .status-dot.online {
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green-glow);
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+        .status-dot.offline {
+            background: var(--blue-400);
+            box-shadow: 0 0 10px var(--blue-glow);
+        }
+        .status-dot::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 1px solid transparent;
+        }
+        .status-dot.online::after {
+            border-color: var(--green);
+            animation: dotRipple 1.8s ease-out infinite;
+        }
+        @keyframes dotPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+        @keyframes dotRipple {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        .status-text {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+        }
+        .status-text.online { color: var(--green); }
+        .status-text.offline { color: var(--blue-400); }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+        .info-box {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            text-align: left;
+            transition: all var(--transition-fast);
+        }
+        .info-box:hover {
+            border-color: var(--blue-glow);
+            background: var(--bg-elevated);
+        }
+        .info-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+
+        /* ============================================================
+           LOGS SECTION
+           ============================================================ */
+        .logs-section { margin-top: 6px; text-align: left; }
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .logs-tabs {
+            display: flex;
+            gap: 6px;
+        }
+        .log-tab {
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .log-tab i { font-size: 10px; }
+        .log-tab:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+        }
+        .log-tab.active {
+            background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 14px var(--blue-glow);
+        }
+        .log-tab.active i { color: #fff; }
+        .refresh-btn {
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            padding: 7px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.72rem;
+            font-weight: 700;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .refresh-btn:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+        }
+        .refresh-btn.is-spinning i { animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .logs-container {
+            background: var(--code-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            line-height: 1.75;
+            color: #c9d1d9;
+            max-height: 320px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .log-line {
+            display: flex;
+            gap: 10px;
+            padding: 3px 0;
+            border-bottom: 1px dashed rgba(255,255,255,0.04);
+        }
+        .log-line:last-child { border-bottom: none; }
+        .log-time { color: var(--gold); min-width: 70px; flex-shrink: 0; }
+        .log-level {
+            font-weight: 700;
+            min-width: 55px;
+            flex-shrink: 0;
+        }
+        .log-level.INFO { color: var(--blue-400); }
+        .log-level.WARN { color: var(--amber); }
+        .log-level.ERROR { color: var(--red); }
+        .log-level.DEBUG { color: var(--text-muted); }
+        .log-msg { color: #c9d1d9; word-break: break-word; }
+        .chat-line {
+            display: flex;
+            gap: 8px;
+            padding: 4px 0;
+            border-bottom: 1px dashed rgba(255,255,255,0.04);
+        }
+        .chat-line:last-child { border-bottom: none; }
+        .chat-time { color: var(--steel); min-width: 70px; flex-shrink: 0; }
+        .chat-sender { color: var(--green); font-weight: 700; flex-shrink: 0; }
+        .chat-text { color: #c9d1d9; word-break: break-word; }
+        .log-empty {
+            color: var(--text-muted);
+            text-align: center;
+            padding: 26px 12px;
+            font-family: var(--font-body);
+            font-size: 0.75rem;
+        }
+
+        /* ============================================================
+           SESSION EXPIRED OVERLAY — full CSS (was missing entirely)
+           ============================================================ */
+        .session-expired-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 400;
+            background: rgba(0, 0, 0, 0.78);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease both;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .session-expired-dialog {
+            background: var(--bg-secondary);
+            border: 2px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: 36px 28px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            box-shadow: var(--shadow-xl), 0 0 60px rgba(59, 130, 246, 0.15);
+            animation: dialogIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .session-expired-dialog::before {
+            content: '';
+            position: absolute;
+            top: -80px; right: -80px;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            background: var(--blue-glow-soft);
+            filter: blur(80px);
+            pointer-events: none;
+        }
+        .session-expired-dialog > * { position: relative; z-index: 1; }
+        @keyframes dialogIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .session-expired-icon {
+            width: 62px; height: 62px;
+            margin: 0 auto 16px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: rgba(251, 191, 36, 0.1);
+            border: 2px solid rgba(251, 191, 36, 0.35);
+            color: var(--amber);
+            font-size: 24px;
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.2);
+        }
+        .session-expired-dialog h3 {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        .session-expired-dialog p {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+            margin-bottom: 22px;
+        }
+        .session-expired-dialog .btn-primary {
+            display: inline-flex;
+            width: auto;
+            min-width: 160px;
+            margin-top: 0;
+        }
+
+        /* ============================================================
+           TOAST
+           ============================================================ */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(24px);
+            z-index: 300;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 14px 22px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12.5px;
+            color: var(--text-primary);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-med), transform var(--transition-med);
+            max-width: 420px;
+            font-weight: 600;
+        }
+        .toast.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast i { font-size: 17px; }
+        .toast.success i { color: var(--green); }
+        .toast.error i { color: var(--red); }
+        .toast.info i { color: var(--blue-400); }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 640px) {
+            body { padding: 68px 14px 30px; }
+            .ws-card { padding: 26px 20px; border-radius: var(--radius-lg); }
+            .info-grid { grid-template-columns: 1fr; }
+            .logs-header { flex-direction: column; align-items: stretch; }
+            .logs-tabs { width: 100%; }
+            .log-tab { flex: 1; justify-content: center; }
+            .refresh-btn { width: 100%; justify-content: center; }
+            .toast {
+                bottom: 16px;
+                left: 14px;
+                right: 14px;
+                max-width: none;
+                transform: translateY(24px);
+            }
+            .toast.show { transform: translateY(0); }
+            .ws-step span { font-size: 0.62rem; }
+            .ws-step-num { width: 28px; height: 28px; font-size: 0.7rem; }
+            .phone-display { font-size: 1.15rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="grid-overlay"></div>
+
+    <button type="button" id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <!-- ==================== SESSION EXPIRED OVERLAY ==================== -->
+    <div id="sessionExpiredOverlay" class="session-expired-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="sessionTitle">
+        <div class="session-expired-dialog">
+            <div class="session-expired-icon"><i class="fas fa-clock-rotate-left"></i></div>
+            <h3 id="sessionTitle">Session Expired</h3>
+            <p>Your session has timed out. Please sign in again to continue.</p>
+            <a href="/login.html" class="btn-primary"><i class="fas fa-sign-in-alt"></i> Go to Login</a>
+        </div>
+    </div>
+
+    <!-- ==================== AUTHENTICATION CARD ==================== -->
+    <div id="authCard" class="ws-card">
+        <div class="ws-brand">
+            <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+                <defs>
+                    <linearGradient id="boltGrad" x1="6" y1="6" x2="38" y2="38">
+                        <stop offset="0" stop-color="#60a5fa"/>
+                        <stop offset="1" stop-color="#1e40af"/>
+                    </linearGradient>
+                </defs>
+                <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#boltGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <div class="brand-text">EMER<span>GENS</span></div>
+            <div class="brand-sub">WhatsApp Bot Console</div>
+        </div>
+
+        <div class="auth-section">
+            <h2><i class="fas fa-lock"></i> Authenticate to continue</h2>
+            <p>
+                Access this console with a <strong>Sync API Key</strong>.
+                If you already have one, paste it below. Otherwise, generate a new one using your Emergens credentials.
+                <br><em style="color:var(--gold);font-style:normal;font-weight:600;">One key per account.</em>
+            </p>
+
+            <div class="section-label"><i class="fas fa-key"></i> Have a Key</div>
+            <div class="input-group">
+                <input type="text" id="apiKeyInput" placeholder="Paste your Sync API Key here" autocomplete="off" spellcheck="false">
+            </div>
+            <button type="button" class="btn-primary" id="loginWithKeyBtn">
+                <i class="fas fa-sign-in-alt"></i> Login with Key
+            </button>
+
+            <div class="auth-divider">or</div>
+
+            <div class="section-label"><i class="fas fa-gear"></i> Generate New Key</div>
+            <div class="input-group">
+                <input type="text" id="oxyUser" placeholder="Emergens Username" autocomplete="off" spellcheck="false">
+                <input type="password" id="oxyPass" placeholder="Emergens Password" autocomplete="current-password">
+            </div>
+            <button type="button" class="btn-primary btn-gold" id="genKeyBtn">
+                <i class="fas fa-sync-alt"></i> Generate Key
+            </button>
+
+            <div id="authResult" class="keygen-result" hidden></div>
+            <div class="error-box" id="authError" hidden role="alert" aria-live="assertive">
+                <i class="fas fa-circle-exclamation"></i><span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MAIN DASHBOARD ==================== -->
+    <div id="mainDashboard" class="ws-card" hidden>
+        <div class="ws-brand">
+            <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+                <defs>
+                    <linearGradient id="boltGrad2" x1="6" y1="6" x2="38" y2="38">
+                        <stop offset="0" stop-color="#60a5fa"/>
+                        <stop offset="1" stop-color="#1e40af"/>
+                    </linearGradient>
+                </defs>
+                <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#boltGrad2)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <div class="brand-text">EMER<span>GENS</span></div>
+            <div class="brand-sub">WhatsApp Bot Console</div>
+        </div>
+
+        <!-- UPLOAD STATE -->
+        <div id="uploadState">
+            <div class="ws-steps">
+                <div class="ws-step current" data-step="1">
+                    <div class="ws-step-num">1</div>
+                    <span>Upload</span>
+                </div>
+                <div class="ws-step" data-step="2">
+                    <div class="ws-step-num">2</div>
+                    <span>Send</span>
+                </div>
+                <div class="ws-step" data-step="3">
+                    <div class="ws-step-num">3</div>
+                    <span>Connected</span>
+                </div>
+            </div>
+
+            <div class="upload-area" id="dropZone">
+                <i class="fas fa-cloud-upload-alt upload-icon" aria-hidden="true"></i>
+                <div class="upload-title">Drop creds.json here</div>
+                <div class="upload-sub">or click to browse &mdash; max 1&nbsp;MB &mdash; <code>.json</code> only</div>
+                <input type="file" id="fileInput" accept=".json,application/json" aria-label="Select creds.json file">
+            </div>
+
+            <div class="file-info" id="fileInfo" hidden>
+                <div class="fi-icon"><i class="fas fa-file-code"></i></div>
+                <div>
+                    <div id="fileName" class="fi-name">&mdash;</div>
+                    <div id="fileSize" class="fi-meta">&mdash;</div>
+                </div>
+                <button type="button" id="removeFileBtn" aria-label="Remove selected file">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="error-box" id="formError" hidden role="alert" aria-live="assertive">
+                <i class="fas fa-circle-exclamation"></i><span></span>
+            </div>
+
+            <button type="button" class="btn-primary" id="uploadBtn" disabled>
+                <i class="fas fa-upload"></i> Upload &amp; Connect
+            </button>
+
+            <div class="sync-key-box">
+                <div class="key-label"><i class="fas fa-key"></i> Current Sync Key</div>
+                <div class="key-value" id="currentKeyDisplay">&mdash;</div>
+                <div class="key-actions">
+                    <button type="button" id="copyKeyBtn">
+                        <i class="fas fa-copy"></i> Copy Key
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATUS STATE -->
+        <div id="statusState" class="status-view" hidden>
+            <div class="device-icon-wrap" id="deviceIcon"><i class="fas fa-mobile-alt"></i></div>
+            <div class="phone-display" id="phoneText">&mdash;</div>
+            <div class="phone-name" id="nameText"></div>
+
+            <div class="status-row">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-text" id="statusLabel">Checking&hellip;</span>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-box">
+                    <div class="info-label">Uptime</div>
+                    <div class="info-value" id="uptimeVal">&mdash;</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Last Upload</div>
+                    <div class="info-value" id="lastUploadVal">&mdash;</div>
+                </div>
+            </div>
+
+            <div class="logs-section">
+                <div class="logs-header">
+                    <div class="logs-tabs">
+                        <button type="button" class="log-tab active" data-tab="logs">
+                            <i class="fas fa-terminal"></i> Server Logs
+                        </button>
+                        <button type="button" class="log-tab" data-tab="chats">
+                            <i class="fas fa-comments"></i> Chats
+                        </button>
+                    </div>
+                    <button type="button" class="refresh-btn" id="refreshLogsBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div class="logs-container" id="logsContainer">
+                    <div class="log-empty">Loading logs&hellip;</div>
+                </div>
+            </div>
+
+            <button type="button" class="btn-primary btn-ghost" id="changeCredsBtn">
+                <i class="fas fa-upload"></i> Change Credentials
+            </button>
+        </div>
+
+        <a href="/dashboard.html" class="link-back">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- ==================== TOAST ==================== -->
+    <div class="toast" id="toast" role="status" aria-live="polite">
+        <i class="fas fa-check-circle" aria-hidden="true"></i>
+        <span id="toastMessage"></span>
+    </div>
+
+<script>
+(function () {
+    'use strict';
+
+    // =========================================================================
+    // UTILITIES
+    // =========================================================================
+    var REQUEST_TIMEOUT_MS = 15000;
+    var SESSION_STORAGE_KEY = 'emergens_ws_key';
+
+    function fetchWithTimeout(url, opts, ms) {
+        ms = ms || REQUEST_TIMEOUT_MS;
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, ms);
+        var options = Object.assign({}, opts || {}, { signal: controller.signal });
+        return fetch(url, options).finally(function () { clearTimeout(timer); });
+    }
+
+    function escapeHtml(text) {
+        var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(text == null ? '' : text).replace(/[&<>"']/g, function (m) { return map[m]; });
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(2) + ' MB';
+    }
+
+    // =========================================================================
+    // TOAST
+    // =========================================================================
+    var toast = document.getElementById('toast');
+    var toastMessage = document.getElementById('toastMessage');
+    var toastIcon = toast.querySelector('i');
+    var toastTimeout;
+    function showToast(msg, type) {
+        type = type || 'success';
+        toastMessage.textContent = msg;
+        toast.className = 'toast show ' + type;
+        toastIcon.className = 'fas ' + (
+            type === 'error' ? 'fa-circle-exclamation' :
+            type === 'info'  ? 'fa-circle-info' :
+                               'fa-check-circle'
+        );
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(function () { toast.classList.remove('show'); }, 3500);
+    }
+
+    // =========================================================================
+    // THEME
+    // =========================================================================
+    var root = document.documentElement;
+    var themeToggle = document.getElementById('themeToggle');
+    function setTheme(theme) {
+        root.setAttribute('data-theme', theme);
+        document.body.setAttribute('data-theme', theme);
+        try { localStorage.setItem('emergens-theme', theme); } catch (e) {}
+        themeToggle.querySelector('i').className = theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+    }
+    var savedTheme = 'dark';
+    try { savedTheme = localStorage.getItem('emergens-theme') || 'dark'; } catch (e) {}
+    setTheme(savedTheme);
+    themeToggle.addEventListener('click', function () {
+        var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+        showToast(next === 'dark' ? 'Dark mode activated' : 'Light mode activated', 'info');
+    });
+
+    // =========================================================================
+    // DOM REFS
+    // =========================================================================
+    var authCard = document.getElementById('authCard');
+    var mainDashboard = document.getElementById('mainDashboard');
+    var apiKeyInput = document.getElementById('apiKeyInput');
+    var loginWithKeyBtn = document.getElementById('loginWithKeyBtn');
+    var oxyUser = document.getElementById('oxyUser');
+    var oxyPass = document.getElementById('oxyPass');
+    var genKeyBtn = document.getElementById('genKeyBtn');
+    var authResult = document.getElementById('authResult');
+    var authError = document.getElementById('authError');
+    var currentKeyDisplay = document.getElementById('currentKeyDisplay');
+    var copyKeyBtn = document.getElementById('copyKeyBtn');
+
+    var uploadState = document.getElementById('uploadState');
+    var statusState = document.getElementById('statusState');
+    var dropZone = document.getElementById('dropZone');
+    var fileInput = document.getElementById('fileInput');
+    var fileInfo = document.getElementById('fileInfo');
+    var fileName = document.getElementById('fileName');
+    var fileSize = document.getElementById('fileSize');
+    var removeFileBtn = document.getElementById('removeFileBtn');
+    var uploadBtn = document.getElementById('uploadBtn');
+    var formError = document.getElementById('formError');
+
+    var phoneText = document.getElementById('phoneText');
+    var nameText = document.getElementById('nameText');
+    var deviceIcon = document.getElementById('deviceIcon');
+    var statusDot = document.getElementById('statusDot');
+    var statusLabel = document.getElementById('statusLabel');
+    var uptimeVal = document.getElementById('uptimeVal');
+    var lastUploadVal = document.getElementById('lastUploadVal');
+    var changeCredsBtn = document.getElementById('changeCredsBtn');
+    var logsContainer = document.getElementById('logsContainer');
+    var logTabs = document.querySelectorAll('.log-tab');
+    var refreshLogsBtn = document.getElementById('refreshLogsBtn');
+    var sessionExpiredOverlay = document.getElementById('sessionExpiredOverlay');
+
+    // =========================================================================
+    // STATE
+    // =========================================================================
+    var activeSyncKey = '';
+    var selectedFile = null;
+    var statusInterval = null;
+    var logRefreshInterval = null;
+    var logsTab = 'logs';
+    var dashboardWired = false;      // ← prevents duplicate listener wiring
+    var statusPollInFlight = false;  // ← prevents overlapping polls
+
+    // =========================================================================
+    // AUTH ERROR / RESULT HELPERS
+    // =========================================================================
+    function showAuthError(msg) {
+        authError.querySelector('span').textContent = msg;
+        authError.hidden = false;
+    }
+    function hideAuthError() { authError.hidden = true; }
+
+    function showFormError(msg) {
+        formError.querySelector('span').textContent = msg;
+        formError.hidden = false;
+        dropZone.classList.add('shake');
+        setTimeout(function () { dropZone.classList.remove('shake'); }, 420);
+    }
+    function clearFormError() { formError.hidden = true; }
+
+    function showSessionExpired() {
+        sessionExpiredOverlay.hidden = false;
+        if (statusInterval) { clearInterval(statusInterval); statusInterval = null; }
+        if (logRefreshInterval) { clearInterval(logRefreshInterval); logRefreshInterval = null; }
+    }
+
+    // =========================================================================
+    // KEY COPY
+    // =========================================================================
+    copyKeyBtn.addEventListener('click', function () {
+        if (!activeSyncKey) return;
+        var self = this;
+        var doCopy = function () {
+            self.classList.add('copied');
+            self.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            showToast('Sync key copied to clipboard', 'success');
+            setTimeout(function () {
+                self.classList.remove('copied');
+                self.innerHTML = '<i class="fas fa-copy"></i> Copy Key';
+            }, 1800);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(activeSyncKey).then(doCopy).catch(function () {
+                showToast('Copy failed — please copy manually', 'error');
+            });
+        } else {
+            var ta = document.createElement('textarea');
+            ta.value = activeSyncKey;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); doCopy(); }
+            catch (e) { showToast('Copy failed', 'error'); }
+            document.body.removeChild(ta);
+        }
+    });
+
+    // =========================================================================
+    // LOGIN WITH EXISTING KEY
+    // =========================================================================
+    loginWithKeyBtn.addEventListener('click', async function () {
+        var key = apiKeyInput.value.trim();
+        if (!key) {
+            showAuthError('Please enter an API key.');
+            apiKeyInput.classList.add('error');
+            apiKeyInput.focus();
+            return;
+        }
+        apiKeyInput.classList.remove('error');
+        hideAuthError();
+
+        var original = loginWithKeyBtn.innerHTML;
+        loginWithKeyBtn.disabled = true;
+        loginWithKeyBtn.innerHTML = '<i class="fas fa-spinner spin"></i> Verifying...';
+
+        try {
+            var resp = await fetchWithTimeout('/api/validate-sync-key?key=' + encodeURIComponent(key));
+            var data = await resp.json().catch(function () { return {}; });
+            if (data.valid) {
+                activeSyncKey = key;
+                try { sessionStorage.setItem(SESSION_STORAGE_KEY, key); } catch (e) {}
+                currentKeyDisplay.textContent = key;
+                authCard.hidden = true;
+                mainDashboard.hidden = false;
+                showDashboard();
+                showToast('Authenticated successfully', 'success');
+            } else {
+                showAuthError('Invalid API key. Please check and try again.');
+            }
+        } catch (err) {
+            showAuthError(err.name === 'AbortError'
+                ? 'Request timed out. Check your connection.'
+                : 'Unable to verify key. Check your connection.');
+        } finally {
+            loginWithKeyBtn.disabled = false;
+            loginWithKeyBtn.innerHTML = original;
+        }
+    });
+
+    // =========================================================================
+    // GENERATE NEW KEY
+    // =========================================================================
+    genKeyBtn.addEventListener('click', async function () {
+        var user = oxyUser.value.trim();
+        var pass = oxyPass.value;
+        if (!user || !pass) {
+            showAuthError('Username and password are both required.');
+            if (!user) oxyUser.classList.add('error');
+            if (!pass) oxyPass.classList.add('error');
+            return;
+        }
+        oxyUser.classList.remove('error');
+        oxyPass.classList.remove('error');
+        hideAuthError();
+
+        var original = genKeyBtn.innerHTML;
+        genKeyBtn.disabled = true;
+        genKeyBtn.innerHTML = '<i class="fas fa-spinner spin"></i> Generating...';
+
+        try {
+            var resp = await fetchWithTimeout('/api/generate-sync-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+            var data = await resp.json().catch(function () { return {}; });
+
+            if (resp.status === 401) {
+                showSessionExpired();
+                return;
+            }
+            if (!resp.ok || !data.success) {
+                throw new Error(data.error || 'Key generation failed.');
+            }
+
+            activeSyncKey = data.sync_key;
+            try { sessionStorage.setItem(SESSION_STORAGE_KEY, data.sync_key); } catch (e) {}
+
+            var prof = data.profile || {};
+            authResult.innerHTML =
+                '<div class="profile-info">' +
+                '<strong style="color:var(--text-primary);">' + escapeHtml(prof.username || user) + '</strong>' +
+                ' &middot; Role: <strong style="color:var(--gold);">' + escapeHtml(prof.role || 'user') + '</strong>' +
+                '</div>' +
+                '<div class="key-label">Your Sync Key</div>' +
+                escapeHtml(data.sync_key);
+            authResult.hidden = false;
+            currentKeyDisplay.textContent = data.sync_key;
+            apiKeyInput.value = data.sync_key;
+
+            showToast('Sync key generated successfully', 'success');
+
+            setTimeout(function () {
+                authCard.hidden = true;
+                mainDashboard.hidden = false;
+                showDashboard();
+            }, 1400);
+        } catch (err) {
+            showAuthError(err.name === 'AbortError'
+                ? 'Request timed out. Please try again.'
+                : (err.message || 'Key generation failed.'));
+        } finally {
+            genKeyBtn.disabled = false;
+            genKeyBtn.innerHTML = original;
+        }
+    });
+
+    // =========================================================================
+    // DASHBOARD — single wire-up
+    // =========================================================================
+    function wireDashboard() {
+        if (dashboardWired) return;
+        dashboardWired = true;
+
+        // --- File selection ---
+        dropZone.addEventListener('click', function () { fileInput.click(); });
+        fileInput.addEventListener('change', function () {
+            if (fileInput.files.length) selectFile(fileInput.files[0]);
+        });
+        removeFileBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            clearFile();
+        });
+        dropZone.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', function () {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', function (e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) selectFile(e.dataTransfer.files[0]);
+        });
+
+        // --- Upload ---
+        uploadBtn.addEventListener('click', function () {
+            if (!selectedFile) return;
+            clearFormError();
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner spin"></i> Uploading...';
+
+            var fd = new FormData();
+            fd.append('creds', selectedFile, selectedFile.name);
+
+            fetchWithTimeout('/api/upload-creds', { method: 'POST', body: fd }, 30000)
+                .then(async function (res) {
+                    if (res.status === 401) {
+                        showSessionExpired();
+                        throw new Error('session');
+                    }
+                    var data = await res.json().catch(function () { return {}; });
+                    if (!res.ok) throw new Error(data.error || 'Upload failed.');
+                    return data;
+                })
+                .then(function () {
+                    showToast('Credentials uploaded — connecting...', 'success');
+                    uploadState.hidden = true;
+                    statusState.hidden = false;
+                    startStatusPolling();
+                    startLogPolling();   // ← FIX: logs now load after fresh upload too
+                    fetchAndDisplayLogs();
+                })
+                .catch(function (err) {
+                    if (err.message !== 'session') {
+                        showFormError(err.name === 'AbortError'
+                            ? 'Upload timed out. Please try again.'
+                            : (err.message || 'Upload failed.'));
+                    }
+                })
+                .finally(function () {
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload &amp; Connect';
+                });
+        });
+
+        // --- Change creds ---
+        changeCredsBtn.addEventListener('click', function () {
+            stopStatusPolling();
+            stopLogPolling();
+            statusState.hidden = true;
+            uploadState.hidden = false;
+            clearFile();
+        });
+
+        // --- Log tabs ---
+        logTabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                logTabs.forEach(function (t) { t.classList.remove('active'); });
+                tab.classList.add('active');
+                logsTab = tab.dataset.tab;
+                fetchAndDisplayLogs();
+            });
+        });
+
+        // --- Refresh button ---
+        refreshLogsBtn.addEventListener('click', function () {
+            var self = this;
+            self.classList.add('is-spinning');
+            fetchAndDisplayLogs().finally(function () {
+                self.classList.remove('is-spinning');
+            });
+        });
+    }
+
+    // =========================================================================
+    // SHOW DASHBOARD — routes to upload or status view
+    // =========================================================================
+    function showDashboard() {
+        wireDashboard();
+        currentKeyDisplay.textContent = activeSyncKey || '—';
+
+        // Check if a bot is already configured
+        fetchWithTimeout('/api/bot-status')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.phone) {
+                    uploadState.hidden = true;
+                    statusState.hidden = false;
+                    updateStatusUI(data);
+                    startStatusPolling();
+                    startLogPolling();
+                } else {
+                    uploadState.hidden = false;
+                    statusState.hidden = true;
+                }
+            })
+            .catch(function () {
+                uploadState.hidden = false;
+                statusState.hidden = true;
+            });
+    }
+
+    // =========================================================================
+    // FILE HANDLING
+    // =========================================================================
+    function selectFile(file) {
+        if (!file) return;
+        var name = (file.name || '').toLowerCase();
+        if (!name.endsWith('.json') && file.type !== 'application/json') {
+            showFormError('Only .json files are accepted.');
+            return;
+        }
+        if (file.size > 1024 * 1024) {
+            showFormError('File is too large. Maximum size is 1 MB.');
+            return;
+        }
+        selectedFile = file;
+        clearFormError();
+        fileName.textContent = file.name;
+        fileSize.textContent = formatSize(file.size) + ' · ' + new Date(file.lastModified).toLocaleString();
+        fileInfo.hidden = false;
+        dropZone.classList.add('has-file');
+        uploadBtn.disabled = false;
+    }
+
+    function clearFile() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.hidden = true;
+        dropZone.classList.remove('has-file');
+        uploadBtn.disabled = true;
+        clearFormError();
+    }
+
+    // =========================================================================
+    // STATUS POLLING
+    // =========================================================================
+    function updateStatusUI(data) {
+        phoneText.textContent = data.phone || 'Unknown';
+        nameText.textContent = data.name || '';
+        uptimeVal.textContent = data.online ? (data.uptime || '—') : '—';
+        lastUploadVal.textContent = data.last_upload
+            ? new Date(data.last_upload).toLocaleString()
+            : '—';
+
+        if (data.online) {
+            deviceIcon.className = 'device-icon-wrap online';
+            statusDot.className = 'status-dot online';
+            statusLabel.className = 'status-text online';
+            statusLabel.textContent = 'Connected';
+        } else {
+            deviceIcon.className = 'device-icon-wrap offline';
+            statusDot.className = 'status-dot offline';
+            statusLabel.className = 'status-text offline';
+            statusLabel.textContent = 'Connection lost';
+        }
+    }
+
+    function fetchStatus() {
+        if (statusPollInFlight) return;
+        statusPollInFlight = true;
+        fetchWithTimeout('/api/bot-status')
+            .then(function (r) { return r.json(); })
+            .then(function (data) { updateStatusUI(data); })
+            .catch(function (err) {
+                if (err.name === 'AbortError') return;
+                deviceIcon.className = 'device-icon-wrap offline';
+                statusDot.className = 'status-dot offline';
+                statusLabel.className = 'status-text offline';
+                statusLabel.textContent = 'Unreachable';
+            })
+            .finally(function () { statusPollInFlight = false; });
+    }
+
+    function startStatusPolling() {
+        stopStatusPolling();
+        fetchStatus();
+        statusInterval = setInterval(fetchStatus, 10000);
+    }
+    function stopStatusPolling() {
+        if (statusInterval) { clearInterval(statusInterval); statusInterval = null; }
+    }
+
+    // =========================================================================
+    // LOGS
+    // =========================================================================
+    function fetchAndDisplayLogs() {
+        return fetchWithTimeout('/api/bot-logs')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var html = '';
+                if (logsTab === 'logs') {
+                    var logs = (data && data.logs) || [];
+                    if (logs.length === 0) {
+                        html = '<div class="log-empty">No log entries yet.</div>';
+                    } else {
+                        html = logs.map(function (log) {
+                            var lvl = String((log && log.level) || 'INFO').toUpperCase();
+                            var lvlClass = ['INFO','WARN','ERROR','DEBUG'].indexOf(lvl) !== -1 ? lvl : 'INFO';
+                            return '<div class="log-line">' +
+                                '<span class="log-time">' + escapeHtml(log.time || '') + '</span>' +
+                                '<span class="log-level ' + lvlClass + '">' + escapeHtml(lvl) + '</span>' +
+                                '<span class="log-msg">' + escapeHtml(log.msg || '') + '</span>' +
+                                '</div>';
+                        }).join('');
+                    }
+                } else {
+                    var chats = (data && data.chats) || [];
+                    if (chats.length === 0) {
+                        html = '<div class="log-empty">No chat messages recorded yet.</div>';
+                    } else {
+                        html = chats.map(function (chat) {
+                            return '<div class="chat-line">' +
+                                '<span class="chat-time">' + escapeHtml(chat.time || '') + '</span>' +
+                                '<span class="chat-sender">' + escapeHtml(chat.sender || '') + '</span>' +
+                                '<span class="chat-text">' + escapeHtml(chat.text || '') + '</span>' +
+                                '</div>';
+                        }).join('');
+                    }
+                }
+                logsContainer.innerHTML = html;
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+            })
+            .catch(function () {
+                logsContainer.innerHTML = '<div class="log-empty" style="color:var(--red);">Failed to load logs.</div>';
+            });
+    }
+
+    function startLogPolling() {
+        stopLogPolling();
+        logRefreshInterval = setInterval(fetchAndDisplayLogs, 8000);
+    }
+    function stopLogPolling() {
+        if (logRefreshInterval) { clearInterval(logRefreshInterval); logRefreshInterval = null; }
+    }
+
+    // =========================================================================
+    // AUTO-RESTORE SESSION
+    // =========================================================================
+    (function restoreSession() {
+        var savedKey = '';
+        try { savedKey = sessionStorage.getItem(SESSION_STORAGE_KEY) || ''; } catch (e) {}
+
+        if (!savedKey) return;
+
+        fetchWithTimeout('/api/validate-sync-key?key=' + encodeURIComponent(savedKey))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.valid) {
+                    activeSyncKey = savedKey;
+                    authCard.hidden = true;
+                    mainDashboard.hidden = false;
+                    showDashboard();
+                    showToast('Welcome back', 'success');
+                } else {
+                    try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
+                }
+            })
+            .catch(function () {
+                // Network error — leave the auth card visible
+            });
+    })();
+
+    // =========================================================================
+    // CONSOLE BRANDING
+    // =========================================================================
+    console.log('%cEmergens — WhatsApp Bot Console v6.2', 'color:#60a5fa;font-size:15px;font-weight:bold;font-family:monospace;');
+    console.log('%cEndpoints: /api/validate-sync-key · /api/generate-sync-key · /api/upload-creds · /api/bot-status · /api/bot-logs',
+        'color:#d4a574;font-size:11px;font-family:monospace;');
+})();
+</script>
+</body>
+</html>

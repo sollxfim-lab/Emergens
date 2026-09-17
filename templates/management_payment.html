@@ -1,0 +1,2741 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergens — Payment Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @font-face {
+            font-family: 'Space Grotesk';
+            src: url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Road Rage';
+            src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+    </style>
+    <style>
+        /* ============================================================
+           EMERGENS — PAYMENT MANAGEMENT DASHBOARD
+           Theme: get-started.html (dark navy · blue glow · gold accent)
+           ============================================================ */
+
+        :root {
+            --font-display: 'Road Rage', 'Space Grotesk', sans-serif;
+            --font-body: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Space Grotesk', 'Courier New', monospace;
+
+            --blue-300: #93c5fd;
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1e40af;
+            --blue-800: #172554;
+            --blue-900: #0f172a;
+            --blue-glow: rgba(59, 130, 246, 0.3);
+            --blue-glow-soft: rgba(59, 130, 246, 0.12);
+
+            --gold: #d4a574;
+            --gold-light: #e7cd9f;
+            --gold-dark: #b8945f;
+            --gold-glow: rgba(212, 165, 116, 0.25);
+            --gold-glow-soft: rgba(212, 165, 116, 0.1);
+
+            --star-white: #e8edf5;
+
+            --green: #34d399;
+            --amber: #fbbf24;
+            --purple: #a78bfa;
+            --red: #f87171;
+            --hot: #f59e0b;
+            --pink: #ec4899;
+
+            --radius-xs: 6px;
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+            --radius-full: 9999px;
+
+            --sidebar-width: 258px;
+            --header-height: 72px;
+
+            --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-med: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-slow: 700ms cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-bounce: 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #030712;
+            --bg-secondary: #0a0f1e;
+            --bg-tertiary: #111827;
+            --bg-elevated: #1a2332;
+            --border-color: #1e293b;
+            --border-subtle: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --text-faint: #475569;
+            --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.45);
+            --card-bg: linear-gradient(160deg, rgba(26, 35, 50, 0.95), rgba(10, 15, 30, 0.98));
+            --glass-bg: rgba(10, 15, 30, 0.8);
+            --glass-border: rgba(59, 130, 246, 0.15);
+            --input-bg: #0a0f1e;
+            --hover-bg: rgba(59, 130, 246, 0.06);
+            --shape-opacity: 0.06;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #eef2f7;
+            --bg-elevated: #ffffff;
+            --border-color: #d1d9e6;
+            --border-subtle: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --text-faint: #94a3b8;
+            --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+            --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+            --shadow-xl: 0 32px 80px rgba(15, 23, 42, 0.15), 0 8px 24px rgba(15, 23, 42, 0.08);
+            --card-bg: linear-gradient(160deg, #ffffff, #f8fafc);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(59, 130, 246, 0.1);
+            --input-bg: #f8fafc;
+            --hover-bg: rgba(59, 130, 246, 0.04);
+            --shape-opacity: 0.03;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+            transition: background var(--transition-slow), color var(--transition-slow);
+        }
+
+        h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); letter-spacing: -0.02em; }
+        button { cursor: pointer; font-family: var(--font-body); }
+        button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, textarea:focus-visible {
+            outline: 2px solid var(--blue-500);
+            outline-offset: 2px;
+        }
+        [hidden] { display: none !important; }
+        a { text-decoration: none; color: inherit; }
+
+        /* ============================================================
+           BACKGROUND — 3D SHAPES + MOON + ORBS + GRID
+           ============================================================ */
+        .bg-3d-scene {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+            perspective: 1200px;
+        }
+        .shape3d {
+            position: absolute;
+            transform-style: preserve-3d;
+            opacity: var(--shape-opacity);
+            animation: shapeFloat3D 18s ease-in-out infinite;
+        }
+        .shape3d-cube {
+            width: 60px; height: 60px;
+            position: absolute;
+            transform-style: preserve-3d;
+            animation: cubeSpin 22s linear infinite;
+        }
+        .shape3d-cube .face {
+            position: absolute;
+            width: 60px; height: 60px;
+            border: 1.5px solid rgba(59, 130, 246, 0.35);
+            background: rgba(59, 130, 246, 0.08);
+            box-shadow: inset 0 0 18px rgba(59, 130, 246, 0.2), 0 0 12px rgba(59, 130, 246, 0.2);
+            border-radius: 4px;
+        }
+        .shape3d-cube .face:nth-child(1) { transform: translateZ(30px); }
+        .shape3d-cube .face:nth-child(2) { transform: rotateY(180deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(3) { transform: rotateY(90deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(4) { transform: rotateY(-90deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(5) { transform: rotateX(90deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(6) { transform: rotateX(-90deg) translateZ(30px); }
+        .shape3d-cube .cube-core {
+            position: absolute;
+            width: 20px; height: 20px;
+            left: 20px; top: 20px;
+            background: radial-gradient(circle, rgba(96, 165, 250, 0.6), transparent 70%);
+            border-radius: 50%;
+            filter: blur(8px);
+            animation: corePulse 4s ease-in-out infinite;
+        }
+        @keyframes corePulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.3); }
+        }
+        .shape3d-ring {
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--blue-500);
+            border-right-color: var(--gold);
+            position: absolute;
+            animation: ringSpin 10s linear infinite;
+            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.3));
+        }
+        .shape3d-pyramid {
+            width: 0; height: 0;
+            border-left: 28px solid transparent;
+            border-right: 28px solid transparent;
+            border-bottom: 48px solid rgba(59, 130, 246, 0.15);
+            position: absolute;
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.25));
+            animation: pyramidFloat 14s ease-in-out infinite;
+        }
+        .shape3d-diamond {
+            width: 30px; height: 30px;
+            position: absolute;
+            background: rgba(212, 165, 116, 0.1);
+            border: 1.5px solid var(--gold);
+            transform: rotate(45deg);
+            animation: diamondFloat 15s ease-in-out infinite;
+            filter: drop-shadow(0 0 8px rgba(212, 165, 116, 0.3));
+        }
+        .shape3d-torus {
+            width: 60px; height: 60px;
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--blue-500);
+            border-bottom-color: var(--gold);
+            animation: torusSpin 14s linear infinite;
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.3));
+        }
+        .shape3d-orbital {
+            width: 70px; height: 70px;
+            position: absolute;
+            animation: orbitalSpin 10s linear infinite;
+        }
+        .shape3d-orbital .orbit-dot {
+            position: absolute;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--blue-400);
+            box-shadow: 0 0 10px var(--blue-glow);
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+        .shape3d-orbital .orbit-dot:nth-child(1) { top: 0; left: 50%; transform: translateX(-50%); }
+        .shape3d-orbital .orbit-dot:nth-child(2) { bottom: 0; left: 50%; transform: translateX(-50%); animation-delay: -0.5s; }
+        .shape3d-orbital .orbit-dot:nth-child(3) { left: 0; top: 50%; transform: translateY(-50%); animation-delay: -1s; }
+        .shape3d-orbital .orbit-dot:nth-child(4) { right: 0; top: 50%; transform: translateY(-50%); animation-delay: -1.5s; }
+        .shape3d-orbital::before {
+            content: '';
+            position: absolute;
+            inset: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            animation: ringSpin 15s linear infinite;
+        }
+        .shape1 { top: 10%; left: 8%; animation-duration: 22s; }
+        .shape2 { top: 20%; right: 6%; animation-duration: 18s; animation-delay: -4s; }
+        .shape3 { bottom: 15%; left: 5%; animation-duration: 25s; animation-delay: -8s; }
+        .shape4 { bottom: 10%; right: 8%; animation-duration: 20s; animation-delay: -2s; }
+        .shape5 { top: 55%; left: 22%; animation-duration: 16s; animation-delay: -6s; }
+        .shape6 { top: 65%; right: 20%; animation-duration: 24s; animation-delay: -10s; }
+
+        @keyframes cubeSpin {
+            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(180deg); }
+        }
+        @keyframes ringSpin {
+            0% { transform: rotate(0deg) rotateX(0deg); }
+            100% { transform: rotate(360deg) rotateX(360deg); }
+        }
+        @keyframes pyramidFloat {
+            0%, 100% { transform: translateY(0) rotateX(15deg) rotateZ(0deg); }
+            50% { transform: translateY(-18px) rotateX(25deg) rotateZ(5deg); }
+        }
+        @keyframes diamondFloat {
+            0%, 100% { transform: rotate(45deg) translateY(0) scale(1); }
+            50% { transform: rotate(45deg) translateY(-15px) scale(1.1); }
+        }
+        @keyframes torusSpin {
+            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(180deg); }
+        }
+        @keyframes orbitalSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes dotPulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.5); }
+        }
+        @keyframes shapeFloat3D {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            20% { transform: translateY(-25px) translateX(12px); }
+            40% { transform: translateY(10px) translateX(-8px); }
+            60% { transform: translateY(-15px) translateX(-15px); }
+            80% { transform: translateY(20px) translateX(10px); }
+        }
+
+        /* FOLLOWING MOON */
+        .moon {
+            position: fixed;
+            top: 7%;
+            right: 8%;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 34% 30%,
+                #fdfbf4 0%, #f1ecdf 18%, #ddd6c4 38%, #b9b19c 62%, #837c69 85%, #5f5a4c 100%);
+            box-shadow:
+                inset -22px -16px 46px rgba(10, 10, 15, 0.45),
+                inset 10px 8px 24px rgba(255, 255, 255, 0.25),
+                0 0 60px rgba(241, 236, 223, 0.18);
+            pointer-events: none;
+            z-index: 1;
+            will-change: transform;
+            opacity: 0.95;
+            transition: opacity 0.4s ease;
+        }
+        .moon::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 26% 62%, rgba(70, 65, 55, 0.32) 0%, transparent 10%),
+                radial-gradient(circle at 61% 24%, rgba(70, 65, 55, 0.28) 0%, transparent 8%),
+                radial-gradient(circle at 71% 66%, rgba(70, 65, 55, 0.34) 0%, transparent 12%),
+                radial-gradient(circle at 42% 82%, rgba(70, 65, 55, 0.22) 0%, transparent 7%),
+                radial-gradient(circle at 82% 42%, rgba(70, 65, 55, 0.24) 0%, transparent 6%),
+                radial-gradient(circle at 20% 20%, rgba(70, 65, 55, 0.18) 0%, transparent 5%);
+        }
+        .moon::after {
+            content: '';
+            position: absolute;
+            inset: -38%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(241, 236, 223, 0.28) 0%, rgba(147, 197, 253, 0.12) 45%, transparent 72%);
+            filter: blur(22px);
+            z-index: -1;
+            animation: moonGlowPulse 7s ease-in-out infinite;
+        }
+        @keyframes moonGlowPulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.09); }
+        }
+        [data-theme="light"] .moon { opacity: 0; visibility: hidden; }
+
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(140px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.04;
+        }
+        .bg-orb-1 { width: 700px; height: 700px; background: var(--blue-600); top: -200px; right: -200px; animation: orbDrift1 18s ease-in-out infinite; }
+        .bg-orb-2 { width: 500px; height: 500px; background: var(--blue-700); bottom: -150px; left: -100px; animation: orbDrift2 22s ease-in-out infinite; }
+        [data-theme="light"] .bg-orb { opacity: 0.02; }
+        @keyframes orbDrift1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-40px, 30px) scale(1.1); }
+            66% { transform: translate(30px, -20px) scale(0.95); }
+        }
+        @keyframes orbDrift2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(35px, -25px) scale(1.05); }
+            66% { transform: translate(-25px, 35px) scale(1.15); }
+        }
+
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+        }
+
+        /* ============================================================
+           SIDEBAR
+           ============================================================ */
+        .sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-right: 1px solid var(--glass-border);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 14px;
+            transition: transform var(--transition-med);
+        }
+        .sidebar__brand {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 6px 10px 22px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 18px;
+        }
+        .sidebar__logo {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px var(--blue-glow);
+            flex-shrink: 0;
+        }
+        .sidebar__logo svg {
+            width: 19px; height: 19px;
+            stroke: #fff; fill: none; stroke-width: 2.4;
+            stroke-linecap: round; stroke-linejoin: round;
+        }
+        .sidebar__brand-text {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: var(--blue-400);
+            text-shadow: 0 0 20px var(--blue-glow);
+        }
+        .sidebar__brand-text span { color: var(--gold); }
+
+        .sidebar__section-label {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-faint);
+            padding: 4px 12px 8px;
+        }
+
+        .sidebar__nav {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 13px;
+            transition: all var(--transition-fast);
+            border: 1px solid transparent;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+        }
+        .nav-item i { width: 18px; text-align: center; font-size: 14px; color: var(--text-muted); transition: color var(--transition-fast); }
+        .nav-item:hover {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+            transform: translateX(2px);
+        }
+        .nav-item:hover i { color: var(--blue-400); }
+        .nav-item.is-active {
+            background: var(--blue-glow-soft);
+            color: var(--blue-400);
+            border-color: rgba(59, 130, 246, 0.25);
+            box-shadow: 0 0 20px var(--blue-glow-soft), inset 0 0 0 1px rgba(59,130,246,0.08);
+        }
+        .nav-item.is-active i { color: var(--blue-400); }
+        .nav-item.is-active::before {
+            content: '';
+            position: absolute;
+            left: -14px;
+            top: 20%; bottom: 20%;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
+            background: linear-gradient(180deg, var(--blue-400), var(--gold));
+            box-shadow: 0 0 12px var(--blue-glow);
+        }
+        .nav-item .nav-count {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            background: var(--amber);
+            color: #1a1206;
+            min-width: 20px;
+            text-align: center;
+            box-shadow: 0 0 12px rgba(251,191,36,0.4);
+        }
+        .nav-item .nav-count[hidden] { display: none; }
+
+        .sidebar__footer {
+            border-top: 1px solid var(--border-color);
+            padding-top: 14px;
+            font-size: 10px;
+            color: var(--text-faint);
+            text-align: center;
+            font-weight: 500;
+        }
+        .sidebar__footer strong { color: var(--gold); font-weight: 700; }
+
+        /* Mobile overlay */
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 99;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-med);
+        }
+        .sidebar-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+        /* ============================================================
+           MAIN WRAPPER + HEADER
+           ============================================================ */
+        .main-wrapper {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            height: var(--header-height);
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 26px;
+            transition: all var(--transition-med);
+        }
+        .header.scrolled { box-shadow: var(--shadow-md); }
+
+        .burger-btn {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            width: 40px; height: 40px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+        }
+        .burger-btn:hover { border-color: var(--blue-500); box-shadow: 0 0 16px var(--blue-glow-soft); }
+        .burger-btn span {
+            display: block;
+            width: 18px; height: 2px;
+            background: var(--text-primary);
+            border-radius: 2px;
+            transition: all 0.35s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .burger-btn.is-active span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .burger-btn.is-active span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+        .burger-btn.is-active span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+        .header__title {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            margin-right: auto;
+        }
+        .header__title .accent { color: var(--blue-400); text-shadow: 0 0 24px var(--blue-glow); }
+
+        .header__right { display: flex; align-items: center; gap: 8px; }
+
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 7px 13px;
+            border-radius: var(--radius-full);
+            background: var(--gold-glow-soft);
+            color: var(--gold);
+            border: 1px solid rgba(212, 165, 116, 0.35);
+            box-shadow: 0 0 16px var(--gold-glow-soft);
+        }
+        .role-badge i { font-size: 10px; }
+
+        .icon-btn {
+            width: 38px; height: 38px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            font-size: 13px;
+        }
+        .icon-btn:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            transform: translateY(-1px);
+        }
+        .icon-btn.is-spinning i { animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .theme-toggle {
+            width: 38px; height: 38px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            font-size: 13px;
+        }
+        .theme-toggle:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: var(--gold-glow-soft);
+        }
+
+        /* ============================================================
+           CONTENT
+           ============================================================ */
+        .content {
+            padding: 28px 26px 60px;
+            flex: 1;
+        }
+
+        .view { animation: fadeSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .view-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+        .view-header h1 {
+            font-family: var(--font-display);
+            font-size: clamp(26px, 3vw, 34px);
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 6px;
+        }
+        .view-header h1 .blue-text { color: var(--blue-400); text-shadow: 0 0 32px var(--blue-glow); }
+        .view-header h1 .gold-text { color: var(--gold); text-shadow: 0 0 32px var(--gold-glow); }
+        .view-header p {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            max-width: 620px;
+        }
+
+        /* Stat cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            margin-bottom: 26px;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 22px 20px;
+            position: relative;
+            overflow: hidden;
+            transition: all var(--transition-med);
+            box-shadow: var(--shadow-md);
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50px; right: -50px;
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            filter: blur(60px);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        .stat-card:hover {
+            border-color: var(--blue-glow);
+            box-shadow: var(--shadow-lg), 0 0 32px var(--blue-glow-soft);
+            transform: translateY(-3px);
+        }
+        .stat-card--blue::before { background: var(--blue-glow); }
+        .stat-card--amber::before { background: rgba(251, 191, 36, 0.4); }
+        .stat-card--green::before { background: rgba(52, 211, 153, 0.4); }
+        .stat-card--gold::before { background: var(--gold-glow); }
+
+        .stat-card__top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            position: relative;
+        }
+        .stat-card__icon {
+            width: 42px; height: 42px;
+            border-radius: var(--radius-sm);
+            display: grid;
+            place-items: center;
+            font-size: 17px;
+            position: relative;
+            z-index: 1;
+        }
+        .stat-card--blue .stat-card__icon { background: var(--blue-glow-soft); color: var(--blue-400); box-shadow: 0 0 20px var(--blue-glow-soft); }
+        .stat-card--amber .stat-card__icon { background: rgba(251, 191, 36, 0.15); color: var(--amber); box-shadow: 0 0 20px rgba(251,191,36,0.2); }
+        .stat-card--green .stat-card__icon { background: rgba(52, 211, 153, 0.15); color: var(--green); box-shadow: 0 0 20px rgba(52,211,153,0.2); }
+        .stat-card--gold .stat-card__icon { background: var(--gold-glow-soft); color: var(--gold); box-shadow: 0 0 20px var(--gold-glow-soft); }
+
+        .stat-card__label {
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            position: relative;
+            z-index: 1;
+        }
+        .stat-card__value {
+            font-family: var(--font-display);
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+            letter-spacing: -1px;
+            position: relative;
+            z-index: 1;
+        }
+        .stat-card__value small {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-left: 4px;
+            letter-spacing: 0;
+        }
+        .stat-card__sub {
+            font-size: 10.5px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Panel */
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 22px;
+            position: relative;
+            overflow: hidden;
+        }
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: -70px; right: -70px;
+            width: 180px; height: 180px;
+            border-radius: 50%;
+            background: var(--blue-glow-soft);
+            filter: blur(80px);
+            pointer-events: none;
+        }
+        .panel > * { position: relative; z-index: 1; }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            color: var(--text-primary);
+        }
+        .panel-title i { color: var(--blue-400); font-size: 15px; }
+        .panel-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 18px;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.3px;
+            transition: all var(--transition-med);
+            border: 1px solid transparent;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .btn i { font-size: 11px; }
+        .btn-blue {
+            background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+            color: #fff;
+            box-shadow: 0 4px 14px var(--blue-glow);
+        }
+        .btn-blue:hover { box-shadow: 0 8px 24px var(--blue-glow); transform: translateY(-1px); }
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #1a1206;
+            box-shadow: 0 4px 14px var(--gold-glow);
+        }
+        .btn-gold:hover { box-shadow: 0 8px 24px var(--gold-glow); transform: translateY(-1px); }
+        .btn-outline {
+            background: transparent;
+            border-color: var(--border-subtle);
+            color: var(--text-primary);
+        }
+        .btn-outline:hover { border-color: var(--blue-500); color: var(--blue-400); background: var(--blue-glow-soft); }
+        .btn-success {
+            background: transparent;
+            border-color: rgba(52, 211, 153, 0.4);
+            color: var(--green);
+        }
+        .btn-success:hover { background: rgba(52, 211, 153, 0.12); border-color: var(--green); }
+        .btn-danger {
+            background: transparent;
+            border-color: rgba(248, 113, 113, 0.4);
+            color: var(--red);
+        }
+        .btn-danger:hover { background: rgba(248, 113, 113, 0.12); border-color: var(--red); }
+        .btn-sm { padding: 6px 12px; font-size: 11px; }
+        .btn-icon {
+            padding: 7px 9px;
+            min-width: 34px;
+        }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+        /* Filter row */
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+        .search-box i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            color: var(--text-faint);
+            pointer-events: none;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px 10px 36px;
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 12.5px;
+            font-family: var(--font-body);
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+        .search-box input::placeholder { color: var(--text-faint); }
+        .search-box input:focus {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 0 3px var(--blue-glow-soft), 0 0 20px var(--blue-glow-soft);
+        }
+
+        .select-box {
+            padding: 10px 36px 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 12.5px;
+            font-family: var(--font-body);
+            font-weight: 600;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+                              linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+            background-position: calc(100% - 17px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+            background-size: 5px 5px, 5px 5px;
+            background-repeat: no-repeat;
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+        .select-box:hover, .select-box:focus { border-color: var(--blue-500); }
+
+        /* Table */
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+            min-width: 720px;
+        }
+        .data-table thead th {
+            text-align: left;
+            padding: 13px 16px;
+            font-size: 9.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.15);
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        [data-theme="light"] .data-table thead th { background: rgba(0, 0, 0, 0.03); }
+        .data-table tbody td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .data-table tbody tr { transition: background var(--transition-fast); }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: var(--hover-bg); }
+
+        .txn-id {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--blue-400);
+            letter-spacing: 0.3px;
+        }
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-avatar {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: 11px;
+            font-weight: 800;
+            color: #fff;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
+            box-shadow: 0 0 14px var(--blue-glow-soft);
+            flex-shrink: 0;
+            text-transform: uppercase;
+        }
+        .user-meta { min-width: 0; }
+        .user-meta strong {
+            display: block;
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 12.5px;
+        }
+        .user-meta small {
+            display: block;
+            color: var(--text-muted);
+            font-size: 10.5px;
+            font-family: var(--font-mono);
+            margin-top: 1px;
+        }
+        .plan-name {
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 0.3px;
+        }
+        .amount-cell {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: var(--gold);
+            font-size: 13px;
+        }
+        .date-cell {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 5px 11px;
+            border-radius: var(--radius-full);
+            border: 1px solid;
+        }
+        .badge i { font-size: 9px; }
+        .badge-pending {
+            background: rgba(251, 191, 36, 0.12);
+            color: var(--amber);
+            border-color: rgba(251, 191, 36, 0.35);
+            box-shadow: 0 0 14px rgba(251, 191, 36, 0.15);
+        }
+        .badge-approved {
+            background: rgba(52, 211, 153, 0.12);
+            color: var(--green);
+            border-color: rgba(52, 211, 153, 0.35);
+            box-shadow: 0 0 14px rgba(52, 211, 153, 0.15);
+        }
+        .badge-rejected {
+            background: rgba(248, 113, 113, 0.12);
+            color: var(--red);
+            border-color: rgba(248, 113, 113, 0.35);
+            box-shadow: 0 0 14px rgba(248, 113, 113, 0.15);
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+        }
+        .empty-state i {
+            font-size: 44px;
+            color: var(--text-faint);
+            margin-bottom: 14px;
+            display: block;
+            opacity: 0.6;
+        }
+        .empty-state h4 {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .empty-state p { font-size: 12px; }
+
+        /* Plans grid */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 14px;
+        }
+        .plan-card {
+            background: var(--bg-tertiary);
+            border: 1.5px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            transition: all var(--transition-med);
+            position: relative;
+            overflow: hidden;
+        }
+        .plan-card::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            background: var(--gold-glow-soft);
+            filter: blur(50px);
+            pointer-events: none;
+        }
+        .plan-card:hover {
+            border-color: var(--gold);
+            box-shadow: var(--shadow-md), 0 0 26px var(--gold-glow-soft);
+            transform: translateY(-3px);
+        }
+        .plan-card__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .plan-card__icon {
+            width: 36px; height: 36px;
+            border-radius: var(--radius-sm);
+            display: grid;
+            place-items: center;
+            background: var(--gold-glow-soft);
+            color: var(--gold);
+            font-size: 15px;
+        }
+        .plan-card__key {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-faint);
+            padding: 3px 8px;
+            border-radius: var(--radius-full);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+        }
+        .plan-card__name {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
+            margin-bottom: 4px;
+            position: relative;
+        }
+        .plan-card__price {
+            font-family: var(--font-mono);
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--gold);
+            text-shadow: 0 0 24px var(--gold-glow-soft);
+            position: relative;
+        }
+        .plan-card__price small {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-left: 3px;
+            font-family: var(--font-body);
+        }
+        .plan-card__actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 14px;
+            position: relative;
+        }
+        .plan-card__actions .btn { flex: 1; justify-content: center; }
+
+        /* Skeleton loading */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-tertiary) 0%, var(--bg-elevated) 50%, var(--bg-tertiary) 100%);
+            background-size: 200% 100%;
+            animation: skeletonShimmer 1.4s ease-in-out infinite;
+            border-radius: var(--radius-sm);
+        }
+        @keyframes skeletonShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ============================================================
+           MODALS
+           ============================================================ */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-med);
+            padding: 20px;
+        }
+        .modal-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+        .modal-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: 30px 26px;
+            max-width: 460px;
+            width: 100%;
+            box-shadow: var(--shadow-xl), 0 0 60px rgba(59, 130, 246, 0.1);
+            transform: translateY(30px) scale(0.95);
+            transition: transform var(--transition-bounce);
+            position: relative;
+            overflow: hidden;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-overlay.is-open .modal-box { transform: translateY(0) scale(1); }
+        .modal-box::before {
+            content: '';
+            position: absolute;
+            top: -80px; right: -80px;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            background: var(--blue-glow-soft);
+            filter: blur(80px);
+            pointer-events: none;
+        }
+        .modal-box > * { position: relative; z-index: 1; }
+
+        .modal-close {
+            position: absolute;
+            top: 14px; right: 14px;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: grid;
+            place-items: center;
+            z-index: 2;
+        }
+        .modal-close:hover {
+            border-color: var(--red);
+            color: var(--red);
+            background: var(--bg-elevated);
+            transform: rotate(90deg);
+        }
+
+        .modal-icon {
+            width: 58px; height: 58px;
+            border-radius: var(--radius-md);
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            margin-bottom: 16px;
+        }
+        .modal-icon--blue { background: var(--blue-glow-soft); color: var(--blue-400); box-shadow: 0 0 24px var(--blue-glow-soft); }
+        .modal-icon--green { background: rgba(52, 211, 153, 0.12); color: var(--green); box-shadow: 0 0 24px rgba(52,211,153,0.2); }
+        .modal-icon--red { background: rgba(248, 113, 113, 0.12); color: var(--red); box-shadow: 0 0 24px rgba(248,113,113,0.2); }
+        .modal-icon--gold { background: var(--gold-glow-soft); color: var(--gold); box-shadow: 0 0 24px var(--gold-glow-soft); }
+
+        .modal-title {
+            font-family: var(--font-display);
+            font-size: 23px;
+            font-weight: 800;
+            letter-spacing: -0.4px;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .modal-subtitle {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        .modal-field {
+            margin-bottom: 12px;
+        }
+        .modal-field label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        .modal-field input {
+            width: 100%;
+            padding: 11px 14px;
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: var(--font-body);
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+        .modal-field input:focus {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 0 3px var(--blue-glow-soft), 0 0 20px var(--blue-glow-soft);
+        }
+        .modal-field input[readonly] {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+        .modal-field input.mono { font-family: var(--font-mono); letter-spacing: 0.5px; }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .modal-actions .btn { flex: 1; min-width: 120px; justify-content: center; }
+
+        .detail-list {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 20px;
+        }
+        .detail-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 9px 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-bottom: 1px dashed var(--border-color);
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-row > span:last-child {
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 11.5px;
+            text-align: right;
+            word-break: break-all;
+            max-width: 60%;
+        }
+        .detail-row .copy-mini {
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            border-radius: var(--radius-xs);
+            padding: 4px 8px;
+            font-size: 10px;
+            margin-left: 6px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .detail-row .copy-mini:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+        }
+
+        /* ============================================================
+           TOAST
+           ============================================================ */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 380px;
+            pointer-events: none;
+        }
+        .toast {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 12.5px;
+            color: var(--text-primary);
+            font-weight: 600;
+            pointer-events: auto;
+            animation: toastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border-left: 3px solid var(--blue-500);
+        }
+        .toast i { font-size: 15px; margin-top: 1px; flex-shrink: 0; }
+        .toast.toast-success { border-left-color: var(--green); }
+        .toast.toast-success i { color: var(--green); }
+        .toast.toast-error { border-left-color: var(--red); }
+        .toast.toast-error i { color: var(--red); }
+        .toast.toast-info i { color: var(--blue-400); }
+        .toast.is-leaving { animation: toastOut 0.35s ease forwards; }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.92); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes toastOut {
+            to { opacity: 0; transform: translateX(80px) scale(0.9); }
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 900px) {
+            .sidebar {
+                transform: translateX(-100%);
+                box-shadow: var(--shadow-xl);
+            }
+            .sidebar.is-open { transform: translateX(0); }
+            .main-wrapper { margin-left: 0; }
+            .burger-btn { display: flex; }
+        }
+        @media (max-width: 640px) {
+            .header { padding: 0 14px; gap: 10px; }
+            .header__title { font-size: 18px; }
+            .role-badge span { display: none; }
+            .role-badge { padding: 7px 10px; }
+            .content { padding: 20px 14px 60px; }
+            .panel { padding: 16px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .modal-box { padding: 24px 18px; }
+            .toast-container { bottom: 16px; right: 16px; left: 16px; max-width: none; }
+            .filter-row { flex-direction: column; }
+            .search-box { min-width: 0; }
+            .data-table { font-size: 11.5px; min-width: 640px; }
+            .data-table thead th, .data-table tbody td { padding: 10px 12px; }
+            .moon { width: 90px; height: 90px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+    <!-- ==================== BACKGROUND ==================== -->
+    <div class="bg-3d-scene" aria-hidden="true">
+        <div class="shape3d shape1">
+            <div class="shape3d-cube">
+                <div class="face"></div><div class="face"></div><div class="face"></div>
+                <div class="face"></div><div class="face"></div><div class="face"></div>
+                <div class="cube-core"></div>
+            </div>
+        </div>
+        <div class="shape3d shape2"><div class="shape3d-ring"></div></div>
+        <div class="shape3d shape3"><div class="shape3d-pyramid"></div></div>
+        <div class="shape3d shape4"><div class="shape3d-diamond"></div></div>
+        <div class="shape3d shape5"><div class="shape3d-torus"></div></div>
+        <div class="shape3d shape6">
+            <div class="shape3d-orbital">
+                <div class="orbit-dot"></div><div class="orbit-dot"></div>
+                <div class="orbit-dot"></div><div class="orbit-dot"></div>
+            </div>
+        </div>
+    </div>
+    <div class="moon" id="moon" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="grid-overlay"></div>
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar__brand">
+            <div class="sidebar__logo">
+                <svg viewBox="0 0 60 60" fill="none">
+                    <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="sidebar__brand-text">EMER<span>GENS</span></div>
+        </div>
+
+        <div class="sidebar__section-label">Management</div>
+        <nav class="sidebar__nav" id="sidebarNav">
+            <a class="nav-item is-active" data-section="dashboard">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a class="nav-item" data-section="pending">
+                <i class="fas fa-hourglass-half"></i>
+                <span>Pending</span>
+                <span class="nav-count" id="navPendingCount" hidden>0</span>
+            </a>
+            <a class="nav-item" data-section="transactions">
+                <i class="fas fa-receipt"></i>
+                <span>Transactions</span>
+            </a>
+            <a class="nav-item" data-section="plans">
+                <i class="fas fa-tags"></i>
+                <span>Plans</span>
+            </a>
+        </nav>
+
+        <div class="sidebar__footer">
+            &copy; 2026 <strong>Emergens</strong> · Payment Manager
+        </div>
+    </aside>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ==================== MAIN ==================== -->
+    <div class="main-wrapper">
+
+        <header class="header" id="header">
+            <button class="burger-btn" id="burgerBtn" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+            <h1 class="header__title" id="pageTitle">Payment <span class="accent">Dashboard</span></h1>
+            <div class="header__right">
+                <span class="role-badge" id="roleBadge"><i class="fas fa-crown"></i> <span>Owner</span></span>
+                <button class="icon-btn" id="refreshBtn" aria-label="Refresh all data" title="Refresh">
+                    <i class="fas fa-rotate-right"></i>
+                </button>
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="content">
+
+            <!-- ============ VIEW: DASHBOARD ============ -->
+            <section class="view" id="view-dashboard">
+                <div class="view-header">
+                    <div>
+                        <h1>Payment <span class="blue-text">Management</span> <span class="gold-text">Dashboard</span></h1>
+                        <p>Real-time overview of payment activity, approvals, and revenue across all customer transactions.</p>
+                    </div>
+                </div>
+
+                <div class="stats-grid" id="statsGrid">
+                    <!-- Skeleton placeholders (replaced after data load) -->
+                    <div class="stat-card stat-card--blue">
+                        <div class="stat-card__top">
+                            <div class="stat-card__icon"><i class="fas fa-receipt"></i></div>
+                        </div>
+                        <div class="stat-card__label">Total Transactions</div>
+                        <div class="stat-card__value" id="statTotal">—</div>
+                        <div class="stat-card__sub">All-time</div>
+                    </div>
+                    <div class="stat-card stat-card--amber">
+                        <div class="stat-card__top">
+                            <div class="stat-card__icon"><i class="fas fa-hourglass-half"></i></div>
+                        </div>
+                        <div class="stat-card__label">Pending</div>
+                        <div class="stat-card__value" id="statPending">—</div>
+                        <div class="stat-card__sub">Awaiting review</div>
+                    </div>
+                    <div class="stat-card stat-card--green">
+                        <div class="stat-card__top">
+                            <div class="stat-card__icon"><i class="fas fa-circle-check"></i></div>
+                        </div>
+                        <div class="stat-card__label">Approved</div>
+                        <div class="stat-card__value" id="statApproved">—</div>
+                        <div class="stat-card__sub">Active accounts</div>
+                    </div>
+                    <div class="stat-card stat-card--gold">
+                        <div class="stat-card__top">
+                            <div class="stat-card__icon"><i class="fas fa-sack-dollar"></i></div>
+                        </div>
+                        <div class="stat-card__label">Revenue</div>
+                        <div class="stat-card__value" id="statRevenue">—<small>MYR</small></div>
+                        <div class="stat-card__sub">Approved payments</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title"><i class="fas fa-bolt"></i> Recent Activity</div>
+                            <div class="panel-sub">Latest 6 transactions across all statuses.</div>
+                        </div>
+                        <button class="btn btn-outline btn-sm" id="viewAllBtn">
+                            View all <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction</th>
+                                    <th>Customer</th>
+                                    <th>Plan</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ VIEW: PENDING ============ -->
+            <section class="view" id="view-pending" hidden>
+                <div class="view-header">
+                    <div>
+                        <h1>Pending <span class="gold-text">Payments</span></h1>
+                        <p>Review, approve, or reject payment submissions awaiting confirmation.</p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title"><i class="fas fa-hourglass-half"></i> Awaiting Review</div>
+                            <div class="panel-sub" id="pendingCountLabel">0 pending</div>
+                        </div>
+                        <button class="btn btn-outline btn-sm" id="refreshPendingBtn">
+                            <i class="fas fa-rotate-right"></i> Refresh
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction</th>
+                                    <th>Customer</th>
+                                    <th>Plan</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                    <th style="text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingTbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="empty-state" id="pendingEmpty" hidden>
+                        <i class="fas fa-circle-check"></i>
+                        <h4>All caught up</h4>
+                        <p>There are no pending payments to review right now.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ VIEW: TRANSACTIONS ============ -->
+            <section class="view" id="view-transactions" hidden>
+                <div class="view-header">
+                    <div>
+                        <h1>All <span class="blue-text">Transactions</span></h1>
+                        <p>Complete history of every payment submitted through the platform.</p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title"><i class="fas fa-receipt"></i> Transaction Ledger</div>
+                            <div class="panel-sub" id="allCountLabel">0 transactions</div>
+                        </div>
+                        <button class="btn btn-outline btn-sm" id="refreshAllBtn">
+                            <i class="fas fa-rotate-right"></i> Refresh
+                        </button>
+                    </div>
+
+                    <div class="filter-row">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="txSearch" placeholder="Search by transaction ID, username, or plan…" autocomplete="off">
+                        </div>
+                        <select class="select-box" id="txStatusFilter">
+                            <option value="all">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction</th>
+                                    <th>Customer</th>
+                                    <th>Plan</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th style="text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allTbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="empty-state" id="allEmpty" hidden>
+                        <i class="fas fa-inbox"></i>
+                        <h4>No transactions found</h4>
+                        <p>Try adjusting your search or filter criteria.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ VIEW: PLANS ============ -->
+            <section class="view" id="view-plans" hidden>
+                <div class="view-header">
+                    <div>
+                        <h1>Plan <span class="gold-text">Pricing</span></h1>
+                        <p>Configure the plans available to customers on the checkout page.</p>
+                    </div>
+                    <button class="btn btn-gold" id="addPlanBtn">
+                        <i class="fas fa-plus"></i> Add New Plan
+                    </button>
+                </div>
+
+                <div class="plans-grid" id="plansGrid"></div>
+                <div class="empty-state" id="plansEmpty" hidden>
+                    <i class="fas fa-tags"></i>
+                    <h4>No plans configured</h4>
+                    <p>Click "Add New Plan" to create your first pricing tier.</p>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ==================== MODAL: PLAN EDITOR ==================== -->
+    <div class="modal-overlay" id="planModal" role="dialog" aria-modal="true">
+        <div class="modal-box">
+            <button class="modal-close" id="planModalClose" aria-label="Close">&times;</button>
+            <div class="modal-icon modal-icon--gold" id="planModalIcon"><i class="fas fa-tag"></i></div>
+            <h2 class="modal-title" id="planModalTitle">Edit Plan</h2>
+            <p class="modal-subtitle" id="planModalSubtitle">Update the details of this pricing plan.</p>
+
+            <div class="modal-field">
+                <label for="planKeyInput">Plan Key</label>
+                <input type="text" id="planKeyInput" class="mono" placeholder="e.g. standard" readonly>
+            </div>
+            <div class="modal-field">
+                <label for="planNameInput">Display Name</label>
+                <input type="text" id="planNameInput" placeholder="e.g. Standard Plan">
+            </div>
+            <div class="modal-field">
+                <label for="planPriceInput">Price (RM)</label>
+                <input type="text" id="planPriceInput" class="mono" placeholder="e.g. 25.00" inputmode="decimal">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-outline" id="planModalCancel">Cancel</button>
+                <button class="btn btn-gold" id="planModalSave"><i class="fas fa-check"></i> Save Plan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: CONFIRM ACTION ==================== -->
+    <div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true">
+        <div class="modal-box">
+            <button class="modal-close" id="confirmModalClose" aria-label="Close">&times;</button>
+            <div class="modal-icon" id="confirmModalIcon"><i class="fas fa-question"></i></div>
+            <h2 class="modal-title" id="confirmTitle">Confirm Action</h2>
+            <p class="modal-subtitle" id="confirmSubtitle">Are you sure you want to proceed?</p>
+
+            <div class="detail-list" id="confirmDetails" hidden></div>
+
+            <div class="modal-actions">
+                <button class="btn btn-outline" id="confirmCancel">Cancel</button>
+                <button class="btn" id="confirmProceed"><i class="fas fa-check"></i> Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: TRANSACTION DETAILS ==================== -->
+    <div class="modal-overlay" id="detailModal" role="dialog" aria-modal="true">
+        <div class="modal-box">
+            <button class="modal-close" id="detailModalClose" aria-label="Close">&times;</button>
+            <div class="modal-icon modal-icon--blue"><i class="fas fa-receipt"></i></div>
+            <h2 class="modal-title">Transaction Details</h2>
+            <p class="modal-subtitle" id="detailSubtitle">Full breakdown of this payment.</p>
+            <div class="detail-list" id="detailList"></div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" id="detailClose">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TOASTS ==================== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // ============================================================
+        // STATE
+        // ============================================================
+        const state = {
+            plans: {},
+            pending: [],
+            all: [],
+            currentSection: 'dashboard',
+            editingPlanKey: null,     // null = creating new
+            confirmResolver: null
+        };
+
+        // ============================================================
+        // DOM REFS
+        // ============================================================
+        const $ = (id) => document.getElementById(id);
+        const root = document.documentElement;
+        const body = document.body;
+
+        const sidebar = $('sidebar');
+        const sidebarOverlay = $('sidebarOverlay');
+        const burgerBtn = $('burgerBtn');
+        const sidebarNav = $('sidebarNav');
+        const pageTitle = $('pageTitle');
+        const header = $('header');
+
+        const roleBadge = $('roleBadge');
+        const themeToggle = $('themeToggle');
+        const refreshBtn = $('refreshBtn');
+
+        const navPendingCount = $('navPendingCount');
+
+        const statsGrid = $('statsGrid');
+        const statTotal = $('statTotal');
+        const statPending = $('statPending');
+        const statApproved = $('statApproved');
+        const statRevenue = $('statRevenue');
+
+        const recentTbody = $('recentTbody');
+        const pendingTbody = $('pendingTbody');
+        const pendingEmpty = $('pendingEmpty');
+        const pendingCountLabel = $('pendingCountLabel');
+        const allTbody = $('allTbody');
+        const allEmpty = $('allEmpty');
+        const allCountLabel = $('allCountLabel');
+        const txSearch = $('txSearch');
+        const txStatusFilter = $('txStatusFilter');
+
+        const plansGrid = $('plansGrid');
+        const plansEmpty = $('plansEmpty');
+
+        const planModal = $('planModal');
+        const planModalIcon = $('planModalIcon');
+        const planModalTitle = $('planModalTitle');
+        const planModalSubtitle = $('planModalSubtitle');
+        const planKeyInput = $('planKeyInput');
+        const planNameInput = $('planNameInput');
+        const planPriceInput = $('planPriceInput');
+        const planModalSave = $('planModalSave');
+        const planModalCancel = $('planModalCancel');
+        const planModalClose = $('planModalClose');
+
+        const confirmModal = $('confirmModal');
+        const confirmModalIcon = $('confirmModalIcon');
+        const confirmTitle = $('confirmTitle');
+        const confirmSubtitle = $('confirmSubtitle');
+        const confirmDetails = $('confirmDetails');
+        const confirmProceed = $('confirmProceed');
+        const confirmCancel = $('confirmCancel');
+        const confirmModalClose = $('confirmModalClose');
+
+        const detailModal = $('detailModal');
+        const detailList = $('detailList');
+        const detailSubtitle = $('detailSubtitle');
+        const detailClose = $('detailClose');
+        const detailModalClose = $('detailModalClose');
+
+        const toastContainer = $('toastContainer');
+
+        // ============================================================
+        // THEME
+        // ============================================================
+        function setTheme(theme) {
+            root.setAttribute('data-theme', theme);
+            body.setAttribute('data-theme', theme);
+            localStorage.setItem('emergens-theme', theme);
+            const icon = theme === 'dark' ? 'fa-moon' : 'fa-sun';
+            themeToggle.innerHTML = `<i class="fas ${icon}"></i>`;
+        }
+        setTheme(localStorage.getItem('emergens-theme') || 'dark');
+
+        themeToggle.addEventListener('click', () => {
+            const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+            showToast(next === 'dark' ? 'Dark mode activated' : 'Light mode activated', 'info');
+        });
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            const icon = type === 'error' ? 'fa-circle-exclamation'
+                       : type === 'info'  ? 'fa-circle-info'
+                       : 'fa-circle-check';
+            toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('is-leaving');
+                setTimeout(() => toast.remove(), 350);
+            }, 3000);
+        }
+
+        // ============================================================
+        // FORMATTERS
+        // ============================================================
+        function money(v) {
+            const n = parseFloat(v) || 0;
+            return 'RM ' + n.toFixed(2);
+        }
+        function formatDate(iso) {
+            if (!iso) return '—';
+            try {
+                const d = new Date(iso);
+                if (isNaN(d.getTime())) return iso;
+                return d.toLocaleString(undefined, {
+                    year: 'numeric', month: 'short', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            } catch (e) { return iso; }
+        }
+        function initials(name) {
+            if (!name) return '?';
+            const s = String(name).trim();
+            return s.slice(0, 2).toUpperCase();
+        }
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ============================================================
+        // FOLLOWING MOON
+        // ============================================================
+        (function initMoon() {
+            const moon = $('moon');
+            if (!moon) return;
+            const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (prefersReduced) return;
+
+            let targetX = 0, targetY = 0, currentX = 0, currentY = 0;
+            const RANGE_X = 90;
+            const RANGE_Y = 60;
+
+            window.addEventListener('mousemove', (e) => {
+                const nx = (e.clientX / window.innerWidth - 0.5) * 2;
+                const ny = (e.clientY / window.innerHeight - 0.5) * 2;
+                targetX = nx * RANGE_X;
+                targetY = ny * RANGE_Y;
+            }, { passive: true });
+
+            function tick() {
+                currentX += (targetX - currentX) * 0.045;
+                currentY += (targetY - currentY) * 0.045;
+                moon.style.transform = `translate3d(${currentX.toFixed(2)}px, ${currentY.toFixed(2)}px, 0)`;
+                requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        })();
+
+        // ============================================================
+        // SIDEBAR / MOBILE
+        // ============================================================
+        function toggleSidebar(forceClose = false) {
+            const isOpen = sidebar.classList.contains('is-open');
+            if (forceClose || isOpen) {
+                sidebar.classList.remove('is-open');
+                sidebarOverlay.classList.remove('is-open');
+                burgerBtn.classList.remove('is-active');
+            } else {
+                sidebar.classList.add('is-open');
+                sidebarOverlay.classList.add('is-open');
+                burgerBtn.classList.add('is-active');
+            }
+        }
+        burgerBtn.addEventListener('click', () => toggleSidebar());
+        sidebarOverlay.addEventListener('click', () => toggleSidebar(true));
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                toggleSidebar(true);
+                closeAllModals();
+            }
+        });
+
+        // Header scroll
+        window.addEventListener('scroll', () => {
+            header.classList.toggle('scrolled', window.scrollY > 20);
+        }, { passive: true });
+
+        // ============================================================
+        // SECTION SWITCHING
+        // ============================================================
+        const SECTION_TITLES = {
+            dashboard: 'Payment <span class="accent">Dashboard</span>',
+            pending: 'Pending <span class="accent">Payments</span>',
+            transactions: 'All <span class="accent">Transactions</span>',
+            plans: 'Plan <span class="accent">Pricing</span>'
+        };
+
+        function switchSection(name) {
+            if (!SECTION_TITLES[name]) return;
+            state.currentSection = name;
+
+            document.querySelectorAll('.view').forEach(v => { v.hidden = true; });
+            const view = $('view-' + name);
+            if (view) view.hidden = false;
+
+            document.querySelectorAll('.nav-item').forEach(n => {
+                n.classList.toggle('is-active', n.dataset.section === name);
+            });
+
+            pageTitle.innerHTML = SECTION_TITLES[name];
+
+            if (window.innerWidth <= 900) toggleSidebar(true);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        sidebarNav.addEventListener('click', (e) => {
+            const item = e.target.closest('.nav-item');
+            if (!item) return;
+            switchSection(item.dataset.section);
+        });
+
+        // ============================================================
+        // OWNER VERIFICATION
+        // ============================================================
+        async function verifyOwner() {
+            try {
+                const res = await fetch('/api/me', { credentials: 'same-origin' });
+                if (res.status === 401) {
+                    window.location.href = '/login.html?next=/management_payment.html';
+                    return false;
+                }
+                if (!res.ok) throw new Error('auth failed');
+                const data = await res.json();
+                if (data.role !== 'owner') {
+                    window.location.href = '/dashboard.html';
+                    return false;
+                }
+                roleBadge.innerHTML = `<i class="fas fa-crown"></i> <span>${escapeHtml(data.username || 'Owner')}</span>`;
+                return true;
+            } catch (e) {
+                showToast('Authentication error — please sign in again.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login.html?next=/management_payment.html';
+                }, 1200);
+                return false;
+            }
+        }
+
+        // ============================================================
+        // API — PLANS
+        // ============================================================
+        async function loadPlans() {
+            try {
+                const res = await fetch('/api/payment/manage/plans');
+                if (!res.ok) throw new Error('Failed to load plans');
+                const data = await res.json();
+                state.plans = data.plans || {};
+                renderPlans();
+            } catch (e) {
+                console.error(e);
+                showToast('Could not load plans.', 'error');
+            }
+        }
+
+        function renderPlans() {
+            const keys = Object.keys(state.plans);
+            plansGrid.innerHTML = '';
+            if (!keys.length) {
+                plansEmpty.hidden = false;
+                return;
+            }
+            plansEmpty.hidden = true;
+
+            const iconMap = {
+                free: 'fa-star', starter: 'fa-rocket', standard: 'fa-crown',
+                team: 'fa-users', enterprise: 'fa-fire', hot: 'fa-fire'
+            };
+
+            keys.forEach(key => {
+                const plan = state.plans[key];
+                const card = document.createElement('div');
+                card.className = 'plan-card';
+                card.innerHTML = `
+                    <div class="plan-card__head">
+                        <div class="plan-card__icon">
+                            <i class="fas ${iconMap[key] || 'fa-tag'}"></i>
+                        </div>
+                        <span class="plan-card__key">${escapeHtml(key)}</span>
+                    </div>
+                    <div class="plan-card__name">${escapeHtml(plan.name || key)}</div>
+                    <div class="plan-card__price">${money(plan.price)}<small>/mo</small></div>
+                    <div class="plan-card__actions">
+                        <button class="btn btn-outline btn-sm" data-action="edit-plan" data-key="${escapeHtml(key)}">
+                            <i class="fas fa-pen"></i> Edit
+                        </button>
+                    </div>
+                `;
+                plansGrid.appendChild(card);
+            });
+        }
+
+        // Delegated click for plans grid
+        plansGrid.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-action="edit-plan"]');
+            if (!btn) return;
+            openPlanModal(btn.dataset.key);
+        });
+
+        // Plan modal
+        function openPlanModal(key) {
+            if (key && state.plans[key]) {
+                state.editingPlanKey = key;
+                const plan = state.plans[key];
+                planModalIcon.className = 'modal-icon modal-icon--gold';
+                planModalIcon.innerHTML = '<i class="fas fa-pen"></i>';
+                planModalTitle.textContent = 'Edit Plan';
+                planModalSubtitle.textContent = 'Update the details of this pricing plan.';
+                planKeyInput.value = key;
+                planNameInput.value = plan.name || '';
+                planPriceInput.value = plan.price || '';
+                planKeyInput.readOnly = true;
+            } else {
+                state.editingPlanKey = null;
+                planModalIcon.className = 'modal-icon modal-icon--green';
+                planModalIcon.innerHTML = '<i class="fas fa-plus"></i>';
+                planModalTitle.textContent = 'Create New Plan';
+                planModalSubtitle.textContent = 'Add a new pricing tier to your checkout.';
+                planKeyInput.value = '';
+                planKeyInput.readOnly = false;
+                planNameInput.value = '';
+                planPriceInput.value = '';
+            }
+            planModal.classList.add('is-open');
+            setTimeout(() => (state.editingPlanKey ? planNameInput : planKeyInput).focus(), 100);
+        }
+
+        function closePlanModal() {
+            planModal.classList.remove('is-open');
+            state.editingPlanKey = null;
+        }
+
+        planModalClose.addEventListener('click', closePlanModal);
+        planModalCancel.addEventListener('click', closePlanModal);
+        planModal.addEventListener('click', (e) => { if (e.target === planModal) closePlanModal(); });
+
+        planModalSave.addEventListener('click', async () => {
+            const key = planKeyInput.value.trim().toLowerCase().replace(/\s+/g, '_');
+            const name = planNameInput.value.trim();
+            const price = planPriceInput.value.trim();
+
+            if (!key) { showToast('Plan key is required.', 'error'); planKeyInput.focus(); return; }
+            if (!/^[a-z0-9_]+$/.test(key)) { showToast('Plan key must be lowercase letters, numbers, or underscores.', 'error'); return; }
+            if (!name) { showToast('Plan name is required.', 'error'); planNameInput.focus(); return; }
+            if (!price || isNaN(parseFloat(price))) { showToast('Enter a valid price.', 'error'); planPriceInput.focus(); return; }
+
+            if (!state.editingPlanKey && state.plans[key]) {
+                showToast(`Plan key "${key}" already exists.`, 'error');
+                return;
+            }
+
+            const newPlans = { ...state.plans };
+            newPlans[key] = { name, price: String(price) };
+
+            planModalSave.disabled = true;
+            try {
+                const res = await fetch('/api/payment/manage/plans', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plans: newPlans })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Failed to save plan');
+
+                state.plans = newPlans;
+                renderPlans();
+                closePlanModal();
+                showToast(state.editingPlanKey ? 'Plan updated' : 'Plan created', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast(e.message || 'Failed to save plan.', 'error');
+            } finally {
+                planModalSave.disabled = false;
+            }
+        });
+
+        // Add new plan button
+        $('addPlanBtn').addEventListener('click', () => openPlanModal(null));
+
+        // ============================================================
+        // API — PENDING
+        // ============================================================
+        async function loadPending() {
+            try {
+                const res = await fetch('/api/payment/manage/pending');
+                if (!res.ok) throw new Error('Failed');
+                const data = await res.json();
+                state.pending = data.pending || [];
+                renderPending();
+                updateStats();
+                updateNavCounts();
+            } catch (e) {
+                console.error(e);
+                showToast('Could not load pending payments.', 'error');
+            }
+        }
+
+        function renderPending() {
+            pendingTbody.innerHTML = '';
+            const list = state.pending;
+
+            pendingCountLabel.textContent = list.length === 1 ? '1 pending payment' : `${list.length} pending payments`;
+
+            if (!list.length) {
+                pendingEmpty.hidden = false;
+                return;
+            }
+            pendingEmpty.hidden = true;
+
+            list.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="txn-id">${escapeHtml(p.payment_id || '—')}</span></td>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">${escapeHtml(initials(p.requested_username))}</div>
+                            <div class="user-meta">
+                                <strong>${escapeHtml(p.requested_username || 'Unknown')}</strong>
+                                <small>${escapeHtml(p.user || 'guest')}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="plan-name">${escapeHtml(p.plan || '—')}</span></td>
+                    <td><span class="amount-cell">${money(p.amount)}</span></td>
+                    <td><span class="date-cell">${escapeHtml(formatDate(p.created_at))}</span></td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn btn-outline btn-sm btn-icon" data-action="view" data-id="${escapeHtml(p.payment_id)}" title="View details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-success btn-sm" data-action="approve" data-id="${escapeHtml(p.payment_id)}">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button class="btn btn-danger btn-sm" data-action="reject" data-id="${escapeHtml(p.payment_id)}">
+                                <i class="fas fa-xmark"></i> Reject
+                            </button>
+                        </div>
+                    </td>
+                `;
+                pendingTbody.appendChild(tr);
+            });
+        }
+
+        // Event delegation for pending table
+        pendingTbody.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const id = btn.dataset.id;
+            if (action === 'view') openDetailModal(id, 'pending');
+            else if (action === 'approve') confirmApprove(id);
+            else if (action === 'reject') confirmReject(id);
+        });
+
+        // ============================================================
+        // API — ALL TRANSACTIONS
+        // ============================================================
+        async function loadAll() {
+            try {
+                let data;
+                try {
+                    const res = await fetch('/api/payment/manage/all');
+                    if (!res.ok) throw new Error('manage/all failed');
+                    data = await res.json();
+                } catch (innerErr) {
+                    // Fallback
+                    const res2 = await fetch('/api/payment/history');
+                    if (!res2.ok) throw innerErr;
+                    data = await res2.json();
+                }
+                state.all = data.payments || [];
+                renderAll();
+                renderRecent();
+                updateStats();
+            } catch (e) {
+                console.error(e);
+                showToast('Could not load transactions.', 'error');
+            }
+        }
+
+        function getFilteredAll() {
+            const q = txSearch.value.trim().toLowerCase();
+            const status = txStatusFilter.value;
+
+            return state.all.filter(p => {
+                if (status !== 'all' && p.status !== status) return false;
+                if (!q) return true;
+                const hay = [
+                    p.payment_id, p.requested_username, p.plan,
+                    p.user, p.status, p.amount
+                ].join(' ').toLowerCase();
+                return hay.includes(q);
+            });
+        }
+
+        function renderAll() {
+            const list = getFilteredAll();
+            allTbody.innerHTML = '';
+
+            allCountLabel.textContent = list.length === 1
+                ? '1 transaction'
+                : `${list.length} transactions`;
+
+            if (!list.length) {
+                allEmpty.hidden = false;
+                return;
+            }
+            allEmpty.hidden = true;
+
+            list.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="txn-id">${escapeHtml(p.payment_id || '—')}</span></td>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">${escapeHtml(initials(p.requested_username))}</div>
+                            <div class="user-meta">
+                                <strong>${escapeHtml(p.requested_username || 'Unknown')}</strong>
+                                <small>${escapeHtml(p.user || 'guest')}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="plan-name">${escapeHtml(p.plan || '—')}</span></td>
+                    <td><span class="amount-cell">${money(p.amount)}</span></td>
+                    <td><span class="badge badge-${escapeHtml(p.status)}"><i class="fas ${statusIcon(p.status)}"></i>${escapeHtml(p.status)}</span></td>
+                    <td><span class="date-cell">${escapeHtml(formatDate(p.created_at))}</span></td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn btn-outline btn-sm btn-icon" data-action="view" data-id="${escapeHtml(p.payment_id)}" title="View details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${p.status === 'pending' ? `
+                                <button class="btn btn-success btn-sm btn-icon" data-action="approve" data-id="${escapeHtml(p.payment_id)}" title="Approve">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm btn-icon" data-action="reject" data-id="${escapeHtml(p.payment_id)}" title="Reject">
+                                    <i class="fas fa-xmark"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                `;
+                allTbody.appendChild(tr);
+            });
+        }
+
+        function statusIcon(status) {
+            if (status === 'pending') return 'fa-hourglass-half';
+            if (status === 'approved') return 'fa-circle-check';
+            if (status === 'rejected') return 'fa-circle-xmark';
+            return 'fa-circle';
+        }
+
+        // Event delegation for all table
+        allTbody.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const id = btn.dataset.id;
+            if (action === 'view') openDetailModal(id, 'all');
+            else if (action === 'approve') confirmApprove(id);
+            else if (action === 'reject') confirmReject(id);
+        });
+
+        // Filters
+        txSearch.addEventListener('input', renderAll);
+        txStatusFilter.addEventListener('change', renderAll);
+
+        // ============================================================
+        // RECENT ACTIVITY (dashboard)
+        // ============================================================
+        function renderRecent() {
+            recentTbody.innerHTML = '';
+            const recent = [...state.all]
+                .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+                .slice(0, 6);
+
+            if (!recent.length) {
+                recentTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:30px;">No recent activity.</td></tr>`;
+                return;
+            }
+
+            recent.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="txn-id">${escapeHtml(p.payment_id || '—')}</span></td>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">${escapeHtml(initials(p.requested_username))}</div>
+                            <div class="user-meta">
+                                <strong>${escapeHtml(p.requested_username || 'Unknown')}</strong>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="plan-name">${escapeHtml(p.plan || '—')}</span></td>
+                    <td><span class="amount-cell">${money(p.amount)}</span></td>
+                    <td><span class="badge badge-${escapeHtml(p.status)}"><i class="fas ${statusIcon(p.status)}"></i>${escapeHtml(p.status)}</span></td>
+                    <td><span class="date-cell">${escapeHtml(formatDate(p.created_at))}</span></td>
+                `;
+                recentTbody.appendChild(tr);
+            });
+        }
+
+        // ============================================================
+        // STATS
+        // ============================================================
+        function updateStats() {
+            const total = state.all.length;
+            const pending = state.pending.length;
+            const approved = state.all.filter(p => p.status === 'approved').length;
+            const revenue = state.all
+                .filter(p => p.status === 'approved')
+                .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+            statTotal.textContent = String(total);
+            statPending.textContent = String(pending);
+            statApproved.textContent = String(approved);
+            statRevenue.innerHTML = revenue.toFixed(2) + '<small>MYR</small>';
+        }
+
+        function updateNavCounts() {
+            const pending = state.pending.length;
+            if (pending > 0) {
+                navPendingCount.hidden = false;
+                navPendingCount.textContent = pending > 99 ? '99+' : String(pending);
+            } else {
+                navPendingCount.hidden = true;
+            }
+        }
+
+        // ============================================================
+        // CONFIRM MODAL
+        // ============================================================
+        function openConfirm({ title, subtitle, icon, iconClass, detailsHtml, confirmLabel, confirmClass, onConfirm }) {
+            confirmModalIcon.className = 'modal-icon ' + (iconClass || 'modal-icon--blue');
+            confirmModalIcon.innerHTML = `<i class="fas ${icon || 'fa-question'}"></i>`;
+            confirmTitle.textContent = title;
+            confirmSubtitle.textContent = subtitle;
+            confirmProceed.className = 'btn ' + (confirmClass || 'btn-blue');
+            confirmProceed.innerHTML = `<i class="fas fa-check"></i> ${confirmLabel || 'Confirm'}`;
+
+            if (detailsHtml) {
+                confirmDetails.hidden = false;
+                confirmDetails.innerHTML = detailsHtml;
+            } else {
+                confirmDetails.hidden = true;
+                confirmDetails.innerHTML = '';
+            }
+
+            state.confirmResolver = async () => {
+                confirmProceed.disabled = true;
+                try {
+                    await onConfirm();
+                } finally {
+                    confirmProceed.disabled = false;
+                }
+            };
+
+            confirmModal.classList.add('is-open');
+        }
+
+        function closeConfirm() {
+            confirmModal.classList.remove('is-open');
+            state.confirmResolver = null;
+        }
+
+        confirmCancel.addEventListener('click', closeConfirm);
+        confirmModalClose.addEventListener('click', closeConfirm);
+        confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) closeConfirm(); });
+        confirmProceed.addEventListener('click', async () => {
+            if (state.confirmResolver) await state.confirmResolver();
+        });
+
+        // ============================================================
+        // APPROVE / REJECT
+        // ============================================================
+        function findPayment(id) {
+            return state.all.find(p => p.payment_id === id)
+                || state.pending.find(p => p.payment_id === id);
+        }
+
+        function confirmApprove(id) {
+            const p = findPayment(id) || {};
+            openConfirm({
+                title: 'Approve Payment?',
+                subtitle: 'This will activate the customer account and generate login credentials.',
+                icon: 'fa-circle-check',
+                iconClass: 'modal-icon--green',
+                confirmLabel: 'Approve',
+                confirmClass: 'btn-success',
+                detailsHtml: `
+                    <div class="detail-row"><span>Transaction</span><span>${escapeHtml(id)}</span></div>
+                    <div class="detail-row"><span>Customer</span><span>${escapeHtml(p.requested_username || '—')}</span></div>
+                    <div class="detail-row"><span>Plan</span><span>${escapeHtml(p.plan || '—')}</span></div>
+                    <div class="detail-row"><span>Amount</span><span>${money(p.amount)}</span></div>
+                `,
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch(`/api/payment/manage/approve/${encodeURIComponent(id)}`, { method: 'POST' });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(data.error || 'Approval failed');
+                        showToast('Payment approved', 'success');
+                        closeConfirm();
+                        await Promise.all([loadPending(), loadAll()]);
+                    } catch (e) {
+                        console.error(e);
+                        showToast(e.message || 'Approval failed.', 'error');
+                    }
+                }
+            });
+        }
+
+        function confirmReject(id) {
+            const p = findPayment(id) || {};
+            openConfirm({
+                title: 'Reject Payment?',
+                subtitle: 'The customer will be notified that their payment was not accepted.',
+                icon: 'fa-circle-xmark',
+                iconClass: 'modal-icon--red',
+                confirmLabel: 'Reject',
+                confirmClass: 'btn-danger',
+                detailsHtml: `
+                    <div class="detail-row"><span>Transaction</span><span>${escapeHtml(id)}</span></div>
+                    <div class="detail-row"><span>Customer</span><span>${escapeHtml(p.requested_username || '—')}</span></div>
+                    <div class="detail-row"><span>Plan</span><span>${escapeHtml(p.plan || '—')}</span></div>
+                `,
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch(`/api/payment/manage/reject/${encodeURIComponent(id)}`, { method: 'POST' });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(data.error || 'Rejection failed');
+                        showToast('Payment rejected', 'success');
+                        closeConfirm();
+                        await Promise.all([loadPending(), loadAll()]);
+                    } catch (e) {
+                        console.error(e);
+                        showToast(e.message || 'Rejection failed.', 'error');
+                    }
+                }
+            });
+        }
+
+        // ============================================================
+        // DETAIL MODAL
+        // ============================================================
+        function openDetailModal(id, source) {
+            const p = findPayment(id);
+            if (!p) { showToast('Transaction not found.', 'error'); return; }
+
+            const rows = [
+                ['Transaction ID', p.payment_id],
+                ['Requested Username', p.requested_username],
+                ['Plan', p.plan],
+                ['Amount', money(p.amount)],
+                ['Status', p.status],
+                ['Payment Method', p.payment_method || '—'],
+                ['Card Last 4', p.card_last4 ? '•••• ' + p.card_last4 : '—'],
+                ['Submitted By', p.user || 'guest'],
+                ['Created At', formatDate(p.created_at)]
+            ];
+
+            if (p.status === 'approved') {
+                if (p.generated_username) rows.push(['Generated Username', p.generated_username]);
+                if (p.generated_password) rows.push(['Generated Password', p.generated_password]);
+            }
+
+            detailSubtitle.textContent = `Full breakdown for ${id}.`;
+            detailList.innerHTML = rows.map(([k, v]) => {
+                const isCopyable = k === 'Generated Username' || k === 'Generated Password';
+                const copyBtn = isCopyable
+                    ? `<button class="copy-mini" data-copy="${escapeHtml(v)}"><i class="fas fa-copy"></i> Copy</button>`
+                    : '';
+                return `<div class="detail-row"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}${copyBtn}</span></div>`;
+            }).join('');
+
+            // Attach copy buttons
+            detailList.querySelectorAll('.copy-mini').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const text = btn.dataset.copy;
+                    try {
+                        if (navigator.clipboard?.writeText) {
+                            await navigator.clipboard.writeText(text);
+                        } else {
+                            const ta = document.createElement('textarea');
+                            ta.value = text;
+                            ta.style.position = 'fixed';
+                            ta.style.opacity = '0';
+                            document.body.appendChild(ta);
+                            ta.select();
+                            document.execCommand('copy');
+                            ta.remove();
+                        }
+                        showToast('Copied to clipboard', 'success');
+                    } catch (err) {
+                        showToast('Copy failed.', 'error');
+                    }
+                });
+            });
+
+            detailModal.classList.add('is-open');
+        }
+
+        function closeDetailModal() {
+            detailModal.classList.remove('is-open');
+        }
+        detailClose.addEventListener('click', closeDetailModal);
+        detailModalClose.addEventListener('click', closeDetailModal);
+        detailModal.addEventListener('click', (e) => { if (e.target === detailModal) closeDetailModal(); });
+
+        // ============================================================
+        // CLOSE ALL MODALS
+        // ============================================================
+        function closeAllModals() {
+            planModal.classList.remove('is-open');
+            confirmModal.classList.remove('is-open');
+            detailModal.classList.remove('is-open');
+            state.confirmResolver = null;
+        }
+
+        // ============================================================
+        // REFRESH
+        // ============================================================
+        async function refreshAll() {
+            refreshBtn.classList.add('is-spinning');
+            refreshBtn.disabled = true;
+            try {
+                await Promise.all([loadPending(), loadAll(), loadPlans()]);
+                showToast('Data refreshed', 'success');
+            } finally {
+                refreshBtn.classList.remove('is-spinning');
+                refreshBtn.disabled = false;
+            }
+        }
+
+        refreshBtn.addEventListener('click', refreshAll);
+
+        $('refreshPendingBtn').addEventListener('click', async () => {
+            showToast('Refreshing…', 'info');
+            await loadPending();
+        });
+
+        $('refreshAllBtn').addEventListener('click', async () => {
+            showToast('Refreshing…', 'info');
+            await loadAll();
+        });
+
+        $('viewAllBtn').addEventListener('click', () => switchSection('transactions'));
+
+        // ============================================================
+        // AUTO REFRESH
+        // ============================================================
+        let autoRefreshInterval = null;
+
+        function startAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(() => {
+                // Only refresh if user is on the tab and no modal is open
+                if (document.hidden) return;
+                if (document.querySelector('.modal-overlay.is-open')) return;
+                loadPending();
+                loadAll();
+            }, 20000);
+        }
+
+        // ============================================================
+        // BOOT
+        // ============================================================
+        (async function boot() {
+            const ok = await verifyOwner();
+            if (!ok) return;
+
+            // Initial hidden views
+            document.querySelectorAll('.view').forEach(v => { v.hidden = true; });
+            $('view-dashboard').hidden = false;
+
+            // Load all data in parallel
+            await Promise.all([loadPlans(), loadPending(), loadAll()]);
+
+            // Start auto refresh
+            startAutoRefresh();
+
+            console.log('%cEmergens — Payment Management', 'color: #60a5fa; font-size: 15px; font-weight: bold; font-family: monospace;');
+            console.log('%cEndpoints: /api/me · /api/payment/manage/plans · /api/payment/manage/pending · /api/payment/manage/all · /api/payment/manage/approve/:id · /api/payment/manage/reject/:id',
+                'color: #d4a574; font-size: 11px; font-family: monospace;');
+        })();
+
+    })();
+</script>
+</body>
+</html>

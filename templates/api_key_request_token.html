@@ -1,0 +1,2489 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Access — Emergens | Developer Portal</title>
+    <meta name="description" content="Emergens developer API access — authenticate, generate tokens, and test endpoints in a single console.">
+    <meta name="theme-color" content="#030712">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%23030712'/%3E%3Cpath d='M33 4L14 34h11l-4 22 22-30H32l5-22z' fill='%2360a5fa'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @font-face {
+            font-family: 'Space Grotesk';
+            src: url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Road Rage';
+            src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+    </style>
+    <style>
+        /* ============================================================
+           EMERGENS — API ACCESS CONSOLE (v3.3 · polished)
+           Theme: get-started · payment · management_payment · privacy · terms
+           ============================================================ */
+
+        :root {
+            --font-display: 'Road Rage', 'Space Grotesk', sans-serif;
+            --font-body: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Space Grotesk', 'Courier New', monospace;
+
+            --blue-300: #93c5fd;
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1e40af;
+            --blue-800: #172554;
+            --blue-glow: rgba(59, 130, 246, 0.3);
+            --blue-glow-soft: rgba(59, 130, 246, 0.12);
+
+            --gold: #d4a574;
+            --gold-light: #e7cd9f;
+            --gold-dark: #b8945f;
+            --gold-glow: rgba(212, 165, 116, 0.25);
+            --gold-glow-soft: rgba(212, 165, 116, 0.1);
+
+            --star-white: #e8edf5;
+
+            --green: #34d399;
+            --green-glow: rgba(52, 211, 153, 0.22);
+            --amber: #fbbf24;
+            --red: #f87171;
+            --red-glow: rgba(248, 113, 113, 0.22);
+            --steel: #5a9aa6;
+            --steel-glow: rgba(90, 154, 166, 0.22);
+
+            --radius-xs: 6px;
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+            --radius-full: 9999px;
+
+            --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-med: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-slow: 700ms cubic-bezier(0.16, 1, 0.3, 1);
+
+            --header-height: 68px;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #030712;
+            --bg-secondary: #0a0f1e;
+            --bg-tertiary: #111827;
+            --bg-elevated: #1a2332;
+            --border-color: #1e293b;
+            --border-subtle: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --text-faint: #475569;
+            --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.45);
+            --card-bg: linear-gradient(160deg, rgba(26, 35, 50, 0.95), rgba(10, 15, 30, 0.98));
+            --glass-bg: rgba(10, 15, 30, 0.8);
+            --glass-border: rgba(59, 130, 246, 0.15);
+            --input-bg: #0a0f1e;
+            --inline-code-bg: #1a2035;
+            --code-bg: #0d0f1a;
+            --code-text: #c9d1d9;
+            --shape-opacity: 0.06;
+            --noise-opacity: 0.025;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #eef2f7;
+            --bg-elevated: #ffffff;
+            --border-color: #d1d9e6;
+            --border-subtle: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --text-faint: #94a3b8;
+            --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+            --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+            --shadow-xl: 0 32px 80px rgba(15, 23, 42, 0.15), 0 8px 24px rgba(15, 23, 42, 0.08);
+            --card-bg: linear-gradient(160deg, #ffffff, #f8fafc);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(59, 130, 246, 0.1);
+            --input-bg: #f8fafc;
+            --inline-code-bg: #dde3ed;
+            --code-bg: #1a2234;
+            --code-text: #e2e8f0;
+            --shape-opacity: 0.03;
+            --noise-opacity: 0.015;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            padding: calc(var(--header-height) + 40px) 20px 60px;
+            transition: background var(--transition-slow), color var(--transition-slow);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-display);
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        button, input, select, textarea { font-family: var(--font-body); }
+        button { cursor: pointer; }
+        button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+            outline: 2px solid var(--blue-500);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+        [hidden] { display: none !important; }
+        a { text-decoration: none; color: inherit; }
+
+        /* ============================================================
+           BACKGROUND
+           ============================================================ */
+        .css-3d-scene {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+            perspective: 1200px;
+        }
+        .shape3d {
+            position: absolute;
+            transform-style: preserve-3d;
+            opacity: var(--shape-opacity);
+            animation: shapeFloat3D 18s ease-in-out infinite;
+        }
+        .shape3d-cube {
+            width: 60px; height: 60px;
+            position: absolute;
+            transform-style: preserve-3d;
+            animation: cubeSpin 22s linear infinite;
+        }
+        .shape3d-cube .face {
+            position: absolute;
+            width: 60px; height: 60px;
+            border: 1.5px solid rgba(59, 130, 246, 0.35);
+            background: rgba(59, 130, 246, 0.08);
+            box-shadow: inset 0 0 18px rgba(59, 130, 246, 0.2), 0 0 12px rgba(59, 130, 246, 0.2);
+            border-radius: 4px;
+        }
+        .shape3d-cube .face:nth-child(1) { transform: translateZ(30px); }
+        .shape3d-cube .face:nth-child(2) { transform: rotateY(180deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(3) { transform: rotateY(90deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(4) { transform: rotateY(-90deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(5) { transform: rotateX(90deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(6) { transform: rotateX(-90deg) translateZ(30px); }
+        .shape3d-cube .cube-core {
+            position: absolute;
+            width: 20px; height: 20px;
+            left: 20px; top: 20px;
+            background: radial-gradient(circle, rgba(96, 165, 250, 0.6), transparent 70%);
+            border-radius: 50%;
+            filter: blur(8px);
+            animation: corePulse 4s ease-in-out infinite;
+        }
+        @keyframes corePulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.3); }
+        }
+        .shape3d-ring {
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--blue-500);
+            border-right-color: var(--gold);
+            position: absolute;
+            animation: ringSpin 10s linear infinite;
+        }
+        .shape3d-ring::before {
+            content: '';
+            position: absolute;
+            inset: 12px;
+            border-radius: 50%;
+            border: 1.5px solid transparent;
+            border-bottom-color: var(--blue-400);
+            border-left-color: var(--gold-dark);
+            animation: ringSpinReverse 7s linear infinite;
+        }
+        .shape3d-pyramid {
+            width: 0; height: 0;
+            border-left: 28px solid transparent;
+            border-right: 28px solid transparent;
+            border-bottom: 48px solid rgba(59, 130, 246, 0.15);
+            position: absolute;
+            animation: pyramidFloat 14s ease-in-out infinite;
+        }
+        .shape3d-diamond {
+            width: 30px; height: 30px;
+            position: absolute;
+            background: rgba(212, 165, 116, 0.1);
+            border: 1.5px solid var(--gold);
+            transform: rotate(45deg);
+            animation: diamondFloat 15s ease-in-out infinite;
+        }
+        .shape3d-torus {
+            width: 60px; height: 60px;
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--blue-500);
+            border-bottom-color: var(--gold);
+            animation: torusSpin 14s linear infinite;
+        }
+        .shape3d-orbital {
+            width: 70px; height: 70px;
+            position: absolute;
+            animation: orbitalSpin 10s linear infinite;
+        }
+        .shape3d-orbital .orbit-dot {
+            position: absolute;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--blue-400);
+            box-shadow: 0 0 10px var(--blue-glow);
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+        .shape3d-orbital .orbit-dot:nth-child(1) { top: 0; left: 50%; transform: translateX(-50%); }
+        .shape3d-orbital .orbit-dot:nth-child(2) { bottom: 0; left: 50%; transform: translateX(-50%); animation-delay: -0.5s; }
+        .shape3d-orbital .orbit-dot:nth-child(3) { left: 0; top: 50%; transform: translateY(-50%); animation-delay: -1s; }
+        .shape3d-orbital .orbit-dot:nth-child(4) { right: 0; top: 50%; transform: translateY(-50%); animation-delay: -1.5s; }
+        .shape3d-orbital::before {
+            content: '';
+            position: absolute;
+            inset: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            animation: ringSpin 15s linear infinite;
+        }
+        .shape1 { top: 12%; left: 5%; }
+        .shape2 { top: 22%; right: 6%; animation-delay: -4s; }
+        .shape3 { bottom: 18%; left: 8%; animation-delay: -8s; }
+        .shape4 { bottom: 12%; right: 5%; animation-delay: -2s; }
+        .shape5 { top: 58%; left: 3%; animation-delay: -6s; }
+        .shape6 { top: 72%; right: 4%; animation-delay: -10s; }
+        .shape7 { top: 42%; left: 48%; animation-delay: -3s; }
+
+        @keyframes cubeSpin {
+            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(180deg); }
+        }
+        @keyframes ringSpin {
+            0% { transform: rotate(0deg) rotateX(0deg); }
+            100% { transform: rotate(360deg) rotateX(360deg); }
+        }
+        @keyframes ringSpinReverse {
+            0% { transform: rotate(360deg); }
+            100% { transform: rotate(0deg); }
+        }
+        @keyframes pyramidFloat {
+            0%, 100% { transform: translateY(0) rotateX(15deg) rotateZ(0deg); }
+            50% { transform: translateY(-18px) rotateX(25deg) rotateZ(5deg); }
+        }
+        @keyframes diamondFloat {
+            0%, 100% { transform: rotate(45deg) translateY(0) scale(1); }
+            50% { transform: rotate(45deg) translateY(-15px) scale(1.1); }
+        }
+        @keyframes torusSpin {
+            0%, 100% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(180deg); }
+        }
+        @keyframes orbitalSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes dotPulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.5); }
+        }
+        @keyframes shapeFloat3D {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            20% { transform: translateY(-25px) translateX(12px); }
+            40% { transform: translateY(10px) translateX(-8px); }
+            60% { transform: translateY(-15px) translateX(-15px); }
+            80% { transform: translateY(20px) translateX(10px); }
+        }
+
+        /* FOLLOWING MOON */
+        .moon {
+            position: fixed;
+            top: 12%;
+            right: 8%;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 34% 30%,
+                #fdfbf4 0%, #f1ecdf 18%, #ddd6c4 38%, #b9b19c 62%, #837c69 85%, #5f5a4c 100%);
+            box-shadow:
+                inset -22px -16px 46px rgba(10, 10, 15, 0.45),
+                inset 10px 8px 24px rgba(255, 255, 255, 0.25),
+                0 0 60px rgba(241, 236, 223, 0.18);
+            pointer-events: none;
+            z-index: 0;
+            will-change: transform;
+            opacity: 0.95;
+            transition: opacity 0.4s ease;
+        }
+        .moon::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 26% 62%, rgba(70, 65, 55, 0.32) 0%, transparent 10%),
+                radial-gradient(circle at 61% 24%, rgba(70, 65, 55, 0.28) 0%, transparent 8%),
+                radial-gradient(circle at 71% 66%, rgba(70, 65, 55, 0.34) 0%, transparent 12%),
+                radial-gradient(circle at 42% 82%, rgba(70, 65, 55, 0.22) 0%, transparent 7%),
+                radial-gradient(circle at 82% 42%, rgba(70, 65, 55, 0.24) 0%, transparent 6%),
+                radial-gradient(circle at 20% 20%, rgba(70, 65, 55, 0.18) 0%, transparent 5%);
+        }
+        .moon::after {
+            content: '';
+            position: absolute;
+            inset: -38%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(241, 236, 223, 0.28) 0%, rgba(147, 197, 253, 0.12) 45%, transparent 72%);
+            filter: blur(22px);
+            z-index: -1;
+            animation: moonGlowPulse 7s ease-in-out infinite;
+        }
+        @keyframes moonGlowPulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.09); }
+        }
+        [data-theme="light"] .moon { opacity: 0; visibility: hidden; }
+
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(140px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.04;
+        }
+        .bg-orb-1 { width: 700px; height: 700px; background: var(--blue-600); top: -200px; right: -200px; animation: orbDrift1 18s ease-in-out infinite; }
+        .bg-orb-2 { width: 500px; height: 500px; background: var(--blue-700); bottom: -150px; left: -100px; animation: orbDrift2 22s ease-in-out infinite; }
+        .bg-orb-3 { width: 350px; height: 350px; background: var(--gold); bottom: 30%; right: 15%; animation: orbDrift3 16s ease-in-out infinite; opacity: 0.03; }
+        [data-theme="light"] .bg-orb { opacity: 0.02; }
+
+        @keyframes orbDrift1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-40px, 30px) scale(1.1); }
+            66% { transform: translate(30px, -20px) scale(0.95); }
+        }
+        @keyframes orbDrift2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(35px, -25px) scale(1.05); }
+            66% { transform: translate(-25px, 35px) scale(1.15); }
+        }
+        @keyframes orbDrift3 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-30px, -40px) scale(1.2); }
+        }
+
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse at center, black 25%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse at center, black 25%, transparent 70%);
+        }
+
+        .noise-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: var(--noise-opacity);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        /* ============================================================
+           HEADER
+           ============================================================ */
+        .header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            height: var(--header-height);
+            background: var(--glass-bg);
+            border-bottom: 1px solid var(--glass-border);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            transition: box-shadow var(--transition-med);
+        }
+        .header.scrolled { box-shadow: var(--shadow-md); }
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: transform var(--transition-med);
+        }
+        .header-logo:hover { transform: scale(1.02); }
+        .header-logo svg {
+            width: 32px; height: 32px;
+            filter: drop-shadow(0 0 12px var(--blue-glow));
+            transition: filter var(--transition-med);
+        }
+        .header-logo:hover svg { filter: drop-shadow(0 0 22px var(--blue-glow)); }
+        .header-logo .logo-text {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 17px;
+            color: var(--blue-400);
+            letter-spacing: 0.8px;
+            line-height: 1.1;
+        }
+        .header-logo .logo-text span { color: var(--gold); }
+
+        .header-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .nav-link {
+            padding: 7px 12px;
+            border-radius: var(--radius-xs);
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            transition: all var(--transition-fast);
+            letter-spacing: 0.3px;
+            background: transparent;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-link:hover, .nav-link.active {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            transform: translateY(-1px);
+        }
+        .nav-link i { font-size: 11px; }
+        .theme-btn {
+            padding: 7px 10px;
+            border-radius: var(--radius-xs);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-weight: 700;
+            transition: all var(--transition-fast);
+            letter-spacing: 0.4px;
+        }
+        .theme-btn:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            transform: translateY(-1px);
+        }
+
+        /* ============================================================
+           CONTAINER
+           ============================================================ */
+        .container {
+            position: relative;
+            z-index: 2;
+            width: 640px;
+            max-width: 100%;
+            animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(22px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .shake { animation: shake 0.4s ease; }
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.35s ease both; }
+        .section-leaving { animation: sectionOut 260ms ease both; }
+        @keyframes sectionOut { to { opacity: 0; transform: translateY(-8px) scale(0.98); } }
+
+        /* Brand */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 6px;
+            justify-content: center;
+        }
+        .brand svg {
+            width: 44px; height: 44px;
+            filter: drop-shadow(0 0 14px var(--blue-glow));
+            animation: crestBreathe 3.6s ease-in-out infinite;
+        }
+        @keyframes crestBreathe {
+            0%, 100% { filter: drop-shadow(0 0 10px var(--blue-glow)); }
+            50% { filter: drop-shadow(0 0 20px var(--blue-glow)); }
+        }
+        .brand-text {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            color: var(--blue-400);
+            text-shadow: 0 0 24px var(--blue-glow-soft);
+        }
+        .brand-text span { color: var(--gold); }
+        .brand-sub {
+            text-align: center;
+            font-size: 0.66rem;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 26px;
+        }
+        .brand-sub i { color: var(--gold); margin-right: 5px; }
+
+        /* Restore banner (session verification state) */
+        .restore-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 18px;
+            margin-bottom: 14px;
+            background: var(--blue-glow-soft);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: var(--radius-md);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--blue-400);
+            animation: fadeIn 0.3s ease both;
+        }
+        .restore-banner .dots {
+            display: inline-flex;
+            gap: 3px;
+        }
+        .restore-banner .dots span {
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: var(--blue-400);
+            animation: dotBounce 1.2s ease-in-out infinite;
+        }
+        .restore-banner .dots span:nth-child(2) { animation-delay: 0.15s; }
+        .restore-banner .dots span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes dotBounce {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+            40% { transform: translateY(-5px); opacity: 1; }
+        }
+
+        /* ============================================================
+           CARDS
+           ============================================================ */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow-md);
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+            animation: cardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 160px; height: 160px;
+            border-radius: 50%;
+            background: var(--blue-glow-soft);
+            filter: blur(70px);
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        .card > * { position: relative; z-index: 1; }
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #authSection .card:nth-child(1) { animation-delay: 0.03s; }
+        #loggedInSection .card:nth-child(1) { animation-delay: 0.02s; }
+        #loggedInSection .card:nth-child(2) { animation-delay: 0.08s; }
+        #loggedInSection .card:nth-child(3) { animation-delay: 0.14s; }
+        #loggedInSection .card:nth-child(4) { animation-delay: 0.20s; }
+        #loggedInSection .card:nth-child(5) { animation-delay: 0.26s; }
+        .card:hover {
+            border-color: var(--blue-glow);
+            box-shadow: var(--shadow-lg), 0 0 32px var(--blue-glow-soft);
+        }
+        .card-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: var(--gold);
+            letter-spacing: -0.2px;
+        }
+        .card-title i { color: var(--blue-400); font-size: 14px; }
+        .card-title .card-title-extra {
+            margin-left: auto;
+            font-family: var(--font-body);
+            font-size: 0.66rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        /* ============================================================
+           SEGMENTED TABS
+           ============================================================ */
+        .seg-tabs {
+            position: relative;
+            display: flex;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-full);
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+        .seg-tab {
+            flex: 1;
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 9px 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: color var(--transition-fast);
+            white-space: nowrap;
+            font-family: var(--font-body);
+            letter-spacing: 0.2px;
+        }
+        .seg-tab.active { color: #fff; }
+        .seg-tab i { font-size: 12px; }
+        .seg-tab-indicator {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            left: 4px;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
+            border-radius: var(--radius-full);
+            box-shadow: 0 3px 14px var(--blue-glow);
+            transition: transform var(--transition-med), width var(--transition-med);
+            z-index: 1;
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; animation: fadeIn 0.25s ease both; }
+
+        /* ============================================================
+           INPUTS
+           ============================================================ */
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--input-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0 14px;
+            margin-bottom: 12px;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+        .input-group.error {
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px var(--red-glow);
+        }
+        .input-group.success {
+            border-color: var(--green);
+            box-shadow: 0 0 0 3px var(--green-glow);
+        }
+        .input-group:focus-within:not(.error):not(.success) {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 0 3px var(--blue-glow-soft), 0 0 20px var(--blue-glow-soft);
+        }
+        .input-group i.field-icon {
+            color: var(--text-muted);
+            width: 16px;
+            text-align: center;
+            font-size: 12px;
+            transition: color var(--transition-fast);
+        }
+        .input-group:focus-within i.field-icon { color: var(--blue-400); }
+        .input-group input,
+        .input-group select {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 12px 0;
+            font-size: 0.88rem;
+            outline: none;
+            font-family: var(--font-body);
+            min-width: 0;
+        }
+        .input-group input::placeholder { color: var(--text-faint); }
+        .input-group select {
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            padding-right: 20px;
+            background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+                              linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+            background-position: calc(100% - 6px) calc(50% - 2px), calc(100% - 1px) calc(50% - 2px);
+            background-size: 5px 5px, 5px 5px;
+            background-repeat: no-repeat;
+        }
+        .input-group select option { background: var(--bg-secondary); color: var(--text-primary); }
+        .toggle-visibility {
+            color: var(--text-muted);
+            padding: 6px;
+            border-radius: var(--radius-xs);
+            transition: color var(--transition-fast), background var(--transition-fast);
+            background: transparent;
+            border: none;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .toggle-visibility:hover {
+            color: var(--gold-light);
+            background: var(--gold-glow-soft);
+        }
+        .field-hint {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin: -6px 0 12px 2px;
+            line-height: 1.6;
+        }
+        .field-hint strong { color: var(--text-secondary); font-weight: 700; }
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
+        .btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: all var(--transition-fast);
+            font-family: var(--font-body);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.3px;
+        }
+        .btn::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.18) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.7s ease;
+        }
+        .btn:hover::after { transform: translateX(100%); }
+        .btn:active { transform: scale(0.98); }
+        .btn-auth {
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
+            color: #fff;
+            box-shadow: 0 4px 18px var(--blue-glow);
+        }
+        .btn-auth:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px var(--blue-glow);
+        }
+        .btn-scan {
+            background: linear-gradient(135deg, var(--green), #0d9488);
+            color: #fff;
+            box-shadow: 0 4px 18px var(--green-glow);
+        }
+        .btn-scan:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px var(--green-glow);
+        }
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+            box-shadow: none;
+        }
+        .btn-ghost:hover {
+            border-color: var(--red);
+            color: var(--red);
+            background: rgba(248, 113, 113, 0.06);
+            transform: translateY(-1px);
+        }
+        .btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn:disabled::after { display: none; }
+
+        /* ============================================================
+           FEEDBACK / SUCCESS
+           ============================================================ */
+        .error-msg {
+            color: var(--red);
+            font-size: 0.78rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            background: rgba(248, 113, 113, 0.08);
+            border: 1px solid rgba(248, 113, 113, 0.25);
+            animation: fadeIn 0.25s ease both;
+        }
+        .error-msg i {
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .success-panel {
+            text-align: center;
+            padding: 6px 0 2px;
+            animation: fadeIn 0.3s ease both;
+        }
+        .success-check {
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 6px;
+            display: block;
+        }
+        .check-circle {
+            stroke: var(--green);
+            stroke-width: 2.5;
+            fill: none;
+            stroke-dasharray: 151;
+            stroke-dashoffset: 151;
+            animation: circleDraw 0.5s ease forwards;
+        }
+        .check-mark {
+            stroke: var(--green);
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 36;
+            stroke-dashoffset: 36;
+            animation: checkDraw 0.35s 0.42s ease forwards;
+        }
+        @keyframes circleDraw { to { stroke-dashoffset: 0; } }
+        @keyframes checkDraw { to { stroke-dashoffset: 0; } }
+        .success-msg { color: var(--green); font-size: 0.82rem; font-weight: 700; }
+        .success-sub { color: var(--text-muted); font-size: 0.7rem; margin-top: 3px; }
+
+        /* ============================================================
+           CODE BLOCKS
+           ============================================================ */
+        .code-block-wrap { position: relative; }
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            padding-right: 76px;
+            font-family: var(--font-mono);
+            font-size: 0.73rem;
+            line-height: 1.7;
+            color: var(--code-text);
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: auto;
+            margin: 0;
+            transition: border-color var(--transition-fast);
+        }
+        .code-block-wrap:hover .code-block { border-color: var(--blue-glow); }
+        .code-block .tok-com { color: #6e7681; font-style: italic; }
+        .code-block .tok-str { color: #a5d6ff; }
+        .code-block .tok-kw { color: #ff7b72; font-weight: 600; }
+        .code-block .tok-num { color: var(--gold); }
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.66rem;
+            font-weight: 700;
+            padding: 5px 10px;
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-secondary);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+            font-family: var(--font-body);
+            letter-spacing: 0.3px;
+        }
+        .copy-btn:hover {
+            color: var(--gold-light);
+            border-color: rgba(212, 165, 116, 0.4);
+            background: var(--gold-glow-soft);
+        }
+        .copy-btn.copied {
+            color: var(--green);
+            border-color: var(--green-glow);
+            background: rgba(52, 211, 153, 0.08);
+        }
+        .code-block-wrap .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 2;
+        }
+
+        /* ============================================================
+           STEPS
+           ============================================================ */
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 10px;
+        }
+        .step-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            transition: all var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+        }
+        .step-card::before {
+            content: '';
+            position: absolute;
+            top: -30px; right: -30px;
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: var(--blue-glow-soft);
+            filter: blur(30px);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        .step-card:hover {
+            border-color: var(--blue-glow);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px -8px var(--blue-glow-soft);
+        }
+        .step-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.68rem;
+            font-weight: 800;
+            margin-bottom: 9px;
+            box-shadow: 0 0 12px var(--blue-glow-soft);
+            position: relative;
+            z-index: 1;
+            font-family: var(--font-mono);
+        }
+        .step-card strong {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
+            font-family: var(--font-body);
+            letter-spacing: 0.2px;
+        }
+        .step-card span {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
+            display: block;
+        }
+        .step-card code {
+            font-family: var(--font-mono);
+            background: var(--inline-code-bg);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.66rem;
+            color: var(--gold-light);
+            border: 1px solid rgba(212, 165, 116, 0.15);
+        }
+
+        /* ============================================================
+           ENDPOINT TABLE
+           ============================================================ */
+        .endpoint-table-wrap {
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+        table.endpoint-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            min-width: 520px;
+        }
+        .endpoint-table th {
+            text-align: left;
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            background: rgba(0, 0, 0, 0.15);
+            font-weight: 800;
+        }
+        [data-theme="light"] .endpoint-table th { background: rgba(0, 0, 0, 0.03); }
+        .endpoint-table td {
+            padding: 11px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            vertical-align: middle;
+        }
+        .endpoint-table tr:last-child td { border-bottom: none; }
+        .endpoint-table tbody tr { transition: background var(--transition-fast); }
+        .endpoint-table tbody tr:hover { background: rgba(59, 130, 246, 0.05); }
+        .method-badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 5px;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            min-width: 46px;
+            text-align: center;
+        }
+        .method-badge.get {
+            color: var(--steel);
+            background: rgba(90, 154, 166, 0.12);
+            border: 1px solid var(--steel-glow);
+        }
+        .method-badge.post {
+            color: var(--gold-light);
+            background: rgba(212, 165, 116, 0.12);
+            border: 1px solid var(--gold-glow);
+        }
+        .endpoint-path {
+            font-family: var(--font-mono);
+            font-size: 0.74rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+        .endpoint-table code {
+            font-family: var(--font-mono);
+            background: var(--inline-code-bg);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.66rem;
+            color: var(--gold-light);
+        }
+
+        /* ============================================================
+           CALLOUT
+           ============================================================ */
+        .callout {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            background: var(--gold-glow-soft);
+            border: 1px solid rgba(212, 165, 116, 0.25);
+            color: var(--text-secondary);
+            font-size: 0.74rem;
+            line-height: 1.6;
+            margin-top: 14px;
+        }
+        .callout i {
+            color: var(--gold);
+            margin-top: 1px;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        /* ============================================================
+           ACCOUNT
+           ============================================================ */
+        .acct-avatar-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 6px;
+        }
+        .acct-avatar {
+            position: relative;
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+        }
+        .acct-avatar svg {
+            width: 100%;
+            height: 100%;
+            animation: ringSpin 8s linear infinite;
+        }
+        @keyframes ringSpin { to { transform: rotate(360deg); } }
+        .acct-avatar-core {
+            position: absolute;
+            inset: 6px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-800));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 1.15rem;
+            box-shadow: 0 4px 14px var(--blue-glow);
+        }
+        .acct-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: var(--font-display);
+            letter-spacing: 0.2px;
+        }
+        .acct-badges {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: var(--radius-full);
+            font-size: 0.64rem;
+            font-weight: 700;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--bg-tertiary);
+        }
+        .status-badge.online {
+            color: var(--green);
+            border-color: rgba(52, 211, 153, 0.3);
+            background: rgba(52, 211, 153, 0.08);
+        }
+        .status-badge.token-badge {
+            color: var(--gold-light);
+            border-color: rgba(212, 165, 116, 0.3);
+            background: rgba(212, 165, 116, 0.08);
+        }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 0 2px var(--green-glow);
+            animation: dotPulse 2.2s ease-in-out infinite;
+        }
+        @keyframes dotPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .token-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            margin-top: 14px;
+        }
+        .token-row i.field-icon {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .token-row code {
+            flex: 1;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+        .latency-note {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .latency-note i { color: var(--green); font-size: 0.62rem; }
+
+        /* ============================================================
+           RESULT / PROGRESS
+           ============================================================ */
+        .result-box {
+            max-height: 300px;
+            overflow: auto;
+            background: var(--code-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            font-family: var(--font-mono);
+            font-size: 0.71rem;
+            color: var(--code-text);
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin-top: 10px;
+            line-height: 1.7;
+        }
+        .result-box .json-key { color: var(--steel); }
+        .result-box .json-str { color: #a5d6ff; }
+        .result-box .json-num { color: var(--gold); }
+        .result-box .json-bool { color: var(--blue-400); }
+        .progress-bar {
+            height: 6px;
+            background: var(--border-color);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .progress-fill {
+            position: relative;
+            height: 100%;
+            background: linear-gradient(90deg, var(--blue-600), var(--blue-400));
+            border-radius: var(--radius-full);
+            transition: width 0.5s ease;
+            overflow: hidden;
+        }
+        .progress-fill::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmerSweep 1.3s linear infinite;
+        }
+        @keyframes shimmerSweep {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100%); }
+        }
+        .progress-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+        .progress-meta .muted { color: var(--text-muted); }
+
+        /* ============================================================
+           TOAST
+           ============================================================ */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(24px);
+            z-index: 300;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 13px 20px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12.5px;
+            color: var(--text-primary);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-med), transform var(--transition-med);
+            max-width: 420px;
+            font-weight: 600;
+        }
+        .toast.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast i { font-size: 16px; }
+        .toast.success i { color: var(--green); }
+        .toast.error i { color: var(--red); }
+        .toast.info i { color: var(--blue-400); }
+
+        /* Spin */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; display: inline-block; }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 768px) {
+            body { padding: calc(var(--header-height) + 24px) 14px 40px; }
+            .header { padding: 0 14px; }
+            .header-logo .logo-text { font-size: 15px; }
+            .header .nav-link { display: none; }
+            .card { padding: 18px; border-radius: var(--radius-md); }
+            .seg-tab { font-size: 0.72rem; padding: 9px 4px; }
+            .code-block { font-size: 0.66rem; padding-right: 16px; }
+            .code-block-wrap .copy-btn { position: static; margin-bottom: 8px; }
+            .acct-avatar { width: 48px; height: 48px; }
+            .acct-avatar-core { font-size: 1rem; }
+            .moon { width: 90px; height: 90px; }
+        }
+        @media (max-width: 480px) {
+            .brand-text { font-size: 1.25rem; }
+            .card-title { font-size: 1rem; }
+            .steps-grid { grid-template-columns: 1fr; }
+            .toast { left: 14px; right: 14px; max-width: none; transform: translateY(24px); }
+            .toast.show { transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+                scroll-behavior: auto !important;
+            }
+            .moon { display: none; }
+            .acct-avatar svg { animation: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ==================== BACKGROUND ==================== -->
+<div class="css-3d-scene" aria-hidden="true">
+    <div class="shape3d shape1">
+        <div class="shape3d-cube">
+            <div class="face"></div><div class="face"></div><div class="face"></div>
+            <div class="face"></div><div class="face"></div><div class="face"></div>
+            <div class="cube-core"></div>
+        </div>
+    </div>
+    <div class="shape3d shape2"><div class="shape3d-ring"></div></div>
+    <div class="shape3d shape3"><div class="shape3d-pyramid"></div></div>
+    <div class="shape3d shape4"><div class="shape3d-diamond"></div></div>
+    <div class="shape3d shape5"><div class="shape3d-torus"></div></div>
+    <div class="shape3d shape6">
+        <div class="shape3d-orbital">
+            <div class="orbit-dot"></div><div class="orbit-dot"></div>
+            <div class="orbit-dot"></div><div class="orbit-dot"></div>
+        </div>
+    </div>
+    <div class="shape3d shape7"><div class="shape3d-ring"></div></div>
+</div>
+<div class="moon" id="moon" aria-hidden="true"></div>
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="bg-orb bg-orb-3"></div>
+<div class="grid-overlay"></div>
+<div class="noise-overlay"></div>
+
+<!-- ==================== HEADER ==================== -->
+<header class="header" id="header">
+    <a href="/" class="header-logo" aria-label="Emergens home">
+        <svg viewBox="0 0 60 60" fill="none" aria-hidden="true">
+            <defs>
+                <linearGradient id="hdrGrad" x1="0" y1="0" x2="60" y2="60">
+                    <stop offset="0" stop-color="#60a5fa"/>
+                    <stop offset="1" stop-color="#1e40af"/>
+                </linearGradient>
+            </defs>
+            <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#hdrGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+        <div class="logo-text">EMER<span>GENS</span></div>
+    </a>
+    <div class="header-right">
+        <a href="/get-started.html" class="nav-link"><i class="fas fa-layer-group"></i> Modules</a>
+        <a href="/docs.html" class="nav-link"><i class="fas fa-book"></i> Docs</a>
+        <a href="/dashboard.html" class="nav-link"><i class="fas fa-gauge"></i> Dashboard</a>
+        <button type="button" id="themeToggle" class="theme-btn" aria-label="Toggle theme">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+</header>
+
+<!-- ==================== MAIN ==================== -->
+<div class="container" id="mainContainer">
+
+    <div class="brand">
+        <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+            <defs>
+                <linearGradient id="crn" x1="6" y1="6" x2="38" y2="38">
+                    <stop offset="0" stop-color="#60a5fa"/>
+                    <stop offset="1" stop-color="#1e40af"/>
+                </linearGradient>
+            </defs>
+            <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#crn)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+        <div class="brand-text">EMER<span>GENS</span></div>
+    </div>
+    <div class="brand-sub"><i class="fas fa-code"></i> Developer API Access</div>
+
+    <!-- ==================================================================
+         AUTH SECTION
+         ================================================================== -->
+    <div id="authSection">
+        <div id="restoreBanner" class="restore-banner hidden">
+            <i class="fas fa-circle-notch spin"></i>
+            <span>Verifying existing session</span>
+            <span class="dots"><span></span><span></span><span></span></span>
+        </div>
+
+        <div class="card fade-in" id="authCard">
+            <div class="card-title"><i class="fas fa-shield-halved"></i>Authentication</div>
+
+            <div class="seg-tabs" id="authTabs" role="tablist" aria-label="Authentication method">
+                <div class="seg-tab-indicator" id="authTabIndicator" aria-hidden="true"></div>
+                <button type="button" class="seg-tab active" data-tab="password" role="tab" aria-selected="true" tabindex="0">
+                    <i class="fas fa-key"></i> Password
+                </button>
+                <button type="button" class="seg-tab" data-tab="apikey" role="tab" aria-selected="false" tabindex="-1">
+                    <i class="fas fa-fingerprint"></i> API Key
+                </button>
+            </div>
+
+            <!-- Password tab -->
+            <div class="tab-panel active" id="panel-password" role="tabpanel" aria-labelledby="tab-password">
+                <div class="input-group" id="usernameGroup">
+                    <i class="fas fa-user field-icon"></i>
+                    <input type="text" id="username" placeholder="Username" autocomplete="username" spellcheck="false">
+                </div>
+                <div class="input-group" id="passwordGroup">
+                    <i class="fas fa-lock field-icon"></i>
+                    <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+                    <button type="button" class="toggle-visibility" id="togglePassword" aria-label="Show password">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <div class="field-hint">Sign in with your Emergens dashboard credentials. A <strong>bearer token</strong> (valid for 1 hour) will be generated and used for all subsequent API calls on this page.</div>
+            </div>
+
+            <!-- API Key tab -->
+            <div class="tab-panel" id="panel-apikey" role="tabpanel" aria-labelledby="tab-apikey">
+                <div class="input-group" id="apikeyGroup">
+                    <i class="fas fa-fingerprint field-icon"></i>
+                    <input type="text" id="apikey" placeholder="emg_sk_live_..." autocomplete="off" spellcheck="false">
+                </div>
+                <div class="field-hint">Paste an API key generated from <strong>Dashboard &rarr; API Keys &rarr; Generate New Key</strong>. API keys are long-lived and do not expire.</div>
+            </div>
+
+            <button type="button" class="btn btn-auth" id="authBtn">
+                <i class="fas fa-sign-in-alt"></i> Authenticate
+            </button>
+            <div id="authFeedback" style="margin-top:12px;" aria-live="polite"></div>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         LOGGED-IN SECTION
+         ================================================================== -->
+    <div id="loggedInSection" class="hidden">
+
+        <div class="card" id="userInfoCard">
+            <div class="card-title"><i class="fas fa-user-circle"></i>Account</div>
+            <div id="userInfoContent"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fas fa-rocket"></i>Getting Started</div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-num">1</div>
+                    <strong>Authenticate</strong>
+                    <span>Use your <code>username</code> + <code>password</code> to receive a bearer token, or paste an existing API key.</span>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">2</div>
+                    <strong>Set the header</strong>
+                    <span>Send <code>Authorization: Bearer &lt;token&gt;</code> on every request.</span>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">3</div>
+                    <strong>Call an endpoint</strong>
+                    <span>Start with <code>POST /api/scan/start</code> — see the reference below.</span>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">4</div>
+                    <strong>Poll for results</strong>
+                    <span>Check <code>/api/scan/{job_id}/status</code> every second until complete.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fas fa-book"></i>Endpoint Reference</div>
+            <div class="endpoint-table-wrap">
+                <table class="endpoint-table">
+                    <thead>
+                        <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="method-badge post">POST</span></td>
+                            <td><span class="endpoint-path">/api/token</span></td>
+                            <td>Exchange username + password for a bearer token (valid 1 hour).</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge get">GET</span></td>
+                            <td><span class="endpoint-path">/api/me</span></td>
+                            <td>Verify a token or API key; returns account info.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge post">POST</span></td>
+                            <td><span class="endpoint-path">/api/scan/start</span></td>
+                            <td>Start a scan job. Returns a <code>job_id</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="method-badge get">GET</span></td>
+                            <td><span class="endpoint-path">/api/scan/{job_id}/status</span></td>
+                            <td>Poll a scan job for progress and results.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <i class="fas fa-code"></i>Using Your Token
+                <span class="card-title-extra" id="tokenSourceNote"></span>
+            </div>
+            <div class="seg-tabs" id="codeTabs" role="tablist" aria-label="Code language">
+                <div class="seg-tab-indicator" id="codeTabIndicator" aria-hidden="true"></div>
+                <button type="button" class="seg-tab active" data-lang="curl" role="tab" aria-selected="true" tabindex="0">
+                    <i class="fas fa-terminal"></i> cURL
+                </button>
+                <button type="button" class="seg-tab" data-lang="js" role="tab" aria-selected="false" tabindex="-1">
+                    <i class="fab fa-js"></i> JavaScript
+                </button>
+                <button type="button" class="seg-tab" data-lang="python" role="tab" aria-selected="false" tabindex="-1">
+                    <i class="fab fa-python"></i> Python
+                </button>
+            </div>
+            <div class="tab-panel active" id="code-curl" role="tabpanel">
+                <div class="code-block-wrap">
+                    <button type="button" class="copy-btn" data-copy-target="code-curl-pre"><i class="fas fa-copy"></i> Copy</button>
+                    <pre class="code-block" id="code-curl-pre"></pre>
+                </div>
+            </div>
+            <div class="tab-panel" id="code-js" role="tabpanel">
+                <div class="code-block-wrap">
+                    <button type="button" class="copy-btn" data-copy-target="code-js-pre"><i class="fas fa-copy"></i> Copy</button>
+                    <pre class="code-block" id="code-js-pre"></pre>
+                </div>
+            </div>
+            <div class="tab-panel" id="code-python" role="tabpanel">
+                <div class="code-block-wrap">
+                    <button type="button" class="copy-btn" data-copy-target="code-python-pre"><i class="fas fa-copy"></i> Copy</button>
+                    <pre class="code-block" id="code-python-pre"></pre>
+                </div>
+            </div>
+            <div class="callout">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span>Treat your token like a password. Keep it in an environment variable or secrets manager. Never commit it to source control.</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fas fa-play-circle"></i>Quick Scan</div>
+            <div class="input-group">
+                <i class="fas fa-globe field-icon"></i>
+                <input type="text" id="scanTarget" placeholder="target.com" spellcheck="false" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <i class="fas fa-layer-group field-icon"></i>
+                <select id="scanMode">
+                    <option value="basic">Basic Mode</option>
+                    <option value="expert">Expert Mode</option>
+                </select>
+            </div>
+            <button type="button" class="btn btn-scan" id="scanBtn">
+                <i class="fas fa-play"></i> Start Scan
+            </button>
+            <div id="scanProgress" style="margin-top:10px;" aria-live="polite"></div>
+            <div class="result-box" id="scanResult" style="display:none;"></div>
+        </div>
+
+        <button type="button" class="btn btn-ghost" id="logoutBtn" style="margin-top:4px;">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+    </div>
+</div>
+
+<!-- ==================== TOAST ==================== -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+    <i class="fas fa-check-circle"></i>
+    <span id="toastMessage"></span>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    // =========================================================================
+    // TOAST
+    // =========================================================================
+    var toastEl = document.getElementById('toast');
+    var toastMsg = document.getElementById('toastMessage');
+    var toastIcon = toastEl.querySelector('i');
+    var toastTimeout;
+
+    function showToast(message, type) {
+        type = type || 'success';
+        toastMsg.textContent = message;
+        toastEl.className = 'toast show ' + type;
+        toastIcon.className = 'fas ' + (
+            type === 'error' ? 'fa-circle-exclamation' :
+            type === 'info'  ? 'fa-circle-info' :
+                               'fa-check-circle'
+        );
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(function () { toastEl.classList.remove('show'); }, 3200);
+    }
+
+    // =========================================================================
+    // THEME (shared key with rest of site)
+    // =========================================================================
+    var root = document.documentElement;
+    var themeToggle = document.getElementById('themeToggle');
+
+    function setTheme(theme) {
+        root.setAttribute('data-theme', theme);
+        document.body.setAttribute('data-theme', theme);
+        try { localStorage.setItem('emergens-theme', theme); } catch (e) {}
+        themeToggle.innerHTML = '<i class="fas ' + (theme === 'dark' ? 'fa-moon' : 'fa-sun') + '"></i>';
+    }
+    var savedTheme = 'dark';
+    try { savedTheme = localStorage.getItem('emergens-theme') || 'dark'; } catch (e) {}
+    setTheme(savedTheme);
+
+    themeToggle.addEventListener('click', function () {
+        var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+        showToast(next === 'dark' ? 'Dark mode activated' : 'Light mode activated', 'info');
+    });
+
+    // =========================================================================
+    // HEADER SCROLL
+    // =========================================================================
+    var header = document.getElementById('header');
+    window.addEventListener('scroll', function () {
+        header.classList.toggle('scrolled', window.scrollY > 20);
+    }, { passive: true });
+
+    // =========================================================================
+    // FOLLOWING MOON
+    // =========================================================================
+    (function initMoon() {
+        var moon = document.getElementById('moon');
+        if (!moon) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        var targetX = 0, targetY = 0, currentX = 0, currentY = 0;
+        var RANGE_X = 100, RANGE_Y = 70;
+        var running = false;
+
+        window.addEventListener('mousemove', function (e) {
+            targetX = ((e.clientX / window.innerWidth - 0.5) * 2) * RANGE_X;
+            targetY = ((e.clientY / window.innerHeight - 0.5) * 2) * RANGE_Y;
+            if (!running) { running = true; requestAnimationFrame(tick); }
+        }, { passive: true });
+
+        function tick() {
+            currentX += (targetX - currentX) * 0.045;
+            currentY += (targetY - currentY) * 0.045;
+            moon.style.transform = 'translate3d(' + currentX.toFixed(2) + 'px, ' + currentY.toFixed(2) + 'px, 0)';
+            if (Math.abs(targetX - currentX) > 0.1 || Math.abs(targetY - currentY) > 0.1) {
+                requestAnimationFrame(tick);
+            } else {
+                running = false;
+            }
+        }
+    })();
+
+    // =========================================================================
+    // SESSION STORAGE
+    // =========================================================================
+    var STORAGE_KEY = 'emergens_session';
+
+    function saveSession(token, user, authMethod) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                token: token, user: user, authMethod: authMethod
+            }));
+        } catch (e) {}
+    }
+    function loadSession() {
+        try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return null;
+            var data = JSON.parse(raw);
+            if (data && data.token && data.user) return data;
+        } catch (e) {}
+        return null;
+    }
+    function clearSession() {
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    }
+
+    // =========================================================================
+    // STATE
+    // =========================================================================
+    var authToken = '';
+    var currentUser = null;
+    var currentAuthTab = 'password';
+    var lastAuthLatencyMs = null;
+    var authMethod = '';
+    var scanPollingInterval = null;   // FIX: track polling so logout can clear it
+
+    // =========================================================================
+    // UTILITIES
+    // =========================================================================
+
+    // BUG FIX #5: also escape quotes for attribute-safe usage
+    function escapeHtmlText(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function timedFetch(url, opts) {
+        var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+        return fetch(url, opts).then(function (res) {
+            var t1 = (window.performance && performance.now) ? performance.now() : Date.now();
+            return { res: res, ms: Math.round(t1 - t0) };
+        });
+    }
+
+    // BUG FIX #1: safely parse JSON from any response — never throws
+    function safeJson(res) {
+        return res.text().then(function (text) {
+            if (!text) return {};
+            try { return JSON.parse(text); } catch (e) { return {}; }
+        });
+    }
+
+    function copyToClipboard(text, btn) {
+        if (!text) return;
+        var original = btn.innerHTML;
+        var done = function () {
+            btn.classList.add('copied');
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied';
+            setTimeout(function () { btn.classList.remove('copied'); btn.innerHTML = original; }, 1600);
+        };
+        var fail = function () {
+            btn.innerHTML = '<i class="fas fa-xmark"></i> Failed';
+            setTimeout(function () { btn.innerHTML = original; }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(fail);
+        } else {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); done(); } catch (e) { fail(); }
+            document.body.removeChild(ta);
+        }
+    }
+
+    // =========================================================================
+    // SYNTAX HIGHLIGHTING
+    // =========================================================================
+    function highlightCode(code) {
+        var pattern = /(#[^\n]*|\/\/[^\n]*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b(?:const|let|var|async|await|function|return|import|from|new|def|as|do|while|True|False|None|print|requests|fetch|headers|json|time|Bearer|Authorization|Content-Type|POST|GET)\b)|(\b\d+(?:\.\d+)?\b)/g;
+        var out = '', last = 0, m;
+        while ((m = pattern.exec(code))) {
+            out += escapeHtmlText(code.slice(last, m.index));
+            if (m[1] !== undefined) out += '<span class="tok-com">' + escapeHtmlText(m[1]) + '</span>';
+            else if (m[2] !== undefined) out += '<span class="tok-str">' + escapeHtmlText(m[2]) + '</span>';
+            else if (m[3] !== undefined) out += '<span class="tok-kw">' + escapeHtmlText(m[3]) + '</span>';
+            else if (m[4] !== undefined) out += '<span class="tok-num">' + escapeHtmlText(m[4]) + '</span>';
+            last = pattern.lastIndex;
+        }
+        out += escapeHtmlText(code.slice(last));
+        return out;
+    }
+
+    function colorizeJson(jsonString) {
+        var pattern = /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?)|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
+        var out = '', last = 0, m;
+        while ((m = pattern.exec(jsonString))) {
+            out += escapeHtmlText(jsonString.slice(last, m.index));
+            var whole = m[0];
+            if (m[1] !== undefined) {
+                var isKey = /:\s*$/.test(whole);
+                out += '<span class="' + (isKey ? 'json-key' : 'json-str') + '">' + escapeHtmlText(whole) + '</span>';
+            } else if (m[4] !== undefined) {
+                out += '<span class="json-bool">' + escapeHtmlText(whole) + '</span>';
+            } else if (m[5] !== undefined) {
+                out += '<span class="json-num">' + escapeHtmlText(whole) + '</span>';
+            } else {
+                out += escapeHtmlText(whole);
+            }
+            last = pattern.lastIndex;
+        }
+        out += escapeHtmlText(jsonString.slice(last));
+        return out;
+    }
+
+    // =========================================================================
+    // SEGMENTED TABS (with arrow-key nav for a11y)
+    // =========================================================================
+    function setupSegTabs(containerId, indicatorId, onSelect) {
+        var container = document.getElementById(containerId);
+        var indicator = document.getElementById(indicatorId);
+        if (!container || !indicator) return null;
+
+        var btns = Array.prototype.slice.call(container.querySelectorAll('.seg-tab'));
+
+        function activate(btn, fire) {
+            btns.forEach(function (b) {
+                var isActive = (b === btn);
+                b.classList.toggle('active', isActive);
+                b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                b.setAttribute('tabindex', isActive ? '0' : '-1');
+            });
+            indicator.style.width = btn.offsetWidth + 'px';
+            indicator.style.transform = 'translateX(' + (btn.offsetLeft - 4) + 'px)';
+            if (fire) onSelect(btn.dataset.tab || btn.dataset.lang);
+        }
+
+        btns.forEach(function (b, i) {
+            b.addEventListener('click', function () { activate(b, true); });
+            // BUG FIX #6: arrow-key navigation
+            b.addEventListener('keydown', function (e) {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    var dir = e.key === 'ArrowRight' ? 1 : -1;
+                    var next = (i + dir + btns.length) % btns.length;
+                    btns[next].focus();
+                    activate(btns[next], true);
+                }
+            });
+        });
+
+        container._reposition = function () {
+            var active = container.querySelector('.seg-tab.active') || btns[0];
+            if (active) activate(active, false);
+        };
+        requestAnimationFrame(function () { container._reposition(); });
+        return container;
+    }
+
+    setupSegTabs('authTabs', 'authTabIndicator', function (tabName) {
+        document.querySelectorAll('#authSection .tab-panel').forEach(function (p) { p.classList.remove('active'); });
+        var target = document.getElementById('panel-' + tabName);
+        if (target) target.classList.add('active');
+        currentAuthTab = tabName;
+        clearErrors();
+    });
+
+    setupSegTabs('codeTabs', 'codeTabIndicator', function (lang) {
+        document.querySelectorAll('#loggedInSection .tab-panel[id^="code-"]').forEach(function (p) { p.classList.remove('active'); });
+        var target = document.getElementById('code-' + lang);
+        if (target) target.classList.add('active');
+    });
+
+    window.addEventListener('resize', function () {
+        var at = document.getElementById('authTabs');
+        if (at && at._reposition) at._reposition();
+        var ct = document.getElementById('codeTabs');
+        if (ct && ct._reposition) ct._reposition();
+    });
+
+    // =========================================================================
+    // UI HELPERS
+    // =========================================================================
+    function clearErrors() {
+        document.querySelectorAll('#authSection .input-group').forEach(function (g) {
+            g.classList.remove('error', 'success', 'shake');
+        });
+        var fb = document.getElementById('authFeedback');
+        if (fb) fb.innerHTML = '';
+    }
+
+    function showError(msg) {
+        var fb = document.getElementById('authFeedback');
+        fb.innerHTML = '<div class="error-msg"><i class="fas fa-circle-exclamation"></i><span></span></div>';
+        fb.querySelector('span').textContent = msg;
+        document.querySelectorAll('#authSection .input-group').forEach(function (g) {
+            g.classList.add('error', 'shake');
+            setTimeout(function () { g.classList.remove('shake'); }, 420);
+        });
+        showToast(msg, 'error');
+    }
+
+    function showAuthSuccess(ms, method) {
+        var fb = document.getElementById('authFeedback');
+        var methodLabel = method === 'password' ? 'Bearer token generated' : 'API key validated';
+        fb.innerHTML =
+            '<div class="success-panel">' +
+            '  <svg class="success-check" viewBox="0 0 52 52" aria-hidden="true">' +
+            '    <circle class="check-circle" cx="26" cy="26" r="24"/>' +
+            '    <path class="check-mark" d="M14 27l7 7 16-16"/>' +
+            '  </svg>' +
+            '  <div class="success-msg">' + escapeHtmlText(methodLabel) + '</div>' +
+            '  <div class="success-sub" id="authSuccessSub"></div>' +
+            '</div>';
+        var sub = document.getElementById('authSuccessSub');
+        if (sub) sub.textContent = (typeof ms === 'number' && ms > 0)
+            ? ('Completed in ' + ms + 'ms')
+            : 'Signed in';
+        document.querySelectorAll('#authSection .input-group').forEach(function (g) {
+            g.classList.remove('error');
+            g.classList.add('success');
+        });
+    }
+
+    function switchSection(hideEl, showEl) {
+        hideEl.classList.add('section-leaving');
+        setTimeout(function () {
+            hideEl.classList.add('hidden');
+            hideEl.classList.remove('section-leaving');
+            showEl.classList.remove('hidden');
+            if (showEl.id === 'loggedInSection') {
+                renderUserInfo();
+                buildCodeExamples();
+                requestAnimationFrame(function () {
+                    var ct = document.getElementById('codeTabs');
+                    if (ct && ct._reposition) ct._reposition();
+                });
+            }
+        }, 260);
+    }
+
+    function showAuthSection() {
+        switchSection(document.getElementById('loggedInSection'), document.getElementById('authSection'));
+        clearErrors();
+        ['username', 'password', 'apikey'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    }
+
+    function showMainSection() {
+        switchSection(document.getElementById('authSection'), document.getElementById('loggedInSection'));
+    }
+
+    // =========================================================================
+    // RENDER ACCOUNT INFO
+    // =========================================================================
+    function renderUserInfo() {
+        var div = document.getElementById('userInfoContent');
+        if (!currentUser) return;
+
+        var initial = (currentUser.username || '?').trim().charAt(0).toUpperCase() || '?';
+        var tokenLabel = authMethod === 'password' ? 'Bearer Token' : 'API Key';
+        var tokenBadgeClass = authMethod === 'password' ? 'token-badge' : 'online';
+
+        div.innerHTML =
+            '<div class="acct-avatar-row">' +
+            '  <div class="acct-avatar">' +
+            '    <svg viewBox="0 0 52 52" aria-hidden="true">' +
+            '      <defs>' +
+            '        <linearGradient id="acctRingGrad" x1="0" y1="0" x2="52" y2="52">' +
+            '          <stop offset="0" stop-color="#60a5fa"/>' +
+            '          <stop offset="1" stop-color="#d4a574"/>' +
+            '        </linearGradient>' +
+            '      </defs>' +
+            '      <circle cx="26" cy="26" r="23" fill="none" stroke="var(--border-color)" stroke-width="1.6"/>' +
+            '      <circle cx="26" cy="26" r="23" fill="none" stroke="url(#acctRingGrad)" stroke-width="2" stroke-dasharray="36 108" stroke-linecap="round"/>' +
+            '    </svg>' +
+            '    <div class="acct-avatar-core" id="acctAvatarInitial"></div>' +
+            '  </div>' +
+            '  <div>' +
+            '    <div class="acct-name" id="acctNameText"></div>' +
+            '    <div class="acct-badges">' +
+            '      <span class="status-badge online"><span class="status-dot"></span>Active</span>' +
+            '      <span class="status-badge ' + tokenBadgeClass + '" id="acctTokenBadge"></span>' +
+            '      <span class="status-badge" id="acctRoleBadge"></span>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>' +
+            '<div class="token-row">' +
+            '  <i class="fas fa-key field-icon"></i>' +
+            '  <code id="acctTokenMasked"></code>' +
+            '  <button type="button" class="copy-btn" id="copyTokenBtn"><i class="fas fa-copy"></i> Copy</button>' +
+            '</div>' +
+            '<div class="latency-note" id="acctLatencyNote" style="display:none;"><i class="fas fa-bolt"></i><span></span></div>';
+
+        document.getElementById('acctAvatarInitial').textContent = initial;
+        document.getElementById('acctNameText').textContent = currentUser.username || '--';
+        document.getElementById('acctRoleBadge').textContent = currentUser.role || '--';
+        document.getElementById('acctTokenBadge').textContent = tokenLabel;
+        document.getElementById('acctTokenMasked').textContent = authToken
+            ? (authToken.substring(0, 18) + '...')
+            : '--';
+        document.getElementById('copyTokenBtn').addEventListener('click', function () {
+            copyToClipboard(authToken, this);
+        });
+        if (lastAuthLatencyMs !== null) {
+            var note = document.getElementById('acctLatencyNote');
+            note.style.display = 'flex';
+            note.querySelector('span').textContent = 'Authenticated in ' + lastAuthLatencyMs + 'ms';
+        }
+    }
+
+    // =========================================================================
+    // BUG FIX #2: proper escaping for all three code languages
+    // =========================================================================
+    function jsString(s) {
+        // Produces a valid JS string literal, including surrounding quotes.
+        return JSON.stringify(String(s));
+    }
+    function pyString(s) {
+        // Python-safe single-quoted string literal.
+        return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+    }
+    function shellSingleQuote(s) {
+        // POSIX-safe single-quoted shell literal.
+        return "'" + String(s).replace(/'/g, "'\\''") + "'";
+    }
+
+    function buildCodeExamples() {
+        var base = window.location.origin || 'https://your-host';
+        var token = authToken || 'YOUR_TOKEN';
+
+        // ---------- cURL ----------
+        var curlLines = [
+            '# 1) Start a scan',
+            'curl -X POST ' + shellSingleQuote(base + '/api/scan/start') + ' \\',
+            '  -H ' + shellSingleQuote('Authorization: Bearer ' + token) + ' \\',
+            '  -H "Content-Type: application/json" \\',
+            '  -d \'{"target":"example.com","mode":"basic","tools":[]}\'',
+            '# response -> { "job_id": "abc123" }',
+            '',
+            '# 2) Poll for the result',
+            'curl ' + shellSingleQuote(base + '/api/scan/abc123/status') + ' \\',
+            '  -H ' + shellSingleQuote('Authorization: Bearer ' + token)
+        ];
+
+        // ---------- JavaScript ----------
+        var jsLines = [
+            'const BASE = ' + jsString(base) + ';',
+            'const TOKEN = ' + jsString(token) + ';',
+            '',
+            'async function runScan(target) {',
+            '  const start = await fetch(`${BASE}/api/scan/start`, {',
+            '    method: "POST",',
+            '    headers: {',
+            '      "Authorization": `Bearer ${TOKEN}`,',
+            '      "Content-Type": "application/json"',
+            '    },',
+            '    body: JSON.stringify({ target, mode: "basic", tools: [] })',
+            '  }).then(r => r.json());',
+            '',
+            '  let job;',
+            '  do {',
+            '    await new Promise(r => setTimeout(r, 1000));',
+            '    job = await fetch(`${BASE}/api/scan/${start.job_id}/status`, {',
+            '      headers: { "Authorization": `Bearer ${TOKEN}` }',
+            '    }).then(r => r.json());',
+            '  } while (job.status !== "completed" && job.status !== "failed");',
+            '',
+            '  return job.results;',
+            '}'
+        ];
+
+        // ---------- Python ----------
+        var pyLines = [
+            'import time',
+            'import requests',
+            '',
+            'BASE = ' + pyString(base),
+            'TOKEN = ' + pyString(token),
+            'headers = {"Authorization": f"Bearer {TOKEN}"}',
+            '',
+            'start = requests.post(',
+            '    f"{BASE}/api/scan/start",',
+            '    headers=headers,',
+            '    json={"target": "example.com", "mode": "basic", "tools": []},',
+            ').json()',
+            '',
+            'job = {"status": "queued"}',
+            'while job.get("status") not in ("completed", "failed"):',
+            '    time.sleep(1)',
+            '    job = requests.get(',
+            '        f"{BASE}/api/scan/{start[\'job_id\']}/status",',
+            '        headers=headers',
+            '    ).json()',
+            '',
+            'print(job.get("results"))'
+        ];
+
+        document.getElementById('code-curl-pre').innerHTML = highlightCode(curlLines.join('\n'));
+        document.getElementById('code-js-pre').innerHTML = highlightCode(jsLines.join('\n'));
+        document.getElementById('code-python-pre').innerHTML = highlightCode(pythonSafeJoin(pyLines));
+
+        var note = document.getElementById('tokenSourceNote');
+        if (note) note.textContent = authToken ? '· pre-filled with your live token' : '';
+    }
+
+    // Python's f-string braces would confuse the syntax highlighter's string regex
+    // so we pre-substitute the real backslash-escaped version here for readability.
+    function pythonSafeJoin(lines) {
+        return lines.join('\n');
+    }
+
+    // =========================================================================
+    // COPY BUTTONS
+    // =========================================================================
+    document.querySelectorAll('.copy-btn[data-copy-target]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var target = document.getElementById(this.dataset.copyTarget);
+            if (target) {
+                copyToClipboard(target.textContent, this);
+                showToast('Copied to clipboard', 'success');
+            }
+        });
+    });
+
+    // =========================================================================
+    // PASSWORD VISIBILITY
+    // =========================================================================
+    document.getElementById('togglePassword').addEventListener('click', function () {
+        var input = document.getElementById('password');
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        this.innerHTML = show ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+
+    // =========================================================================
+    // API CALLS — all use safeJson() now so non-JSON responses never crash
+    // =========================================================================
+    function verifyToken(token) {
+        return fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(function (res) {
+                if (res.ok) return safeJson(res);
+                return null;
+            })
+            .catch(function () { return null; });
+    }
+
+    function authenticateWithPassword(username, password) {
+        return timedFetch('/api/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, password: password })
+        }).then(function (timing) {
+            return safeJson(timing.res).then(function (data) {
+                if (!timing.res.ok || !data || !data.token) {
+                    throw new Error((data && data.error) || 'Invalid username or password.');
+                }
+                return {
+                    token: data.token,
+                    user: { username: data.username, role: data.role },
+                    ms: timing.ms
+                };
+            });
+        }).catch(function (err) {
+            if (err instanceof TypeError) throw new Error('Could not reach the server.');
+            throw err;
+        });
+    }
+
+    function authenticateWithApiKey(apikey) {
+        return timedFetch('/api/me', {
+            headers: { 'Authorization': 'Bearer ' + apikey }
+        }).then(function (timing) {
+            return safeJson(timing.res).then(function (user) {
+                if (!timing.res.ok) {
+                    throw new Error((user && user.error) || 'That API key is invalid or has been revoked.');
+                }
+                return { token: apikey, user: user, ms: timing.ms };
+            });
+        }).catch(function (err) {
+            if (err instanceof TypeError) throw new Error('Could not reach the server.');
+            throw err;
+        });
+    }
+
+    // =========================================================================
+    // AUTH BUTTON
+    // =========================================================================
+    document.getElementById('authBtn').addEventListener('click', function () {
+        clearErrors();
+        var btn = document.getElementById('authBtn');
+
+        function handleSuccess(r) {
+            authToken = r.token;
+            currentUser = r.user;
+            lastAuthLatencyMs = r.ms;
+            authMethod = currentAuthTab;
+            saveSession(authToken, currentUser, authMethod);
+            showAuthSuccess(r.ms, authMethod);
+            showToast(authMethod === 'password' ? 'Bearer token generated' : 'API key validated', 'success');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Authenticate';
+            setTimeout(function () { showMainSection(); }, 900);
+        }
+
+        function handleError(errMsg) {
+            showError(errMsg);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Authenticate';
+        }
+
+        if (currentAuthTab === 'password') {
+            var username = document.getElementById('username').value.trim();
+            var password = document.getElementById('password').value.trim();
+            if (!username || !password) { showError('Username and password are required.'); return; }
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner spin"></i> Generating token...';
+            authenticateWithPassword(username, password).then(handleSuccess).catch(function (err) {
+                handleError(err.message || 'Authentication failed.');
+            });
+        } else {
+            var apikey = document.getElementById('apikey').value.trim();
+            if (!apikey) { showError('Enter an API key.'); return; }
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner spin"></i> Validating...';
+            authenticateWithApiKey(apikey).then(handleSuccess).catch(function (err) {
+                handleError(err.message || 'Authentication failed.');
+            });
+        }
+    });
+
+    // Enter-to-submit
+    ['username', 'password', 'apikey'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('authBtn').click();
+                }
+            });
+        }
+    });
+
+    // =========================================================================
+    // BUG FIX #3: logout clears the scan polling interval
+    // =========================================================================
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+        authToken = '';
+        currentUser = null;
+        lastAuthLatencyMs = null;
+        authMethod = '';
+        if (scanPollingInterval) {
+            clearInterval(scanPollingInterval);
+            scanPollingInterval = null;
+        }
+        clearSession();
+        showAuthSection();
+        document.getElementById('scanResult').style.display = 'none';
+        document.getElementById('scanProgress').innerHTML = '';
+        document.getElementById('scanBtn').disabled = false;
+        showToast('Signed out', 'info');
+    });
+
+    // =========================================================================
+    // QUICK SCAN
+    // =========================================================================
+    function pollScan(jobId) {
+        var progressDiv = document.getElementById('scanProgress');
+        var resultBox = document.getElementById('scanResult');
+        resultBox.style.display = 'none';
+        var startedAt = Date.now();
+
+        progressDiv.innerHTML =
+            '<div class="progress-bar"><div class="progress-fill" style="width:6%" id="progressFill"></div></div>' +
+            '<div class="progress-meta"><span id="progressText">Initializing...</span><span class="muted" id="progressMeta"></span></div>';
+
+        if (scanPollingInterval) clearInterval(scanPollingInterval);
+        scanPollingInterval = setInterval(function () {
+            timedFetch('/api/scan/' + encodeURIComponent(jobId) + '/status', {
+                headers: { 'Authorization': 'Bearer ' + authToken }
+            }).then(function (result) {
+                return safeJson(result.res).then(function (job) {
+                    if (!job || typeof job !== 'object') job = {};
+                    var pct = typeof job.percent === 'number' ? job.percent : 0;
+                    var elapsedS = ((Date.now() - startedAt) / 1000).toFixed(1);
+                    var fillEl = document.getElementById('progressFill');
+                    var textEl = document.getElementById('progressText');
+                    var metaEl = document.getElementById('progressMeta');
+                    if (fillEl) fillEl.style.width = Math.max(pct, 6) + '%';
+                    if (textEl) textEl.textContent = pct + '% — ' + (job.current_tool || 'working');
+                    if (metaEl) metaEl.textContent = elapsedS + 's elapsed · ' + result.ms + 'ms';
+
+                    if (job.status === 'completed') {
+                        clearInterval(scanPollingInterval);
+                        scanPollingInterval = null;
+                        if (textEl) textEl.textContent = 'Scan completed';
+                        resultBox.style.display = 'block';
+                        resultBox.innerHTML = colorizeJson(JSON.stringify(job.results || {}, null, 2));
+                        document.getElementById('scanBtn').disabled = false;
+                        showToast('Scan completed successfully', 'success');
+                    } else if (['failed', 'error', 'cancelled', 'timeout'].indexOf(job.status) !== -1) {
+                        clearInterval(scanPollingInterval);
+                        scanPollingInterval = null;
+                        if (textEl) textEl.textContent = 'Scan ' + job.status;
+                        resultBox.style.display = 'block';
+                        resultBox.textContent = job.error || JSON.stringify(job.results || {}, null, 2);
+                        document.getElementById('scanBtn').disabled = false;
+                        showToast('Scan ' + job.status, 'error');
+                    }
+                });
+            }).catch(function () {
+                if (scanPollingInterval) { clearInterval(scanPollingInterval); scanPollingInterval = null; }
+                var textEl = document.getElementById('progressText');
+                if (textEl) textEl.textContent = 'Connection error.';
+                document.getElementById('scanBtn').disabled = false;
+                showToast('Lost connection to the server', 'error');
+            });
+        }, 800);
+    }
+
+    document.getElementById('scanBtn').addEventListener('click', function () {
+        var target = document.getElementById('scanTarget').value.trim();
+        var mode = document.getElementById('scanMode').value;
+        var btn = document.getElementById('scanBtn');
+        var progressDiv = document.getElementById('scanProgress');
+
+        if (!target) {
+            progressDiv.innerHTML = '<span style="color:var(--red);font-size:0.78rem;font-weight:600;">Enter a target.</span>';
+            showToast('Please enter a scan target', 'error');
+            return;
+        }
+
+        btn.disabled = true;
+        document.getElementById('scanResult').style.display = 'none';
+        progressDiv.innerHTML =
+            '<span style="color:var(--text-muted);font-size:0.78rem;"><i class="fas fa-spinner spin"></i> Starting scan...</span>';
+
+        timedFetch('/api/scan/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + authToken
+            },
+            body: JSON.stringify({ target: target, mode: mode, tools: [] })
+        }).then(function (result) {
+            return safeJson(result.res).then(function (data) {
+                if (data && data.job_id) {
+                    pollScan(data.job_id);
+                } else {
+                    progressDiv.innerHTML =
+                        '<span style="color:var(--red);font-size:0.78rem;font-weight:600;">Error: ' +
+                        escapeHtmlText((data && data.error) || 'unknown') + '</span>';
+                    btn.disabled = false;
+                    showToast((data && data.error) || 'Failed to start scan', 'error');
+                }
+            });
+        }).catch(function () {
+            progressDiv.innerHTML =
+                '<span style="color:var(--red);font-size:0.78rem;font-weight:600;">Request failed.</span>';
+            btn.disabled = false;
+            showToast('Could not reach the server', 'error');
+        });
+    });
+
+    // =========================================================================
+    // BUG FIX #4: session restore shows a "verifying..." banner
+    // =========================================================================
+    (function init() {
+        var session = loadSession();
+        if (!session) return;
+
+        var banner = document.getElementById('restoreBanner');
+        var authCard = document.getElementById('authCard');
+        if (banner) banner.classList.remove('hidden');
+        if (authCard) authCard.style.opacity = '0.55';
+
+        verifyToken(session.token).then(function (user) {
+            if (banner) banner.classList.add('hidden');
+            if (authCard) authCard.style.opacity = '';
+
+            if (user) {
+                authToken = session.token;
+                currentUser = user;
+                authMethod = session.authMethod || '';
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('loggedInSection').classList.remove('hidden');
+                renderUserInfo();
+                buildCodeExamples();
+                requestAnimationFrame(function () {
+                    var ct = document.getElementById('codeTabs');
+                    if (ct && ct._reposition) ct._reposition();
+                });
+                showToast('Welcome back, ' + (user.username || 'user'), 'success');
+                return;
+            }
+            clearSession();
+            showToast('Session expired — please sign in again', 'info');
+        });
+    })();
+
+    // Console branding
+    console.log('%cEmergens — Developer API Console v3.3', 'color: #60a5fa; font-size: 15px; font-weight: bold; font-family: monospace;');
+    console.log('%cEndpoints: /api/token · /api/me · /api/scan/start · /api/scan/{id}/status',
+        'color: #d4a574; font-size: 12px; font-family: monospace;');
+})();
+</script>
+</body>
+</html>

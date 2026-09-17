@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergens — API Documentation | Professional Web Security Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --font-display: 'Sora', 'Inter', sans-serif;
+            --font-body: 'Manrope', 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+            --blue-300: #93c5fd;
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1e40af;
+            --blue-800: #172554;
+            --blue-900: #0f172a;
+            --blue-glow: rgba(59, 130, 246, 0.3);
+            --blue-glow-soft: rgba(59, 130, 246, 0.12);
+
+            --gold: #d4a574;
+            --gold-light: #e7cd9f;
+            --gold-dark: #b8945f;
+            --gold-glow: rgba(212, 165, 116, 0.25);
+            --gold-glow-soft: rgba(212, 165, 116, 0.1);
+
+            --green: #34d399;
+            --amber: #fbbf24;
+            --purple: #a78bfa;
+            --red: #f87171;
+
+            --radius-xs: 6px;
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+            --radius-full: 9999px;
+
+            --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-med: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-slow: 700ms cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-bounce: 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #030712;
+            --bg-secondary: #0a0f1e;
+            --bg-tertiary: #111827;
+            --bg-elevated: #1a2332;
+            --border-color: #1e293b;
+            --border-subtle: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --text-faint: #475569;
+            --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.45);
+            --sheen: rgba(255, 255, 255, 0.04);
+            --code-bg: #0d0f1a;
+            --inline-code-bg: #1a2035;
+            --card-bg: linear-gradient(160deg, rgba(26, 35, 50, 0.95), rgba(10, 15, 30, 0.98));
+            --glass-bg: rgba(10, 15, 30, 0.8);
+            --glass-border: rgba(59, 130, 246, 0.15);
+            --input-bg: #0a0f1e;
+            --shape-opacity: 0.06;
+            --sidebar-bg: rgba(10, 15, 30, 0.6);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #eef2f7;
+            --bg-elevated: #ffffff;
+            --border-color: #d1d9e6;
+            --border-subtle: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --text-faint: #94a3b8;
+            --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+            --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+            --shadow-xl: 0 32px 80px rgba(15, 23, 42, 0.15), 0 8px 24px rgba(15, 23, 42, 0.08);
+            --sheen: rgba(255, 255, 255, 0.8);
+            --code-bg: #eef2f7;
+            --inline-code-bg: #dde3ed;
+            --card-bg: linear-gradient(160deg, #ffffff, #f8fafc);
+            --glass-bg: rgba(255, 255, 255, 0.8);
+            --glass-border: rgba(59, 130, 246, 0.1);
+            --input-bg: #f8fafc;
+            --shape-opacity: 0.03;
+            --sidebar-bg: rgba(255, 255, 255, 0.7);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background var(--transition-slow), color var(--transition-slow);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .content-wrap { position: relative; z-index: 1; }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-display);
+            letter-spacing: -0.02em;
+        }
+
+        button, input, select, textarea { font-family: var(--font-body); }
+        button { cursor: pointer; }
+        button:focus-visible, input:focus-visible, a:focus-visible {
+            outline: 2px solid var(--blue-500);
+            outline-offset: 3px;
+        }
+        [hidden] { display: none !important; }
+        a { text-decoration: none; color: inherit; }
+
+        /* CSS 3D Animated Background */
+        .css-3d-scene {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+            perspective: 1000px;
+            perspective-origin: 50% 50%;
+        }
+
+        .shape3d {
+            position: absolute;
+            transform-style: preserve-3d;
+            opacity: var(--shape-opacity);
+            animation: shapeFloat3D 18s ease-in-out infinite;
+            will-change: transform;
+        }
+
+        .shape3d-cube {
+            width: 60px;
+            height: 60px;
+            position: absolute;
+            transform-style: preserve-3d;
+            animation: cubeSpin 22s linear infinite;
+        }
+        .shape3d-cube .face {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 1.5px solid var(--blue-500);
+            background: rgba(59, 130, 246, 0.08);
+            box-shadow: inset 0 0 18px rgba(59, 130, 246, 0.15), 0 0 12px rgba(59, 130, 246, 0.1);
+            border-radius: 4px;
+        }
+        .shape3d-cube .face:nth-child(1) { transform: translateZ(30px); }
+        .shape3d-cube .face:nth-child(2) { transform: rotateY(180deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(3) { transform: rotateY(90deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(4) { transform: rotateY(-90deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(5) { transform: rotateX(90deg) translateZ(30px); }
+        .shape3d-cube .face:nth-child(6) { transform: rotateX(-90deg) translateZ(30px); }
+
+        .shape3d-ring {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--blue-500);
+            border-right-color: var(--gold);
+            position: absolute;
+            animation: ringSpin 10s linear infinite;
+            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.3));
+        }
+        .shape3d-ring::before {
+            content: '';
+            position: absolute;
+            inset: 12px;
+            border-radius: 50%;
+            border: 1.5px solid transparent;
+            border-bottom-color: var(--blue-400);
+            border-left-color: var(--gold-dark);
+            animation: ringSpinReverse 7s linear infinite;
+        }
+
+        .shape3d-pyramid {
+            width: 0;
+            height: 0;
+            border-left: 28px solid transparent;
+            border-right: 28px solid transparent;
+            border-bottom: 48px solid rgba(59, 130, 246, 0.15);
+            position: absolute;
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.25));
+            animation: pyramidFloat 14s ease-in-out infinite;
+            transform-origin: center bottom;
+        }
+        .shape3d-pyramid::after {
+            content: '';
+            position: absolute;
+            left: -14px;
+            top: 20px;
+            width: 28px;
+            height: 28px;
+            border: 1.5px solid var(--gold);
+            background: rgba(212, 165, 116, 0.1);
+            transform: rotateX(60deg) rotateZ(45deg);
+            animation: diamondSpin 8s linear infinite;
+        }
+
+        .shape3d-tetra {
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-bottom: 36px solid rgba(212, 165, 116, 0.12);
+            position: absolute;
+            filter: drop-shadow(0 0 8px rgba(212, 165, 116, 0.2));
+            animation: tetraFloat 20s ease-in-out infinite;
+        }
+
+        .shape3d-octa {
+            width: 40px;
+            height: 40px;
+            position: absolute;
+            transform-style: preserve-3d;
+            animation: octaSpin 16s linear infinite;
+        }
+        .shape3d-octa::before,
+        .shape3d-octa::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 1.5px solid var(--blue-400);
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.06);
+        }
+        .shape3d-octa::before { transform: rotateY(60deg); }
+        .shape3d-octa::after { transform: rotateY(-60deg); }
+
+        .shape1 { top: 8%; left: 5%; animation-duration: 22s; animation-delay: 0s; }
+        .shape2 { top: 15%; right: 8%; animation-duration: 18s; animation-delay: -4s; }
+        .shape3 { bottom: 20%; left: 10%; animation-duration: 25s; animation-delay: -8s; }
+        .shape4 { bottom: 12%; right: 5%; animation-duration: 20s; animation-delay: -2s; }
+        .shape5 { top: 45%; left: 3%; animation-duration: 16s; animation-delay: -6s; }
+        .shape6 { top: 55%; right: 3%; animation-duration: 24s; animation-delay: -10s; }
+        .shape7 { top: 30%; left: 45%; animation-duration: 19s; animation-delay: -3s; }
+        .shape8 { bottom: 35%; right: 15%; animation-duration: 21s; animation-delay: -7s; }
+        .shape9 { top: 70%; left: 25%; animation-duration: 17s; animation-delay: -5s; }
+        .shape10 { top: 5%; left: 60%; animation-duration: 23s; animation-delay: -9s; }
+
+        @keyframes cubeSpin {
+            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(180deg); }
+        }
+        @keyframes ringSpin {
+            0% { transform: rotate(0deg) rotateX(0deg); }
+            100% { transform: rotate(360deg) rotateX(360deg); }
+        }
+        @keyframes ringSpinReverse {
+            0% { transform: rotate(360deg); }
+            100% { transform: rotate(0deg); }
+        }
+        @keyframes pyramidFloat {
+            0%, 100% { transform: translateY(0) rotateX(15deg) rotateZ(0deg); }
+            25% { transform: translateY(-18px) rotateX(25deg) rotateZ(5deg); }
+            50% { transform: translateY(0) rotateX(15deg) rotateZ(0deg); }
+            75% { transform: translateY(12px) rotateX(10deg) rotateZ(-5deg); }
+        }
+        @keyframes diamondSpin {
+            0% { transform: rotateX(60deg) rotateZ(45deg); }
+            100% { transform: rotateX(60deg) rotateZ(405deg); }
+        }
+        @keyframes tetraFloat {
+            0%, 100% { transform: translateY(0) rotateZ(0deg) scale(1); }
+            33% { transform: translateY(-22px) rotateZ(8deg) scale(1.1); }
+            66% { transform: translateY(10px) rotateZ(-6deg) scale(0.95); }
+        }
+        @keyframes octaSpin {
+            0% { transform: rotateX(0deg) rotateY(0deg); }
+            100% { transform: rotateX(360deg) rotateY(720deg); }
+        }
+        @keyframes shapeFloat3D {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            20% { transform: translateY(-25px) translateX(12px); }
+            40% { transform: translateY(10px) translateX(-8px); }
+            60% { transform: translateY(-15px) translateX(-15px); }
+            80% { transform: translateY(20px) translateX(10px); }
+        }
+
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(140px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.04;
+        }
+        .bg-orb-1 {
+            width: 700px; height: 700px;
+            background: var(--blue-600);
+            top: -200px; right: -200px;
+            animation: orbDrift1 18s ease-in-out infinite;
+        }
+        .bg-orb-2 {
+            width: 500px; height: 500px;
+            background: var(--blue-700);
+            bottom: -150px; left: -100px;
+            animation: orbDrift2 22s ease-in-out infinite;
+        }
+        .bg-orb-3 {
+            width: 350px; height: 350px;
+            background: var(--blue-500);
+            top: 45%; left: 55%;
+            animation: orbDrift3 16s ease-in-out infinite;
+        }
+        [data-theme="light"] .bg-orb { opacity: 0.02; }
+
+        @keyframes orbDrift1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-40px, 30px) scale(1.1); }
+            66% { transform: translate(30px, -20px) scale(0.95); }
+        }
+        @keyframes orbDrift2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(35px, -25px) scale(1.05); }
+            66% { transform: translate(-25px, 35px) scale(1.15); }
+        }
+        @keyframes orbDrift3 {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-45%, -55%) scale(1.2); }
+        }
+
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--glass-bg);
+            border-bottom: 1px solid var(--glass-border);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            transition: all var(--transition-med);
+        }
+        .header.scrolled {
+            box-shadow: var(--shadow-md);
+            border-bottom-color: var(--glass-border);
+        }
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            transition: all var(--transition-med);
+        }
+        .header-logo:hover { transform: scale(1.02); }
+        .header-logo svg {
+            width: 34px; height: 34px;
+            filter: drop-shadow(0 0 12px var(--blue-glow));
+            transition: all var(--transition-med);
+        }
+        .header-logo:hover svg { filter: drop-shadow(0 0 24px var(--blue-glow)); }
+        .header-logo .logo-text {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 17px;
+            color: var(--blue-400);
+            letter-spacing: 0.8px;
+            line-height: 1.1;
+        }
+        .header-logo .logo-text span { color: var(--gold); }
+
+        .header-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .nav-link {
+            padding: 7px 12px;
+            border-radius: var(--radius-xs);
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            letter-spacing: 0.3px;
+            font-family: var(--font-body);
+            background: transparent;
+            border: 1px solid transparent;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-link:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            transform: translateY(-1px);
+        }
+        .nav-link i { font-size: 11px; }
+        .lang-btn, .theme-btn {
+            padding: 7px 10px;
+            border-radius: var(--radius-xs);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            letter-spacing: 0.4px;
+            font-family: var(--font-body);
+        }
+        .lang-btn:hover, .theme-btn:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            transform: translateY(-1px);
+        }
+        .lang-btn.active {
+            background: var(--blue-800);
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            box-shadow: 0 0 14px var(--blue-glow-soft);
+        }
+
+        .burger-btn {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            width: 44px;
+            height: 44px;
+            padding: 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            position: relative;
+            z-index: 110;
+        }
+        .burger-btn:hover {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 16px var(--blue-glow-soft);
+        }
+        .burger-btn span {
+            display: block;
+            width: 22px;
+            height: 2px;
+            background: var(--text-primary);
+            border-radius: 2px;
+            transition: all 0.35s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transform-origin: center;
+        }
+        .burger-btn.active span:nth-child(1) {
+            transform: translateY(7px) rotate(45deg);
+        }
+        .burger-btn.active span:nth-child(2) {
+            opacity: 0;
+            transform: scaleX(0);
+        }
+        .burger-btn.active span:nth-child(3) {
+            transform: translateY(-7px) rotate(-45deg);
+        }
+
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 320px;
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-xl);
+            z-index: 105;
+            padding: 90px 24px 24px;
+            transition: right 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            overflow-y: auto;
+        }
+        .mobile-menu.open { right: 0; }
+        .mobile-menu::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 72px;
+            border-bottom: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .mobile-menu a {
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+        .mobile-menu a:hover {
+            background: var(--blue-glow-soft);
+            color: var(--blue-400);
+            border-color: var(--blue-500);
+            transform: translateX(4px);
+        }
+        .mobile-menu a i {
+            width: 18px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .mobile-menu .menu-divider {
+            height: 1px;
+            background: var(--border-subtle);
+            margin: 8px 0;
+        }
+        .mobile-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 104;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-med);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .mobile-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all var(--transition-med);
+            border: none;
+            position: relative;
+            overflow: hidden;
+            font-family: var(--font-body);
+            letter-spacing: 0.2px;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.7s ease;
+        }
+        .btn:hover::after { transform: translateX(100%); }
+        .btn-blue {
+            background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+            color: #fff;
+            box-shadow: 0 4px 16px var(--blue-glow);
+        }
+        .btn-blue:hover {
+            box-shadow: 0 8px 28px var(--blue-glow);
+            transform: translateY(-2px);
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+        .btn-outline:hover {
+            border-color: var(--blue-500);
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            transform: translateY(-1px);
+        }
+
+        .docs-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px 60px;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 32px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .docs-sidebar {
+            position: sticky;
+            top: 100px;
+            align-self: start;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            padding: 20px 16px;
+            background: var(--sidebar-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: all var(--transition-med);
+        }
+        .docs-sidebar h5 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            font-weight: 700;
+            font-family: var(--font-body);
+        }
+        .docs-sidebar a {
+            display: block;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-left: 2px solid transparent;
+            border-radius: var(--radius-xs);
+            transition: all var(--transition-fast);
+            margin-bottom: 2px;
+            text-decoration: none;
+        }
+        .docs-sidebar a:hover {
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            border-left-color: var(--blue-500);
+            transform: translateX(4px);
+        }
+        .docs-sidebar a.active {
+            color: var(--blue-400);
+            background: var(--blue-glow-soft);
+            border-left-color: var(--blue-500);
+            font-weight: 600;
+        }
+
+        .docs-content {
+            min-width: 0;
+        }
+        .docs-section {
+            margin-bottom: 48px;
+            animation: fadeSlideUp 0.5s ease both;
+        }
+        .docs-section h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+        .docs-section h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            letter-spacing: -0.3px;
+            color: var(--text-primary);
+        }
+        .docs-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--blue-400);
+        }
+        .docs-section p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.8;
+        }
+        .docs-section ul, .docs-section ol {
+            margin: 0 0 16px 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+        .docs-section li {
+            margin-bottom: 4px;
+        }
+        .docs-section strong { color: var(--text-primary); }
+        .docs-section code {
+            background: var(--inline-code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--blue-400);
+        }
+        .docs-section .code-block {
+            position: relative;
+            background: var(--code-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.8;
+            color: #c9d1d9;
+        }
+        .docs-section .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .docs-section .code-block .copy-code-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xs);
+            color: var(--text-muted);
+            font-size: 10px;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-family: var(--font-body);
+        }
+        .docs-section .code-block .copy-code-btn:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            box-shadow: 0 0 12px var(--gold-glow-soft);
+        }
+
+        .docs-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            font-size: 12px;
+        }
+        .docs-table th, .docs-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .docs-table th {
+            background: var(--bg-tertiary);
+            font-weight: 700;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+        }
+        .docs-table td {
+            color: var(--text-secondary);
+        }
+        .docs-table tr:hover td {
+            background: var(--blue-glow-soft);
+        }
+
+        .callout {
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--blue-500);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        .callout.warning {
+            border-left-color: var(--amber);
+            background: rgba(251, 191, 36, 0.05);
+        }
+        .callout.danger {
+            border-left-color: var(--red);
+            background: rgba(248, 113, 113, 0.05);
+        }
+        .callout strong { color: var(--text-primary); }
+
+        .footer {
+            text-align: center;
+            padding: 40px 24px;
+            border-top: 1px solid var(--glass-border);
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.9;
+            background: var(--bg-secondary);
+            font-weight: 400;
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .footer-links a {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            text-decoration: none;
+            letter-spacing: 0.2px;
+        }
+        .footer-links a:hover {
+            color: var(--blue-400);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            z-index: 300;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 16px 22px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            color: var(--text-primary);
+            opacity: 0;
+            pointer-events: none;
+            transition: all var(--transition-med);
+            max-width: 360px;
+            font-weight: 500;
+            font-family: var(--font-body);
+        }
+        .toast.show {
+            opacity: 1;
+            pointer-events: auto;
+            animation: toastIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .toast i { font-size: 18px; }
+        .toast.success i { color: var(--green); }
+        .toast.error i { color: var(--red); }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 1024px) {
+            .docs-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .docs-sidebar {
+                position: static;
+                max-height: none;
+                margin-bottom: 20px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                padding: 12px;
+            }
+            .docs-sidebar h5 {
+                width: 100%;
+                margin-bottom: 6px;
+            }
+            .docs-sidebar a {
+                display: inline-block;
+                padding: 6px 12px;
+                border-left: none;
+                border-bottom: 2px solid transparent;
+                border-radius: var(--radius-xs);
+                margin-bottom: 0;
+            }
+            .docs-sidebar a:hover,
+            .docs-sidebar a.active {
+                border-left: none;
+                border-bottom-color: var(--blue-500);
+                transform: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .burger-btn { display: flex; }
+            .header-right { display: none; }
+            .header { padding: 0 14px; height: 64px; }
+            .header-logo .logo-text { font-size: 15px; }
+            .docs-container { padding: 0 16px 40px; }
+            .docs-section h1 { font-size: 24px; }
+            .docs-section h2 { font-size: 18px; }
+            .shape3d { display: none; }
+        }
+        @media (max-width: 480px) {
+            .docs-section .code-block { font-size: 9px; padding: 12px; }
+            .docs-table { font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="content-wrap">
+    <div class="css-3d-scene" aria-hidden="true">
+        <div class="shape3d shape1">
+            <div class="shape3d-cube">
+                <div class="face"></div><div class="face"></div><div class="face"></div>
+                <div class="face"></div><div class="face"></div><div class="face"></div>
+            </div>
+        </div>
+        <div class="shape3d shape2"><div class="shape3d-ring"></div></div>
+        <div class="shape3d shape3"><div class="shape3d-pyramid"></div></div>
+        <div class="shape3d shape4"><div class="shape3d-tetra"></div></div>
+        <div class="shape3d shape5"><div class="shape3d-octa"></div></div>
+        <div class="shape3d shape6"><div class="shape3d-ring"></div></div>
+        <div class="shape3d shape7"><div class="shape3d-pyramid"></div></div>
+        <div class="shape3d shape8"><div class="shape3d-cube">
+            <div class="face"></div><div class="face"></div><div class="face"></div>
+            <div class="face"></div><div class="face"></div><div class="face"></div>
+        </div></div>
+        <div class="shape3d shape9"><div class="shape3d-tetra"></div></div>
+        <div class="shape3d shape10"><div class="shape3d-octa"></div></div>
+    </div>
+
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="grid-overlay"></div>
+
+    <header class="header" id="header">
+        <a href="/" class="header-logo">
+            <svg viewBox="0 0 60 60" fill="none"><defs><linearGradient id="hdrGrad" x1="0" y1="0" x2="60" y2="60"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#1e40af"/></linearGradient></defs><path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#hdrGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/></svg>
+            <div class="logo-text">EMER<span>GENS</span></div>
+        </a>
+        <div class="header-right">
+            <a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a>
+            <a href="/#api" class="nav-link"><i class="fas fa-key"></i> API Key</a>
+            <a href="/docs.html" class="nav-link active"><i class="fas fa-book"></i> Docs</a>
+            <a href="/privacy.html" class="nav-link"><i class="fas fa-shield"></i> Privacy</a>
+            <a href="/terms.html" class="nav-link"><i class="fas fa-file-contract"></i> Terms</a>
+            <button class="lang-btn active" data-lang="en">EN</button>
+            <button class="lang-btn" data-lang="ms">BM</button>
+            <button class="lang-btn" data-lang="id">ID</button>
+            <button id="themeToggle" class="theme-btn" data-theme-icon><i class="fas fa-moon"></i></button>
+            <a href="/login.html" class="btn btn-outline">Log In</a>
+            <a href="/dashboard.html" class="btn btn-blue">Dashboard</a>
+        </div>
+        <button class="burger-btn" id="burgerBtn" aria-label="Toggle navigation menu">
+            <span></span><span></span><span></span>
+        </button>
+    </header>
+
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+    <nav class="mobile-menu" id="mobileMenu">
+        <a href="/"><i class="fas fa-home"></i> Home</a>
+        <a href="/login.html"><i class="fas fa-sign-in-alt"></i> Log In</a>
+        <a href="/dashboard.html"><i class="fas fa-gauge"></i> Dashboard</a>
+        <div class="menu-divider"></div>
+        <a href="/#modules"><i class="fas fa-layer-group"></i> Modules</a>
+        <a href="/#features"><i class="fas fa-star"></i> Features</a>
+        <a href="/#api"><i class="fas fa-key"></i> API</a>
+        <div class="menu-divider"></div>
+        <a href="/docs.html" class="active"><i class="fas fa-book"></i> Documentation</a>
+        <a href="/privacy.html"><i class="fas fa-shield"></i> Privacy Policy</a>
+        <a href="/terms.html"><i class="fas fa-file-contract"></i> Terms of Service</a>
+        <div style="display:flex;gap:6px;margin-top:12px;">
+            <button class="lang-btn active" data-lang="en">EN</button>
+            <button class="lang-btn" data-lang="ms">BM</button>
+            <button class="lang-btn" data-lang="id">ID</button>
+            <button id="themeToggleMobile" class="theme-btn"><i class="fas fa-moon"></i></button>
+        </div>
+    </nav>
+
+    <div class="docs-container">
+        <aside class="docs-sidebar" id="docsSidebar">
+            <h5>Documentation</h5>
+            <a href="#introduction" class="active">Introduction</a>
+            <a href="#authentication">Authentication</a>
+            <a href="#base-url">Base URL</a>
+            <a href="#scan-lifecycle">Scan Lifecycle</a>
+            <a href="#endpoints">API Endpoints</a>
+            <a href="#start-scan">Start Scan</a>
+            <a href="#scan-status">Scan Status</a>
+            <a href="#scan-results">Scan Results</a>
+            <a href="#list-tools">List Tools</a>
+            <a href="#account-info">Account Info</a>
+            <a href="#error-codes">Error Codes</a>
+            <a href="#rate-limits">Rate Limits</a>
+            <a href="#webhooks">Webhooks</a>
+            <a href="#sdks">SDKs & Libraries</a>
+        </aside>
+
+        <main class="docs-content">
+            <section class="docs-section" id="introduction">
+                <h1>Emergens API Documentation</h1>
+                <p>The Emergens API provides programmatic access to the 35 web security testing modules. Run scans, retrieve results, and manage your account from any application. This guide covers authentication, endpoint usage, and best practices.</p>
+                <div class="callout">
+                    <strong>Authorized Use Only.</strong> All scanning activities must comply with applicable laws and the terms of service. You must have explicit permission to test any target.
+                </div>
+            </section>
+
+            <section class="docs-section" id="authentication">
+                <h2>Authentication</h2>
+                <p>All API requests require a valid API key. Pass the key in the <code>Authorization</code> header using the Bearer scheme.</p>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>Authorization: Bearer emg_sk_live_69b215b08f66480295691864a0c9bf57bfed6903</pre>
+                </div>
+                <p>To obtain an API key, log in to your dashboard and navigate to <strong>Settings → API Keys</strong>. Keys are scoped to your account and can be revoked at any time.</p>
+                <div class="callout warning">
+                    <strong>Keep your key secure.</strong> Never expose it in client-side code or public repositories. Treat it like a password.
+                </div>
+            </section>
+
+            <section class="docs-section" id="base-url">
+                <h2>Base URL</h2>
+                <p>All endpoints are relative to the following base URL:</p>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>http://node1.lunes.host:2381</pre>
+                </div>
+                <p>Use HTTPS when available in production environments. The API accepts JSON payloads and returns JSON responses.</p>
+            </section>
+
+            <section class="docs-section" id="scan-lifecycle">
+                <h2>Scan Lifecycle</h2>
+                <p>Scanning is asynchronous. A typical workflow consists of three steps:</p>
+                <ol>
+                    <li><strong>Start a scan</strong> — POST to <code>/api/scan/start</code> with target and options. Receive a <code>job_id</code>.</li>
+                    <li><strong>Poll status</strong> — GET <code>/api/scan/{job_id}/status</code> until <code>status</code> is <code>"completed"</code> or <code>"failed"</code>.</li>
+                    <li><strong>Retrieve results</strong> — GET <code>/api/scan/{job_id}/results</code> to fetch the full report.</li>
+                </ol>
+                <p>Scans may take from a few seconds to several minutes depending on target complexity and selected modules.</p>
+            </section>
+
+            <section class="docs-section" id="endpoints">
+                <h2>API Endpoints</h2>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>POST</td><td><code>/api/scan/start</code></td><td>Start a new scan</td></tr>
+                        <tr><td>GET</td><td><code>/api/scan/{job_id}/status</code></td><td>Check scan status</td></tr>
+                        <tr><td>GET</td><td><code>/api/scan/{job_id}/results</code></td><td>Retrieve scan results</td></tr>
+                        <tr><td>GET</td><td><code>/api/tools</code></td><td>List available tools/modules</td></tr>
+                        <tr><td>GET</td><td><code>/api/account</code></td><td>Get account information</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="docs-section" id="start-scan">
+                <h2>Start Scan</h2>
+                <p>Initiates a new vulnerability scan.</p>
+                <h3>Request</h3>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>POST /api/scan/start
+Content-Type: application/json
+Authorization: Bearer YOUR_API_KEY
+
+{
+  "target": "example.com",
+  "mode": "basic",
+  "tools": ["xss", "sql_injection", "nmap"],
+  "options": {
+    "max_depth": 3,
+    "timeout": 60,
+    "user_agent": "EmergensScanner/1.0"
+  }
+}</pre>
+                </div>
+                <p>Required parameters: <code>target</code>. Optional: <code>mode</code> (basic, full, custom), <code>tools</code> (array of tool IDs), <code>options</code> (advanced settings).</p>
+                <h3>Response</h3>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>{
+  "job_id": "abc123def456",
+  "status": "queued",
+  "message": "Scan started successfully"
+}</pre>
+                </div>
+            </section>
+
+            <section class="docs-section" id="scan-status">
+                <h2>Scan Status</h2>
+                <p>Check the current state of a scan job.</p>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>GET /api/scan/abc123def456/status
+Authorization: Bearer YOUR_API_KEY</pre>
+                </div>
+                <h3>Response</h3>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>{
+  "job_id": "abc123def456",
+  "status": "running",
+  "progress": 42,
+  "current_module": "xss",
+  "started_at": "2026-08-25T10:30:00Z"
+}</pre>
+                </div>
+                <p>Possible status values: <code>queued</code>, <code>running</code>, <code>completed</code>, <code>failed</code>.</p>
+            </section>
+
+            <section class="docs-section" id="scan-results">
+                <h2>Scan Results</h2>
+                <p>Retrieve the detailed report after a scan completes.</p>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>GET /api/scan/abc123def456/results
+Authorization: Bearer YOUR_API_KEY</pre>
+                </div>
+                <h3>Response</h3>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>{
+  "job_id": "abc123def456",
+  "target": "example.com",
+  "duration_seconds": 87,
+  "completed_at": "2026-08-25T10:31:27Z",
+  "summary": {
+    "total_vulnerabilities": 7,
+    "critical": 1,
+    "high": 2,
+    "medium": 3,
+    "low": 1
+  },
+  "findings": [
+    {
+      "id": "vuln_001",
+      "module": "xss",
+      "severity": "critical",
+      "url": "http://example.com/search?q=test",
+      "parameter": "q",
+      "description": "Reflected XSS detected via payload injection.",
+      "remediation": "Sanitize user input and implement output encoding."
+    }
+  ]
+}</pre>
+                </div>
+            </section>
+
+            <section class="docs-section" id="list-tools">
+                <h2>List Tools</h2>
+                <p>Retrieve all available security testing modules and their IDs.</p>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>GET /api/tools
+Authorization: Bearer YOUR_API_KEY</pre>
+                </div>
+                <p>The response includes an array of tools with properties: <code>id</code>, <code>name</code>, <code>category</code>, <code>description</code>.</p>
+            </section>
+
+            <section class="docs-section" id="account-info">
+                <h2>Account Info</h2>
+                <p>Retrieve your current account details and API usage.</p>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>GET /api/account
+Authorization: Bearer YOUR_API_KEY</pre>
+                </div>
+                <h3>Response</h3>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>{
+  "email": "user@example.com",
+  "plan": "premium",
+  "scans_remaining": 998,
+  "api_rate_limit": 1000,
+  "api_calls_today": 23
+}</pre>
+                </div>
+            </section>
+
+            <section class="docs-section" id="error-codes">
+                <h2>Error Codes</h2>
+                <p>The API returns standard HTTP status codes. Detailed error information is provided in the response body.</p>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Code</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>400</td><td><code>bad_request</code></td><td>Invalid parameters or malformed JSON.</td></tr>
+                        <tr><td>401</td><td><code>unauthorized</code></td><td>Missing or invalid API key.</td></tr>
+                        <tr><td>403</td><td><code>forbidden</code></td><td>Insufficient permissions or plan limit exceeded.</td></tr>
+                        <tr><td>404</td><td><code>not_found</code></td><td>Job or resource not found.</td></tr>
+                        <tr><td>429</td><td><code>rate_limited</code></td><td>Too many requests. Check Retry-After header.</td></tr>
+                        <tr><td>500</td><td><code>internal_error</code></td><td>Unexpected server error.</td></tr>
+                    </tbody>
+                </table>
+                <div class="callout danger">
+                    <strong>Rate limited?</strong> Wait for the Retry-After interval before making another request.
+                </div>
+            </section>
+
+            <section class="docs-section" id="rate-limits">
+                <h2>Rate Limits</h2>
+                <p>API requests are limited per hour based on your plan:</p>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Plan</th>
+                            <th>Requests per hour</th>
+                            <th>Concurrent scans</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Free</td><td>100</td><td>1</td></tr>
+                        <tr><td>Partner</td><td>500</td><td>5</td></tr>
+                        <tr><td>Premium</td><td>1000</td><td>10</td></tr>
+                    </tbody>
+                </table>
+                <p>Exceeding the limit returns a <code>429</code> response with a <code>Retry-After</code> header.</p>
+            </section>
+
+            <section class="docs-section" id="webhooks">
+                <h2>Webhooks</h2>
+                <p>Configure webhooks to receive real-time notifications when a scan completes.</p>
+                <ol>
+                    <li>Go to Dashboard → Settings → Webhooks.</li>
+                    <li>Provide your endpoint URL.</li>
+                    <li>Select events (scan.completed, scan.failed).</li>
+                    <li>Verify the signature using the shared secret.</li>
+                </ol>
+                <p>Example payload:</p>
+                <div class="code-block">
+                    <button class="copy-code-btn">Copy</button>
+                    <pre>{
+  "event": "scan.completed",
+  "job_id": "abc123def456",
+  "target": "example.com",
+  "summary": { "critical": 1, "high": 2 },
+  "timestamp": "2026-08-25T10:31:27Z"
+}</pre>
+                </div>
+            </section>
+
+            <section class="docs-section" id="sdks">
+                <h2>SDKs & Libraries</h2>
+                <p>Official SDKs are available for the following languages:</p>
+                <ul>
+                    <li><strong>Python</strong> — <code>pip install emergens-sdk</code></li>
+                    <li><strong>JavaScript</strong> — <code>npm install emergens-sdk</code></li>
+                    <li><strong>PHP</strong> — <code>composer require emergens/sdk</code></li>
+                    <li><strong>Ruby</strong> — <code>gem install emergens-sdk</code></li>
+                </ul>
+                <p>Refer to the SDK documentation for usage examples and helper methods.</p>
+            </section>
+        </main>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="/privacy.html">Privacy Policy</a>
+            <a href="/terms.html">Terms of Service</a>
+            <a href="/docs.html">Documentation</a>
+            <a href="/#api">API Reference</a>
+            <a href="/contact.html">Contact</a>
+        </div>
+        Emergens &copy; 2026 — Professional Web Security Testing Suite. All tools for authorized use only.<br>
+        API endpoint: node1.lunes.host:2381 — Always keep your API key confidential and rotate it regularly.
+    </footer>
+
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage"></span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // Toast
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        let toastTimeout;
+
+        function showToast(message, type = 'success') {
+            toastMessage.textContent = message;
+            toast.className = 'toast show ' + type;
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Theme
+        const root = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+        const themeToggleMobile = document.getElementById('themeToggleMobile');
+
+        function getStoredTheme() {
+            return localStorage.getItem('emergens-theme') || 'dark';
+        }
+
+        function setTheme(theme) {
+            root.setAttribute('data-theme', theme);
+            localStorage.setItem('emergens-theme', theme);
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const icons = document.querySelectorAll('#themeToggle i, #themeToggleMobile i');
+            const current = root.getAttribute('data-theme') === 'dark' ? 'fa-moon' : 'fa-sun';
+            icons.forEach(icon => { icon.className = 'fas ' + current; });
+        }
+
+        setTheme(getStoredTheme());
+        themeToggle.addEventListener('click', () => {
+            const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+            showToast(next === 'dark' ? 'Dark mode activated' : 'Light mode activated');
+        });
+        themeToggleMobile.addEventListener('click', () => {
+            const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+            showToast(next === 'dark' ? 'Dark mode activated' : 'Light mode activated');
+        });
+
+        // Header scroll
+        const header = document.getElementById('header');
+        window.addEventListener('scroll', () => {
+            header.classList.toggle('scrolled', window.scrollY > 30);
+        });
+
+        // Burger menu
+        const burgerBtn = document.getElementById('burgerBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+
+        function toggleMobileMenu(forceClose = false) {
+            const isOpen = mobileMenu.classList.contains('open');
+            if (forceClose || isOpen) {
+                mobileMenu.classList.remove('open');
+                burgerBtn.classList.remove('active');
+                mobileOverlay.classList.remove('active');
+                document.body.style.overflow = '';
+            } else {
+                mobileMenu.classList.add('open');
+                burgerBtn.classList.add('active');
+                mobileOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        burgerBtn.addEventListener('click', () => toggleMobileMenu());
+        mobileOverlay.addEventListener('click', () => toggleMobileMenu(true));
+        mobileMenu.querySelectorAll('a').forEach(a => {
+            a.addEventListener('click', () => toggleMobileMenu(true));
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && mobileMenu.classList.contains('open')) toggleMobileMenu(true);
+        });
+
+        // Copy code buttons
+        document.querySelectorAll('.code-block').forEach(block => {
+            const btn = block.querySelector('.copy-code-btn');
+            const pre = block.querySelector('pre');
+            if (!btn || !pre) return;
+            btn.addEventListener('click', () => {
+                const text = pre.innerText;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        btn.textContent = 'Copied!';
+                        showToast('Code copied to clipboard');
+                        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+                    }).catch(() => fallbackCopy(text, btn));
+                } else {
+                    fallbackCopy(text, btn);
+                }
+            });
+        });
+
+        function fallbackCopy(text, btn) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                btn.textContent = 'Copied!';
+                showToast('Code copied to clipboard');
+                setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+            } catch (e) {
+                showToast('Failed to copy', 'error');
+            }
+            document.body.removeChild(ta);
+        }
+
+        // Sidebar active link on scroll (simple version)
+        const sidebarLinks = document.querySelectorAll('.docs-sidebar a');
+        const sections = document.querySelectorAll('.docs-section[id]');
+        const sidebar = document.getElementById('docsSidebar');
+
+        function updateActiveLink() {
+            let current = '';
+            sections.forEach(section => {
+                const top = section.offsetTop - 120;
+                if (window.scrollY >= top) {
+                    current = section.getAttribute('id');
+                }
+            });
+            sidebarLinks.forEach(link => {
+                link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+            });
+        }
+
+        window.addEventListener('scroll', updateActiveLink);
+        updateActiveLink();
+
+        // Language buttons (placeholder, same as home)
+        document.querySelectorAll('.lang-btn').forEach(b => b.addEventListener('click', () => {
+            document.querySelectorAll('.lang-btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+            showToast('Language switched to ' + b.dataset.lang.toUpperCase());
+        }));
+
+        console.log('%cEmergens API Docs', 'color: #60a5fa; font-size: 16px; font-weight: bold; font-family: monospace;');
+    })();
+</script>
+</body>
+</html>
