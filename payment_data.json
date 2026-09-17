@@ -1,0 +1,30 @@
+[
+  {
+    "payment_id": "PAY-200A436F68",
+    "user": "guest",
+    "requested_username": "Yanxzy",
+    "plan": "enterprise",
+    "amount": "99.00",
+    "payment_method": "card",
+    "card_last4": "7964",
+    "status": "approved",
+    "created_at": "2026-09-13T14:53:39.168553+00:00",
+    "updated_at": "2026-09-13T15:10:26.678507+00:00",
+    "generated_username": "Yanxzy",
+    "generated_password": "fe32b05fc800"
+  },
+  {
+    "payment_id": "PAY-B28FE50C54",
+    "user": "Yanxzyx",
+    "requested_username": "Developer",
+    "plan": "enterprise",
+    "amount": "99.00",
+    "payment_method": "qr",
+    "card_last4": "0000",
+    "status": "approved",
+    "created_at": "2026-09-13T15:46:57.814697+00:00",
+    "updated_at": "2026-09-13T15:47:41.531369+00:00",
+    "generated_username": "Developer",
+    "generated_password": "2b5123b99631"
+  }
+]
