@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
+    <title>Emergens — Field Intelligence Console</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%230b0b0b'/%3E%3Cdefs%3E%3ClinearGradient id='fv' x1='10' y1='5' x2='32' y2='39'%3E%3Cstop offset='0' stop-color='%2360a5fa'/%3E%3Cstop offset='1' stop-color='%231e40af'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='25,5 13,25 20,25 17,39 33,18 24,18' fill='url(%23fv)'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
+    <style>
+        /* Brand typeface — shared with get-started.html for a consistent identity across the site */
+        @font-face {
+            font-family: 'Road Rage';
+            src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+    </style>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="bg-orb bg-orb-1" aria-hidden="true"></div>
+<div class="bg-orb bg-orb-2" aria-hidden="true"></div>
+<div class="grid-overlay" aria-hidden="true"></div>
+<div class="app-shell">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a class="sidebar-brand" href="/dashboard.html">
+                <svg class="crest" viewBox="0 0 44 44" fill="none" aria-hidden="true"><defs><linearGradient id="crn" x1="10" y1="5" x2="32" y2="39"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent2)"/></linearGradient></defs><polygon points="25,5 13,25 20,25 17,39 33,18 24,18" fill="url(#crn)"/></svg>
+                <div class="brand-word"><div class="brand-name">EMERGENS</div><div class="brand-tag">Field Intelligence</div></div>
+            </a>
+            <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close menu"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="sidebar-user" id="sidebarProfileTrigger" role="button" tabindex="0" aria-haspopup="dialog" title="View profile">
+            <div class="sidebar-user-avatar-wrap"><div class="sidebar-user-avatar" id="sidebarAvatarInitial"><i class="fas fa-user"></i></div><span class="avatar-dot"></span></div>
+            <div><div class="sidebar-user-name" id="sidebarUsername">--</div><div class="sidebar-user-role" id="sidebarRole">--</div></div>
+        </div>
+        <nav class="sidebar-nav">
+            <button class="nav-item active" data-section="overview"><i class="fas fa-gauge-high"></i><span data-i18n="nav_overview">Overview</span></button>
+            <button class="nav-item" id="navToolsHub"><i class="fas fa-grip"></i><span data-i18n="nav_tools_hub">Tools</span></button>
+            <button class="nav-item" data-section="testing"><i class="fas fa-magnifying-glass"></i><span data-i18n="nav_testing">Security Testing</span></button>
+            <button class="nav-item" data-section="assets"><i class="fas fa-layer-group"></i><span data-i18n="nav_assets">Assets</span></button>
+            <button class="nav-item" data-section="console"><i class="fas fa-terminal"></i><span data-i18n="nav_console">System Console</span></button>
+            <button class="nav-item" data-section="chat"><i class="fas fa-comments"></i><span data-i18n="nav_chat">AI Assistant</span></button>
+            <div class="nav-label" data-i18n="nav_label_data">Data</div>
+            <button class="nav-item" data-section="schools"><i class="fas fa-school"></i><span data-i18n="nav_schools">School Search</span></button>
+            <button class="nav-item" data-section="minecraft"><i class="fas fa-cubes"></i><span data-i18n="nav_minecraft">Minecraft Status</span></button>
+            <div class="nav-label" data-i18n="nav_label_integrations">Integrations</div>
+            <button class="nav-item telegram-nav" data-section="telegram"><i class="fab fa-telegram-plane"></i><span data-i18n="nav_telegram">Telegram Bot</span></button>
+            <div class="nav-label" data-i18n="nav_label_resources">Resources</div>
+            <button class="nav-item" data-section="docs"><i class="fas fa-book"></i><span data-i18n="nav_docs">Documentation</span></button>
+            <button class="nav-item" data-section="preferences"><i class="fas fa-sliders"></i><span data-i18n="nav_preferences">Preferences</span></button>
+            <button class="nav-item owner-only" data-section="settings"><i class="fas fa-users-gear"></i><span data-i18n="nav_settings">User Management</span></button>
+            <button class="nav-item owner-only" data-section="api"><i class="fas fa-key"></i><span data-i18n="nav_api">API Keys</span></button>
+            <button class="nav-item owner-only" data-section="panelmanager"><i class="fas fa-server"></i><span data-i18n="nav_panel_manager">Panel Manager</span></button>
+            <button class="nav-item owner-only" id="navThemeStudio"><i class="fas fa-palette"></i><span data-i18n="nav_theme_studio">Theme Studio</span></button>
+            <button class="nav-item" data-section="community"><i class="fas fa-users"></i><span data-i18n="nav_community">Community</span></button>
+            <button class="nav-item" data-section="globalchat"><i class="fas fa-earth-asia"></i><span data-i18n="nav_globalchat">Global Chat</span><span class="nav-chat-badge" id="navChatBadge" hidden>0</span></button>
+            <div class="nav-label" data-i18n="nav_label_tools">Tools</div>
+            <a class="nav-item" href="api/api_key_request_token.html"><i class="fas fa-plug"></i><span data-i18n="nav_request">API Request</span><i class="fas fa-arrow-up-right-from-square nav-ext-icon"></i></a>
+            <a class="nav-item" href="webps.html"><i class="fas fa-server"></i><span data-i18n="nav_webps">WebPS</span><i class="fas fa-arrow-up-right-from-square nav-ext-icon"></i></a>
+            <a class="nav-item" href="remote_access.html"><i class="fas fa-satellite-dish"></i><span data-i18n="nav_monitor">Monitor</span><i class="fas fa-arrow-up-right-from-square nav-ext-icon"></i></a>
+            <a class="nav-item" href="status.html"><i class="fas fa-signal"></i><span data-i18n="nav_status">Status</span><i class="fas fa-arrow-up-right-from-square nav-ext-icon"></i></a>
+        </nav>
+        <div class="sidebar-footer">
+            <button class="icon-btn" id="langToggle" aria-label="Toggle language" title="EN / Bahasa Malaysia"><span id="langToggleLabel" style="font-size:0.62rem;font-weight:800;">EN</span></button>
+            <button class="icon-btn" id="themeToggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
+            <button class="icon-btn" id="logoutBtn" aria-label="Logout"><i class="fas fa-right-from-bracket"></i></button>
+        </div>
+    </aside>
+    <main class="main-content">
+        <header class="topbar"><div class="topbar-left"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu"><i class="fas fa-bars"></i></button><h2 id="pageTitle">Overview</h2></div><div class="topbar-stats"><span><i class="fas fa-microchip"></i><span id="cpuMini">--%</span> CPU</span><span><i class="fas fa-memory"></i><span id="memMini">--%</span> RAM</span></div><button class="icon-btn" id="notesToggleBtn" aria-label="Notes" title="Notes" style="width:34px;height:34px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--transition-fast);font-size:0.85rem;"><i class="fas fa-note-sticky"></i></button></header>
+        <div class="content-area">
+
+            <!-- ========== OVERVIEW ========== -->
+            <section class="content-section active" id="section-overview">
+                <div class="masthead">
+                    <svg class="crest crest-head" viewBox="0 0 44 44" fill="none" aria-hidden="true"><defs><linearGradient id="crh" x1="10" y1="5" x2="32" y2="39"><stop offset="0" stop-color="var(--red-400)"/><stop offset="1" stop-color="var(--gold)"/></linearGradient></defs><polygon points="25,5 13,25 20,25 17,39 33,18 24,18" fill="url(#crh)"/></svg>
+                    <div class="masthead-copy"><span class="eyebrow"><span class="live-dot"></span><span data-i18n="masthead_eyebrow">Bureau Online</span></span><h1 data-i18n="masthead_title">Field Intelligence Console</h1><p data-i18n="masthead_desc">Passive reconnaissance across WHOIS, DNS, TLS and exposure surfaces — for domains you own or are authorized to test.</p></div>
+                    <div class="masthead-meta"><div><span class="meta-label" data-i18n="masthead_operator">Operator</span><strong id="mastheadOperator">--</strong></div><div><span class="meta-label" data-i18n="masthead_today">Today</span><strong id="mastheadDate">--</strong></div></div>
+                </div>
+                <div class="account-summary-card" id="accountSummaryCard">
+                    <div class="as-item"><i class="fas fa-user"></i><div><span class="as-label" data-i18n="as_username">Username</span><strong id="asUsername">--</strong></div></div>
+                    <div class="as-item"><i class="fas fa-shield-halved"></i><div><span class="as-label" data-i18n="as_role">Role</span><strong id="asRole">--</strong></div></div>
+                    <div class="as-item"><i class="fas fa-calendar-xmark"></i><div><span class="as-label" data-i18n="as_expires">Expires</span><strong id="asExpires">--</strong></div></div>
+                    <div class="as-item"><i class="fas fa-key"></i><div><span class="as-label" data-i18n="as_api_keys">API Keys</span><strong id="asApiKeys">--</strong></div></div>
+                </div>
+                <div class="grid-cards">
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-magnifying-glass"></i></div><div class="stat-label" data-i18n="stat_recon_tools">Recon Tools</div><div class="stat-value" id="toolsCount">--</div></div>
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-shield-halved"></i></div><div class="stat-label" data-i18n="stat_security_modules">Security Modules</div><div class="stat-value">10</div></div>
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-clock-rotate-left"></i></div><div class="stat-label" data-i18n="stat_total_scans">Total Scans</div><div class="stat-value" id="totalScansCount">--</div></div>
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-check-circle"></i></div><div class="stat-label" data-i18n="stat_system_status">System Status</div><div class="stat-value" style="color:var(--green);" data-i18n="stat_online">Online</div></div>
+                </div>
+                <div class="panel"><div class="panel-title"><i class="fas fa-bolt"></i><span data-i18n="quickscan_title">Quick Scan</span></div><p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:12px;" data-i18n="quickscan_desc">Enter a domain you own or are authorized to test for a quick passive scan.</p><div class="form-row"><div class="input-group"><i class="fas fa-globe"></i><input type="text" id="quickScanTarget" placeholder="example.com"></div><button class="btn-primary" id="quickScanBtn"><i class="fas fa-play"></i><span data-i18n="btn_run_quick_scan">Run Quick Scan</span></button></div>
+                    <div id="ovScanProgressWrap" hidden style="margin-top:14px;">
+                        <div class="scan-progress-card is-active" id="ovScanProgressCard">
+                            <div class="scan-progress-header">
+                                <div class="scan-radar" id="ovScanRadar" aria-hidden="true"><span class="scan-radar-check"><i class="fas fa-check"></i></span></div>
+                                <div class="scan-progress-status">
+                                    <div class="label" id="ovScanProgressLabel">Initializing...</div>
+                                    <div class="sub" id="ovScanElapsed">Elapsed: 0:00</div>
+                                </div>
+                                <div class="scan-progress-pct" id="ovScanProgressPct">0%</div>
+                            </div>
+                            <div class="scan-progress-track"><div class="fill" id="ovScanProgressFill"></div></div>
+                            <div class="scan-phase-animation" id="ovScanPhaseWrapper" style="margin:10px 0 2px;"><i class="fas fa-spinner"></i> <span id="ovScanPhaseText">Scanning . . .</span></div>
+                            <div class="scan-stepper" id="ovScanStepper">
+                                <div class="scan-step" data-step-index="0"><div class="scan-step-node">1</div><div class="scan-step-label">Scanning</div></div>
+                                <div class="scan-step-line"></div>
+                                <div class="scan-step" data-step-index="1"><div class="scan-step-node">2</div><div class="scan-step-label">Analytics</div></div>
+                                <div class="scan-step-line"></div>
+                                <div class="scan-step" data-step-index="2"><div class="scan-step-node">3</div><div class="scan-step-label">Subdomains</div></div>
+                                <div class="scan-step-line"></div>
+                                <div class="scan-step" data-step-index="3"><div class="scan-step-node">4</div><div class="scan-step-label">Critical Data</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-network-wired"></i><span data-i18n="net_traffic_title">Network Traffic</span><span class="net-live-pill" id="netLivePill"><span class="net-live-dot"></span><span data-i18n="net_live">Live</span></span></div>
+                    <div class="net-traffic-grid">
+                        <div class="net-traffic-card inbound">
+                            <div class="net-traffic-card-head">
+                                <div class="net-traffic-icon"><i class="fas fa-arrow-down"></i></div>
+                                <div class="net-traffic-body">
+                                    <div class="net-traffic-label" data-i18n="net_inbound">Inbound</div>
+                                    <div class="net-traffic-value" id="netInboundValue">--</div>
+                                    <div class="net-traffic-sub" id="netInboundSub">-- req/min</div>
+                                </div>
+                            </div>
+                            <div class="net-traffic-spark" id="netInboundSpark"></div>
+                        </div>
+                        <div class="net-traffic-card outbound">
+                            <div class="net-traffic-card-head">
+                                <div class="net-traffic-icon"><i class="fas fa-arrow-up"></i></div>
+                                <div class="net-traffic-body">
+                                    <div class="net-traffic-label" data-i18n="net_outbound">Outbound</div>
+                                    <div class="net-traffic-value" id="netOutboundValue">--</div>
+                                    <div class="net-traffic-sub" id="netOutboundSub">-- req/min</div>
+                                </div>
+                            </div>
+                            <div class="net-traffic-spark" id="netOutboundSpark"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-mosque"></i><span data-i18n="prayer_title">Waktu Solat</span>
+                        <div class="segmented-control" id="prayerCountryToggle" style="margin-left:auto;">
+                            <button class="seg-btn active" data-country="MY">Malaysia</button>
+                            <button class="seg-btn" data-country="ID">Indonesia</button>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group" style="max-width:240px;"><i class="fas fa-city"></i><select id="prayerCitySelect"></select></div>
+                        <button class="btn-secondary" id="prayerRefreshBtn" title="Refresh"><i class="fas fa-rotate"></i></button>
+                    </div>
+                    <div class="prayer-times-grid" id="prayerTimesGrid"><div class="empty-state"><i class="fas fa-spinner spin"></i> <span data-i18n="loading">Loading...</span></div></div>
+                    <div class="prayer-next-banner" id="prayerNextBanner" hidden></div>
+                    <div style="font-size:0.68rem;color:var(--text-muted);margin-top:8px;" data-i18n="prayer_source_note">Times from the Aladhan API. Please cross-check against JAKIM (Malaysia) or Kemenag (Indonesia) for official reference.</div>
+                </div>
+                <div class="panel"><div class="panel-title"><i class="fas fa-clock-rotate-left"></i><span data-i18n="recent_scans_title">Recent Scans</span></div><div id="recentScansList"><div class="empty-state"><i class="fas fa-spinner spin"></i> <span data-i18n="loading">Loading...</span></div></div></div>
+            </section>
+
+            <!-- ========== SECURITY TESTING ========== -->
+            <section class="content-section" id="section-testing">
+                <div class="panel testing-briefing-panel" id="testingBriefingPanel">
+                    <div class="briefing-operator-row">
+                        <div class="briefing-operator-name"><i class="fas fa-user"></i> <span id="briefingUsername">--</span></div>
+                        <span class="profile-role-pill" id="briefingRole"><i class="fas fa-shield-halved"></i> --</span>
+                    </div>
+                    <div class="briefing-video-wrap" id="briefingVideoWrap">
+                        <div class="briefing-video-placeholder" id="briefingVideoPlaceholder"><i class="fas fa-video"></i><span data-i18n="briefing_video_empty">No briefing video configured yet.</span></div>
+                        <video id="briefingVideo" playsinline autoplay muted loop disablePictureInPicture disableRemotePlayback tabindex="-1" oncontextmenu="return false" hidden></video>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-magnifying-glass"></i><span data-i18n="testing_title">Security Testing Suite</span></div>
+                    <div class="form-row">
+                        <div class="input-group"><i class="fas fa-globe"></i><input type="text" id="scanTarget" placeholder="target.com"></div>
+                        <div class="input-group" style="max-width:180px;"><i class="fas fa-layer-group"></i><select id="scanMode"><option value="basic" data-i18n="mode_basic">Basic Mode</option><option value="expert" data-i18n="mode_expert">Expert Mode</option></select></div>
+                    </div>
+
+                    <!-- ── Method Carousel ── -->
+                    <p class="tool-section-label" data-i18n="testing_select_tools">Swipe to browse & select tools to run:</p>
+                    <div class="method-carousel-wrap">
+                        <button class="method-nav-btn method-nav-prev" id="methodNavPrev" aria-label="Previous"><i class="fas fa-chevron-left"></i></button>
+                        <div class="method-carousel" id="methodCarousel">
+                            <!-- cards injected by JS -->
+                        </div>
+                        <button class="method-nav-btn method-nav-next" id="methodNavNext" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="method-carousel-dots" id="methodDots"></div>
+                    <!-- hidden checklist for scan submission compatibility -->
+                    <div id="toolChecklist" hidden></div>
+
+                    <button class="btn-primary" id="scanBtn"><i class="fas fa-play"></i><span data-i18n="btn_start_scan">Start Scan</span></button>
+                    <div id="scanProgressWrap" hidden style="margin-top:14px;">
+                        <div class="scan-progress-card is-active" id="scanProgressCard">
+                            <div class="scan-progress-header">
+                                <div class="scan-radar" id="scanRadar" aria-hidden="true"><span class="scan-radar-check"><i class="fas fa-check"></i></span></div>
+                                <div class="scan-progress-status">
+                                    <div class="label" id="scanProgressLabel">Initializing...</div>
+                                    <div class="sub" id="scanElapsed">Elapsed: 0:00</div>
+                                </div>
+                                <div class="scan-progress-pct" id="scanProgressPct">0%</div>
+                            </div>
+                            <div class="scan-progress-track"><div class="fill" id="scanProgressFill"></div></div>
+                            <div class="scan-phase-animation" id="scanPhaseWrapper" style="margin:10px 0 2px;"><i class="fas fa-spinner"></i> <span id="scanPhaseText">Scanning . . .</span></div>
+                            <div class="scan-stepper" id="scanStepper">
+                                <div class="scan-step" data-step-index="0"><div class="scan-step-node">1</div><div class="scan-step-label">Scanning</div></div>
+                                <div class="scan-step-line"></div>
+                                <div class="scan-step" data-step-index="1"><div class="scan-step-node">2</div><div class="scan-step-label">Analytics</div></div>
+                                <div class="scan-step-line"></div>
+                                <div class="scan-step" data-step-index="2"><div class="scan-step-node">3</div><div class="scan-step-label">Subdomains</div></div>
+                                <div class="scan-step-line"></div>
+                                <div class="scan-step" data-step-index="3"><div class="scan-step-node">4</div><div class="scan-step-label">Critical Data</div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="result-grid" id="scanResultGrid"></div>
+                </div>
+            </section>
+
+            <!-- ========== ASSETS (replaces History) ========== -->
+            <section class="content-section" id="section-assets">
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fas fa-layer-group"></i><span data-i18n="assets_title">Assets & Scan History</span>
+                        <div class="panel-title-actions" style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                            <div class="input-group" style="max-width:240px;"><i class="fas fa-search"></i><input type="text" id="historySearch" placeholder="Filter by target..." data-i18n-ph="history_filter_ph"></div>
+                            <button class="btn-secondary" id="assetExportBtn" title="Export JSON"><i class="fas fa-download"></i></button>
+                        </div>
+                    </div>
+                    <div class="assets-summary-row" id="assetsSummaryRow">
+                        <div class="asset-kpi"><span class="asset-kpi-val" id="assetKpiTotal">--</span><span class="asset-kpi-label">Total Scans</span></div>
+                        <div class="asset-kpi"><span class="asset-kpi-val" id="assetKpiDone">--</span><span class="asset-kpi-label">Completed</span></div>
+                        <div class="asset-kpi"><span class="asset-kpi-val" id="assetKpiAvgTime">--</span><span class="asset-kpi-label">Avg Duration</span></div>
+                        <div class="asset-kpi"><span class="asset-kpi-val" id="assetKpiTargets">--</span><span class="asset-kpi-label">Unique Targets</span></div>
+                    </div>
+                    <div class="asset-cards-grid" id="assetCardsGrid"><div class="empty-state"><i class="fas fa-spinner spin"></i> Loading...</div></div>
+                </div>
+            </section>
+
+            <!-- ========== SYSTEM CONSOLE ========== -->
+            <section class="content-section" id="section-console">
+                <div class="grid-cards"><div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-microchip"></i></div><div class="stat-label" data-i18n="stat_cpu">CPU Usage</div><div class="stat-value" id="statCpu">--%</div></div><div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-memory"></i></div><div class="stat-label" data-i18n="stat_memory">Memory</div><div class="stat-value" id="statMem">--%</div></div><div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-hard-drive"></i></div><div class="stat-label" data-i18n="stat_disk">Disk</div><div class="stat-value" id="statDisk">--%</div></div></div>
+                <div class="panel"><div class="panel-title"><i class="fas fa-terminal"></i><span data-i18n="console_title">Server Logs</span></div><div class="console-window" id="consoleWindow"></div></div>
+            </section>
+
+            <!-- ========== AI CHAT ========== -->
+            <section class="content-section" id="section-chat">
+                <div class="panel"><div class="panel-title"><i class="fas fa-comments"></i><span data-i18n="chat_title">AI Security Assistant</span><button class="btn-secondary btn-danger" id="chatClearBtn" style="margin-left:auto;font-size:0.75rem;"><i class="fas fa-trash"></i><span data-i18n="btn_clear">Clear</span></button></div><div class="chat-window" id="chatWindow"></div><div class="chat-input-row"><textarea id="chatInput" rows="1" placeholder="Ask about security testing..." data-i18n-ph="chat_input_ph"></textarea><button class="btn-primary" id="chatSendBtn"><i class="fas fa-paper-plane"></i></button></div></div>
+            </section>
+
+            <!-- ========== SEKOLAH SEARCH ========== -->
+            <section class="content-section" id="section-schools">
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-school"></i><span data-i18n="schools_title">Sekolah Search</span></div>
+                    <p class="panel-desc" data-i18n="schools_desc">Cari maklumat sekolah rendah &amp; menengah di Malaysia. Taip nama sekolah untuk melihat padanan.</p>
+                    <div class="school-search-bar">
+                        <div class="school-search-input-wrap">
+                            <i class="fas fa-search school-search-icon"></i>
+                            <input type="text" id="schoolSearchInput" class="school-search-input" placeholder="Cth: SEKOLAH KEBANGSAAN LUBOK" autocomplete="off">
+                            <button class="school-search-clear" id="schoolSearchClear" aria-label="Clear" hidden><i class="fas fa-xmark"></i></button>
+                        </div>
+                        <button class="btn-primary school-search-submit" id="schoolSearchBtn"><i class="fas fa-search"></i><span data-i18n="btn_search">Cari</span></button>
+                    </div>
+                    <div class="school-stats-row" id="schoolStatsRow" hidden>
+                        <span id="schoolResultCount"></span>
+                    </div>
+                    <div class="school-cards-grid" id="schoolResults"></div>
+                </div>
+            </section>
+
+            <!-- ========== MINECRAFT SERVER STATUS ========== -->
+            <section class="content-section" id="section-minecraft">
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-cubes"></i><span data-i18n="mc_title">Minecraft Server Status</span></div>
+                    <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:12px;" data-i18n="mc_desc">Check whether a Minecraft server is online, its player count, MOTD and version — via the public mcstatus.io API.</p>
+                    <div class="form-row">
+                        <div class="input-group"><i class="fas fa-server"></i><input type="text" id="mcAddressInput" placeholder="play.hypixel.net"></div>
+                        <div class="input-group" style="max-width:170px;"><i class="fas fa-layer-group"></i><select id="mcEdition"><option value="java">Java Edition</option><option value="bedrock">Bedrock Edition</option></select></div>
+                        <button class="btn-primary" id="mcCheckBtn"><i class="fas fa-satellite-dish"></i> <span data-i18n="btn_check">Check Status</span></button>
+                    </div>
+                    <div id="mcResults" style="margin-top:14px;"></div>
+                </div>
+            </section>
+
+            <!-- ========== TELEGRAM BOT INTEGRATION ========== -->
+            <section class="content-section" id="section-telegram">
+                <div class="telegram-hero">
+                    <i class="fas fa-paper-plane telegram-plane-trail" aria-hidden="true"></i>
+                    <div class="telegram-hero-top">
+                        <div class="telegram-hero-icon"><i class="fab fa-telegram-plane"></i></div>
+                        <div class="telegram-hero-copy">
+                            <h3 data-i18n="tg_hero_title">Command Emergens from Telegram</h3>
+                            <p data-i18n="tg_hero_desc">Connect a bot to receive scan results, trigger recon jobs, and manage your console straight from a Telegram chat — on your phone, desktop, or anywhere Telegram runs.</p>
+                        </div>
+                    </div>
+                    <div class="telegram-steps" id="telegramStepsGuide"></div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fab fa-telegram-plane telegram-icon"></i><span data-i18n="tg_panel_title">Telegram Bot Integration</span>
+                        <span id="telegramStatusBadge" style="margin-left:12px;" class="badge" data-i18n="badge_disconnected">Disconnected</span>
+                    </div>
+                    <div id="telegramDisconnected">
+                        <div class="settings-callout telegram-callout">
+                            <i class="fas fa-circle-info"></i>
+                            <span data-i18n="tg_connect_hint" data-i18n-html>Create a bot via <strong>@BotFather</strong> on Telegram, then paste its credentials below to link it to this console.</span>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <i class="fab fa-telegram-plane"></i>
+                                <input type="text" id="telegramBotToken" placeholder="Bot Token (from @BotFather — e.g., 123456:ABCdef...)">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <i class="fas fa-at"></i>
+                                <input type="text" id="telegramBotUsername" placeholder="Bot Username (e.g., @emergens_bot)">
+                            </div>
+                            <div class="input-group" style="max-width:220px;">
+                                <i class="fas fa-user-shield"></i>
+                                <input type="text" id="telegramOwnerId" placeholder="Owner Chat ID">
+                            </div>
+                        </div>
+                        <div class="form-row" style="align-items:center; gap:16px;">
+                            <button class="btn-primary btn-telegram" id="telegramConnectBtn">
+                                <i class="fas fa-plug"></i> <span data-i18n="btn_connect_bot">Connect Bot</span>
+                            </button>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="telegramPublicMode" checked>
+                                <span class="toggle-slider"></span>
+                                <span style="font-size:0.8rem;color:var(--text-secondary);" data-i18n="tg_public_mode">Public Mode</span>
+                                <span style="font-size:0.66rem;color:var(--text-muted);" data-i18n="tg_public_mode_hint">(uncheck for owner-only)</span>
+                            </label>
+                        </div>
+                        <div id="telegramConnectError" style="margin-top:8px;color:var(--red-500);font-size:0.78rem;" hidden></div>
+                    </div>
+
+                    <div id="telegramConnected" hidden>
+                        <div class="telegram-connected-header">
+                            <div class="telegram-bot-avatar">
+                                <i class="fab fa-telegram-plane"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight:700;color:var(--text-primary);font-size:1rem;" id="telegramConnectedUsername">@your_bot<span class="telegram-verified" title="Active"><i class="fas fa-circle-check"></i></span></div>
+                                <div style="font-size:0.72rem;color:var(--green);">
+                                    <span class="live-dot" style="display:inline-block;margin-right:4px;"></span><span data-i18n="tg_connected_running">Connected & Running</span>
+                                </div>
+                            </div>
+                            <button class="btn-secondary btn-danger" id="telegramDisconnectBtn" style="margin-left:auto;">
+                                <i class="fas fa-power-off"></i> <span data-i18n="btn_disconnect">Disconnect</span>
+                            </button>
+                        </div>
+
+                        <div class="grid-cards" style="margin-bottom:16px;">
+                            <div class="stat-card">
+                                <div class="stat-icon-badge telegram"><i class="fas fa-users"></i></div>
+                                <div class="stat-label" data-i18n="tg_stat_chats">Unique Chats</div>
+                                <div class="stat-value" id="telegramChatCount">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon-badge telegram"><i class="fas fa-comment-dots"></i></div>
+                                <div class="stat-label" data-i18n="tg_stat_msgs">Messages Today</div>
+                                <div class="stat-value" id="telegramMsgCount">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon-badge telegram"><i class="fas fa-shield-halved"></i></div>
+                                <div class="stat-label" data-i18n="tg_stat_mode">Mode</div>
+                                <div class="stat-value" id="telegramModeDisplay" style="font-size:1.1rem;">Public</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon-badge telegram"><i class="fas fa-clock"></i></div>
+                                <div class="stat-label" data-i18n="tg_stat_uptime">Uptime</div>
+                                <div class="stat-value" id="telegramUptime" style="font-size:1.1rem;">0m</div>
+                            </div>
+                        </div>
+
+                        <div class="telegram-commands-card">
+                            <strong style="font-size:0.82rem;color:var(--text-primary);display:block;margin-bottom:8px;"><i class="fas fa-terminal" style="color:#4a7de0;"></i> <span data-i18n="tg_cmd_title">Available Bot Commands</span></strong>
+                            <div class="telegram-cmd-row"><code>/start</code><span data-i18n="tg_cmd_start">Registers this chat and shows the welcome menu.</span></div>
+                            <div class="telegram-cmd-row"><code>/scan &lt;domain&gt;</code><span data-i18n="tg_cmd_scan">Runs a quick passive scan and replies with a summary.</span></div>
+                            <div class="telegram-cmd-row"><code>/history</code><span data-i18n="tg_cmd_history">Lists your most recent scans.</span></div>
+                            <div class="telegram-cmd-row"><code>/status</code><span data-i18n="tg_cmd_status">Shows console uptime and system load.</span></div>
+                            <div class="telegram-cmd-row"><code>/help</code><span data-i18n="tg_cmd_help">Lists every command the bot understands.</span></div>
+                        </div>
+
+                        <div style="margin:18px 0 10px;">
+                            <strong style="font-size:0.82rem;color:var(--text-primary);" data-i18n="tg_registered_chats">Registered Chat IDs</strong>
+                            <span style="font-size:0.68rem;color:var(--text-muted);margin-left:8px;" data-i18n="tg_registered_chats_hint">(users who have sent /start)</span>
+                        </div>
+                        <div class="telegram-chat-list" id="telegramChatList">
+                            <div class="empty-state" style="padding:20px;">
+                                <i class="fas fa-inbox" style="font-size:1.5rem;color:var(--text-muted);"></i>
+                                <strong data-i18n="tg_no_chats">No chats yet</strong>
+                                <span class="hint" data-i18n="tg_no_chats_hint">Users appear when they interact with the bot</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:16px;padding:14px;background:var(--bg-tertiary);border-radius:var(--radius-md);border:1px solid var(--border-color);">
+                            <strong style="font-size:0.82rem;color:var(--text-primary);display:block;margin-bottom:10px;">
+                                <i class="fas fa-sliders"></i> <span data-i18n="tg_bot_settings">Bot Settings</span>
+                            </strong>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <i class="fas fa-user-shield"></i>
+                                    <input type="text" id="telegramOwnerIdEdit" placeholder="Owner Chat ID">
+                                </div>
+                                <button class="btn-secondary" id="telegramUpdateOwnerBtn">
+                                    <i class="fas fa-save"></i> <span data-i18n="btn_update_owner">Update Owner</span>
+                                </button>
+                            </div>
+                            <div class="form-row" style="align-items:center;margin-top:8px;">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="telegramPublicModeEdit" checked>
+                                    <span class="toggle-slider"></span>
+                                    <span style="font-size:0.8rem;color:var(--text-secondary);margin-left:8px;" data-i18n="tg_public_mode">Public Mode</span>
+                                </label>
+                                <button class="btn-secondary" id="telegramUpdateModeBtn" style="margin-left:12px;">
+                                    <i class="fas fa-sync"></i> <span data-i18n="btn_apply_mode">Apply Mode</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="margin-top:12px;">
+                            <div class="input-group">
+                                <i class="fas fa-paper-plane"></i>
+                                <input type="text" id="telegramBroadcastMsg" placeholder="Send broadcast message to all chats..." data-i18n-ph="tg_broadcast_ph">
+                            </div>
+                            <button class="btn-secondary" id="telegramBroadcastBtn">
+                                <i class="fas fa-broadcast-tower"></i> <span data-i18n="btn_send">Send</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== DOCUMENTATION ========== -->
+            <section class="content-section" id="section-docs">
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-book"></i><span data-i18n="docs_title">Documentation &amp; Tool Guide</span></div>
+                    <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:14px;line-height:1.6;" data-i18n="docs_intro">A complete reference for every module in Emergens — what each tool does, what data it returns, and how to use it responsibly. Search below or browse by category.</p>
+                    <div class="docs-search-wrap"><div class="input-group"><i class="fas fa-search"></i><input type="text" id="docsSearchInput" placeholder="Search documentation..." data-i18n-ph="docs_search_ph"></div></div>
+                    <div class="docs-meta-row"><span class="docs-count-badge" id="docsCountBadge"></span></div>
+                    <div id="docsAccordion"></div>
+                    <div class="empty-state docs-empty" id="docsEmptyState">No matching topics found.</div>
+                </div>
+            </section>
+
+            <!-- ========== PREFERENCES ========== -->
+            <section class="content-section" id="section-preferences">
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-sliders"></i><span data-i18n="prefs_title">Preferences</span></div>
+                    <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:16px;" data-i18n="prefs_desc">Personalize how Emergens stores your data and which language the interface uses. These preferences are saved to this browser.</p>
+
+                    <div class="settings-option-card">
+                        <div class="settings-option-title"><i class="fas fa-database"></i><span data-i18n="prefs_storage_title">Data Storage</span></div>
+                        <div class="settings-option-desc" data-i18n="prefs_storage_desc">Choose where scan history and results are kept. Server storage syncs across devices tied to your account; local storage keeps everything only in this browser and never leaves your device.</div>
+                        <div class="storage-choice-grid">
+                            <div class="storage-choice" id="storageChoiceServer" data-value="server">
+                                <span class="sc-check"><i class="fas fa-check"></i></span>
+                                <i class="fas fa-server sc-icon"></i>
+                                <strong data-i18n="prefs_storage_server_title">Server (account-synced)</strong>
+                                <span data-i18n="prefs_storage_server_desc">Saved to your Emergens account. Available on any device you log into.</span>
+                            </div>
+                            <div class="storage-choice" id="storageChoiceLocal" data-value="local">
+                                <span class="sc-check"><i class="fas fa-check"></i></span>
+                                <i class="fas fa-laptop sc-icon"></i>
+                                <strong data-i18n="prefs_storage_local_title">Local (this browser only)</strong>
+                                <span data-i18n="prefs_storage_local_desc">Stored in this browser's local storage. Faster, private, but not synced anywhere.</span>
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-top:14px;">
+                            <button class="btn-secondary" id="exportLocalHistoryBtn"><i class="fas fa-file-export"></i> <span data-i18n="btn_export_local">Export Local History</span></button>
+                            <button class="btn-secondary btn-danger" id="clearLocalHistoryBtn"><i class="fas fa-broom"></i> <span data-i18n="btn_clear_local">Clear Local Data</span></button>
+                        </div>
+                    </div>
+
+                    <div class="settings-option-card">
+                        <div class="settings-option-title"><i class="fas fa-language"></i><span data-i18n="prefs_lang_title">Interface Language</span></div>
+                        <div class="settings-option-desc" data-i18n="prefs_lang_desc">Switch the console's menus, labels, and buttons between English and Bahasa Malaysia. Live scan data and server logs are shown exactly as returned.</div>
+                        <div class="lang-pill-group">
+                            <button class="lang-pill" id="langPillEn" data-lang="en"><span class="flag">🇬🇧</span> English</button>
+                            <button class="lang-pill" id="langPillMs" data-lang="ms"><span class="flag">🇲🇾</span> Bahasa Malaysia</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-option-card" id="serverNameDisplayCard" hidden>
+                        <div class="settings-option-title"><i class="fas fa-server"></i><span data-i18n="prefs_server_name_title">Server / VPS Name</span></div>
+                        <div class="settings-option-desc" data-i18n="prefs_server_name_desc">Set by the Owner. Visible here to every account signed in to this console.</div>
+                        <div class="server-name-display" id="serverNameDisplayValue">--</div>
+                    </div>
+
+                    <div class="settings-option-card">
+                        <div class="settings-option-title"><i class="fas fa-mobile-screen-button"></i><span data-i18n="prefs_device_title">Device &amp; Display</span></div>
+                        <div class="settings-option-desc" data-i18n="prefs_device_desc">Emergens automatically adapts to your screen. Override it below if you'd rather force one layout.</div>
+                        <div class="device-info-grid">
+                            <div class="device-info-item"><i class="fas fa-desktop" id="deviceDetectedIcon"></i><div><span class="di-label" data-i18n="prefs_device_detected">Detected device</span><strong id="deviceDetectedValue">--</strong></div></div>
+                            <div class="device-info-item"><i class="fas fa-battery-full" id="deviceBatteryIcon"></i><div><span class="di-label" data-i18n="prefs_device_battery">Battery</span><strong id="deviceBatteryValue">--</strong></div></div>
+                        </div>
+                        <div class="ui-mode-choice-grid">
+                            <button class="ui-mode-choice" data-mode="auto" id="uiModeAuto"><i class="fas fa-wand-magic-sparkles"></i><span data-i18n="prefs_ui_auto">Auto</span></button>
+                            <button class="ui-mode-choice" data-mode="mobile" id="uiModeMobile"><i class="fas fa-mobile-screen"></i><span data-i18n="prefs_ui_mobile">Phone Layout</span></button>
+                            <button class="ui-mode-choice" data-mode="desktop" id="uiModeDesktop"><i class="fas fa-laptop"></i><span data-i18n="prefs_ui_desktop">Laptop Layout</span></button>
+                        </div>
+                    <div class="settings-option-card">
+                        <div class="settings-option-title"><i class="fas fa-bars"></i><span data-i18n="prefs_sidebar_title">Sidebar / Menu Appearance</span></div>
+                        <div class="settings-option-desc" data-i18n="prefs_sidebar_desc">Customize how the navigation sidebar looks and behaves. Changes apply immediately.</div>
+                        <div class="sidebar-customizer">
+                            <div class="sb-option-row">
+                                <span class="sb-option-label"><i class="fas fa-palette"></i> Accent colour</span>
+                                <div class="sb-color-swatches" id="sbColorSwatches">
+                                    <button class="sb-swatch active" data-color="#3b82f6" style="background:#3b82f6;" title="Blue"></button>
+                                    <button class="sb-swatch" data-color="#8b5cf6" style="background:#8b5cf6;" title="Purple"></button>
+                                    <button class="sb-swatch" data-color="#10b981" style="background:#10b981;" title="Emerald"></button>
+                                    <button class="sb-swatch" data-color="#f59e0b" style="background:#f59e0b;" title="Amber"></button>
+                                    <button class="sb-swatch" data-color="#ef4444" style="background:#ef4444;" title="Red"></button>
+                                    <button class="sb-swatch" data-color="#ec4899" style="background:#ec4899;" title="Pink"></button>
+                                    <button class="sb-swatch" data-color="#06b6d4" style="background:#06b6d4;" title="Cyan"></button>
+                                </div>
+                            </div>
+                            <div class="sb-option-row">
+                                <span class="sb-option-label"><i class="fas fa-border-all"></i> Sidebar style</span>
+                                <div class="sb-style-btns" id="sbStyleBtns">
+                                    <button class="sb-style-btn active" data-style="solid" title="Solid background">Solid</button>
+                                    <button class="sb-style-btn" data-style="glass" title="Frosted glass effect">Glass</button>
+                                    <button class="sb-style-btn" data-style="minimal" title="Minimal / no background">Minimal</button>
+                                </div>
+                            </div>
+                            <div class="sb-option-row">
+                                <span class="sb-option-label"><i class="fas fa-text-width"></i> Labels</span>
+                                <label class="tool-check" style="display:inline-flex;width:auto;padding:7px 12px;">
+                                    <input type="checkbox" id="sbShowLabels" checked>
+                                    <span class="tool-switch" aria-hidden="true"></span>
+                                    <div><div class="tool-name" style="font-size:0.76rem;">Show nav labels</div></div>
+                                </label>
+                            </div>
+                            <div class="sb-option-row">
+                                <span class="sb-option-label"><i class="fas fa-expand"></i> Default open</span>
+                                <label class="tool-check" style="display:inline-flex;width:auto;padding:7px 12px;">
+                                    <input type="checkbox" id="sbDefaultOpen">
+                                    <span class="tool-switch" aria-hidden="true"></span>
+                                    <div><div class="tool-name" style="font-size:0.76rem;">Open on startup (mobile)</div></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== SETTINGS (OWNER ONLY) ========== -->
+            <section class="content-section owner-section" id="section-settings">
+                <div class="panel"><div class="panel-title"><i class="fas fa-user-plus"></i><span data-i18n="settings_create_title">Create Account</span></div><div class="settings-callout"><i class="fas fa-circle-info"></i><span data-i18n="settings_create_hint">New accounts can only be created by an Owner. A random password is generated automatically and shown once — copy it before navigating away.</span></div><form id="createAccountForm"><div class="form-row"><div class="input-group"><i class="fas fa-user"></i><input type="text" id="newUsername" placeholder="Username" required></div><div class="input-group" style="max-width:200px;"><i class="fas fa-user-tag"></i><select id="newRole" required><option value="" disabled selected data-i18n="settings_role_placeholder">Role...</option><option value="owner">Owner</option><option value="analyst">Analyst</option><option value="viewer">Viewer</option></select></div><button type="submit" class="btn-primary"><i class="fas fa-plus"></i><span data-i18n="btn_create">Create</span></button></div></form><div id="createResult" hidden style="margin-top:12px;"></div></div>
+                <div class="panel"><div class="panel-title"><i class="fas fa-users"></i><span data-i18n="settings_accounts_title">Account List</span></div><div class="settings-callout"><i class="fas fa-user-shield"></i><span data-i18n="settings_owner_notice">Visible to Owners only — each account shows how many API keys it has generated and how many requests those keys have handled.</span></div><table class="data-table"><thead><tr><th data-i18n="th_username">Username</th><th data-i18n="th_role">Role</th><th data-i18n="th_created">Created</th><th data-i18n="th_api_keys">API Keys</th><th data-i18n="th_requests">Requests</th><th data-i18n="th_actions">Actions</th></tr></thead><tbody id="usersTableBody"><tr><td colspan="6" data-i18n="loading">Loading...</td></tr></tbody></table></div>
+                <div class="panel"><div class="panel-title"><i class="fas fa-server"></i><span data-i18n="settings_server_name_title">Server / VPS Name</span></div><div class="settings-callout"><i class="fas fa-circle-info"></i><span data-i18n="settings_server_name_hint">Shown to every signed-in account under Preferences → Server/VPS Name. Leave it blank and save to hide the field for everyone.</span></div><div class="form-row"><div class="input-group"><i class="fas fa-tag"></i><input type="text" id="ownerServerNameInput" placeholder="e.g. FRA-NODE-02" maxlength="60"></div><button class="btn-primary" id="ownerServerNameSaveBtn"><i class="fas fa-save"></i><span data-i18n="btn_save">Save</span></button></div><div id="ownerServerNameStatus" style="font-size:0.72rem;color:var(--text-muted);margin-top:8px;"></div></div>
+            </section>
+
+            <!-- ========== API KEYS ========== -->
+            <section class="content-section" id="section-api">
+                <div class="grid-cards" id="apiKeyStatsGrid">
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-key"></i></div><div class="stat-label" data-i18n="api_stat_total_keys">Total Keys</div><div class="stat-value" id="apiStatTotalKeys">--</div></div>
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-arrow-right-arrow-left"></i></div><div class="stat-label" data-i18n="api_stat_total_requests">Total Requests</div><div class="stat-value" id="apiStatTotalRequests">--</div></div>
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-star"></i></div><div class="stat-label" data-i18n="api_stat_most_active">Most Active Key</div><div class="stat-value" id="apiStatMostActive" style="font-family:var(--font-mono);font-size:1.05rem;">--</div></div>
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-chart-line"></i></div><div class="stat-label" data-i18n="api_stat_avg_requests">Avg. Requests / Key</div><div class="stat-value" id="apiStatAvgRequests">--</div></div>
+                </div>
+                <div class="panel"><div class="panel-title"><i class="fas fa-key"></i><span data-i18n="api_title">API Keys</span></div><p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:12px;" data-i18n="api_desc">Generate and manage API keys for integrating Emergens into your CI/CD pipeline or custom tools.</p><div class="form-row"><button class="btn-primary" id="generateApiKeyBtn"><i class="fas fa-plus"></i><span data-i18n="btn_generate_key">Generate New Key</span></button><span id="apiKeyLimitMsg" style="font-size:0.72rem;color:var(--text-muted);margin-left:10px;"></span></div><div id="apiKeyResult" style="margin-top:10px;"></div><table class="data-table" style="margin-top:12px;"><thead><tr><th data-i18n="th_key_prefix">Key Prefix</th><th data-i18n="th_created">Created</th><th data-i18n="th_last_used">Last Used</th><th data-i18n="th_requests">Requests</th><th data-i18n="th_actions">Actions</th></tr></thead><tbody id="apiKeysTableBody"><tr><td colspan="5" data-i18n="loading">Loading...</td></tr></tbody></table></div>
+                <div class="panel" id="recentKeysPanel">
+                    <div class="panel-title"><i class="fas fa-clock-rotate-left"></i><span data-i18n="recent_keys_title">Recently Generated (This Browser)</span><button class="btn-secondary btn-danger" id="clearRecentKeysBtn" style="margin-left:auto;font-size:0.72rem;padding:7px 12px;"><i class="fas fa-broom"></i> <span data-i18n="btn_clear_recent_keys">Clear Saved Keys</span></button></div>
+                    <p style="color:var(--text-secondary);font-size:0.78rem;margin-bottom:10px;line-height:1.55;" data-i18n="recent_keys_desc">Full key values are only ever shown once by the server. As a convenience, Emergens keeps a copy of keys generated on this device so you can find them again if you navigate away too fast — they never leave this browser.</p>
+                    <div class="settings-callout" style="margin-bottom:12px;"><i class="fas fa-triangle-exclamation"></i><span data-i18n="recent_keys_warning">Stored locally on this device only. Clear this list before using a shared or public computer.</span></div>
+                    <div id="recentKeysList"></div>
+                </div>
+            </section>
+
+            <!-- ========== PANEL MANAGER (OWNER ONLY) ========== -->
+            <section class="content-section owner-section" id="section-panelmanager">
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-server"></i><span data-i18n="pm_title">Panel Manager</span><button class="btn-secondary" id="pmRefreshBtn" style="margin-left:auto;font-size:0.72rem;padding:7px 12px;"><i class="fas fa-rotate"></i> <span data-i18n="btn_refresh">Refresh</span></button></div>
+                    <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:12px;" data-i18n="pm_desc">Every server or client that has made a request using one of your API keys is listed here.</p>
+                    <table class="data-table">
+                        <thead><tr><th data-i18n="th_server_name">Server Name</th><th data-i18n="th_key_prefix">Key Prefix</th><th data-i18n="th_ip">IP</th><th data-i18n="th_last_seen">Last Seen</th><th data-i18n="th_requests">Requests</th></tr></thead>
+                        <tbody id="panelManagerBody"><tr><td colspan="5" data-i18n="loading">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ========== COMMUNITY ========== -->
+            <section class="content-section" id="section-community"><div class="panel"><div class="panel-title"><i class="fas fa-users"></i><span data-i18n="community_title">Emergens Community</span></div><p style="color:var(--text-secondary);font-size:0.84rem;line-height:1.6;margin-bottom:16px;" data-i18n="community_desc">Join thousands of security professionals using Emergens. Share findings, discuss techniques, and stay updated with the latest security testing methodologies.</p><div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;"><a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-discord"></i>Discord Server</a><a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-github"></i>GitHub</a><a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-twitter"></i>Twitter</a><a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-reddit"></i>Reddit</a></div></div></section>
+
+            <!-- ========== GLOBAL CHAT ========== -->
+            <section class="content-section" id="section-globalchat">
+                <div class="panel gc-panel">
+                    <div class="panel-title">
+                        <i class="fas fa-earth-asia"></i><span data-i18n="gc_title">Global Chat</span>
+                        <span class="gc-connection-pill" id="gcConnectionPill"><span class="gc-dot"></span><span id="gcConnectionText" data-i18n="gc_connecting">Connecting…</span></span>
+                        <button class="btn-secondary btn-danger owner-only" id="gcLockToggleBtn" style="margin-left:auto;font-size:0.72rem;padding:7px 12px;"><i class="fas fa-lock"></i> <span id="gcLockToggleText" data-i18n="gc_lock_chat">Lock Chat</span></button>
+                    </div>
+                    <p style="color:var(--text-secondary);font-size:0.78rem;margin:-6px 0 12px;" data-i18n="gc_desc">Every signed-in account sees the same conversation in real time. Tap a name to view that person's profile.</p>
+                    <div class="gc-messages" id="gcMessages"><div class="empty-state"><i class="fas fa-spinner spin"></i><span data-i18n="loading">Loading...</span></div></div>
+                    <div class="gc-locked-banner" id="gcLockedBanner" hidden><i class="fas fa-lock"></i> <span data-i18n="gc_locked_notice">The Owner has locked Global Chat. Only Owners can send messages right now.</span></div>
+                    <form class="gc-input-row" id="gcInputForm">
+                        <input type="text" id="gcMessageInput" maxlength="500" placeholder="Message everyone…" data-i18n-ph="gc_input_ph" autocomplete="off">
+                        <button type="submit" class="btn-primary" id="gcSendBtn"><i class="fas fa-paper-plane"></i></button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<!-- ========== MOBILE BOTTOM NAV ========== -->
+<nav class="bottom-nav" id="bottomNav" aria-label="Primary">
+    <button class="bottom-nav-item active" data-bn-section="overview"><i class="fas fa-house"></i><span data-i18n="bn_home">Home</span></button>
+    <button class="bottom-nav-item" data-bn-section="testing"><i class="fas fa-shield-halved"></i><span data-i18n="bn_sec">Sec</span></button>
+    <button class="bottom-nav-item" data-bn-section="preferences"><i class="fas fa-sliders"></i><span data-i18n="bn_setting">Setting</span></button>
+    <button class="bottom-nav-item" id="bottomNavProfileBtn"><i class="fas fa-user"></i><span data-i18n="bn_profile">Profile</span></button>
+</nav>
+
+<div id="historyModal" class="modal-overlay" hidden><div class="modal-card"><div class="modal-header"><span id="historyModalTitle">Case File</span><button class="icon-btn-sm" id="closeHistoryModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button></div><div class="modal-body" id="historyModalBody"></div></div></div>
+
+<div id="userKeysModal" class="modal-overlay" hidden><div class="modal-card"><div class="modal-header"><span id="userKeysModalTitle">API Keys</span><button class="icon-btn-sm" id="closeUserKeysModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button></div><div class="modal-body" id="userKeysModalBody"></div></div></div>
+
+<div id="addLinkModal" class="modal-overlay" hidden>
+    <div class="modal-card compact">
+        <div class="modal-header"><span><i class="fas fa-link" style="color:var(--red-400);margin-right:6px;"></i>Add Quick Link</span><button class="icon-btn-sm" id="closeAddLinkModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body" style="font-family:var(--font-ui);white-space:normal;">
+            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;">Enter a link to pin to your Quick Menu. It'll be saved on this browser and shows up next to the built-in shortcuts.</p>
+            <form class="add-link-form" id="addLinkForm">
+                <div class="input-group"><i class="fas fa-globe"></i><input type="text" id="addLinkUrlInput" placeholder="https://example.com" autocomplete="off"></div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" id="cancelAddLinkBtn">Cancel</button>
+            <button class="btn-primary" id="confirmAddLinkBtn"><i class="fas fa-check"></i> OK</button>
+        </div>
+    </div>
+</div>
+
+<div id="floatingWindowsRoot"></div>
+
+<div class="qm-fab" id="quickMenuFab">
+    <div class="qm-radial" id="qmRadial">
+        <button class="qm-item" data-qm-action="scan-basic" style="--i:0" title="Basic Scan"><i class="fas fa-bolt"></i></button>
+        <button class="qm-item" data-qm-action="scan-expert" style="--i:1" title="Expert Scan"><i class="fas fa-shield-halved"></i></button>
+        <button class="qm-item" data-qm-action="history" style="--i:2" title="History"><i class="fas fa-clock-rotate-left"></i></button>
+        <button class="qm-item" data-qm-action="console" style="--i:3" title="System Console"><i class="fas fa-terminal"></i></button>
+        <button class="qm-item" data-qm-action="chat" style="--i:4" title="AI Assistant"><i class="fas fa-robot"></i></button>
+        <button class="qm-item" data-qm-action="telegram" style="--i:5" title="Telegram Bot"><i class="fab fa-telegram"></i></button>
+        <!-- custom links get inserted here by JS, between the built-ins and the settings/add buttons -->
+        <button class="qm-item qm-add-item" data-qm-action="add-link" style="--i:6" title="Add Quick Link">+</button>
+    </div>
+    <button class="qm-toggle" id="qmToggle" aria-label="Quick menu" aria-expanded="false" title="Quick Menu — drag to move, click to open">
+        <svg class="qm-toggle-icon" viewBox="0 0 44 44" fill="none" aria-hidden="true"><defs><linearGradient id="qmg" x1="10" y1="5" x2="32" y2="39"><stop offset="0" stop-color="var(--red-400)"/><stop offset="1" stop-color="var(--gold)"/></linearGradient></defs><polygon points="25,5 13,25 20,25 17,39 33,18 24,18" fill="url(#qmg)"/></svg>
+        <i class="fas fa-xmark qm-toggle-close"></i>
+    </button>
+</div>
+
+<!-- ========== ANIMATED PROFILE POPUP ========== -->
+<div id="profileModalOverlay" class="profile-modal-overlay" hidden>
+    <div class="profile-card" role="dialog" aria-modal="true" aria-labelledby="profileModalName">
+        <button class="profile-card-close" id="profileModalClose" aria-label="Close"><i class="fas fa-times"></i></button>
+        <div class="profile-avatar-ring" id="profileAvatarRing">
+            <svg viewBox="0 0 104 104"><defs><linearGradient id="profileRingGrad" x1="0" y1="0" x2="104" y2="104"><stop offset="0" stop-color="var(--red-400)"/><stop offset="1" stop-color="var(--gold)"/></linearGradient></defs><circle cx="52" cy="52" r="48" fill="none" stroke="var(--border-color)" stroke-width="2"/><circle cx="52" cy="52" r="48" fill="none" stroke="url(#profileRingGrad)" stroke-width="2.4" stroke-dasharray="70 231" stroke-linecap="round"/></svg>
+            <div class="profile-avatar-core" id="profileAvatarInitial">--</div>
+            <button class="profile-avatar-edit-btn" id="profileAvatarEditBtn" type="button" aria-label="Change profile photo" title="Change profile photo"><i class="fas fa-camera"></i></button>
+        </div>
+        <div class="profile-name" id="profileModalName">--</div>
+        <span class="profile-role-pill" id="profileModalRole"><i class="fas fa-shield-halved"></i> --</span>
+        <div class="profile-stats-row">
+            <div class="profile-stat"><strong id="profileStatScans">--</strong><span data-i18n="profile_stat_scans">Scans Run</span></div>
+            <div class="profile-stat"><strong id="profileStatKeys">--</strong><span data-i18n="profile_stat_keys">API Keys</span></div>
+            <div class="profile-stat"><strong id="profileStatChats">--</strong><span data-i18n="profile_stat_chats">TG Chats</span></div>
+        </div>
+        <div class="profile-meta">
+            <div class="profile-meta-row"><span><i class="fas fa-clock"></i> <span data-i18n="profile_session_label">Session started</span></span><span id="profileSessionTime">--</span></div>
+            <div class="profile-meta-row"><span><i class="fas fa-palette"></i> <span data-i18n="profile_theme_label">Theme</span></span><span id="profileThemeValue">--</span></div>
+            <div class="profile-meta-row"><span><i class="fas fa-database"></i> <span data-i18n="profile_storage_label">Storage</span></span><span id="profileStorageValue">--</span></div>
+        </div>
+        <button class="btn-secondary btn-danger profile-signout" id="profileSignoutBtn"><i class="fas fa-right-from-bracket"></i> <span data-i18n="btn_logout">Log Out</span></button>
+    </div>
+</div>
+
+<!-- ========== TOOLS HUB (burger menu → Tools) ========== -->
+<div id="toolsHubModal" class="modal-overlay" hidden>
+    <div class="modal-card tools-hub-card">
+        <div class="modal-header">
+            <button class="icon-btn-sm" id="toolsHubBackBtn" hidden aria-label="Back" style="border:none;background:transparent;"><i class="fas fa-arrow-left"></i></button>
+            <span id="toolsHubHeaderTitle"><i class="fas fa-grip" style="color:var(--red-400);margin-right:6px;"></i><span data-i18n="th_hub_title">Tools</span></span>
+            <button class="icon-btn-sm" id="closeToolsHubModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body tools-hub-body" id="toolsHubBody">
+
+            <div class="tools-grid" id="toolsGridView">
+                <button class="tool-box" data-tool="brat"><div class="tool-box-icon tb-1"><i class="fas fa-font"></i></div><span data-i18n="tool_brat">Brat Generator</span></button>
+                <button class="tool-box" data-tool="reels"><div class="tool-box-icon tb-2"><i class="fas fa-film"></i></div><span data-i18n="tool_reels">Reels</span></button>
+                <button class="tool-box" data-tool="osint"><div class="tool-box-icon tb-3"><i class="fas fa-magnifying-glass-location"></i></div><span data-i18n="tool_osint">OSINT</span></button>
+                <button class="tool-box" data-tool="anime"><div class="tool-box-icon tb-4"><i class="fas fa-clapperboard"></i></div><span data-i18n="tool_anime">Anime</span></button>
+                <button class="tool-box" data-tool="wifi"><div class="tool-box-icon tb-5"><i class="fas fa-wifi"></i></div><span data-i18n="tool_wifi">Wifi Scanner</span></button>
+                <button class="tool-box" data-tool="ipcheck"><div class="tool-box-icon tb-6"><i class="fas fa-location-dot"></i></div><span data-i18n="tool_ipcheck">IP Check</span></button>
+                <button class="tool-box" data-tool="quickaccess"><div class="tool-box-icon tb-7"><i class="fas fa-star"></i></div><span data-i18n="tool_quickaccess">Quick Access</span></button>
+                <button class="tool-box" data-tool="music"><div class="tool-box-icon tb-8"><i class="fas fa-music"></i></div><span data-i18n="tool_music">Music Downloader</span></button>
+                <button class="tool-box" data-tool="downloader"><div class="tool-box-icon tb-9"><i class="fas fa-download"></i></div><span data-i18n="tool_downloader">Downloader</span></button>
+                <button class="tool-box" data-tool="mctools"><div class="tool-box-icon tb-10"><i class="fas fa-cubes"></i></div><span data-i18n="tool_mctools">MCTOOLS</span></button>
+            </div>
+
+            <!-- Box 1 — Brat Generator -->
+            <div class="tool-detail" id="toolDetail-brat" hidden>
+                <p class="tool-detail-desc" data-i18n="brat_desc">Type a caption and generate a Brat-style cover. Works offline with a built-in renderer; if a Brat API base URL is configured it's used instead.</p>
+                <textarea class="tool-textarea" id="bratTextInput" maxlength="120" placeholder="party girl in the club..." data-i18n-ph="brat_input_ph"></textarea>
+                <div class="form-row">
+                    <div class="input-group" style="max-width:150px;"><i class="fas fa-fill-drip"></i><input type="color" id="bratBgColor" value="#8ace00" style="padding:2px;height:38px;"></div>
+                    <button class="btn-primary" id="bratGenerateBtn"><i class="fas fa-wand-magic-sparkles"></i> <span data-i18n="btn_generate">Generate</span></button>
+                </div>
+                <div class="tool-result-area" id="bratResultArea"></div>
+            </div>
+
+            <!-- Box 2 — Reels (TikTok video search) -->
+            <div class="tool-detail" id="toolDetail-reels" hidden>
+                <p class="tool-detail-desc" data-i18n="reels_desc">Search TikTok videos by keyword and preview them without leaving the console.</p>
+                <div class="tool-search">
+                    <i class="fas fa-video"></i>
+                    <input type="text" id="reelsSearchInput" placeholder="Search TikTok videos..." data-i18n-ph="reels_search_ph" autocomplete="off">
+                    <button class="tool-search-btn" id="reelsSearchBtn"><i class="fas fa-search"></i> <span data-i18n="btn_search">Search</span></button>
+                </div>
+                <div class="tool-result-area" id="reelsResultArea"></div>
+            </div>
+
+            <!-- Box 3 — OSINT -->
+            <div class="tool-detail" id="toolDetail-osint" hidden>
+                <p class="tool-detail-desc" data-i18n="osint_desc">Look up public data linked to a username, email, or phone number across configured sources.</p>
+                <div class="segmented-control" id="osintMethodToggle">
+                    <button class="seg-btn active" data-method="username"><i class="fas fa-at"></i> <span data-i18n="osint_username">Username</span></button>
+                    <button class="seg-btn" data-method="email"><i class="fas fa-envelope"></i> <span data-i18n="osint_email">Email</span></button>
+                    <button class="seg-btn" data-method="number"><i class="fas fa-phone"></i> <span data-i18n="osint_number">Number</span></button>
+                </div>
+                <div class="tool-search" style="margin-top:10px;">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" id="osintQueryInput" placeholder="Enter a username..." autocomplete="off">
+                    <button class="tool-search-btn" id="osintSearchBtn"><i class="fas fa-search"></i> <span data-i18n="btn_search">Search</span></button>
+                </div>
+                <div class="tool-result-area" id="osintResultArea"></div>
+            </div>
+
+            <!-- Box 4 — Anime -->
+            <div class="tool-detail" id="toolDetail-anime" hidden>
+                <div class="tool-search">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" id="animeSearchInput" placeholder="Search anime..." data-i18n-ph="anime_search_ph" autocomplete="off">
+                    <button class="tool-search-btn" id="animeSearchBtn"><i class="fas fa-search"></i> <span data-i18n="btn_search">Search</span></button>
+                </div>
+                <div class="tool-result-area" id="animeResultArea"></div>
+            </div>
+
+            <!-- Box 5 — Wifi Scanner -->
+            <div class="tool-detail" id="toolDetail-wifi" hidden>
+                <div class="settings-callout"><i class="fas fa-circle-info"></i><span data-i18n="wifi_limit_notice">Browsers can't list nearby Wi-Fi network names on any platform — no website has that permission, for your privacy. Below is the real network &amp; location info this page can access, with your permission.</span></div>
+                <button class="btn-primary" id="wifiRequestBtn" style="margin-top:12px;"><i class="fas fa-wifi"></i> <span data-i18n="wifi_request_btn">Check Network Info</span></button>
+                <div class="tool-result-area" id="wifiResultArea"></div>
+            </div>
+
+            <!-- Box 6 — IP Check -->
+            <div class="tool-detail" id="toolDetail-ipcheck" hidden>
+                <div class="tool-search">
+                    <i class="fas fa-location-dot"></i>
+                    <input type="text" id="ipCheckInput" placeholder="8.8.8.8 or example.com" autocomplete="off">
+                    <button class="tool-search-btn" id="ipCheckBtn"><i class="fas fa-search"></i> <span data-i18n="btn_check">Check</span></button>
+                </div>
+                <button class="btn-secondary" id="ipCheckMineBtn" style="margin-top:10px;"><i class="fas fa-crosshairs"></i> <span data-i18n="ip_check_mine">Check My IP</span></button>
+                <div class="tool-result-area" id="ipCheckResultArea"></div>
+            </div>
+
+            <!-- Box 8 — Music Downloader -->
+            <div class="tool-detail" id="toolDetail-music" hidden>
+                <p class="tool-detail-desc" data-i18n="music_desc">Search for a track to browse matches from Apple Music, or paste a direct link to fetch it (when a direct-fetch API is configured).</p>
+                <div class="tool-search">
+                    <i class="fas fa-music"></i>
+                    <input type="text" id="musicQueryInput" placeholder="Song name or link..." autocomplete="off">
+                    <button class="tool-search-btn" id="musicFetchBtn"><i class="fas fa-search"></i> <span data-i18n="btn_search">Search</span></button>
+                </div>
+                <div class="tool-result-area" id="musicResultArea"></div>
+            </div>
+
+            <!-- Box 9 — Downloader (TikTok / Pinterest) -->
+            <div class="tool-detail" id="toolDetail-downloader" hidden>
+                <p class="tool-detail-desc" data-i18n="dl_desc">Paste a TikTok link for a watermark-free video, or switch to Pinterest Search to browse images by keyword.</p>
+                <div class="segmented-control" id="dlPlatformToggle">
+                    <button class="seg-btn active" data-platform="tiktok"><i class="fab fa-tiktok"></i> TikTok</button>
+                    <button class="seg-btn" data-platform="pinterest"><i class="fab fa-pinterest"></i> Pinterest Search</button>
+                </div>
+                <div class="tool-search" style="margin-top:10px;">
+                    <i class="fas fa-link"></i>
+                    <input type="text" id="dlUrlInput" placeholder="https://www.tiktok.com/@user/video/…" autocomplete="off">
+                    <button class="tool-search-btn" id="dlFetchBtn"><i class="fas fa-download"></i> <span data-i18n="btn_fetch">Fetch</span></button>
+                </div>
+                <div class="tool-result-area" id="dlResultArea"></div>
+            </div>
+
+            <!-- Box 10 — MCTOOLS (Minecraft skin / mod / shader search) -->
+            <div class="tool-detail" id="toolDetail-mctools" hidden>
+                <p class="tool-detail-desc" data-i18n="mc_desc">Search Minecraft Bedrock skins, mods, shaders, texture packs and more, sourced from MCPEDL.</p>
+                <div class="tool-search">
+                    <i class="fas fa-cubes"></i>
+                    <input type="text" id="mcSearchInput" placeholder="Search skins, mods, shaders..." data-i18n-ph="mc_search_ph" autocomplete="off">
+                    <button class="tool-search-btn" id="mcSearchBtn"><i class="fas fa-search"></i> <span data-i18n="btn_search">Search</span></button>
+                </div>
+                <div class="tool-result-area" id="mcResultArea"></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ========== PROFILE PHOTO PICKER ========== -->
+<input type="file" id="profilePhotoFileInput" accept="image/*" style="display:none;">
+<div id="profilePhotoModal" class="modal-overlay" hidden>
+    <div class="modal-card compact">
+        <div class="modal-header"><span><i class="fas fa-camera" style="color:var(--red-400);margin-right:6px;"></i><span data-i18n="pp_title">Change Profile Photo</span></span><button class="icon-btn-sm" id="closeProfilePhotoModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body" style="font-family:var(--font-ui);white-space:normal;">
+            <button class="btn-secondary pp-choice-btn" id="ppChooseUploadBtn"><i class="fas fa-images"></i> <span data-i18n="pp_upload_gallery">Upload from gallery</span></button>
+            <div class="pp-or-divider" data-i18n="pp_or">or</div>
+            <div class="input-group"><i class="fas fa-link"></i><input type="text" id="ppLinkInput" placeholder="https://example.com/photo.jpg" data-i18n-ph="pp_link_ph" autocomplete="off"></div>
+            <button class="btn-primary" id="ppUseLinkBtn" style="margin-top:10px;width:100%;justify-content:center;"><i class="fas fa-check"></i> <span data-i18n="pp_use_link">Use This Link</span></button>
+            <button class="btn-secondary btn-danger" id="ppRemoveBtn" style="margin-top:10px;width:100%;justify-content:center;"><i class="fas fa-trash"></i> <span data-i18n="pp_remove">Remove Photo</span></button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== GLOBAL CHAT — USER PROFILE POPOVER ========== -->
+<div id="gcProfilePopoverOverlay" class="profile-modal-overlay" hidden>
+    <div class="profile-card gc-popover-card" role="dialog" aria-modal="true">
+        <button class="profile-card-close" id="gcPopoverClose" aria-label="Close"><i class="fas fa-times"></i></button>
+        <div class="profile-avatar-ring">
+            <svg viewBox="0 0 104 104"><circle cx="52" cy="52" r="48" fill="none" stroke="var(--border-color)" stroke-width="2"/><circle cx="52" cy="52" r="48" fill="none" stroke="var(--gold)" stroke-width="2.4" stroke-dasharray="70 231" stroke-linecap="round"/></svg>
+            <div class="profile-avatar-core" id="gcPopoverAvatar">--</div>
+        </div>
+        <div class="profile-name" id="gcPopoverName">--</div>
+        <span class="profile-role-pill" id="gcPopoverRole"><i class="fas fa-shield-halved"></i> --</span>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="script.js"></script>
+</div><!-- /app-shell -->
+</body>
+</html>
