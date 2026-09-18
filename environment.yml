@@ -1,0 +1,25 @@
+name: Emergens
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pip
+  - ipykernel
+  - jupyterlab
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - plotly
+  - openpyxl
+  - pyyaml
+  - requests
+  - tqdm
+
+  - pip:
+      - python-dotenv
+      # tambahkan package pip lain di sini
