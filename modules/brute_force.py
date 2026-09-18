@@ -1,260 +1,330 @@
-#!/usr/bin/env python3
+# modules/brute_force/__init__.py
 """
-Brute Force Engine – Multi-protocol credential testing
-Oxysintx Framework
+Oxysintx brute-force engine — package entry point.
 
-Location: modules/brute_force.py
+Two consumers:
+
+1. scan_orchestrator.py  →  calls run(target, mode, **tool_options)
+2. analytic_manager / direct imports
+                         →  uses BruteForceEngine, AttackConfig, ...
+
+Contract with scan_orchestrator.py
+----------------------------------
+    run(target: str, mode: str, **kwargs) -> dict
+        -> {"tool": "brute_force", "target": ..., "data": {...}, "error": None|str}
+
+    TOOL_INFO = {"name": ..., "version": ..., "description": ..., ...}
+
+Any kwarg not recognised is ignored so that the orchestrator can safely
+forward its global `tool_options` dict to every tool.
 """
+
+from __future__ import annotations
 
 import logging
 import threading
-import socket
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
-import ftplib
-import paramiko
-import mysql.connector
-import psycopg2
-import redis
-import http.client
-import urllib.parse
+from .engine import BruteForceEngine, RateLimiter
+from .models import (
+    AttackConfig,
+    AttackReport,
+    AttemptResult,
+    Credential,
+    Outcome,
+    ProtocolReport,
+)
+from .wordlist import WordlistError, WordlistProvider
 
-logger = logging.getLogger(__name__)
+__version__ = "2.0.0"
 
-DATA_DIR = Path(__file__).parent.parent / "brute-force-text"
-MAX_THREADS = 600
-DEFAULT_TIMEOUT = 3.0
-BRUTE_FORCE_TIMEOUT = 2.0
+logger = logging.getLogger("oxysintx.brute_force")
 
-class BruteForceAttack:
-    def __init__(self, max_workers=MAX_THREADS):
-        self.max_workers = max_workers
-        self.results = []
-        self._lock = threading.Lock()
-        self._stop_flag = False
+# The orchestrator lives in modules/scan_orchestrator.py, so the project
+# root is two levels above this package's directory.
+_DEFAULT_WORDLIST_DIR = Path(__file__).resolve().parent.parent.parent / "brute-force-text"
 
-    def stop(self):
-        self._stop_flag = True
+# Protocol sets per mode. Anything not present here is still selectable
+# explicitly via tool_options["protocols"].
+_BASIC_PROTOCOLS: List[str] = ["ssh", "ftp"]
+_EXPERT_PROTOCOLS: List[str] = [
+    "http",
+    "ftp",
+    "ssh",
+    "mysql",
+    "postgresql",
+    "redis",
+    "smb",
+]
 
-    def load_wordlist(self, file_pattern="data1.txt", max_files=10) -> List[str]:
-        wordlist = []
-        base, ext = file_pattern.rsplit('.', 1) if '.' in file_pattern else (file_pattern, 'txt')
-        for i in range(1, max_files + 1):
-            filename = f"{base}{i}.{ext}" if i > 1 else file_pattern
-            filepath = DATA_DIR / filename
-            if not filepath.exists():
-                logger.info(f"File {filename} not found, stopping")
-                break
-            try:
-                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith('#'):
-                            wordlist.append(line)
-                logger.info(f"Loaded {len(wordlist)} entries from {filename}")
-            except Exception as e:
-                logger.error(f"Error loading {filename}: {e}")
-                break
-        return wordlist
+# Per-mode scope. Basic mode is deliberately shallow so it can run inside
+# an orchestrator job without generating lockout-inducing traffic.
+_BASIC_MAX_ATTEMPTS = 50
+_EXPERT_MAX_ATTEMPTS = 2000
 
-    # HTTP
-    def brute_http_login(self, target, port, username_list, password_list, login_url="/login",
-                         method="POST", username_field="username", password_field="password"):
-        results = []
-        def attempt(u, p):
-            if self._stop_flag: return None
-            try:
-                conn = http.client.HTTPConnection(target, port, timeout=BRUTE_FORCE_TIMEOUT)
-                payload = f"{username_field}={urllib.parse.quote(u)}&{password_field}={urllib.parse.quote(p)}"
-                headers = {'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/5.0'}
-                conn.request(method, login_url, payload, headers)
-                resp = conn.getresponse()
-                data = resp.read().decode('utf-8', errors='ignore')
-                conn.close()
-                if resp.status == 302 or 'dashboard' in data.lower() or 'welcome' in data.lower():
-                    return {'username': u, 'password': p, 'status': 'success'}
-            except Exception as e:
-                logger.debug(f"HTTP brute error: {e}")
-            return None
 
-        with ThreadPoolExecutor(max_workers=min(self.max_workers, len(username_list)*len(password_list))) as ex:
-            futures = [ex.submit(attempt, u, p) for u in username_list for p in password_list]
-            for fut in as_completed(futures):
-                if self._stop_flag: break
-                res = fut.result()
-                if res:
-                    results.append(res)
-                    with self._lock:
-                        self.results.append({'type':'http_login','target':target,'port':port,'username':res['username'],'password':res['password']})
-        return results
+# ---------------------------------------------------------------------------
+# Orchestrator contract
+# ---------------------------------------------------------------------------
+TOOL_INFO: Dict[str, Any] = {
+    "name": "brute_force",
+    "display_name": "Brute Force Engine",
+    "version": __version__,
+    "description": (
+        "Multi-protocol credential testing (HTTP, FTP, SSH, MySQL, "
+        "PostgreSQL, Redis, SMB)."
+    ),
+    "modes": ["basic", "expert"],
+    "mode_defaults": {
+        "basic": {
+            "protocols": _BASIC_PROTOCOLS,
+            "max_attempts_per_protocol": _BASIC_MAX_ATTEMPTS,
+            "stop_on_first_success": True,
+        },
+        "expert": {
+            "protocols": _EXPERT_PROTOCOLS,
+            "max_attempts_per_protocol": _EXPERT_MAX_ATTEMPTS,
+            "stop_on_first_success": False,
+        },
+    },
+    "supports_cancel_event": True,
+    "options": {
+        "protocols": "list[str] — override the protocol set",
+        "ports": "dict[str, int] — protocol -> port overrides",
+        "usernames": "list[str] | str — inline list or wordlist filename",
+        "passwords": "list[str] | str — inline list or wordlist filename",
+        "wordlist_dir": "str — directory holding wordlist files",
+        "workers": "int — max concurrent workers",
+        "rate": "float — global attempts per second",
+        "jitter": "float — 0.0-1.0 randomisation of the rate interval",
+        "timeout": "float — per-attempt timeout (seconds)",
+        "connect_timeout": "float — connection timeout (seconds)",
+        "max_attempts": "int — cap on attempts per protocol (0 = unlimited)",
+        "stop_on_success": "bool — stop a protocol after first valid credential",
+        "verify_tls": "bool — verify TLS certificates (default True)",
+        "cancel_event": "threading.Event — cooperative cancellation",
+    },
+}
 
-    # FTP
-    def brute_ftp_login(self, target, username_list, password_list, port=21):
-        results = []
-        def attempt(u, p):
-            if self._stop_flag: return None
-            try:
-                ftp = ftplib.FTP()
-                ftp.connect(target, port, timeout=BRUTE_FORCE_TIMEOUT)
-                ftp.login(u, p)
-                ftp.quit()
-                return {'username': u, 'password': p, 'status': 'success'}
-            except ftplib.all_errors:
-                return None
-        with ThreadPoolExecutor(max_workers=min(self.max_workers, len(username_list)*len(password_list))) as ex:
-            futures = [ex.submit(attempt, u, p) for u in username_list for p in password_list]
-            for fut in as_completed(futures):
-                if self._stop_flag: break
-                res = fut.result()
-                if res:
-                    results.append(res)
-                    with self._lock:
-                        self.results.append({'type':'ftp_login','target':target,'port':port,'username':res['username'],'password':res['password']})
-        return results
 
-    # SSH
-    def brute_ssh_login(self, target, username_list, password_list, port=22):
-        results = []
-        def attempt(u, p):
-            if self._stop_flag: return None
-            try:
-                client = paramiko.SSHClient()
-                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                client.connect(target, port=port, username=u, password=p, timeout=BRUTE_FORCE_TIMEOUT,
-                                allow_agent=False, look_for_keys=False)
-                client.close()
-                return {'username': u, 'password': p, 'status': 'success'}
-            except (paramiko.AuthenticationException, socket.error, paramiko.SSHException):
-                return None
-        with ThreadPoolExecutor(max_workers=min(self.max_workers, len(username_list)*len(password_list))) as ex:
-            futures = [ex.submit(attempt, u, p) for u in username_list for p in password_list]
-            for fut in as_completed(futures):
-                if self._stop_flag: break
-                res = fut.result()
-                if res:
-                    results.append(res)
-                    with self._lock:
-                        self.results.append({'type':'ssh_login','target':target,'port':port,'username':res['username'],'password':res['password']})
-        return results
+def run(target: str, mode: str = "basic", **kwargs: Any) -> Dict[str, Any]:
+    """Entry point used by ``scan_orchestrator.ScanOrchestrator``.
 
-    # MySQL
-    def brute_mysql_login(self, target, username_list, password_list, port=3306):
-        results = []
-        def attempt(u, p):
-            if self._stop_flag: return None
-            try:
-                conn = mysql.connector.connect(host=target, port=port, user=u, password=p, connection_timeout=BRUTE_FORCE_TIMEOUT)
-                conn.close()
-                return {'username': u, 'password': p, 'status': 'success'}
-            except (mysql.connector.errors.ProgrammingError, mysql.connector.errors.InterfaceError):
-                return None
-        with ThreadPoolExecutor(max_workers=min(self.max_workers, len(username_list)*len(password_list))) as ex:
-            futures = [ex.submit(attempt, u, p) for u in username_list for p in password_list]
-            for fut in as_completed(futures):
-                if self._stop_flag: break
-                res = fut.result()
-                if res:
-                    results.append(res)
-                    with self._lock:
-                        self.results.append({'type':'mysql_login','target':target,'port':port,'username':res['username'],'password':res['password']})
-        return results
+    Parameters
+    ----------
+    target:
+        Hostname or IP address to test.
+    mode:
+        ``"basic"`` or ``"expert"``. Unknown values fall back to ``"basic"``.
+    **kwargs:
+        Arbitrary tool options. Unknown keys are ignored so the orchestrator
+        can forward its global ``tool_options`` dict unchanged.
 
-    # PostgreSQL
-    def brute_postgresql_login(self, target, username_list, password_list, port=5432):
-        results = []
-        def attempt(u, p):
-            if self._stop_flag: return None
-            try:
-                conn = psycopg2.connect(host=target, port=port, user=u, password=p, connect_timeout=BRUTE_FORCE_TIMEOUT)
-                conn.close()
-                return {'username': u, 'password': p, 'status': 'success'}
-            except (psycopg2.OperationalError, psycopg2.ProgrammingError):
-                return None
-        with ThreadPoolExecutor(max_workers=min(self.max_workers, len(username_list)*len(password_list))) as ex:
-            futures = [ex.submit(attempt, u, p) for u in username_list for p in password_list]
-            for fut in as_completed(futures):
-                if self._stop_flag: break
-                res = fut.result()
-                if res:
-                    results.append(res)
-                    with self._lock:
-                        self.results.append({'type':'postgresql_login','target':target,'port':port,'username':res['username'],'password':res['password']})
-        return results
+    Returns
+    -------
+    dict
+        ``{"tool": "brute_force", "target": target, "data": {...}, "error": None|str}``
+    """
+    started = time.time()
+    mode = (mode or "basic").lower()
+    if mode not in ("basic", "expert"):
+        logger.warning("Unknown mode %r, falling back to 'basic'", mode)
+        mode = "basic"
 
-    # Redis
-    def brute_redis_login(self, target, password_list, port=6379):
-        results = []
-        def attempt(p):
-            if self._stop_flag: return None
-            try:
-                client = redis.Redis(host=target, port=port, password=p, socket_timeout=BRUTE_FORCE_TIMEOUT)
-                client.ping()
-                return p
-            except (redis.AuthenticationError, redis.ConnectionError):
-                return None
-        with ThreadPoolExecutor(max_workers=min(self.max_workers, len(password_list))) as ex:
-            futures = [ex.submit(attempt, p) for p in password_list]
-            for fut in as_completed(futures):
-                if self._stop_flag: break
-                res = fut.result()
-                if res:
-                    results.append({'password': res})
-                    with self._lock:
-                        self.results.append({'type':'redis_login','target':target,'port':port,'password':res})
-        return results
+    try:
+        config = _build_config(mode, kwargs)
+        protocols = _resolve_protocols(mode, kwargs)
+        ports = _resolve_ports(kwargs)
+        username_source, password_source = _resolve_wordlists(kwargs)
 
-    # SMB
-    def brute_smb_login(self, target, username_list, password_list):
-        results = []
-        def attempt(u, p):
-            if self._stop_flag: return None
-            try:
-                import smbclient
-                smbclient.register_session(target, username=u, password=p)
-                return {'username': u, 'password': p, 'status': 'success'}
-            except Exception:
-                return None
-        with ThreadPoolExecutor(max_workers=min(self.max_workers, len(username_list)*len(password_list))) as ex:
-            futures = [ex.submit(attempt, u, p) for u in username_list for p in password_list]
-            for fut in as_completed(futures):
-                if self._stop_flag: break
-                res = fut.result()
-                if res:
-                    results.append(res)
-                    with self._lock:
-                        self.results.append({'type':'smb_login','target':target,'username':res['username'],'password':res['password']})
-        return results
+        engine = BruteForceEngine(
+            config,
+            wordlists=WordlistProvider(config.wordlist_dir),
+        )
 
-    def run_full_attack(self, target, protocols=None, username_file="data1.txt", password_file="data1.txt"):
-        protocols = protocols or ['http','ftp','ssh']
-        usernames = self.load_wordlist(username_file)
-        passwords = self.load_wordlist(password_file)
-        if not usernames or not passwords:
-            return {'error': 'Wordlist empty'}
-        attack_results = {'target': target, 'protocols_tested': protocols, 'results': {}}
-        port_map = {'http':80,'https':443,'ftp':21,'ssh':22,'mysql':3306,'postgresql':5432,'redis':6379,'smb':445,'rdp':3389,'telnet':23}
-        for proto in protocols:
-            if self._stop_flag: break
-            port = port_map.get(proto, 80)
-            if proto == 'http':
-                res = self.brute_http_login(target, port, usernames[:20], passwords[:20])
-            elif proto == 'ftp':
-                res = self.brute_ftp_login(target, usernames[:20], passwords[:20])
-            elif proto == 'ssh':
-                res = self.brute_ssh_login(target, usernames[:20], passwords[:20])
-            elif proto == 'mysql':
-                res = self.brute_mysql_login(target, usernames[:20], passwords[:20])
-            elif proto == 'postgresql':
-                res = self.brute_postgresql_login(target, usernames[:20], passwords[:20])
-            elif proto == 'redis':
-                res = self.brute_redis_login(target, passwords[:20])
-            elif proto == 'smb':
-                res = self.brute_smb_login(target, usernames[:20], passwords[:20])
-            else:
-                res = []
-            attack_results['results'][proto] = {'successful': len(res), 'credentials': res}
-        attack_results['total_successful'] = sum(len(r['credentials']) for r in attack_results['results'].values())
-        return attack_results
+        _wire_cancellation(engine, kwargs.get("cancel_event"))
+        _wire_success_logging(engine)
+
+        logger.info(
+            "brute_force: target=%s mode=%s protocols=%s",
+            target, mode, protocols,
+        )
+
+        report: AttackReport = engine.attack(
+            target,
+            protocols=protocols,
+            username_source=username_source,
+            password_source=password_source,
+            ports=ports,
+        )
+
+        data = report.to_dict()
+        data["mode"] = mode
+        data["started_at"] = started
+        data["finished_at"] = time.time()
+
+        return {
+            "tool": TOOL_INFO["name"],
+            "target": target,
+            "data": data,
+            "error": None,
+        }
+
+    except (WordlistError, ValueError, KeyError) as exc:
+        # Expected configuration / scope problems — surface cleanly.
+        logger.error("brute_force: %s", exc)
+        return _error_response(target, str(exc), started)
+    except Exception as exc:  # noqa: BLE001 — orchestrator contract
+        logger.exception("brute_force: unexpected failure")
+        return _error_response(target, f"{type(exc).__name__}: {exc}", started)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _build_config(mode: str, kwargs: Dict[str, Any]) -> AttackConfig:
+    """Translate orchestrator kwargs into an AttackConfig.
+
+    All keys are optional. Missing keys fall back to mode-appropriate defaults.
+    """
+    defaults = TOOL_INFO["mode_defaults"][mode]
+
+    wordlist_dir = Path(kwargs.get("wordlist_dir", _DEFAULT_WORDLIST_DIR))
+
+    # Accept either the CLI-style key names or the shorter module-style names.
+    workers = kwargs.get("workers") or kwargs.get("max_workers") or 32
+    max_attempts = kwargs.get(
+        "max_attempts",
+        defaults["max_attempts_per_protocol"],
+    )
+    stop_on_success = kwargs.get(
+        "stop_on_success",
+        defaults["stop_on_first_success"],
+    )
+
+    protocol_options: Dict[str, Dict[str, Any]] = {}
+    if "http_options" in kwargs and isinstance(kwargs["http_options"], dict):
+        protocol_options["http"] = dict(kwargs["http_options"])
+    if "smb_options" in kwargs and isinstance(kwargs["smb_options"], dict):
+        protocol_options["smb"] = dict(kwargs["smb_options"])
+
+    return AttackConfig(
+        max_workers=int(workers),
+        rate_limit=kwargs.get("rate"),
+        jitter=float(kwargs.get("jitter", 0.0)),
+        attempt_timeout=float(kwargs.get("timeout", 3.0)),
+        connect_timeout=float(kwargs.get("connect_timeout", 5.0)),
+        max_attempts_per_protocol=int(max_attempts),
+        stop_on_first_success=bool(stop_on_success),
+        verify_tls=bool(kwargs.get("verify_tls", True)),
+        wordlist_dir=wordlist_dir,
+        protocol_options=protocol_options,
+    )
+
+
+def _resolve_protocols(mode: str, kwargs: Dict[str, Any]) -> List[str]:
+    requested = kwargs.get("protocols")
+    if requested is None:
+        return list(TOOL_INFO["mode_defaults"][mode]["protocols"])
+    if isinstance(requested, str):
+        return [p.strip().lower() for p in requested.split(",") if p.strip()]
+    return [str(p).strip().lower() for p in requested if str(p).strip()]
+
+
+def _resolve_ports(kwargs: Dict[str, Any]) -> Dict[str, int]:
+    raw = kwargs.get("ports") or {}
+    if not isinstance(raw, dict):
+        return {}
+    resolved: Dict[str, int] = {}
+    for name, value in raw.items():
+        try:
+            resolved[str(name).lower()] = int(value)
+        except (TypeError, ValueError):
+            logger.warning("Ignoring invalid port override %s=%r", name, value)
+    return resolved
+
+
+def _resolve_wordlists(kwargs: Dict[str, Any]) -> tuple[Any, Any]:
+    """Return (username_source, password_source).
+
+    Values may be an inline list of strings or a wordlist filename/glob
+    resolved against ``AttackConfig.wordlist_dir``.
+    """
+    usernames = kwargs.get("usernames", kwargs.get("username_source", "usernames.txt"))
+    passwords = kwargs.get("passwords", kwargs.get("password_source", "passwords.txt"))
+
+    if isinstance(usernames, (list, tuple)):
+        usernames = [str(u) for u in usernames]
+    if isinstance(passwords, (list, tuple)):
+        passwords = [str(p) for p in passwords]
+
+    return usernames, passwords
+
+
+def _wire_cancellation(engine: BruteForceEngine, cancel_event: Any) -> None:
+    """If the caller supplied a threading.Event, mirror it onto the engine.
+
+    The orchestrator currently checks its cancel flag only between tools,
+    so this bridge lets callers who *do* pass ``cancel_event`` abort a
+    long-running brute-force job mid-protocol.
+    """
+    if not isinstance(cancel_event, threading.Event):
+        return
+
+    def _watch() -> None:
+        cancel_event.wait()
+        logger.warning("brute_force: cancel_event set, stopping engine")
+        engine.stop()
+
+    threading.Thread(
+        target=_watch,
+        daemon=True,
+        name="bf-cancel-bridge",
+    ).start()
+
+
+def _wire_success_logging(engine: BruteForceEngine) -> None:
+    """Emit a single log line per credential so operators see hits live."""
+    def _on_hit(protocol: str, target: str, port: int, credential: Credential) -> None:
+        logger.warning(
+            "[+] brute_force %s %s:%d valid credential -> %s",
+            protocol, target, port, credential,
+        )
+
+    engine.on_success(_on_hit)
+
+
+def _error_response(target: str, message: str, started: float) -> Dict[str, Any]:
+    return {
+        "tool": TOOL_INFO["name"],
+        "target": target,
+        "data": {
+            "mode": None,
+            "duration_s": round(time.time() - started, 3),
+            "protocols": {},
+            "total_attempts": 0,
+            "total_successes": 0,
+        },
+        "error": message,
+    }
+
+
+__all__ = [
+    # Orchestrator contract
+    "run",
+    "TOOL_INFO",
+    # Public API for analytic_manager / direct imports
+    "AttackConfig",
+    "AttackReport",
+    "AttemptResult",
+    "BruteForceEngine",
+    "Credential",
+    "Outcome",
+    "ProtocolReport",
+    "RateLimiter",
+    "WordlistError",
+    "WordlistProvider",
+    "__version__",
+]
