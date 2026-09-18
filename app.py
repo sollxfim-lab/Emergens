@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-Oxysintx - Main Flask Application (v3.5.0)
+Oxysintx - Main Flask Application (v3.5.1)
 
 Routing and API. MHDDoS engine (start.py) integrated as external subprocess.
 Attack launches directly on user request.
+
+Changelog v3.5.1
+----------------
+- Add GET /api/network/traffic (dashboard Network panel was 404'ing)
+- Add POST /api/scan/<job_id>/cancel (wire scan_orchestrator.cancel_scan)
 
 Author: Yanxzyx
 """
@@ -613,6 +618,10 @@ _request_log_lock = threading.Lock()
 _request_timestamps = []
 _total_requests_seen = 0
 
+# State for /api/network/traffic (delta calculation between polls)
+_net_traffic_started_at = time.time()
+_prev_net_counters = {"t": 0.0, "total": 0}
+
 
 @app.before_request
 def _count_inbound_request():
@@ -706,7 +715,6 @@ def _api_key_required(fn):
         prefix = record.get('prefix') or record.get('key_prefix') or raw_key[:20]
         owner = record.get('owner_username') or record.get('username') or 'unknown'
 
-        # Update last-used counters (best-effort; user_store may persist this)
         try:
             user_store.touch_api_key(prefix)
         except Exception:
@@ -1234,7 +1242,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/3.5.0"},
+            headers={"User-Agent": "Oxysintx/3.5.1"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1541,6 +1549,17 @@ def api_scan_status(job_id):
     return jsonify(progress)
 
 
+@app.route("/api/scan/<job_id>/cancel", methods=["POST"])
+@role_required("owner", "analyst")
+def api_scan_cancel(job_id):
+    """Signal a running scan to stop. Worker tools are expected to honour
+    the injected cancel_event; this endpoint just flips the flag."""
+    ok = scan_orchestrator.cancel_scan(job_id)
+    if not ok:
+        return jsonify({"error": "not_found_or_already_finished"}), 404
+    return jsonify({"success": True, "job_id": job_id})
+
+
 @app.route("/api/scan/<tool_name>", methods=["POST"])
 @role_required("owner", "analyst")
 def api_scan_tool_direct(tool_name):
@@ -1605,7 +1624,7 @@ def api_history_delete(entry_id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# System stats / logs
+# System stats / logs / network traffic
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/system/stats")
 @api_login_required
@@ -1624,6 +1643,62 @@ def api_system_stats():
         'disk_percent': disk,
         'network_in': total_seen,
         'network_in_rate': last_minute,
+    })
+
+
+@app.route("/api/network/traffic", methods=["GET"])
+@api_login_required
+def api_network_traffic():
+    """Live request + host NIC counters for the dashboard Network panel.
+
+    Polled frequently by the frontend, so keep this O(1). Bytes/packets come
+    from psutil (host-level); HTTP counters come from the before_request
+    tracker so the panel can show both views side by side.
+    """
+    total_seen, last_minute = _inbound_stats()
+    now = time.time()
+    uptime = max(1.0, now - _net_traffic_started_at)
+
+    # Delta since the previous poll -> smoother live graph
+    prev_t = _prev_net_counters["t"] or now
+    prev_total = _prev_net_counters["total"]
+    dt = max(0.001, now - prev_t)
+    delta = max(0, total_seen - prev_total)
+    req_per_sec = delta / dt
+
+    _prev_net_counters["t"] = now
+    _prev_net_counters["total"] = total_seen
+
+    try:
+        net = psutil.net_io_counters()
+        bytes_sent = net.bytes_sent
+        bytes_recv = net.bytes_recv
+        packets_sent = net.packets_sent
+        packets_recv = net.packets_recv
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("psutil.net_io_counters failed: %s", exc)
+        bytes_sent = bytes_recv = packets_sent = packets_recv = 0
+
+    return jsonify({
+        # HTTP layer
+        "requests_total": total_seen,
+        "requests_last_minute": last_minute,
+        "requests_per_second": round(req_per_sec, 2),
+        "uptime_seconds": int(uptime),
+
+        # Host NIC layer
+        "bytes_sent": bytes_sent,
+        "bytes_recv": bytes_recv,
+        "packets_sent": packets_sent,
+        "packets_recv": packets_recv,
+
+        # Aliases for older frontend code
+        "network_in": total_seen,
+        "network_in_rate": last_minute,
+        "inbound": last_minute,
+        "outbound": 0,
+
+        "timestamp": _now_iso(),
     })
 
 
