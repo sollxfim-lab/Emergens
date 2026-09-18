@@ -1,45 +1,81 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="color-scheme" content="dark light">
-    <title>Emergens — Field Intelligence Console</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%230b0b0b'/%3E%3Cdefs%3E%3ClinearGradient id='fv' x1='10' y1='5' x2='32' y2='39'%3E%3Cstop offset='0' stop-color='%2360a5fa'/%3E%3Cstop offset='1' stop-color='%231e40af'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='25,5 13,25 20,25 17,39 33,18 24,18' fill='url(%23fv)'/%3E%3C/svg%3E">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
-    <style>
-        /* Brand typeface — shared with get-started.html for a consistent identity across the site */
-        @font-face {
-            font-family: 'Road Rage';
-            src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
-    </style>
-    <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark light">
+<title>Emergens — Field Intelligence Console</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%230b0b0b'/%3E%3Cdefs%3E%3ClinearGradient id='fv' x1='10' y1='5' x2='32' y2='39'%3E%3Cstop offset='0' stop-color='%2360a5fa'/%3E%3Cstop offset='1' stop-color='%231e40af'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='25,5 13,25 20,25 17,39 33,18 24,18' fill='url(%23fv)'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;1,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+
+<!-- Small CSS patch: fixes classes referenced by HTML but missing from style.css -->
+<style>
+    /* Missing sidebar-header */
+    .sidebar-header { position: relative; display: flex; align-items: center; }
+    /* Missing tool-section-label */
+    .tool-section-label {
+        font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--text-muted); font-weight: 700; margin: 4px 0 10px;
+    }
+    /* Tool box extra colors */
+    .tool-box-icon.tb-9  { background: linear-gradient(135deg, #0ea5e9, #1e40af); }
+    .tool-box-icon.tb-10 { background: linear-gradient(135deg, #84cc16, #3f6212); }
+    /* Sidebar customiser inside Preferences */
+    .sidebar-customizer { display: flex; flex-direction: column; gap: 14px; }
+    .sb-option-row { display: flex; flex-direction: column; gap: 8px; }
+    .sb-option-label { font-size: 0.78rem; color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .sb-option-label i { color: var(--red-400); width: 16px; text-align: center; }
+    /* Sidebar overlay (legacy class compatibility) */
+    .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 45;
+        opacity: 0; pointer-events: none; transition: opacity var(--transition-med); backdrop-filter: blur(2px); }
+    .sidebar-overlay.visible { opacity: 1; pointer-events: auto; }
+    /* Method carousel dots alias */
+    .method-carousel-dots { display: flex; justify-content: center; gap: 6px; padding: 4px 0; margin-bottom: 12px; }
+    /* Panel description helper */
+    .panel-desc { color: var(--text-secondary); font-size: 0.82rem; margin-bottom: 12px; line-height: 1.55; }
+    /* Panel title actions wrapper */
+    .panel-title-actions { display: flex; gap: 8px; align-items: center; }
+    /* Prevent double navigation arrows on tiny screens */
+    @media (max-width: 640px) {
+        .method-nav { display: none; }
+        .method-nav-btn { display: none; }
+    }
+    /* Fix sidebar-close-btn inside header */
+    .sidebar-close-btn {
+        display: none; position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
+        width: 32px; height: 32px; border-radius: 8px; background: var(--bg-tertiary);
+        border: 1px solid var(--border-color); color: var(--text-secondary);
+        cursor: pointer; font-size: 0.9rem; align-items: center; justify-content: center;
+    }
+    .sidebar-close-btn:hover { color: var(--red-500); border-color: var(--red-500); }
+    @media (max-width: 900px) {
+        .sidebar-close-btn { display: flex; }
+    }
+</style>
 </head>
 <body>
-<div class="bg-orb bg-orb-1" aria-hidden="true"></div>
-<div class="bg-orb bg-orb-2" aria-hidden="true"></div>
-<div class="grid-overlay" aria-hidden="true"></div>
 <div class="app-shell">
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ═══ SIDEBAR ═══ -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <a class="sidebar-brand" href="/dashboard.html">
-                <svg class="crest" viewBox="0 0 44 44" fill="none" aria-hidden="true"><defs><linearGradient id="crn" x1="10" y1="5" x2="32" y2="39"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent2)"/></linearGradient></defs><polygon points="25,5 13,25 20,25 17,39 33,18 24,18" fill="url(#crn)"/></svg>
+                <svg class="crest" viewBox="0 0 44 44" fill="none" aria-hidden="true"><defs><linearGradient id="crn" x1="10" y1="5" x2="32" y2="39"><stop offset="0" stop-color="var(--red-400)"/><stop offset="1" stop-color="var(--gold)"/></linearGradient></defs><polygon points="25,5 13,25 20,25 17,39 33,18 24,18" fill="url(#crn)"/></svg>
                 <div class="brand-word"><div class="brand-name">EMERGENS</div><div class="brand-tag">Field Intelligence</div></div>
             </a>
             <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close menu"><i class="fas fa-xmark"></i></button>
         </div>
+
         <div class="sidebar-user" id="sidebarProfileTrigger" role="button" tabindex="0" aria-haspopup="dialog" title="View profile">
             <div class="sidebar-user-avatar-wrap"><div class="sidebar-user-avatar" id="sidebarAvatarInitial"><i class="fas fa-user"></i></div><span class="avatar-dot"></span></div>
             <div><div class="sidebar-user-name" id="sidebarUsername">--</div><div class="sidebar-user-role" id="sidebarRole">--</div></div>
         </div>
+
         <nav class="sidebar-nav">
             <button class="nav-item active" data-section="overview"><i class="fas fa-gauge-high"></i><span data-i18n="nav_overview">Overview</span></button>
             <button class="nav-item" id="navToolsHub"><i class="fas fa-grip"></i><span data-i18n="nav_tools_hub">Tools</span></button>
@@ -47,11 +83,14 @@
             <button class="nav-item" data-section="assets"><i class="fas fa-layer-group"></i><span data-i18n="nav_assets">Assets</span></button>
             <button class="nav-item" data-section="console"><i class="fas fa-terminal"></i><span data-i18n="nav_console">System Console</span></button>
             <button class="nav-item" data-section="chat"><i class="fas fa-comments"></i><span data-i18n="nav_chat">AI Assistant</span></button>
+
             <div class="nav-label" data-i18n="nav_label_data">Data</div>
             <button class="nav-item" data-section="schools"><i class="fas fa-school"></i><span data-i18n="nav_schools">School Search</span></button>
             <button class="nav-item" data-section="minecraft"><i class="fas fa-cubes"></i><span data-i18n="nav_minecraft">Minecraft Status</span></button>
+
             <div class="nav-label" data-i18n="nav_label_integrations">Integrations</div>
             <button class="nav-item telegram-nav" data-section="telegram"><i class="fab fa-telegram-plane"></i><span data-i18n="nav_telegram">Telegram Bot</span></button>
+
             <div class="nav-label" data-i18n="nav_label_resources">Resources</div>
             <button class="nav-item" data-section="docs"><i class="fas fa-book"></i><span data-i18n="nav_docs">Documentation</span></button>
             <button class="nav-item" data-section="preferences"><i class="fas fa-sliders"></i><span data-i18n="nav_preferences">Preferences</span></button>
@@ -61,42 +100,74 @@
             <button class="nav-item owner-only" id="navThemeStudio"><i class="fas fa-palette"></i><span data-i18n="nav_theme_studio">Theme Studio</span></button>
             <button class="nav-item" data-section="community"><i class="fas fa-users"></i><span data-i18n="nav_community">Community</span></button>
             <button class="nav-item" data-section="globalchat"><i class="fas fa-earth-asia"></i><span data-i18n="nav_globalchat">Global Chat</span><span class="nav-chat-badge" id="navChatBadge" hidden>0</span></button>
+
             <div class="nav-label" data-i18n="nav_label_tools">Tools</div>
             <a class="nav-item" href="api/api_key_request_token.html"><i class="fas fa-plug"></i><span data-i18n="nav_request">API Request</span><i class="fas fa-arrow-up-right-from-square nav-ext-icon"></i></a>
             <a class="nav-item" href="webps.html"><i class="fas fa-server"></i><span data-i18n="nav_webps">WebPS</span><i class="fas fa-arrow-up-right-from-square nav-ext-icon"></i></a>
             <a class="nav-item" href="remote_access.html"><i class="fas fa-satellite-dish"></i><span data-i18n="nav_monitor">Monitor</span><i class="fas fa-arrow-up-right-from-square nav-ext-icon"></i></a>
             <a class="nav-item" href="status.html"><i class="fas fa-signal"></i><span data-i18n="nav_status">Status</span><i class="fas fa-arrow-up-right-from-square nav-ext-icon"></i></a>
         </nav>
+
         <div class="sidebar-footer">
             <button class="icon-btn" id="langToggle" aria-label="Toggle language" title="EN / Bahasa Malaysia"><span id="langToggleLabel" style="font-size:0.62rem;font-weight:800;">EN</span></button>
             <button class="icon-btn" id="themeToggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
             <button class="icon-btn" id="logoutBtn" aria-label="Logout"><i class="fas fa-right-from-bracket"></i></button>
         </div>
     </aside>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
     <main class="main-content">
-        <header class="topbar"><div class="topbar-left"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu"><i class="fas fa-bars"></i></button><h2 id="pageTitle">Overview</h2></div><div class="topbar-stats"><span><i class="fas fa-microchip"></i><span id="cpuMini">--%</span> CPU</span><span><i class="fas fa-memory"></i><span id="memMini">--%</span> RAM</span></div><button class="icon-btn" id="notesToggleBtn" aria-label="Notes" title="Notes" style="width:34px;height:34px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--transition-fast);font-size:0.85rem;"><i class="fas fa-note-sticky"></i></button></header>
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">Overview</h2>
+            </div>
+            <div class="topbar-stats">
+                <span><i class="fas fa-microchip"></i><span id="cpuMini">--%</span> CPU</span>
+                <span><i class="fas fa-memory"></i><span id="memMini">--%</span> RAM</span>
+            </div>
+            <button class="icon-btn" id="notesToggleBtn" aria-label="Notes" title="Notes" style="width:34px;height:34px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--transition-fast);font-size:0.85rem;"><i class="fas fa-note-sticky"></i></button>
+        </header>
+
         <div class="content-area">
 
-            <!-- ========== OVERVIEW ========== -->
+            <!-- ═══ OVERVIEW ═══ -->
             <section class="content-section active" id="section-overview">
                 <div class="masthead">
                     <svg class="crest crest-head" viewBox="0 0 44 44" fill="none" aria-hidden="true"><defs><linearGradient id="crh" x1="10" y1="5" x2="32" y2="39"><stop offset="0" stop-color="var(--red-400)"/><stop offset="1" stop-color="var(--gold)"/></linearGradient></defs><polygon points="25,5 13,25 20,25 17,39 33,18 24,18" fill="url(#crh)"/></svg>
-                    <div class="masthead-copy"><span class="eyebrow"><span class="live-dot"></span><span data-i18n="masthead_eyebrow">Bureau Online</span></span><h1 data-i18n="masthead_title">Field Intelligence Console</h1><p data-i18n="masthead_desc">Passive reconnaissance across WHOIS, DNS, TLS and exposure surfaces — for domains you own or are authorized to test.</p></div>
-                    <div class="masthead-meta"><div><span class="meta-label" data-i18n="masthead_operator">Operator</span><strong id="mastheadOperator">--</strong></div><div><span class="meta-label" data-i18n="masthead_today">Today</span><strong id="mastheadDate">--</strong></div></div>
+                    <div class="masthead-copy">
+                        <span class="eyebrow"><span class="live-dot"></span><span data-i18n="masthead_eyebrow">Bureau Online</span></span>
+                        <h1 data-i18n="masthead_title">Field Intelligence Console</h1>
+                        <p data-i18n="masthead_desc">Passive reconnaissance across WHOIS, DNS, TLS and exposure surfaces — for domains you own or are authorized to test.</p>
+                    </div>
+                    <div class="masthead-meta">
+                        <div><span class="meta-label" data-i18n="masthead_operator">Operator</span><strong id="mastheadOperator">--</strong></div>
+                        <div><span class="meta-label" data-i18n="masthead_today">Today</span><strong id="mastheadDate">--</strong></div>
+                    </div>
                 </div>
+
                 <div class="account-summary-card" id="accountSummaryCard">
                     <div class="as-item"><i class="fas fa-user"></i><div><span class="as-label" data-i18n="as_username">Username</span><strong id="asUsername">--</strong></div></div>
                     <div class="as-item"><i class="fas fa-shield-halved"></i><div><span class="as-label" data-i18n="as_role">Role</span><strong id="asRole">--</strong></div></div>
                     <div class="as-item"><i class="fas fa-calendar-xmark"></i><div><span class="as-label" data-i18n="as_expires">Expires</span><strong id="asExpires">--</strong></div></div>
                     <div class="as-item"><i class="fas fa-key"></i><div><span class="as-label" data-i18n="as_api_keys">API Keys</span><strong id="asApiKeys">--</strong></div></div>
                 </div>
+
                 <div class="grid-cards">
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-magnifying-glass"></i></div><div class="stat-label" data-i18n="stat_recon_tools">Recon Tools</div><div class="stat-value" id="toolsCount">--</div></div>
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-shield-halved"></i></div><div class="stat-label" data-i18n="stat_security_modules">Security Modules</div><div class="stat-value">10</div></div>
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-clock-rotate-left"></i></div><div class="stat-label" data-i18n="stat_total_scans">Total Scans</div><div class="stat-value" id="totalScansCount">--</div></div>
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-check-circle"></i></div><div class="stat-label" data-i18n="stat_system_status">System Status</div><div class="stat-value" style="color:var(--green);" data-i18n="stat_online">Online</div></div>
                 </div>
-                <div class="panel"><div class="panel-title"><i class="fas fa-bolt"></i><span data-i18n="quickscan_title">Quick Scan</span></div><p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:12px;" data-i18n="quickscan_desc">Enter a domain you own or are authorized to test for a quick passive scan.</p><div class="form-row"><div class="input-group"><i class="fas fa-globe"></i><input type="text" id="quickScanTarget" placeholder="example.com"></div><button class="btn-primary" id="quickScanBtn"><i class="fas fa-play"></i><span data-i18n="btn_run_quick_scan">Run Quick Scan</span></button></div>
+
+                <!-- Quick Scan -->
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-bolt"></i><span data-i18n="quickscan_title">Quick Scan</span></div>
+                    <p class="panel-desc" data-i18n="quickscan_desc">Enter a domain you own or are authorized to test for a quick passive scan.</p>
+                    <div class="form-row">
+                        <div class="input-group"><i class="fas fa-globe"></i><input type="text" id="quickScanTarget" placeholder="example.com"></div>
+                        <button class="btn-primary" id="quickScanBtn"><i class="fas fa-play"></i><span data-i18n="btn_run_quick_scan">Run Quick Scan</span></button>
+                    </div>
                     <div id="ovScanProgressWrap" hidden style="margin-top:14px;">
                         <div class="scan-progress-card is-active" id="ovScanProgressCard">
                             <div class="scan-progress-header">
@@ -121,8 +192,13 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Network Traffic -->
                 <div class="panel">
-                    <div class="panel-title"><i class="fas fa-network-wired"></i><span data-i18n="net_traffic_title">Network Traffic</span><span class="net-live-pill" id="netLivePill"><span class="net-live-dot"></span><span data-i18n="net_live">Live</span></span></div>
+                    <div class="panel-title">
+                        <i class="fas fa-network-wired"></i><span data-i18n="net_traffic_title">Network Traffic</span>
+                        <span class="net-live-pill" id="netLivePill"><span class="net-live-dot"></span><span data-i18n="net_live">Live</span></span>
+                    </div>
                     <div class="net-traffic-grid">
                         <div class="net-traffic-card inbound">
                             <div class="net-traffic-card-head">
@@ -148,8 +224,11 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Prayer Times -->
                 <div class="panel">
-                    <div class="panel-title"><i class="fas fa-mosque"></i><span data-i18n="prayer_title">Waktu Solat</span>
+                    <div class="panel-title">
+                        <i class="fas fa-mosque"></i><span data-i18n="prayer_title">Waktu Solat</span>
                         <div class="segmented-control" id="prayerCountryToggle" style="margin-left:auto;">
                             <button class="seg-btn active" data-country="MY">Malaysia</button>
                             <button class="seg-btn" data-country="ID">Indonesia</button>
@@ -163,10 +242,14 @@
                     <div class="prayer-next-banner" id="prayerNextBanner" hidden></div>
                     <div style="font-size:0.68rem;color:var(--text-muted);margin-top:8px;" data-i18n="prayer_source_note">Times from the Aladhan API. Please cross-check against JAKIM (Malaysia) or Kemenag (Indonesia) for official reference.</div>
                 </div>
-                <div class="panel"><div class="panel-title"><i class="fas fa-clock-rotate-left"></i><span data-i18n="recent_scans_title">Recent Scans</span></div><div id="recentScansList"><div class="empty-state"><i class="fas fa-spinner spin"></i> <span data-i18n="loading">Loading...</span></div></div></div>
+
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-clock-rotate-left"></i><span data-i18n="recent_scans_title">Recent Scans</span></div>
+                    <div id="recentScansList"><div class="empty-state"><i class="fas fa-spinner spin"></i> <span data-i18n="loading">Loading...</span></div></div>
+                </div>
             </section>
 
-            <!-- ========== SECURITY TESTING ========== -->
+            <!-- ═══ SECURITY TESTING ═══ -->
             <section class="content-section" id="section-testing">
                 <div class="panel testing-briefing-panel" id="testingBriefingPanel">
                     <div class="briefing-operator-row">
@@ -186,17 +269,13 @@
                         <div class="input-group" style="max-width:180px;"><i class="fas fa-layer-group"></i><select id="scanMode"><option value="basic" data-i18n="mode_basic">Basic Mode</option><option value="expert" data-i18n="mode_expert">Expert Mode</option></select></div>
                     </div>
 
-                    <!-- ── Method Carousel ── -->
-                    <p class="tool-section-label" data-i18n="testing_select_tools">Swipe to browse & select tools to run:</p>
+                    <p class="tool-section-label" data-i18n="testing_select_tools">Swipe to browse &amp; select tools to run:</p>
                     <div class="method-carousel-wrap">
                         <button class="method-nav-btn method-nav-prev" id="methodNavPrev" aria-label="Previous"><i class="fas fa-chevron-left"></i></button>
-                        <div class="method-carousel" id="methodCarousel">
-                            <!-- cards injected by JS -->
-                        </div>
+                        <div class="method-carousel" id="methodCarousel"></div>
                         <button class="method-nav-btn method-nav-next" id="methodNavNext" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
                     </div>
                     <div class="method-carousel-dots" id="methodDots"></div>
-                    <!-- hidden checklist for scan submission compatibility -->
                     <div id="toolChecklist" hidden></div>
 
                     <button class="btn-primary" id="scanBtn"><i class="fas fa-play"></i><span data-i18n="btn_start_scan">Start Scan</span></button>
@@ -227,62 +306,67 @@
                 </div>
             </section>
 
-            <!-- ========== ASSETS (replaces History) ========== -->
+            <!-- ═══ ASSETS ═══ -->
             <section class="content-section" id="section-assets">
                 <div class="panel">
                     <div class="panel-title">
-                        <i class="fas fa-layer-group"></i><span data-i18n="assets_title">Assets & Scan History</span>
-                        <div class="panel-title-actions" style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                        <i class="fas fa-layer-group"></i><span data-i18n="assets_title">Assets &amp; Scan History</span>
+                        <div class="panel-title-actions" style="margin-left:auto;">
                             <div class="input-group" style="max-width:240px;"><i class="fas fa-search"></i><input type="text" id="historySearch" placeholder="Filter by target..." data-i18n-ph="history_filter_ph"></div>
                             <button class="btn-secondary" id="assetExportBtn" title="Export JSON"><i class="fas fa-download"></i></button>
                         </div>
                     </div>
-                    <div class="assets-summary-row" id="assetsSummaryRow">
-                        <div class="asset-kpi"><span class="asset-kpi-val" id="assetKpiTotal">--</span><span class="asset-kpi-label">Total Scans</span></div>
-                        <div class="asset-kpi"><span class="asset-kpi-val" id="assetKpiDone">--</span><span class="asset-kpi-label">Completed</span></div>
-                        <div class="asset-kpi"><span class="asset-kpi-val" id="assetKpiAvgTime">--</span><span class="asset-kpi-label">Avg Duration</span></div>
-                        <div class="asset-kpi"><span class="asset-kpi-val" id="assetKpiTargets">--</span><span class="asset-kpi-label">Unique Targets</span></div>
+
+                    <div class="assets-kpi-grid" id="assetsSummaryRow">
+                        <div class="asset-kpi"><i class="fas fa-layer-group"></i><div><strong id="assetKpiTotal">--</strong><span>Total Scans</span></div></div>
+                        <div class="asset-kpi"><i class="fas fa-circle-check"></i><div><strong id="assetKpiDone">--</strong><span>Completed</span></div></div>
+                        <div class="asset-kpi"><i class="fas fa-stopwatch"></i><div><strong id="assetKpiAvgTime">--</strong><span>Avg Duration</span></div></div>
+                        <div class="asset-kpi"><i class="fas fa-crosshairs"></i><div><strong id="assetKpiTargets">--</strong><span>Unique Targets</span></div></div>
                     </div>
+
                     <div class="asset-cards-grid" id="assetCardsGrid"><div class="empty-state"><i class="fas fa-spinner spin"></i> Loading...</div></div>
                 </div>
             </section>
 
-            <!-- ========== SYSTEM CONSOLE ========== -->
+            <!-- ═══ SYSTEM CONSOLE ═══ -->
             <section class="content-section" id="section-console">
-                <div class="grid-cards"><div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-microchip"></i></div><div class="stat-label" data-i18n="stat_cpu">CPU Usage</div><div class="stat-value" id="statCpu">--%</div></div><div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-memory"></i></div><div class="stat-label" data-i18n="stat_memory">Memory</div><div class="stat-value" id="statMem">--%</div></div><div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-hard-drive"></i></div><div class="stat-label" data-i18n="stat_disk">Disk</div><div class="stat-value" id="statDisk">--%</div></div></div>
+                <div class="grid-cards">
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-microchip"></i></div><div class="stat-label" data-i18n="stat_cpu">CPU Usage</div><div class="stat-value" id="statCpu">--%</div></div>
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-memory"></i></div><div class="stat-label" data-i18n="stat_memory">Memory</div><div class="stat-value" id="statMem">--%</div></div>
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-hard-drive"></i></div><div class="stat-label" data-i18n="stat_disk">Disk</div><div class="stat-value" id="statDisk">--%</div></div>
+                </div>
                 <div class="panel"><div class="panel-title"><i class="fas fa-terminal"></i><span data-i18n="console_title">Server Logs</span></div><div class="console-window" id="consoleWindow"></div></div>
             </section>
 
-            <!-- ========== AI CHAT ========== -->
+            <!-- ═══ AI CHAT ═══ -->
             <section class="content-section" id="section-chat">
-                <div class="panel"><div class="panel-title"><i class="fas fa-comments"></i><span data-i18n="chat_title">AI Security Assistant</span><button class="btn-secondary btn-danger" id="chatClearBtn" style="margin-left:auto;font-size:0.75rem;"><i class="fas fa-trash"></i><span data-i18n="btn_clear">Clear</span></button></div><div class="chat-window" id="chatWindow"></div><div class="chat-input-row"><textarea id="chatInput" rows="1" placeholder="Ask about security testing..." data-i18n-ph="chat_input_ph"></textarea><button class="btn-primary" id="chatSendBtn"><i class="fas fa-paper-plane"></i></button></div></div>
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-comments"></i><span data-i18n="chat_title">AI Security Assistant</span><button class="btn-secondary btn-danger" id="chatClearBtn" style="margin-left:auto;font-size:0.75rem;"><i class="fas fa-trash"></i><span data-i18n="btn_clear">Clear</span></button></div>
+                    <div class="chat-window" id="chatWindow"></div>
+                    <div class="chat-input-row"><textarea id="chatInput" rows="1" placeholder="Ask about security testing..." data-i18n-ph="chat_input_ph"></textarea><button class="btn-primary" id="chatSendBtn"><i class="fas fa-paper-plane"></i></button></div>
+                </div>
             </section>
 
-            <!-- ========== SEKOLAH SEARCH ========== -->
+            <!-- ═══ SEKOLAH SEARCH ═══ -->
             <section class="content-section" id="section-schools">
                 <div class="panel">
                     <div class="panel-title"><i class="fas fa-school"></i><span data-i18n="schools_title">Sekolah Search</span></div>
                     <p class="panel-desc" data-i18n="schools_desc">Cari maklumat sekolah rendah &amp; menengah di Malaysia. Taip nama sekolah untuk melihat padanan.</p>
-                    <div class="school-search-bar">
-                        <div class="school-search-input-wrap">
-                            <i class="fas fa-search school-search-icon"></i>
-                            <input type="text" id="schoolSearchInput" class="school-search-input" placeholder="Cth: SEKOLAH KEBANGSAAN LUBOK" autocomplete="off">
-                            <button class="school-search-clear" id="schoolSearchClear" aria-label="Clear" hidden><i class="fas fa-xmark"></i></button>
-                        </div>
-                        <button class="btn-primary school-search-submit" id="schoolSearchBtn"><i class="fas fa-search"></i><span data-i18n="btn_search">Cari</span></button>
+                    <div class="tool-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="schoolSearchInput" placeholder="Cth: SEKOLAH KEBANGSAAN LUBOK" autocomplete="off">
+                        <button class="tool-search-btn" id="schoolSearchBtn"><i class="fas fa-search"></i><span data-i18n="btn_search">Cari</span></button>
                     </div>
-                    <div class="school-stats-row" id="schoolStatsRow" hidden>
-                        <span id="schoolResultCount"></span>
-                    </div>
-                    <div class="school-cards-grid" id="schoolResults"></div>
+                    <div class="school-stats-row" id="schoolStatsRow" hidden><span id="schoolResultCount"></span></div>
+                    <div class="school-results" id="schoolResults"></div>
                 </div>
             </section>
 
-            <!-- ========== MINECRAFT SERVER STATUS ========== -->
+            <!-- ═══ MINECRAFT STATUS ═══ -->
             <section class="content-section" id="section-minecraft">
                 <div class="panel">
                     <div class="panel-title"><i class="fas fa-cubes"></i><span data-i18n="mc_title">Minecraft Server Status</span></div>
-                    <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:12px;" data-i18n="mc_desc">Check whether a Minecraft server is online, its player count, MOTD and version — via the public mcstatus.io API.</p>
+                    <p class="panel-desc" data-i18n="mc_desc">Check whether a Minecraft server is online, its player count, MOTD and version — via the public mcstatus.io API.</p>
                     <div class="form-row">
                         <div class="input-group"><i class="fas fa-server"></i><input type="text" id="mcAddressInput" placeholder="play.hypixel.net"></div>
                         <div class="input-group" style="max-width:170px;"><i class="fas fa-layer-group"></i><select id="mcEdition"><option value="java">Java Edition</option><option value="bedrock">Bedrock Edition</option></select></div>
@@ -292,7 +376,7 @@
                 </div>
             </section>
 
-            <!-- ========== TELEGRAM BOT INTEGRATION ========== -->
+            <!-- ═══ TELEGRAM ═══ -->
             <section class="content-section" id="section-telegram">
                 <div class="telegram-hero">
                     <i class="fas fa-paper-plane telegram-plane-trail" aria-hidden="true"></i>
@@ -311,31 +395,21 @@
                         <i class="fab fa-telegram-plane telegram-icon"></i><span data-i18n="tg_panel_title">Telegram Bot Integration</span>
                         <span id="telegramStatusBadge" style="margin-left:12px;" class="badge" data-i18n="badge_disconnected">Disconnected</span>
                     </div>
+
                     <div id="telegramDisconnected">
                         <div class="settings-callout telegram-callout">
                             <i class="fas fa-circle-info"></i>
                             <span data-i18n="tg_connect_hint" data-i18n-html>Create a bot via <strong>@BotFather</strong> on Telegram, then paste its credentials below to link it to this console.</span>
                         </div>
                         <div class="form-row">
-                            <div class="input-group">
-                                <i class="fab fa-telegram-plane"></i>
-                                <input type="text" id="telegramBotToken" placeholder="Bot Token (from @BotFather — e.g., 123456:ABCdef...)">
-                            </div>
+                            <div class="input-group"><i class="fab fa-telegram-plane"></i><input type="text" id="telegramBotToken" placeholder="Bot Token (from @BotFather — e.g., 123456:ABCdef...)"></div>
                         </div>
                         <div class="form-row">
-                            <div class="input-group">
-                                <i class="fas fa-at"></i>
-                                <input type="text" id="telegramBotUsername" placeholder="Bot Username (e.g., @emergens_bot)">
-                            </div>
-                            <div class="input-group" style="max-width:220px;">
-                                <i class="fas fa-user-shield"></i>
-                                <input type="text" id="telegramOwnerId" placeholder="Owner Chat ID">
-                            </div>
+                            <div class="input-group"><i class="fas fa-at"></i><input type="text" id="telegramBotUsername" placeholder="Bot Username (e.g., @emergens_bot)"></div>
+                            <div class="input-group" style="max-width:220px;"><i class="fas fa-user-shield"></i><input type="text" id="telegramOwnerId" placeholder="Owner Chat ID"></div>
                         </div>
                         <div class="form-row" style="align-items:center; gap:16px;">
-                            <button class="btn-primary btn-telegram" id="telegramConnectBtn">
-                                <i class="fas fa-plug"></i> <span data-i18n="btn_connect_bot">Connect Bot</span>
-                            </button>
+                            <button class="btn-primary btn-telegram" id="telegramConnectBtn"><i class="fas fa-plug"></i> <span data-i18n="btn_connect_bot">Connect Bot</span></button>
                             <label class="toggle-switch">
                                 <input type="checkbox" id="telegramPublicMode" checked>
                                 <span class="toggle-slider"></span>
@@ -348,41 +422,19 @@
 
                     <div id="telegramConnected" hidden>
                         <div class="telegram-connected-header">
-                            <div class="telegram-bot-avatar">
-                                <i class="fab fa-telegram-plane"></i>
-                            </div>
+                            <div class="telegram-bot-avatar"><i class="fab fa-telegram-plane"></i></div>
                             <div>
                                 <div style="font-weight:700;color:var(--text-primary);font-size:1rem;" id="telegramConnectedUsername">@your_bot<span class="telegram-verified" title="Active"><i class="fas fa-circle-check"></i></span></div>
-                                <div style="font-size:0.72rem;color:var(--green);">
-                                    <span class="live-dot" style="display:inline-block;margin-right:4px;"></span><span data-i18n="tg_connected_running">Connected & Running</span>
-                                </div>
+                                <div style="font-size:0.72rem;color:var(--green);"><span class="live-dot" style="display:inline-block;margin-right:4px;"></span><span data-i18n="tg_connected_running">Connected &amp; Running</span></div>
                             </div>
-                            <button class="btn-secondary btn-danger" id="telegramDisconnectBtn" style="margin-left:auto;">
-                                <i class="fas fa-power-off"></i> <span data-i18n="btn_disconnect">Disconnect</span>
-                            </button>
+                            <button class="btn-secondary btn-danger" id="telegramDisconnectBtn" style="margin-left:auto;"><i class="fas fa-power-off"></i> <span data-i18n="btn_disconnect">Disconnect</span></button>
                         </div>
 
                         <div class="grid-cards" style="margin-bottom:16px;">
-                            <div class="stat-card">
-                                <div class="stat-icon-badge telegram"><i class="fas fa-users"></i></div>
-                                <div class="stat-label" data-i18n="tg_stat_chats">Unique Chats</div>
-                                <div class="stat-value" id="telegramChatCount">0</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon-badge telegram"><i class="fas fa-comment-dots"></i></div>
-                                <div class="stat-label" data-i18n="tg_stat_msgs">Messages Today</div>
-                                <div class="stat-value" id="telegramMsgCount">0</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon-badge telegram"><i class="fas fa-shield-halved"></i></div>
-                                <div class="stat-label" data-i18n="tg_stat_mode">Mode</div>
-                                <div class="stat-value" id="telegramModeDisplay" style="font-size:1.1rem;">Public</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon-badge telegram"><i class="fas fa-clock"></i></div>
-                                <div class="stat-label" data-i18n="tg_stat_uptime">Uptime</div>
-                                <div class="stat-value" id="telegramUptime" style="font-size:1.1rem;">0m</div>
-                            </div>
+                            <div class="stat-card"><div class="stat-icon-badge telegram"><i class="fas fa-users"></i></div><div class="stat-label" data-i18n="tg_stat_chats">Unique Chats</div><div class="stat-value" id="telegramChatCount">0</div></div>
+                            <div class="stat-card"><div class="stat-icon-badge telegram"><i class="fas fa-comment-dots"></i></div><div class="stat-label" data-i18n="tg_stat_msgs">Messages Today</div><div class="stat-value" id="telegramMsgCount">0</div></div>
+                            <div class="stat-card"><div class="stat-icon-badge telegram"><i class="fas fa-shield-halved"></i></div><div class="stat-label" data-i18n="tg_stat_mode">Mode</div><div class="stat-value" id="telegramModeDisplay" style="font-size:1.1rem;">Public</div></div>
+                            <div class="stat-card"><div class="stat-icon-badge telegram"><i class="fas fa-clock"></i></div><div class="stat-label" data-i18n="tg_stat_uptime">Uptime</div><div class="stat-value" id="telegramUptime" style="font-size:1.1rem;">0m</div></div>
                         </div>
 
                         <div class="telegram-commands-card">
@@ -407,17 +459,10 @@
                         </div>
 
                         <div style="margin-top:16px;padding:14px;background:var(--bg-tertiary);border-radius:var(--radius-md);border:1px solid var(--border-color);">
-                            <strong style="font-size:0.82rem;color:var(--text-primary);display:block;margin-bottom:10px;">
-                                <i class="fas fa-sliders"></i> <span data-i18n="tg_bot_settings">Bot Settings</span>
-                            </strong>
+                            <strong style="font-size:0.82rem;color:var(--text-primary);display:block;margin-bottom:10px;"><i class="fas fa-sliders"></i> <span data-i18n="tg_bot_settings">Bot Settings</span></strong>
                             <div class="form-row">
-                                <div class="input-group">
-                                    <i class="fas fa-user-shield"></i>
-                                    <input type="text" id="telegramOwnerIdEdit" placeholder="Owner Chat ID">
-                                </div>
-                                <button class="btn-secondary" id="telegramUpdateOwnerBtn">
-                                    <i class="fas fa-save"></i> <span data-i18n="btn_update_owner">Update Owner</span>
-                                </button>
+                                <div class="input-group"><i class="fas fa-user-shield"></i><input type="text" id="telegramOwnerIdEdit" placeholder="Owner Chat ID"></div>
+                                <button class="btn-secondary" id="telegramUpdateOwnerBtn"><i class="fas fa-save"></i> <span data-i18n="btn_update_owner">Update Owner</span></button>
                             </div>
                             <div class="form-row" style="align-items:center;margin-top:8px;">
                                 <label class="toggle-switch">
@@ -425,30 +470,23 @@
                                     <span class="toggle-slider"></span>
                                     <span style="font-size:0.8rem;color:var(--text-secondary);margin-left:8px;" data-i18n="tg_public_mode">Public Mode</span>
                                 </label>
-                                <button class="btn-secondary" id="telegramUpdateModeBtn" style="margin-left:12px;">
-                                    <i class="fas fa-sync"></i> <span data-i18n="btn_apply_mode">Apply Mode</span>
-                                </button>
+                                <button class="btn-secondary" id="telegramUpdateModeBtn" style="margin-left:12px;"><i class="fas fa-sync"></i> <span data-i18n="btn_apply_mode">Apply Mode</span></button>
                             </div>
                         </div>
 
                         <div class="form-row" style="margin-top:12px;">
-                            <div class="input-group">
-                                <i class="fas fa-paper-plane"></i>
-                                <input type="text" id="telegramBroadcastMsg" placeholder="Send broadcast message to all chats..." data-i18n-ph="tg_broadcast_ph">
-                            </div>
-                            <button class="btn-secondary" id="telegramBroadcastBtn">
-                                <i class="fas fa-broadcast-tower"></i> <span data-i18n="btn_send">Send</span>
-                            </button>
+                            <div class="input-group"><i class="fas fa-paper-plane"></i><input type="text" id="telegramBroadcastMsg" placeholder="Send broadcast message to all chats..." data-i18n-ph="tg_broadcast_ph"></div>
+                            <button class="btn-secondary" id="telegramBroadcastBtn"><i class="fas fa-broadcast-tower"></i> <span data-i18n="btn_send">Send</span></button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- ========== DOCUMENTATION ========== -->
+            <!-- ═══ DOCUMENTATION ═══ -->
             <section class="content-section" id="section-docs">
                 <div class="panel">
                     <div class="panel-title"><i class="fas fa-book"></i><span data-i18n="docs_title">Documentation &amp; Tool Guide</span></div>
-                    <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:14px;line-height:1.6;" data-i18n="docs_intro">A complete reference for every module in Emergens — what each tool does, what data it returns, and how to use it responsibly. Search below or browse by category.</p>
+                    <p class="panel-desc" data-i18n="docs_intro">A complete reference for every module in Emergens — what each tool does, what data it returns, and how to use it responsibly. Search below or browse by category.</p>
                     <div class="docs-search-wrap"><div class="input-group"><i class="fas fa-search"></i><input type="text" id="docsSearchInput" placeholder="Search documentation..." data-i18n-ph="docs_search_ph"></div></div>
                     <div class="docs-meta-row"><span class="docs-count-badge" id="docsCountBadge"></span></div>
                     <div id="docsAccordion"></div>
@@ -456,11 +494,11 @@
                 </div>
             </section>
 
-            <!-- ========== PREFERENCES ========== -->
+            <!-- ═══ PREFERENCES ═══ -->
             <section class="content-section" id="section-preferences">
                 <div class="panel">
                     <div class="panel-title"><i class="fas fa-sliders"></i><span data-i18n="prefs_title">Preferences</span></div>
-                    <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:16px;" data-i18n="prefs_desc">Personalize how Emergens stores your data and which language the interface uses. These preferences are saved to this browser.</p>
+                    <p class="panel-desc" data-i18n="prefs_desc">Personalize how Emergens stores your data and which language the interface uses. These preferences are saved to this browser.</p>
 
                     <div class="settings-option-card">
                         <div class="settings-option-title"><i class="fas fa-database"></i><span data-i18n="prefs_storage_title">Data Storage</span></div>
@@ -512,6 +550,8 @@
                             <button class="ui-mode-choice" data-mode="mobile" id="uiModeMobile"><i class="fas fa-mobile-screen"></i><span data-i18n="prefs_ui_mobile">Phone Layout</span></button>
                             <button class="ui-mode-choice" data-mode="desktop" id="uiModeDesktop"><i class="fas fa-laptop"></i><span data-i18n="prefs_ui_desktop">Laptop Layout</span></button>
                         </div>
+                    </div>
+
                     <div class="settings-option-card">
                         <div class="settings-option-title"><i class="fas fa-bars"></i><span data-i18n="prefs_sidebar_title">Sidebar / Menu Appearance</span></div>
                         <div class="settings-option-desc" data-i18n="prefs_sidebar_desc">Customize how the navigation sidebar looks and behaves. Changes apply immediately.</div>
@@ -538,18 +578,18 @@
                             </div>
                             <div class="sb-option-row">
                                 <span class="sb-option-label"><i class="fas fa-text-width"></i> Labels</span>
-                                <label class="tool-check" style="display:inline-flex;width:auto;padding:7px 12px;">
+                                <label class="toggle-switch" style="padding:6px 0;">
                                     <input type="checkbox" id="sbShowLabels" checked>
-                                    <span class="tool-switch" aria-hidden="true"></span>
-                                    <div><div class="tool-name" style="font-size:0.76rem;">Show nav labels</div></div>
+                                    <span class="toggle-slider"></span>
+                                    <span style="font-size:0.78rem;color:var(--text-secondary);margin-left:8px;">Show nav labels</span>
                                 </label>
                             </div>
                             <div class="sb-option-row">
                                 <span class="sb-option-label"><i class="fas fa-expand"></i> Default open</span>
-                                <label class="tool-check" style="display:inline-flex;width:auto;padding:7px 12px;">
+                                <label class="toggle-switch" style="padding:6px 0;">
                                     <input type="checkbox" id="sbDefaultOpen">
-                                    <span class="tool-switch" aria-hidden="true"></span>
-                                    <div><div class="tool-name" style="font-size:0.76rem;">Open on startup (mobile)</div></div>
+                                    <span class="toggle-slider"></span>
+                                    <span style="font-size:0.78rem;color:var(--text-secondary);margin-left:8px;">Open on startup (mobile)</span>
                                 </label>
                             </div>
                         </div>
@@ -557,14 +597,40 @@
                 </div>
             </section>
 
-            <!-- ========== SETTINGS (OWNER ONLY) ========== -->
+            <!-- ═══ USER MANAGEMENT (Owner) ═══ -->
             <section class="content-section owner-section" id="section-settings">
-                <div class="panel"><div class="panel-title"><i class="fas fa-user-plus"></i><span data-i18n="settings_create_title">Create Account</span></div><div class="settings-callout"><i class="fas fa-circle-info"></i><span data-i18n="settings_create_hint">New accounts can only be created by an Owner. A random password is generated automatically and shown once — copy it before navigating away.</span></div><form id="createAccountForm"><div class="form-row"><div class="input-group"><i class="fas fa-user"></i><input type="text" id="newUsername" placeholder="Username" required></div><div class="input-group" style="max-width:200px;"><i class="fas fa-user-tag"></i><select id="newRole" required><option value="" disabled selected data-i18n="settings_role_placeholder">Role...</option><option value="owner">Owner</option><option value="analyst">Analyst</option><option value="viewer">Viewer</option></select></div><button type="submit" class="btn-primary"><i class="fas fa-plus"></i><span data-i18n="btn_create">Create</span></button></div></form><div id="createResult" hidden style="margin-top:12px;"></div></div>
-                <div class="panel"><div class="panel-title"><i class="fas fa-users"></i><span data-i18n="settings_accounts_title">Account List</span></div><div class="settings-callout"><i class="fas fa-user-shield"></i><span data-i18n="settings_owner_notice">Visible to Owners only — each account shows how many API keys it has generated and how many requests those keys have handled.</span></div><table class="data-table"><thead><tr><th data-i18n="th_username">Username</th><th data-i18n="th_role">Role</th><th data-i18n="th_created">Created</th><th data-i18n="th_api_keys">API Keys</th><th data-i18n="th_requests">Requests</th><th data-i18n="th_actions">Actions</th></tr></thead><tbody id="usersTableBody"><tr><td colspan="6" data-i18n="loading">Loading...</td></tr></tbody></table></div>
-                <div class="panel"><div class="panel-title"><i class="fas fa-server"></i><span data-i18n="settings_server_name_title">Server / VPS Name</span></div><div class="settings-callout"><i class="fas fa-circle-info"></i><span data-i18n="settings_server_name_hint">Shown to every signed-in account under Preferences → Server/VPS Name. Leave it blank and save to hide the field for everyone.</span></div><div class="form-row"><div class="input-group"><i class="fas fa-tag"></i><input type="text" id="ownerServerNameInput" placeholder="e.g. FRA-NODE-02" maxlength="60"></div><button class="btn-primary" id="ownerServerNameSaveBtn"><i class="fas fa-save"></i><span data-i18n="btn_save">Save</span></button></div><div id="ownerServerNameStatus" style="font-size:0.72rem;color:var(--text-muted);margin-top:8px;"></div></div>
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-user-plus"></i><span data-i18n="settings_create_title">Create Account</span></div>
+                    <div class="settings-callout"><i class="fas fa-circle-info"></i><span data-i18n="settings_create_hint">New accounts can only be created by an Owner. A random password is generated automatically and shown once — copy it before navigating away.</span></div>
+                    <form id="createAccountForm">
+                        <div class="form-row">
+                            <div class="input-group"><i class="fas fa-user"></i><input type="text" id="newUsername" placeholder="Username" required></div>
+                            <div class="input-group" style="max-width:200px;"><i class="fas fa-user-tag"></i><select id="newRole" required><option value="" disabled selected data-i18n="settings_role_placeholder">Role...</option><option value="owner">Owner</option><option value="analyst">Analyst</option><option value="viewer">Viewer</option></select></div>
+                            <button type="submit" class="btn-primary"><i class="fas fa-plus"></i><span data-i18n="btn_create">Create</span></button>
+                        </div>
+                    </form>
+                    <div id="createResult" hidden style="margin-top:12px;"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-users"></i><span data-i18n="settings_accounts_title">Account List</span></div>
+                    <div class="settings-callout"><i class="fas fa-user-shield"></i><span data-i18n="settings_owner_notice">Visible to Owners only — each account shows how many API keys it has generated and how many requests those keys have handled.</span></div>
+                    <table class="data-table">
+                        <thead><tr><th data-i18n="th_username">Username</th><th data-i18n="th_role">Role</th><th data-i18n="th_created">Created</th><th data-i18n="th_api_keys">API Keys</th><th data-i18n="th_requests">Requests</th><th data-i18n="th_actions">Actions</th></tr></thead>
+                        <tbody id="usersTableBody"><tr><td colspan="6" data-i18n="loading">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-server"></i><span data-i18n="settings_server_name_title">Server / VPS Name</span></div>
+                    <div class="settings-callout"><i class="fas fa-circle-info"></i><span data-i18n="settings_server_name_hint">Shown to every signed-in account under Preferences → Server/VPS Name. Leave it blank and save to hide the field for everyone.</span></div>
+                    <div class="form-row">
+                        <div class="input-group"><i class="fas fa-tag"></i><input type="text" id="ownerServerNameInput" placeholder="e.g. FRA-NODE-02" maxlength="60"></div>
+                        <button class="btn-primary" id="ownerServerNameSaveBtn"><i class="fas fa-save"></i><span data-i18n="btn_save">Save</span></button>
+                    </div>
+                    <div id="ownerServerNameStatus" style="font-size:0.72rem;color:var(--text-muted);margin-top:8px;"></div>
+                </div>
             </section>
 
-            <!-- ========== API KEYS ========== -->
+            <!-- ═══ API KEYS ═══ -->
             <section class="content-section" id="section-api">
                 <div class="grid-cards" id="apiKeyStatsGrid">
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-key"></i></div><div class="stat-label" data-i18n="api_stat_total_keys">Total Keys</div><div class="stat-value" id="apiStatTotalKeys">--</div></div>
@@ -572,20 +638,38 @@
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-star"></i></div><div class="stat-label" data-i18n="api_stat_most_active">Most Active Key</div><div class="stat-value" id="apiStatMostActive" style="font-family:var(--font-mono);font-size:1.05rem;">--</div></div>
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-chart-line"></i></div><div class="stat-label" data-i18n="api_stat_avg_requests">Avg. Requests / Key</div><div class="stat-value" id="apiStatAvgRequests">--</div></div>
                 </div>
-                <div class="panel"><div class="panel-title"><i class="fas fa-key"></i><span data-i18n="api_title">API Keys</span></div><p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:12px;" data-i18n="api_desc">Generate and manage API keys for integrating Emergens into your CI/CD pipeline or custom tools.</p><div class="form-row"><button class="btn-primary" id="generateApiKeyBtn"><i class="fas fa-plus"></i><span data-i18n="btn_generate_key">Generate New Key</span></button><span id="apiKeyLimitMsg" style="font-size:0.72rem;color:var(--text-muted);margin-left:10px;"></span></div><div id="apiKeyResult" style="margin-top:10px;"></div><table class="data-table" style="margin-top:12px;"><thead><tr><th data-i18n="th_key_prefix">Key Prefix</th><th data-i18n="th_created">Created</th><th data-i18n="th_last_used">Last Used</th><th data-i18n="th_requests">Requests</th><th data-i18n="th_actions">Actions</th></tr></thead><tbody id="apiKeysTableBody"><tr><td colspan="5" data-i18n="loading">Loading...</td></tr></tbody></table></div>
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-key"></i><span data-i18n="api_title">API Keys</span></div>
+                    <p class="panel-desc" data-i18n="api_desc">Generate and manage API keys for integrating Emergens into your CI/CD pipeline or custom tools.</p>
+                    <div class="form-row">
+                        <button class="btn-primary" id="generateApiKeyBtn"><i class="fas fa-plus"></i><span data-i18n="btn_generate_key">Generate New Key</span></button>
+                        <span id="apiKeyLimitMsg" style="font-size:0.72rem;color:var(--text-muted);margin-left:10px;"></span>
+                    </div>
+                    <div id="apiKeyResult" style="margin-top:10px;"></div>
+                    <table class="data-table" style="margin-top:12px;">
+                        <thead><tr><th data-i18n="th_key_prefix">Key Prefix</th><th data-i18n="th_created">Created</th><th data-i18n="th_last_used">Last Used</th><th data-i18n="th_requests">Requests</th><th data-i18n="th_actions">Actions</th></tr></thead>
+                        <tbody id="apiKeysTableBody"><tr><td colspan="5" data-i18n="loading">Loading...</td></tr></tbody>
+                    </table>
+                </div>
                 <div class="panel" id="recentKeysPanel">
-                    <div class="panel-title"><i class="fas fa-clock-rotate-left"></i><span data-i18n="recent_keys_title">Recently Generated (This Browser)</span><button class="btn-secondary btn-danger" id="clearRecentKeysBtn" style="margin-left:auto;font-size:0.72rem;padding:7px 12px;"><i class="fas fa-broom"></i> <span data-i18n="btn_clear_recent_keys">Clear Saved Keys</span></button></div>
-                    <p style="color:var(--text-secondary);font-size:0.78rem;margin-bottom:10px;line-height:1.55;" data-i18n="recent_keys_desc">Full key values are only ever shown once by the server. As a convenience, Emergens keeps a copy of keys generated on this device so you can find them again if you navigate away too fast — they never leave this browser.</p>
+                    <div class="panel-title">
+                        <i class="fas fa-clock-rotate-left"></i><span data-i18n="recent_keys_title">Recently Generated (This Browser)</span>
+                        <button class="btn-secondary btn-danger" id="clearRecentKeysBtn" style="margin-left:auto;font-size:0.72rem;padding:7px 12px;"><i class="fas fa-broom"></i> <span data-i18n="btn_clear_recent_keys">Clear Saved Keys</span></button>
+                    </div>
+                    <p class="panel-desc" data-i18n="recent_keys_desc">Full key values are only ever shown once by the server. As a convenience, Emergens keeps a copy of keys generated on this device so you can find them again if you navigate away too fast — they never leave this browser.</p>
                     <div class="settings-callout" style="margin-bottom:12px;"><i class="fas fa-triangle-exclamation"></i><span data-i18n="recent_keys_warning">Stored locally on this device only. Clear this list before using a shared or public computer.</span></div>
                     <div id="recentKeysList"></div>
                 </div>
             </section>
 
-            <!-- ========== PANEL MANAGER (OWNER ONLY) ========== -->
+            <!-- ═══ PANEL MANAGER (Owner) ═══ -->
             <section class="content-section owner-section" id="section-panelmanager">
                 <div class="panel">
-                    <div class="panel-title"><i class="fas fa-server"></i><span data-i18n="pm_title">Panel Manager</span><button class="btn-secondary" id="pmRefreshBtn" style="margin-left:auto;font-size:0.72rem;padding:7px 12px;"><i class="fas fa-rotate"></i> <span data-i18n="btn_refresh">Refresh</span></button></div>
-                    <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:12px;" data-i18n="pm_desc">Every server or client that has made a request using one of your API keys is listed here.</p>
+                    <div class="panel-title">
+                        <i class="fas fa-server"></i><span data-i18n="pm_title">Panel Manager</span>
+                        <button class="btn-secondary" id="pmRefreshBtn" style="margin-left:auto;font-size:0.72rem;padding:7px 12px;"><i class="fas fa-rotate"></i> <span data-i18n="btn_refresh">Refresh</span></button>
+                    </div>
+                    <p class="panel-desc" data-i18n="pm_desc">Every server or client that has made a request using one of your API keys is listed here.</p>
                     <table class="data-table">
                         <thead><tr><th data-i18n="th_server_name">Server Name</th><th data-i18n="th_key_prefix">Key Prefix</th><th data-i18n="th_ip">IP</th><th data-i18n="th_last_seen">Last Seen</th><th data-i18n="th_requests">Requests</th></tr></thead>
                         <tbody id="panelManagerBody"><tr><td colspan="5" data-i18n="loading">Loading...</td></tr></tbody>
@@ -593,10 +677,21 @@
                 </div>
             </section>
 
-            <!-- ========== COMMUNITY ========== -->
-            <section class="content-section" id="section-community"><div class="panel"><div class="panel-title"><i class="fas fa-users"></i><span data-i18n="community_title">Emergens Community</span></div><p style="color:var(--text-secondary);font-size:0.84rem;line-height:1.6;margin-bottom:16px;" data-i18n="community_desc">Join thousands of security professionals using Emergens. Share findings, discuss techniques, and stay updated with the latest security testing methodologies.</p><div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;"><a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-discord"></i>Discord Server</a><a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-github"></i>GitHub</a><a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-twitter"></i>Twitter</a><a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-reddit"></i>Reddit</a></div></div></section>
+            <!-- ═══ COMMUNITY ═══ -->
+            <section class="content-section" id="section-community">
+                <div class="panel">
+                    <div class="panel-title"><i class="fas fa-users"></i><span data-i18n="community_title">Emergens Community</span></div>
+                    <p class="panel-desc" data-i18n="community_desc">Join thousands of security professionals using Emergens. Share findings, discuss techniques, and stay updated with the latest security testing methodologies.</p>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+                        <a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-discord"></i>Discord Server</a>
+                        <a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-github"></i>GitHub</a>
+                        <a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-twitter"></i>Twitter</a>
+                        <a href="#" class="btn-secondary" style="text-decoration:none;"><i class="fab fa-reddit"></i>Reddit</a>
+                    </div>
+                </div>
+            </section>
 
-            <!-- ========== GLOBAL CHAT ========== -->
+            <!-- ═══ GLOBAL CHAT ═══ -->
             <section class="content-section" id="section-globalchat">
                 <div class="panel gc-panel">
                     <div class="panel-title">
@@ -604,7 +699,7 @@
                         <span class="gc-connection-pill" id="gcConnectionPill"><span class="gc-dot"></span><span id="gcConnectionText" data-i18n="gc_connecting">Connecting…</span></span>
                         <button class="btn-secondary btn-danger owner-only" id="gcLockToggleBtn" style="margin-left:auto;font-size:0.72rem;padding:7px 12px;"><i class="fas fa-lock"></i> <span id="gcLockToggleText" data-i18n="gc_lock_chat">Lock Chat</span></button>
                     </div>
-                    <p style="color:var(--text-secondary);font-size:0.78rem;margin:-6px 0 12px;" data-i18n="gc_desc">Every signed-in account sees the same conversation in real time. Tap a name to view that person's profile.</p>
+                    <p class="panel-desc" style="margin:-6px 0 12px;" data-i18n="gc_desc">Every signed-in account sees the same conversation in real time. Tap a name to view that person's profile.</p>
                     <div class="gc-messages" id="gcMessages"><div class="empty-state"><i class="fas fa-spinner spin"></i><span data-i18n="loading">Loading...</span></div></div>
                     <div class="gc-locked-banner" id="gcLockedBanner" hidden><i class="fas fa-lock"></i> <span data-i18n="gc_locked_notice">The Owner has locked Global Chat. Only Owners can send messages right now.</span></div>
                     <form class="gc-input-row" id="gcInputForm">
@@ -613,11 +708,11 @@
                     </form>
                 </div>
             </section>
-        </div>
+        </div><!-- /content-area -->
     </main>
-</div>
+</div><!-- /app-shell -->
 
-<!-- ========== MOBILE BOTTOM NAV ========== -->
+<!-- ═══ MOBILE BOTTOM NAV ═══ -->
 <nav class="bottom-nav" id="bottomNav" aria-label="Primary">
     <button class="bottom-nav-item active" data-bn-section="overview"><i class="fas fa-house"></i><span data-i18n="bn_home">Home</span></button>
     <button class="bottom-nav-item" data-bn-section="testing"><i class="fas fa-shield-halved"></i><span data-i18n="bn_sec">Sec</span></button>
@@ -625,15 +720,26 @@
     <button class="bottom-nav-item" id="bottomNavProfileBtn"><i class="fas fa-user"></i><span data-i18n="bn_profile">Profile</span></button>
 </nav>
 
-<div id="historyModal" class="modal-overlay" hidden><div class="modal-card"><div class="modal-header"><span id="historyModalTitle">Case File</span><button class="icon-btn-sm" id="closeHistoryModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button></div><div class="modal-body" id="historyModalBody"></div></div></div>
+<!-- ═══ MODALS ═══ -->
+<div id="historyModal" class="modal-overlay" hidden>
+    <div class="modal-card">
+        <div class="modal-header"><span id="historyModalTitle">Case File</span><button class="icon-btn-sm modal-close-btn" id="closeHistoryModal" aria-label="Close"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body" id="historyModalBody"></div>
+    </div>
+</div>
 
-<div id="userKeysModal" class="modal-overlay" hidden><div class="modal-card"><div class="modal-header"><span id="userKeysModalTitle">API Keys</span><button class="icon-btn-sm" id="closeUserKeysModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button></div><div class="modal-body" id="userKeysModalBody"></div></div></div>
+<div id="userKeysModal" class="modal-overlay" hidden>
+    <div class="modal-card">
+        <div class="modal-header"><span id="userKeysModalTitle">API Keys</span><button class="icon-btn-sm modal-close-btn" id="closeUserKeysModal" aria-label="Close"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body" id="userKeysModalBody"></div>
+    </div>
+</div>
 
 <div id="addLinkModal" class="modal-overlay" hidden>
     <div class="modal-card compact">
-        <div class="modal-header"><span><i class="fas fa-link" style="color:var(--red-400);margin-right:6px;"></i>Add Quick Link</span><button class="icon-btn-sm" id="closeAddLinkModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button></div>
+        <div class="modal-header"><span><i class="fas fa-link" style="color:var(--red-400);margin-right:6px;"></i>Add Quick Link</span><button class="icon-btn-sm modal-close-btn" id="closeAddLinkModal" aria-label="Close"><i class="fas fa-times"></i></button></div>
         <div class="modal-body" style="font-family:var(--font-ui);white-space:normal;">
-            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;">Enter a link to pin to your Quick Menu. It'll be saved on this browser and shows up next to the built-in shortcuts.</p>
+            <p class="panel-desc">Enter a link to pin to your Quick Menu. It'll be saved on this browser and shows up next to the built-in shortcuts.</p>
             <form class="add-link-form" id="addLinkForm">
                 <div class="input-group"><i class="fas fa-globe"></i><input type="text" id="addLinkUrlInput" placeholder="https://example.com" autocomplete="off"></div>
             </form>
@@ -647,6 +753,7 @@
 
 <div id="floatingWindowsRoot"></div>
 
+<!-- ═══ QUICK MENU FAB ═══ -->
 <div class="qm-fab" id="quickMenuFab">
     <div class="qm-radial" id="qmRadial">
         <button class="qm-item" data-qm-action="scan-basic" style="--i:0" title="Basic Scan"><i class="fas fa-bolt"></i></button>
@@ -655,7 +762,6 @@
         <button class="qm-item" data-qm-action="console" style="--i:3" title="System Console"><i class="fas fa-terminal"></i></button>
         <button class="qm-item" data-qm-action="chat" style="--i:4" title="AI Assistant"><i class="fas fa-robot"></i></button>
         <button class="qm-item" data-qm-action="telegram" style="--i:5" title="Telegram Bot"><i class="fab fa-telegram"></i></button>
-        <!-- custom links get inserted here by JS, between the built-ins and the settings/add buttons -->
         <button class="qm-item qm-add-item" data-qm-action="add-link" style="--i:6" title="Add Quick Link">+</button>
     </div>
     <button class="qm-toggle" id="qmToggle" aria-label="Quick menu" aria-expanded="false" title="Quick Menu — drag to move, click to open">
@@ -664,7 +770,7 @@
     </button>
 </div>
 
-<!-- ========== ANIMATED PROFILE POPUP ========== -->
+<!-- ═══ PROFILE POPUP ═══ -->
 <div id="profileModalOverlay" class="profile-modal-overlay" hidden>
     <div class="profile-card" role="dialog" aria-modal="true" aria-labelledby="profileModalName">
         <button class="profile-card-close" id="profileModalClose" aria-label="Close"><i class="fas fa-times"></i></button>
@@ -689,13 +795,13 @@
     </div>
 </div>
 
-<!-- ========== TOOLS HUB (burger menu → Tools) ========== -->
+<!-- ═══ TOOLS HUB ═══ -->
 <div id="toolsHubModal" class="modal-overlay" hidden>
     <div class="modal-card tools-hub-card">
         <div class="modal-header">
-            <button class="icon-btn-sm" id="toolsHubBackBtn" hidden aria-label="Back" style="border:none;background:transparent;"><i class="fas fa-arrow-left"></i></button>
+            <button class="icon-btn-sm modal-close-btn" id="toolsHubBackBtn" hidden aria-label="Back"><i class="fas fa-arrow-left"></i></button>
             <span id="toolsHubHeaderTitle"><i class="fas fa-grip" style="color:var(--red-400);margin-right:6px;"></i><span data-i18n="th_hub_title">Tools</span></span>
-            <button class="icon-btn-sm" id="closeToolsHubModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button>
+            <button class="icon-btn-sm modal-close-btn" id="closeToolsHubModal" aria-label="Close"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body tools-hub-body" id="toolsHubBody">
 
@@ -723,7 +829,7 @@
                 <div class="tool-result-area" id="bratResultArea"></div>
             </div>
 
-            <!-- Box 2 — Reels (TikTok video search) -->
+            <!-- Box 2 — Reels -->
             <div class="tool-detail" id="toolDetail-reels" hidden>
                 <p class="tool-detail-desc" data-i18n="reels_desc">Search TikTok videos by keyword and preview them without leaving the console.</p>
                 <div class="tool-search">
@@ -760,7 +866,7 @@
                 <div class="tool-result-area" id="animeResultArea"></div>
             </div>
 
-            <!-- Box 5 — Wifi Scanner -->
+            <!-- Box 5 — Wifi -->
             <div class="tool-detail" id="toolDetail-wifi" hidden>
                 <div class="settings-callout"><i class="fas fa-circle-info"></i><span data-i18n="wifi_limit_notice">Browsers can't list nearby Wi-Fi network names on any platform — no website has that permission, for your privacy. Below is the real network &amp; location info this page can access, with your permission.</span></div>
                 <button class="btn-primary" id="wifiRequestBtn" style="margin-top:12px;"><i class="fas fa-wifi"></i> <span data-i18n="wifi_request_btn">Check Network Info</span></button>
@@ -778,7 +884,7 @@
                 <div class="tool-result-area" id="ipCheckResultArea"></div>
             </div>
 
-            <!-- Box 8 — Music Downloader -->
+            <!-- Box 8 — Music -->
             <div class="tool-detail" id="toolDetail-music" hidden>
                 <p class="tool-detail-desc" data-i18n="music_desc">Search for a track to browse matches from Apple Music, or paste a direct link to fetch it (when a direct-fetch API is configured).</p>
                 <div class="tool-search">
@@ -789,7 +895,7 @@
                 <div class="tool-result-area" id="musicResultArea"></div>
             </div>
 
-            <!-- Box 9 — Downloader (TikTok / Pinterest) -->
+            <!-- Box 9 — Downloader -->
             <div class="tool-detail" id="toolDetail-downloader" hidden>
                 <p class="tool-detail-desc" data-i18n="dl_desc">Paste a TikTok link for a watermark-free video, or switch to Pinterest Search to browse images by keyword.</p>
                 <div class="segmented-control" id="dlPlatformToggle">
@@ -804,7 +910,7 @@
                 <div class="tool-result-area" id="dlResultArea"></div>
             </div>
 
-            <!-- Box 10 — MCTOOLS (Minecraft skin / mod / shader search) -->
+            <!-- Box 10 — MCTOOLS -->
             <div class="tool-detail" id="toolDetail-mctools" hidden>
                 <p class="tool-detail-desc" data-i18n="mc_desc">Search Minecraft Bedrock skins, mods, shaders, texture packs and more, sourced from MCPEDL.</p>
                 <div class="tool-search">
@@ -819,11 +925,11 @@
     </div>
 </div>
 
-<!-- ========== PROFILE PHOTO PICKER ========== -->
+<!-- ═══ PROFILE PHOTO PICKER ═══ -->
 <input type="file" id="profilePhotoFileInput" accept="image/*" style="display:none;">
 <div id="profilePhotoModal" class="modal-overlay" hidden>
     <div class="modal-card compact">
-        <div class="modal-header"><span><i class="fas fa-camera" style="color:var(--red-400);margin-right:6px;"></i><span data-i18n="pp_title">Change Profile Photo</span></span><button class="icon-btn-sm" id="closeProfilePhotoModal" aria-label="Close" style="border:none;background:transparent;"><i class="fas fa-times"></i></button></div>
+        <div class="modal-header"><span><i class="fas fa-camera" style="color:var(--red-400);margin-right:6px;"></i><span data-i18n="pp_title">Change Profile Photo</span></span><button class="icon-btn-sm modal-close-btn" id="closeProfilePhotoModal" aria-label="Close"><i class="fas fa-times"></i></button></div>
         <div class="modal-body" style="font-family:var(--font-ui);white-space:normal;">
             <button class="btn-secondary pp-choice-btn" id="ppChooseUploadBtn"><i class="fas fa-images"></i> <span data-i18n="pp_upload_gallery">Upload from gallery</span></button>
             <div class="pp-or-divider" data-i18n="pp_or">or</div>
@@ -834,7 +940,7 @@
     </div>
 </div>
 
-<!-- ========== GLOBAL CHAT — USER PROFILE POPOVER ========== -->
+<!-- ═══ GC PROFILE POPOVER ═══ -->
 <div id="gcProfilePopoverOverlay" class="profile-modal-overlay" hidden>
     <div class="profile-card gc-popover-card" role="dialog" aria-modal="true">
         <button class="profile-card-close" id="gcPopoverClose" aria-label="Close"><i class="fas fa-times"></i></button>
@@ -847,9 +953,11 @@
     </div>
 </div>
 
+<!-- ═══ TOASTS ═══ -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- ═══ SCRIPTS ═══ -->
 <script src="script.js"></script>
-</div><!-- /app-shell -->
+<script src="emergens-fixes.js"></script>
 </body>
 </html>
