@@ -1,24 +1,22 @@
-name: Emergens
+name: Emergens-env
 channels:
   - conda-forge
-  - defaults
 
 dependencies:
   - python=3.11
   - pip
-  - ipykernel
-  - jupyterlab
-  - numpy
-  - pandas
+  - numpy=1.26
+  - pandas=2.2
   - scipy
   - scikit-learn
   - matplotlib
   - seaborn
-  - plotly
-  - openpyxl
+  - jupyterlab
+  - ipykernel
   - pyyaml
   - requests
   - tqdm
+  - pytest
 
   - pip:
       - python-dotenv
