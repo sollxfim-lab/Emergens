@@ -11,7 +11,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css">
     <style>
-        /* Brand typeface — shared with get-started.html for a consistent identity across the site */
         @font-face {
             font-family: 'Road Rage';
             src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
@@ -45,6 +44,7 @@
             <button class="nav-item" id="navToolsHub"><i class="fas fa-grip"></i><span data-i18n="nav_tools_hub">Tools</span></button>
             <button class="nav-item" data-section="testing"><i class="fas fa-magnifying-glass"></i><span data-i18n="nav_testing">Security Testing</span></button>
             <button class="nav-item nav-item-mhddos" data-section="mhddos"><i class="fas fa-satellite-dish"></i><span data-i18n="nav_mhddos">MHDDoS Engine</span><span class="nav-live-dot" id="mhdNavDot" hidden></span></button>
+            <button class="nav-item nav-item-exploit" data-section="exploit"><i class="fas fa-bug"></i><span data-i18n="nav_exploit">Exploit Suite</span></button>
             <button class="nav-item" data-section="assets"><i class="fas fa-layer-group"></i><span data-i18n="nav_assets">Assets</span></button>
             <button class="nav-item" data-section="console"><i class="fas fa-terminal"></i><span data-i18n="nav_console">System Console</span></button>
             <button class="nav-item" data-section="chat"><i class="fas fa-comments"></i><span data-i18n="nav_chat">AI Assistant</span></button>
@@ -187,7 +187,6 @@
                         <div class="input-group" style="max-width:180px;"><i class="fas fa-layer-group"></i><select id="scanMode"><option value="basic" data-i18n="mode_basic">Basic Mode</option><option value="expert" data-i18n="mode_expert">Expert Mode</option></select></div>
                     </div>
 
-                    <!-- ── Method Carousel ── -->
                     <p class="tool-section-label" data-i18n="testing_select_tools">Swipe to browse & select tools to run:</p>
                     <div class="method-carousel-wrap">
                         <button class="method-nav-btn method-nav-prev" id="methodNavPrev" aria-label="Previous"><i class="fas fa-chevron-left"></i></button>
@@ -197,7 +196,6 @@
                         <button class="method-nav-btn method-nav-next" id="methodNavNext" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
                     </div>
                     <div class="method-carousel-dots" id="methodDots"></div>
-                    <!-- hidden checklist for scan submission compatibility -->
                     <div id="toolChecklist" hidden></div>
 
                     <button class="btn-primary" id="scanBtn"><i class="fas fa-play"></i><span data-i18n="btn_start_scan">Start Scan</span></button>
@@ -352,6 +350,28 @@
                     <div class="mhd-history-list" id="mhdHistoryList">
                         <div class="mhd-empty">No history yet.</div>
                     </div>
+                </div>
+            </section>
+
+            <!-- ========== EXPLOIT SUITE ========== -->
+            <section class="content-section" id="section-exploit">
+                <div class="ex-hero">
+                    <div class="ex-hero-text">
+                        <span class="ex-hero-eyebrow"><i class="fas fa-crosshairs"></i> Offensive Toolkit</span>
+                        <h2>Exploit Suite</h2>
+                        <p>Validate critical CVEs, weaponize injection points, log live HTTP traffic, and hunt dangling DNS entries — only against systems you are authorized to test.</p>
+                    </div>
+                    <div class="ex-hero-stats">
+                        <div class="ex-hero-stat"><span id="exActiveCount">0</span><small>Active</small></div>
+                    </div>
+                </div>
+
+                <div class="ex-tools-grid" id="exToolsGrid">
+                    <!-- tool cards injected by exploit.js -->
+                </div>
+
+                <div class="ex-detail-wrap" id="exDetailWrap" hidden>
+                    <!-- detail panel injected by exploit.js -->
                 </div>
             </section>
 
@@ -785,7 +805,6 @@
         <button class="qm-item" data-qm-action="console" style="--i:3" title="System Console"><i class="fas fa-terminal"></i></button>
         <button class="qm-item" data-qm-action="chat" style="--i:4" title="AI Assistant"><i class="fas fa-robot"></i></button>
         <button class="qm-item" data-qm-action="telegram" style="--i:5" title="Telegram Bot"><i class="fab fa-telegram"></i></button>
-        <!-- custom links get inserted here by JS, between the built-ins and the settings/add buttons -->
         <button class="qm-item qm-add-item" data-qm-action="add-link" style="--i:6" title="Add Quick Link">+</button>
     </div>
     <button class="qm-toggle" id="qmToggle" aria-label="Quick menu" aria-expanded="false" title="Quick Menu — drag to move, click to open">
@@ -981,6 +1000,7 @@
 
 <script src="script.js"></script>
 <script src="mhddos.js" defer></script>
+<script src="exploit.js" defer></script>
 </div><!-- /app-shell -->
 </body>
 </html>
