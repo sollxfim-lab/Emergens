@@ -1,0 +1,2910 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emergens — System Status | Live Uptime &amp; API Monitor</title>
+<meta name="description" content="Emergens live system status — real-time uptime, service health, API request monitor, response times, incident history and scheduled maintenance.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@font-face{font-family:'Space Grotesk';src:url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap;}
+@font-face{font-family:'Road Rage';src:url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');font-weight:normal;font-style:normal;font-display:swap;}
+</style>
+<style>
+/* ============================================================
+   EMERGENS — DESIGN SYSTEM v10  (status.html + API monitor)
+   ============================================================ */
+:root{
+  --font-display:'Road Rage','Space Grotesk',sans-serif;
+  --font-body:'Space Grotesk',sans-serif;
+  --font-mono:'JetBrains Mono','Space Grotesk',monospace;
+
+  --blue-300:#93c5fd;--blue-400:#60a5fa;--blue-500:#3b82f6;--blue-600:#2563eb;
+  --blue-700:#1e40af;--blue-800:#172554;--blue-900:#0f172a;
+  --gold:#d4a574;--gold-light:#e7cd9f;--gold-dark:#b8945f;
+  --green:#34d399;--amber:#fbbf24;--purple:#a78bfa;--red:#f87171;
+  --pink:#ec4899;--hot:#f59e0b;--telegram:#0088cc;
+
+  --blue-glow:rgba(59,130,246,.30);
+  --blue-glow-soft:rgba(59,130,246,.12);
+  --gold-glow:rgba(212,165,116,.25);
+  --gold-glow-soft:rgba(212,165,116,.10);
+  --green-glow:rgba(52,211,153,.30);
+  --amber-glow:rgba(251,191,36,.30);
+  --red-glow:rgba(248,113,113,.30);
+  --star-white:#e8edf5;
+
+  --r-xs:8px;--r-sm:12px;--r-md:16px;--r-lg:22px;--r-xl:28px;--r-full:9999px;
+
+  --e-out:cubic-bezier(0.16,1,0.3,1);
+  --e-spring:cubic-bezier(0.34,1.56,0.64,1);
+  --t-fast:180ms var(--e-out);
+  --t-med:380ms var(--e-out);
+  --t-slow:650ms var(--e-out);
+  --t-spring:600ms var(--e-spring);
+
+  --header-h:74px;
+  --shell:1280px;
+}
+[data-theme="dark"]{
+  --bg-primary:#04060e;--bg-secondary:#080d1a;--bg-tertiary:#0f1626;--bg-elevated:#151f33;
+  --border-color:#1c2740;--border-subtle:#2a3854;
+  --text-primary:#f1f5f9;--text-secondary:#c3cee0;--text-muted:#6d7c94;--text-faint:#46536b;
+  --shadow-sm:0 2px 10px rgba(0,0,0,.45);
+  --shadow-md:0 10px 34px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.35);
+  --shadow-lg:0 24px 64px rgba(0,0,0,.6),0 6px 18px rgba(0,0,0,.42);
+  --shadow-xl:0 38px 90px rgba(0,0,0,.68),0 10px 28px rgba(0,0,0,.48);
+  --sheen:rgba(255,255,255,.05);
+  --code-bg:#070b16;--inline-code-bg:#16203a;
+  --card-bg:linear-gradient(158deg,rgba(21,31,51,.92),rgba(8,13,26,.98));
+  --glass-bg:rgba(8,13,26,.78);
+  --glass-border:rgba(59,130,246,.14);
+  --shape-opacity:.07;
+  --cube-face-bg:rgba(59,130,246,.08);
+  --cube-face-border:rgba(59,130,246,.35);
+  --cube-edge-glow:rgba(59,130,246,.20);
+  --grid-line:rgba(59,130,246,.035);
+  --bar-empty:#1c2740;
+  --log-row-hover:rgba(59,130,246,.06);
+}
+[data-theme="light"]{
+  --bg-primary:#f4f7fb;--bg-secondary:#fff;--bg-tertiary:#eef3f9;--bg-elevated:#fff;
+  --border-color:#d6dfec;--border-subtle:#e4ebf4;
+  --text-primary:#0d1729;--text-secondary:#33425c;--text-muted:#64748b;--text-faint:#94a3b8;
+  --shadow-sm:0 2px 10px rgba(15,23,42,.05);
+  --shadow-md:0 10px 30px rgba(15,23,42,.09),0 2px 6px rgba(15,23,42,.04);
+  --shadow-lg:0 24px 54px rgba(15,23,42,.13),0 5px 14px rgba(15,23,42,.06);
+  --shadow-xl:0 38px 90px rgba(15,23,42,.16),0 10px 28px rgba(15,23,42,.08);
+  --sheen:rgba(255,255,255,.85);
+  --code-bg:#eef3f9;--inline-code-bg:#dde5f0;
+  --card-bg:linear-gradient(158deg,#fff,#f8fafd);
+  --glass-bg:rgba(255,255,255,.82);
+  --glass-border:rgba(59,130,246,.10);
+  --shape-opacity:.035;
+  --cube-face-bg:rgba(59,130,246,.05);
+  --cube-face-border:rgba(59,130,246,.20);
+  --cube-edge-glow:rgba(59,130,246,.10);
+  --grid-line:rgba(59,130,246,.05);
+  --bar-empty:#dde5f0;
+  --log-row-hover:rgba(59,130,246,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--bg-primary);color:var(--text-primary);min-height:100vh;line-height:1.65;overflow-x:hidden;position:relative;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;transition:background var(--t-slow),color var(--t-slow)}
+.content-wrap{position:relative;z-index:1}
+h1,h2,h3{font-family:var(--font-display);letter-spacing:-.02em}
+h4,h5,h6{font-family:var(--font-body);font-weight:700;letter-spacing:-.01em}
+button,input,select,textarea{font-family:var(--font-body)}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--blue-500);outline-offset:3px;border-radius:4px}
+[hidden]{display:none!important}
+a{text-decoration:none;color:inherit}
+img,svg{display:block}
+section[id]{scroll-margin-top:calc(var(--header-h) + 16px)}
+::selection{background:var(--blue-600);color:#fff}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg-secondary)}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--blue-700),var(--blue-900));border-radius:999px;border:2px solid var(--bg-secondary)}
+::-webkit-scrollbar-thumb:hover{background:var(--blue-600)}
+
+.scroll-progress{position:fixed;top:0;left:0;height:3px;width:0%;z-index:200;background:linear-gradient(90deg,var(--blue-500),var(--gold));box-shadow:0 0 12px var(--blue-glow);transition:width 80ms linear}
+
+/* ---------- Ambient background ---------- */
+.css-3d-scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;perspective:1200px;perspective-origin:50% 50%;will-change:transform}
+.shape3d{position:absolute;transform-style:preserve-3d;opacity:var(--shape-opacity);animation:shapeFloat3D 18s ease-in-out infinite;will-change:transform}
+.shape3d-cube{width:60px;height:60px;position:absolute;transform-style:preserve-3d;animation:cubeSpin 24s linear infinite}
+.shape3d-cube .face{position:absolute;width:60px;height:60px;border:1.5px solid var(--cube-face-border);background:var(--cube-face-bg);box-shadow:inset 0 0 18px var(--cube-edge-glow),0 0 12px var(--cube-edge-glow);border-radius:5px}
+.shape3d-cube .face:nth-child(1){transform:translateZ(30px)}
+.shape3d-cube .face:nth-child(2){transform:rotateY(180deg) translateZ(30px)}
+.shape3d-cube .face:nth-child(3){transform:rotateY(90deg) translateZ(30px)}
+.shape3d-cube .face:nth-child(4){transform:rotateY(-90deg) translateZ(30px)}
+.shape3d-cube .face:nth-child(5){transform:rotateX(90deg) translateZ(30px)}
+.shape3d-cube .face:nth-child(6){transform:rotateX(-90deg) translateZ(30px)}
+.shape3d-cube .cube-core{position:absolute;width:20px;height:20px;left:20px;top:20px;background:radial-gradient(circle,rgba(96,165,250,.65),transparent 70%);border-radius:50%;filter:blur(8px);animation:corePulse 4s ease-in-out infinite}
+@keyframes corePulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.9;transform:scale(1.3)}}
+.shape3d-ring{width:90px;height:90px;border-radius:50%;border:2px solid transparent;border-top-color:var(--blue-500);border-right-color:var(--gold);position:absolute;animation:ringSpin 10s linear infinite;filter:drop-shadow(0 0 8px rgba(59,130,246,.3))}
+.shape3d-ring::before{content:'';position:absolute;inset:12px;border-radius:50%;border:1.5px solid transparent;border-bottom-color:var(--blue-400);border-left-color:var(--gold-dark);animation:ringSpinReverse 7s linear infinite}
+.shape3d-pyramid{width:0;height:0;border-left:28px solid transparent;border-right:28px solid transparent;border-bottom:48px solid rgba(59,130,246,.15);position:absolute;animation:pyramidFloat 14s ease-in-out infinite}
+.shape3d-tetra{width:0;height:0;border-left:20px solid transparent;border-right:20px solid transparent;border-bottom:36px solid rgba(212,165,116,.12);position:absolute;animation:tetraFloat 20s ease-in-out infinite}
+.shape3d-octa{width:40px;height:40px;position:absolute;animation:octaSpin 16s linear infinite}
+.shape3d-octa::before,.shape3d-octa::after{content:'';position:absolute;inset:0;border:1.5px solid var(--blue-400);border-radius:50%;background:rgba(59,130,246,.06)}
+.shape3d-octa::before{transform:rotateY(60deg)}
+.shape3d-octa::after{transform:rotateY(-60deg)}
+.shape3d-sphere{width:50px;height:50px;position:absolute;border-radius:50%;border:1px solid rgba(59,130,246,.4);animation:sphereSpin 12s linear infinite}
+.shape3d-sphere::before,.shape3d-sphere::after{content:'';position:absolute;inset:0;border-radius:50%;border:1px solid rgba(59,130,246,.25)}
+.shape3d-sphere::before{transform:rotateY(60deg)}
+.shape3d-sphere::after{transform:rotateX(60deg)}
+.shape3d-diamond{width:30px;height:30px;position:absolute;background:rgba(212,165,116,.1);border:1.5px solid var(--gold);transform:rotate(45deg);animation:diamondFloat 15s ease-in-out infinite}
+.shape1{top:8%;left:5%}.shape2{top:15%;right:8%}.shape3{bottom:20%;left:10%}
+.shape4{bottom:12%;right:5%}.shape5{top:45%;left:3%}.shape6{top:55%;right:3%}
+.shape7{top:30%;left:45%}.shape8{bottom:35%;right:15%}.shape9{top:70%;left:25%}
+.shape10{top:5%;left:60%}.shape11{top:40%;right:40%}.shape12{bottom:50%;left:20%}
+
+.moon{position:absolute;top:6%;right:9%;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle at 34% 30%,#fdfbf4 0%,#f1ecdf 18%,#ddd6c4 38%,#b9b19c 62%,#837c69 85%,#5f5a4c 100%);box-shadow:inset -22px -16px 46px rgba(10,10,15,.45),inset 10px 8px 24px rgba(255,255,255,.25);animation:moonFloat 13s ease-in-out infinite;z-index:1}
+.moon::before{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 26% 62%,rgba(70,65,55,.32) 0%,transparent 10%),radial-gradient(circle at 61% 24%,rgba(70,65,55,.28) 0%,transparent 8%),radial-gradient(circle at 71% 66%,rgba(70,65,55,.34) 0%,transparent 12%)}
+.moon::after{content:'';position:absolute;inset:-34%;border-radius:50%;background:radial-gradient(circle,rgba(241,236,223,.30) 0%,rgba(147,197,253,.14) 45%,transparent 72%);filter:blur(20px);z-index:-1;animation:moonGlowPulse 7s ease-in-out infinite}
+@keyframes moonFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
+@keyframes moonGlowPulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.09)}}
+[data-theme="light"] .moon{opacity:0;visibility:hidden}
+
+@keyframes cubeSpin{0%{transform:rotateX(0) rotateY(0) rotateZ(0)}100%{transform:rotateX(360deg) rotateY(720deg) rotateZ(180deg)}}
+@keyframes ringSpin{0%{transform:rotate(0) rotateX(0)}100%{transform:rotate(360deg) rotateX(360deg)}}
+@keyframes ringSpinReverse{0%{transform:rotate(360deg)}100%{transform:rotate(0deg)}}
+@keyframes pyramidFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+@keyframes tetraFloat{0%,100%{transform:translateY(0) rotateZ(0)}50%{transform:translateY(-22px) rotateZ(8deg)}}
+@keyframes octaSpin{0%{transform:rotateX(0) rotateY(0)}100%{transform:rotateX(360deg) rotateY(720deg)}}
+@keyframes sphereSpin{0%{transform:rotateX(0) rotateY(0)}100%{transform:rotateX(360deg) rotateY(360deg)}}
+@keyframes diamondFloat{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(-15px) scale(1.1)}}
+@keyframes shapeFloat3D{0%,100%{transform:translateY(0) translateX(0)}20%{transform:translateY(-25px) translateX(12px)}40%{transform:translateY(10px) translateX(-8px)}60%{transform:translateY(-15px) translateX(-15px)}80%{transform:translateY(20px) translateX(10px)}}
+
+.bg-orb{position:fixed;border-radius:50%;filter:blur(140px);pointer-events:none;z-index:0;opacity:.05}
+.bg-orb-1{width:720px;height:720px;background:var(--blue-600);top:-220px;right:-220px;animation:orbDrift1 18s ease-in-out infinite}
+.bg-orb-2{width:520px;height:520px;background:var(--blue-700);bottom:-160px;left:-110px;animation:orbDrift2 22s ease-in-out infinite}
+.bg-orb-3{width:360px;height:360px;background:var(--blue-500);top:45%;left:55%;animation:orbDrift3 16s ease-in-out infinite}
+[data-theme="light"] .bg-orb{opacity:.025}
+@keyframes orbDrift1{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-40px,30px) scale(1.1)}66%{transform:translate(30px,-20px) scale(.95)}}
+@keyframes orbDrift2{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(35px,-25px) scale(1.05)}66%{transform:translate(-25px,35px) scale(1.15)}}
+@keyframes orbDrift3{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-45%,-55%) scale(1.2)}}
+
+.grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(ellipse at 50% 30%,black 25%,transparent 72%);-webkit-mask-image:radial-gradient(ellipse at 50% 30%,black 25%,transparent 72%)}
+
+/* ---------- HEADER ---------- */
+.header{position:sticky;top:0;z-index:100;height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:var(--glass-bg);border-bottom:1px solid var(--glass-border);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);transition:box-shadow var(--t-med),border-color var(--t-med)}
+.header.scrolled{box-shadow:var(--shadow-md);border-bottom-color:var(--border-subtle)}
+.header-logo{display:flex;align-items:center;gap:12px;transition:transform var(--t-med);flex-shrink:0}
+.header-logo:hover{transform:translateY(-1px)}
+.header-logo svg{width:34px;height:34px;filter:drop-shadow(0 0 14px var(--blue-glow));transition:filter var(--t-med)}
+.header-logo:hover svg{filter:drop-shadow(0 0 26px var(--blue-glow))}
+.header-logo .logo-text{font-family:var(--font-display);font-size:19px;letter-spacing:1px;line-height:1;color:var(--blue-400);text-shadow:0 0 22px var(--blue-glow-soft)}
+.header-logo .logo-text span{color:var(--gold)}
+.header-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+.nav-link{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:var(--r-xs);font-size:11.5px;font-weight:600;letter-spacing:.2px;color:var(--text-secondary);border:1px solid transparent;transition:all var(--t-fast)}
+.nav-link i{font-size:11px;opacity:.8}
+.nav-link:hover{color:var(--blue-400);background:var(--blue-glow-soft);border-color:var(--blue-700);transform:translateY(-1px)}
+.nav-link.active{color:var(--blue-400);background:var(--blue-glow-soft);border-color:var(--blue-800)}
+
+.lang-btn,.theme-btn{display:inline-flex;align-items:center;justify-content:center;min-width:38px;padding:8px 10px;border-radius:var(--r-xs);background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-secondary);font-size:10px;font-weight:700;letter-spacing:.5px;transition:all var(--t-fast)}
+.lang-btn:hover,.theme-btn:hover{color:var(--blue-400);border-color:var(--blue-600);background:var(--blue-glow-soft);transform:translateY(-1px)}
+.lang-btn.active{background:var(--blue-800);border-color:var(--blue-500);color:var(--blue-300);box-shadow:0 0 16px var(--blue-glow-soft)}
+.theme-btn{min-width:40px;font-size:12px}
+
+.cmd-trigger{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:var(--r-xs);background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-muted);font-size:11px;font-weight:600;transition:all var(--t-fast)}
+.cmd-trigger:hover{border-color:var(--blue-600);color:var(--blue-400);background:var(--blue-glow-soft)}
+.cmd-trigger kbd{font-family:var(--font-mono);font-size:9px;padding:2px 6px;border-radius:4px;background:var(--bg-elevated);border:1px solid var(--border-subtle);color:var(--text-secondary)}
+
+.burger-btn{display:none;flex-direction:column;justify-content:center;align-items:center;gap:5px;width:44px;height:44px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:var(--r-sm);transition:all var(--t-fast);position:relative;z-index:110}
+.burger-btn:hover{border-color:var(--blue-500);box-shadow:0 0 16px var(--blue-glow-soft)}
+.burger-btn span{display:block;width:22px;height:2px;background:var(--text-primary);border-radius:2px;transition:transform .35s cubic-bezier(.68,-.55,.265,1.55),opacity .2s;transform-origin:center}
+.burger-btn.active span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.burger-btn.active span:nth-child(2){opacity:0;transform:scaleX(0)}
+.burger-btn.active span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+.mobile-menu{position:fixed;top:0;right:-100%;width:320px;max-width:86vw;height:100vh;background:var(--bg-secondary);border-left:1px solid var(--border-subtle);box-shadow:var(--shadow-xl);z-index:105;padding:92px 22px 28px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;transition:right .45s var(--e-out)}
+.mobile-menu.open{right:0}
+.mobile-menu::before{content:'';position:absolute;top:0;left:0;right:0;height:var(--header-h);border-bottom:1px solid var(--glass-border);background:var(--glass-bg);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.mobile-menu a{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:600;color:var(--text-secondary);border:1px solid transparent;transition:all var(--t-fast)}
+.mobile-menu a i{width:18px;text-align:center;font-size:14px;opacity:.8}
+.mobile-menu a:hover{background:var(--blue-glow-soft);color:var(--blue-400);border-color:var(--blue-700);transform:translateX(4px)}
+.mobile-menu .menu-divider{height:1px;background:var(--border-subtle);margin:10px 4px}
+.mobile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.68);z-index:104;opacity:0;pointer-events:none;transition:opacity var(--t-med);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.mobile-overlay.active{opacity:1;pointer-events:auto}
+
+/* ---------- BUTTONS ---------- */
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 22px;border-radius:var(--r-sm);font-size:.84rem;font-weight:600;letter-spacing:.2px;border:1px solid transparent;overflow:hidden;transition:all var(--t-med);white-space:nowrap}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.22) 50%,transparent 70%);transform:translateX(-100%);transition:transform .7s ease;pointer-events:none}
+.btn:hover::after{transform:translateX(100%)}
+.btn i{font-size:.9em}
+.btn-blue{background:linear-gradient(135deg,var(--blue-600),var(--blue-500));color:#fff;box-shadow:0 6px 20px -6px var(--blue-glow)}
+.btn-blue:hover{box-shadow:0 12px 32px -8px var(--blue-glow);transform:translateY(-2px)}
+.btn-outline{background:transparent;color:var(--text-primary);border-color:var(--border-subtle)}
+.btn-outline:hover{border-color:var(--blue-500);color:var(--blue-400);background:var(--blue-glow-soft);transform:translateY(-1px)}
+.btn-gold{background:transparent;color:var(--gold);border-color:var(--gold)}
+.btn-gold:hover{background:var(--gold);color:#12100c;box-shadow:0 0 26px var(--gold-glow);transform:translateY(-1px)}
+.btn-gold-solid{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#12100c;box-shadow:0 6px 20px -6px var(--gold-glow)}
+.btn-gold-solid:hover{box-shadow:0 12px 34px -8px var(--gold-glow);transform:translateY(-2px)}
+
+/* ---------- SECTIONS ---------- */
+.section{position:relative;z-index:1;max-width:var(--shell);margin:0 auto;padding:clamp(44px,6vw,68px) 24px}
+.section-header{text-align:center;margin-bottom:40px}
+.section-header h2{font-size:clamp(26px,4vw,38px);font-weight:400;line-height:1.15;color:var(--text-primary);margin-bottom:12px}
+.section-header p{font-size:13.5px;color:var(--text-muted);max-width:640px;margin:0 auto;line-height:1.85}
+.section-divider{height:3px;width:72px;margin:18px auto 0;border-radius:var(--r-full);background:linear-gradient(90deg,transparent,var(--blue-500),var(--gold),transparent);animation:dividerPulse 4s ease-in-out infinite}
+@keyframes dividerPulse{0%,100%{opacity:.7;width:72px}50%{opacity:1;width:96px}}
+
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s var(--e-out),transform .7s var(--e-out)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.08s}
+.reveal-delay-2{transition-delay:.16s}
+.reveal-delay-3{transition-delay:.24s}
+.reveal-delay-4{transition-delay:.32s}
+.reveal-delay-5{transition-delay:.40s}
+
+/* ============================================================
+   STATUS PAGE — HERO BANNER
+   ============================================================ */
+.status-hero{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:clamp(40px,6vw,76px) 24px clamp(24px,3vw,38px)}
+.status-hero::before{content:'';position:absolute;top:0;left:50%;width:min(880px,94vw);height:460px;transform:translateX(-50%);background:radial-gradient(ellipse at center,var(--blue-glow-soft) 0%,transparent 68%);pointer-events:none;z-index:-1;filter:blur(20px)}
+.status-head{text-align:center;margin-bottom:30px}
+.status-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;padding:7px 16px;border-radius:var(--r-full);background:linear-gradient(135deg,var(--blue-800),rgba(30,64,175,.35));color:var(--blue-300);border:1px solid var(--blue-700);margin-bottom:20px;animation:badgeGlow 5s ease-in-out infinite}
+.status-eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:dotPulse 2s ease-in-out infinite}
+@keyframes badgeGlow{0%,100%{box-shadow:0 0 16px rgba(59,130,246,.15)}50%{box-shadow:0 0 34px rgba(59,130,246,.35)}}
+@keyframes dotPulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
+.status-head h1{font-size:clamp(32px,4.6vw,54px);font-weight:400;line-height:1.05;margin-bottom:16px;text-shadow:0 4px 30px rgba(0,0,0,.35);animation:heroTitleIn .9s var(--e-out) both}
+.status-head h1 .blue-text{color:var(--blue-400);text-shadow:0 0 46px var(--blue-glow)}
+.status-head h1 .gold-text{color:var(--gold);text-shadow:0 0 46px var(--gold-glow)}
+@keyframes heroTitleIn{from{opacity:0;transform:translateY(26px);filter:blur(8px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+.status-head p{font-size:14px;color:var(--text-secondary);max-width:660px;margin:0 auto;line-height:1.9;animation:heroDescIn .9s .18s var(--e-out) both}
+@keyframes heroDescIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+.overall-banner{position:relative;display:flex;align-items:center;gap:22px;flex-wrap:wrap;background:var(--card-bg);border:1.5px solid rgba(52,211,153,.35);border-radius:var(--r-xl);padding:28px 30px;box-shadow:var(--shadow-lg),0 0 60px -22px var(--green-glow);overflow:hidden;animation:heroDescIn .9s .3s var(--e-out) both}
+.overall-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--green),var(--blue-500),transparent)}
+.overall-banner::after{content:'';position:absolute;top:-90px;right:-70px;width:260px;height:260px;border-radius:50%;background:var(--green-glow);filter:blur(90px);opacity:.30;pointer-events:none;animation:apiPulse 8s ease-in-out infinite}
+@keyframes apiPulse{0%,100%{opacity:.22;transform:scale(1)}50%{opacity:.48;transform:scale(1.2)}}
+.overall-banner.degraded{border-color:rgba(251,191,36,.42);box-shadow:var(--shadow-lg),0 0 60px -22px var(--amber-glow)}
+.overall-banner.degraded::before{background:linear-gradient(90deg,transparent,var(--amber),var(--blue-500),transparent)}
+.overall-banner.outage{border-color:rgba(248,113,113,.42);box-shadow:var(--shadow-lg),0 0 60px -22px var(--red-glow)}
+.overall-banner.outage::before{background:linear-gradient(90deg,transparent,var(--red),var(--blue-500),transparent)}
+
+.overall-icon{position:relative;z-index:1;width:66px;height:66px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:radial-gradient(circle,rgba(52,211,153,.18),transparent 72%);border:2px solid rgba(52,211,153,.45);color:var(--green);font-size:26px;box-shadow:0 0 34px -8px var(--green-glow)}
+.overall-icon::after{content:'';position:absolute;inset:-9px;border-radius:50%;border:1.5px solid rgba(52,211,153,.30);animation:ping 2.6s cubic-bezier(0,0,.2,1) infinite}
+@keyframes ping{0%{transform:scale(.85);opacity:.85}80%,100%{transform:scale(1.35);opacity:0}}
+.overall-banner.degraded .overall-icon{background:radial-gradient(circle,rgba(251,191,36,.18),transparent 72%);border-color:rgba(251,191,36,.45);color:var(--amber);box-shadow:0 0 34px -8px var(--amber-glow)}
+.overall-banner.degraded .overall-icon::after{border-color:rgba(251,191,36,.30)}
+.overall-banner.outage .overall-icon{background:radial-gradient(circle,rgba(248,113,113,.18),transparent 72%);border-color:rgba(248,113,113,.45);color:var(--red);box-shadow:0 0 34px -8px var(--red-glow)}
+.overall-banner.outage .overall-icon::after{border-color:rgba(248,113,113,.30)}
+
+.overall-copy{position:relative;z-index:1;flex:1;min-width:220px;text-align:left}
+.overall-title{font-size:22px;font-weight:700;color:var(--text-primary);line-height:1.25;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.overall-sub{font-size:12.5px;color:var(--text-muted);line-height:1.75}
+.overall-sub strong{color:var(--green)}
+.overall-banner.degraded .overall-sub strong{color:var(--amber)}
+.overall-banner.outage .overall-sub strong{color:var(--red)}
+
+.overall-actions{position:relative;z-index:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.refresh-pill{display:inline-flex;align-items:center;gap:9px;padding:10px 16px;border-radius:var(--r-full);background:var(--bg-tertiary);border:1px solid var(--border-color);font-family:var(--font-mono);font-size:10.5px;color:var(--text-secondary);white-space:nowrap;transition:all var(--t-fast)}
+.refresh-pill .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:statusPulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes statusPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.35)}}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 15px;border-radius:var(--r-sm);background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-secondary);font-size:11px;font-weight:700;letter-spacing:.3px;transition:all var(--t-fast);white-space:nowrap}
+.icon-btn:hover{border-color:var(--blue-500);color:var(--blue-400);background:var(--blue-glow-soft);transform:translateY(-1px)}
+.icon-btn.spinning i{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- STATS BAND ---------- */
+.stats-band{position:relative;z-index:1;max-width:var(--shell);margin:0 auto;padding:0 24px 40px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--r-xl);padding:28px 26px;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+.stats-grid::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue-500),var(--gold),transparent)}
+.stat-item{text-align:center;position:relative}
+.stat-item + .stat-item::before{content:'';position:absolute;left:-8px;top:14%;height:72%;width:1px;background:linear-gradient(180deg,transparent,var(--border-subtle),transparent)}
+.stat-value{font-family:var(--font-display);font-size:clamp(28px,3.2vw,40px);line-height:1;color:var(--blue-400);text-shadow:0 0 28px var(--blue-glow-soft);margin-bottom:6px}
+.stat-value .stat-suffix{color:var(--gold);font-size:.65em}
+.stat-value.is-green{color:var(--green);text-shadow:0 0 28px var(--green-glow)}
+.stat-value.is-gold{color:var(--gold);text-shadow:0 0 28px var(--gold-glow)}
+.stat-value.is-amber{color:var(--amber);text-shadow:0 0 28px var(--amber-glow)}
+.stat-label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted)}
+
+/* ============================================================
+   SERVICE STATUS LIST
+   ============================================================ */
+.status-summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+.summary-chip{display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:var(--r-md);background:var(--bg-tertiary);border:1px solid var(--border-color);transition:all var(--t-fast);text-align:left}
+.summary-chip:hover{border-color:var(--blue-600);transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+.summary-chip .chip-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.summary-chip .chip-num{font-family:var(--font-display);font-size:20px;line-height:1;color:var(--text-primary)}
+.summary-chip .chip-label{font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-muted)}
+.chip-operational .chip-dot{background:var(--green);box-shadow:0 0 10px var(--green)}
+.chip-degraded .chip-dot{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.chip-outage .chip-dot{background:var(--red);box-shadow:0 0 10px var(--red)}
+.chip-maintenance .chip-dot{background:var(--blue-400);box-shadow:0 0 10px var(--blue-glow)}
+
+.service-list{display:flex;flex-direction:column;gap:12px}
+.service-group-label{font-size:10px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--text-muted);padding:14px 4px 4px;display:flex;align-items:center;gap:10px}
+.service-group-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border-subtle),transparent)}
+
+.service-card{position:relative;background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--r-lg);padding:20px 22px;overflow:hidden;transition:all var(--t-med)}
+.service-card::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--green);opacity:.75;transition:opacity var(--t-fast)}
+.service-card:hover{border-color:var(--blue-700);box-shadow:var(--shadow-md),0 0 30px -14px var(--blue-glow);transform:translateY(-2px)}
+.service-card:hover::before{opacity:1}
+.service-card.is-degraded::before{background:var(--amber)}
+.service-card.is-outage::before{background:var(--red)}
+.service-card.is-maintenance::before{background:var(--blue-400)}
+
+.service-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.service-icon{width:42px;height:42px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);background:var(--blue-glow-soft);border:1px solid var(--blue-800);color:var(--blue-400);font-size:15px;transition:all var(--t-med)}
+.service-card:hover .service-icon{background:linear-gradient(135deg,var(--blue-600),var(--blue-500));color:#fff;border-color:transparent;transform:scale(1.06);box-shadow:0 6px 20px -6px var(--blue-glow)}
+.service-meta{flex:1;min-width:180px;text-align:left}
+.service-name{font-size:14.5px;font-weight:700;color:var(--text-primary);line-height:1.25;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.service-desc{font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.5}
+.service-tag{font-size:8.5px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;padding:3px 9px;border-radius:var(--r-full);background:var(--blue-glow-soft);color:var(--blue-400);border:1px solid var(--blue-800)}
+.service-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-left:auto}
+.service-uptime{text-align:right;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);line-height:1.5}
+.service-uptime strong{display:block;font-size:15px;color:var(--green);font-weight:700}
+.service-card.is-degraded .service-uptime strong{color:var(--amber)}
+.service-card.is-outage .service-uptime strong{color:var(--red)}
+.service-card.is-maintenance .service-uptime strong{color:var(--blue-400)}
+
+.status-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--r-full);font-size:10.5px;font-weight:700;letter-spacing:.4px;white-space:nowrap;border:1px solid transparent}
+.status-badge .bdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.badge-operational{background:rgba(52,211,153,.11);color:var(--green);border-color:rgba(52,211,153,.30)}
+.badge-operational .bdot{background:var(--green);box-shadow:0 0 9px var(--green)}
+.badge-degraded{background:rgba(251,191,36,.11);color:var(--amber);border-color:rgba(251,191,36,.32)}
+.badge-degraded .bdot{background:var(--amber);box-shadow:0 0 9px var(--amber);animation:statusPulse 1.4s ease-in-out infinite}
+.badge-outage{background:rgba(248,113,113,.11);color:var(--red);border-color:rgba(248,113,113,.32)}
+.badge-outage .bdot{background:var(--red);box-shadow:0 0 9px var(--red);animation:statusPulse 1.1s ease-in-out infinite}
+.badge-maintenance{background:rgba(96,165,250,.11);color:var(--blue-400);border-color:rgba(96,165,250,.32)}
+.badge-maintenance .bdot{background:var(--blue-400);box-shadow:0 0 9px var(--blue-glow)}
+
+.uptime-track{display:flex;align-items:flex-end;gap:2px;height:38px;margin-top:6px}
+.uptime-bar{flex:1;min-width:2px;border-radius:2px;background:var(--green);height:100%;opacity:.82;transition:all .25s var(--e-out);cursor:pointer;position:relative}
+.uptime-bar:hover{opacity:1;transform:scaleY(1.14);box-shadow:0 0 12px -2px var(--green-glow);z-index:2}
+.uptime-bar.lv-degraded{background:var(--amber)}
+.uptime-bar.lv-degraded:hover{box-shadow:0 0 12px -2px var(--amber-glow)}
+.uptime-bar.lv-down{background:var(--red);height:46%}
+.uptime-bar.lv-down:hover{box-shadow:0 0 12px -2px var(--red-glow)}
+.uptime-bar.lv-maint{background:var(--blue-400);height:64%}
+.uptime-bar.lv-empty{background:var(--bar-empty);opacity:.5}
+.uptime-bar.lv-empty:hover{transform:none;box-shadow:none;opacity:.7}
+
+.uptime-legend{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:9.5px;color:var(--text-faint);font-family:var(--font-mono);flex-wrap:wrap}
+.uptime-key{display:inline-flex;align-items:center;gap:6px;color:var(--text-muted);font-family:var(--font-body);font-size:9.5px;font-weight:600}
+.uptime-key i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+.service-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);font-size:10.5px;color:var(--text-muted)}
+.service-foot .sf-item{display:inline-flex;align-items:center;gap:7px}
+.service-foot .sf-item i{color:var(--blue-400);font-size:10px}
+.service-foot .sf-item strong{color:var(--text-secondary);font-family:var(--font-mono);font-weight:600}
+
+/* ============================================================
+   API REQUEST MONITOR
+   ============================================================ */
+.api-monitor-top{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:16px}
+
+.api-live-panel{position:relative;background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--r-xl);padding:24px;box-shadow:var(--shadow-lg);overflow:hidden}
+.api-live-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue-500),var(--gold),transparent)}
+.api-live-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.api-live-head h4{font-size:15.5px;color:var(--text-primary);display:flex;align-items:center;gap:9px}
+.api-live-head h4 .live-pip{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:statusPulse 1.8s ease-in-out infinite}
+.api-live-head p{font-size:11px;color:var(--text-muted);margin-top:3px}
+.api-live-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.api-live-actions .icon-btn{padding:7px 12px;font-size:10.5px}
+
+.api-endpoint-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.api-endpoint{position:relative;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:var(--r-md);padding:14px 16px;overflow:hidden;transition:all var(--t-fast);text-align:left}
+.api-endpoint::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),var(--blue-500));transform:scaleX(0);transform-origin:left;transition:transform var(--t-med)}
+.api-endpoint:hover{border-color:var(--blue-600);background:var(--bg-elevated);transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+.api-endpoint:hover::after{transform:scaleX(1)}
+.api-endpoint.is-warn::after{background:linear-gradient(90deg,var(--amber),var(--gold))}
+.api-endpoint.is-err::after{background:linear-gradient(90deg,var(--red),var(--amber))}
+.api-ep-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.api-method{font-family:var(--font-mono);font-size:9px;font-weight:800;letter-spacing:.6px;padding:3px 8px;border-radius:5px;flex-shrink:0}
+.method-get{background:rgba(52,211,153,.14);color:var(--green);border:1px solid rgba(52,211,153,.30)}
+.method-post{background:rgba(59,130,246,.14);color:var(--blue-400);border:1px solid rgba(59,130,246,.32)}
+.method-put{background:rgba(251,191,36,.14);color:var(--amber);border:1px solid rgba(251,191,36,.32)}
+.method-del{background:rgba(248,113,113,.14);color:var(--red);border:1px solid rgba(248,113,113,.32)}
+.method-ws{background:rgba(167,139,250,.14);color:var(--purple);border:1px solid rgba(167,139,250,.32)}
+.api-ep-path{font-family:var(--font-mono);font-size:10.5px;color:var(--text-secondary);word-break:break-all;line-height:1.4}
+.api-ep-body{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:4px}
+.api-ep-time{font-family:var(--font-display);font-size:23px;line-height:1;color:var(--green);text-shadow:0 0 18px var(--green-glow)}
+.api-ep-time small{font-family:var(--font-body);font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;margin-left:2px}
+.api-endpoint.is-warn .api-ep-time{color:var(--amber);text-shadow:0 0 18px var(--amber-glow)}
+.api-endpoint.is-err .api-ep-time{color:var(--red);text-shadow:0 0 18px var(--red-glow)}
+.api-ep-spark{width:72px;height:26px;flex-shrink:0}
+.api-ep-spark svg{width:100%;height:100%;overflow:visible}
+.api-ep-spark .spark-bar{fill:var(--blue-500);opacity:.65;transition:all var(--t-fast)}
+.api-endpoint.is-warn .spark-bar{fill:var(--amber)}
+.api-endpoint.is-err .spark-bar{fill:var(--red)}
+.api-endpoint:hover .spark-bar{opacity:1}
+.api-ep-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:11px;padding-top:9px;border-top:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);flex-wrap:wrap}
+.api-ep-code{display:inline-flex;align-items:center;gap:5px;font-weight:700}
+.api-ep-code i{font-size:8px}
+.code-2xx{color:var(--green)}
+.code-4xx{color:var(--amber)}
+.code-5xx{color:var(--red)}
+
+.api-side-panel{display:flex;flex-direction:column;gap:12px}
+.api-metric-card{position:relative;background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--r-lg);padding:18px 20px;overflow:hidden;transition:all var(--t-med)}
+.api-metric-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--blue-500);opacity:.7}
+.api-metric-card.c-green::before{background:var(--green)}
+.api-metric-card.c-gold::before{background:var(--gold)}
+.api-metric-card.c-amber::before{background:var(--amber)}
+.api-metric-card.c-red::before{background:var(--red)}
+.api-metric-card:hover{border-color:var(--blue-700);box-shadow:var(--shadow-md)}
+.api-metric-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.api-metric-label{font-size:9.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted)}
+.api-metric-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--blue-glow-soft);color:var(--blue-400);font-size:12px;border:1px solid var(--blue-800)}
+.api-metric-card.c-green .api-metric-icon{background:rgba(52,211,153,.12);color:var(--green);border-color:rgba(52,211,153,.30)}
+.api-metric-card.c-gold .api-metric-icon{background:var(--gold-glow-soft);color:var(--gold);border-color:rgba(212,165,116,.30)}
+.api-metric-card.c-amber .api-metric-icon{background:rgba(251,191,36,.12);color:var(--amber);border-color:rgba(251,191,36,.30)}
+.api-metric-value{font-family:var(--font-display);font-size:30px;line-height:1;color:var(--text-primary)}
+.api-metric-value small{font-family:var(--font-body);font-size:12px;font-weight:600;color:var(--text-muted);margin-left:3px}
+.api-metric-sub{font-size:10.5px;color:var(--text-muted);margin-top:6px;font-family:var(--font-mono)}
+.api-metric-sub .up{color:var(--green)}
+.api-metric-sub .down{color:var(--red)}
+
+.api-log-panel{position:relative;background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--r-xl);padding:22px 24px 18px;box-shadow:var(--shadow-lg);overflow:hidden;margin-top:16px}
+.api-log-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue-500),var(--gold),transparent)}
+.api-log-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.api-log-head h4{font-size:15.5px;color:var(--text-primary);display:flex;align-items:center;gap:9px}
+.api-log-head h4 i{color:var(--blue-400)}
+.api-log-head p{font-size:11px;color:var(--text-muted);margin-top:3px}
+.api-log-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.log-filter-btn{font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.4px;padding:6px 11px;border-radius:var(--r-xs);background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-muted);transition:all var(--t-fast)}
+.log-filter-btn:hover{color:var(--blue-400);border-color:var(--blue-700)}
+.log-filter-btn.active{background:var(--blue-800);border-color:var(--blue-500);color:var(--blue-300)}
+
+.api-log-wrap{position:relative;max-height:340px;overflow-y:auto;border-radius:var(--r-md);border:1px solid var(--border-subtle);background:var(--code-bg)}
+.api-log-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:10.5px}
+.api-log-table thead{position:sticky;top:0;background:var(--bg-tertiary);z-index:2}
+.api-log-table thead th{text-align:left;padding:10px 14px;font-family:var(--font-body);font-size:9px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border-subtle);white-space:nowrap}
+.api-log-table tbody tr{border-bottom:1px solid var(--border-subtle);transition:background var(--t-fast)}
+.api-log-table tbody tr:hover{background:var(--log-row-hover)}
+.api-log-table tbody tr.row-new{animation:rowFlash 1.2s ease}
+@keyframes rowFlash{0%{background:rgba(59,130,246,.18)}100%{background:transparent}}
+.api-log-table td{padding:9px 14px;color:var(--text-secondary);white-space:nowrap;vertical-align:middle}
+.api-log-table td.t-time{color:var(--text-faint);font-size:9.5px}
+.api-log-table td.t-method .api-method{padding:2px 7px;font-size:8.5px}
+.api-log-table td.t-path{color:var(--text-primary);max-width:280px;overflow:hidden;text-overflow:ellipsis;font-size:10.5px}
+.api-log-table td.t-code{font-weight:700}
+.api-log-table td.t-time-val{font-weight:600}
+.api-log-table td.t-size{color:var(--text-faint);font-size:9.5px}
+.api-log-table td.t-region{color:var(--text-muted);font-size:9.5px}
+.log-bar-mini{display:inline-block;vertical-align:middle;height:4px;border-radius:2px;margin-right:6px;background:var(--green);min-width:6px;max-width:64px;transition:width .3s ease}
+.log-bar-mini.warn{background:var(--amber)}
+.log-bar-mini.err{background:var(--red)}
+
+.api-log-empty{text-align:center;padding:40px 20px;color:var(--text-muted);font-size:12px}
+.api-log-empty i{display:block;font-size:28px;margin-bottom:12px;color:var(--blue-400);opacity:.6}
+
+.api-log-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);font-size:10px;color:var(--text-faint);font-family:var(--font-mono)}
+.api-log-footer .lf-item{display:inline-flex;align-items:center;gap:7px}
+.api-log-footer .lf-item .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:statusPulse 2s ease-in-out infinite}
+
+/* ============================================================
+   RESPONSE TIME CHART
+   ============================================================ */
+.chart-card{position:relative;background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--r-xl);padding:26px 26px 20px;box-shadow:var(--shadow-lg);overflow:hidden}
+.chart-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue-500),var(--gold),transparent)}
+.chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.chart-head h4{font-size:16px;color:var(--text-primary)}
+.chart-head p{font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.6}
+.chart-stats{display:flex;gap:10px;flex-wrap:wrap}
+.chart-stat{padding:9px 15px;border-radius:var(--r-sm);background:var(--bg-tertiary);border:1px solid var(--border-color);text-align:center;min-width:96px}
+.chart-stat .cs-val{font-family:var(--font-display);font-size:19px;line-height:1;color:var(--blue-400)}
+.chart-stat .cs-val.g{color:var(--green)}
+.chart-stat .cs-val.a{color:var(--amber)}
+.chart-stat .cs-lbl{font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted);margin-top:5px}
+.chart-wrap{position:relative;width:100%;height:230px}
+.chart-wrap svg{width:100%;height:100%;overflow:visible}
+.chart-grid-line{stroke:var(--border-subtle);stroke-width:1;stroke-dasharray:3 5;opacity:.7}
+.chart-axis-label{fill:var(--text-faint);font-size:9.5px;font-family:var(--font-mono)}
+.chart-area{fill:url(#areaGrad)}
+.chart-line{fill:none;stroke:var(--blue-500);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 8px var(--blue-glow))}
+.chart-line-2{fill:none;stroke:var(--gold);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:5 4;opacity:.85}
+.chart-dot{fill:var(--blue-400);stroke:var(--bg-secondary);stroke-width:2;transition:r .2s ease}
+.chart-dot:hover{r:6}
+.chart-legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-subtle);font-size:10.5px;color:var(--text-muted)}
+.chart-legend span{display:inline-flex;align-items:center;gap:7px}
+.chart-legend i{width:16px;height:2.5px;border-radius:2px;display:inline-block}
+
+/* ============================================================
+   INCIDENTS
+   ============================================================ */
+.incident-filters{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:24px}
+.inc-filter-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-full);border:1px solid var(--border-subtle);background:var(--bg-tertiary);color:var(--text-secondary);font-size:.78rem;font-weight:600;white-space:nowrap;transition:all var(--t-fast)}
+.inc-filter-btn:hover{border-color:var(--blue-500);color:var(--text-primary);background:var(--blue-glow-soft);transform:translateY(-1px)}
+.inc-filter-btn.active{background:linear-gradient(135deg,var(--blue-600),var(--blue-500));border-color:transparent;color:#fff;box-shadow:0 6px 18px -6px var(--blue-glow)}
+.inc-filter-btn .filter-count{font-size:.68rem;font-weight:700;padding:1px 8px;border-radius:var(--r-full);background:var(--blue-glow-soft);color:var(--blue-400)}
+.inc-filter-btn.active .filter-count{background:rgba(255,255,255,.22);color:#fff}
+
+.timeline{position:relative;max-width:920px;margin:0 auto;padding-left:34px}
+.timeline::before{content:'';position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--blue-600),var(--border-subtle) 60%,transparent);border-radius:2px}
+.tl-item{position:relative;margin-bottom:14px}
+.tl-item::before{content:'';position:absolute;left:-29px;top:24px;width:12px;height:12px;border-radius:50%;background:var(--bg-secondary);border:2.5px solid var(--green);box-shadow:0 0 0 4px var(--bg-primary),0 0 14px -2px var(--green-glow);z-index:2}
+.tl-item.sev-degraded::before{border-color:var(--amber);box-shadow:0 0 0 4px var(--bg-primary),0 0 14px -2px var(--amber-glow)}
+.tl-item.sev-outage::before{border-color:var(--red);box-shadow:0 0 0 4px var(--bg-primary),0 0 14px -2px var(--red-glow)}
+.tl-item.sev-maintenance::before{border-color:var(--blue-400);box-shadow:0 0 0 4px var(--bg-primary),0 0 14px -2px var(--blue-glow)}
+
+.incident-card{position:relative;background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--r-lg);padding:20px 22px;overflow:hidden;transition:all var(--t-med);cursor:pointer}
+.incident-card:hover{border-color:var(--blue-700);box-shadow:var(--shadow-md),0 0 28px -14px var(--blue-glow)}
+.incident-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.incident-title{font-size:14.5px;font-weight:700;color:var(--text-primary);line-height:1.35;flex:1;min-width:180px;text-align:left}
+.incident-date{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);white-space:nowrap}
+.sev-badge{font-size:8.5px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;padding:4px 10px;border-radius:var(--r-full);border:1px solid transparent;white-space:nowrap}
+.sev-resolved{background:rgba(52,211,153,.11);color:var(--green);border-color:rgba(52,211,153,.30)}
+.sev-degraded{background:rgba(251,191,36,.11);color:var(--amber);border-color:rgba(251,191,36,.32)}
+.sev-outage{background:rgba(248,113,113,.11);color:var(--red);border-color:rgba(248,113,113,.32)}
+.sev-maintenance{background:rgba(96,165,250,.11);color:var(--blue-400);border-color:rgba(96,165,250,.32)}
+
+.incident-summary{font-size:12px;color:var(--text-secondary);line-height:1.75;text-align:left}
+.incident-affected{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.affected-chip{font-size:9.5px;font-weight:600;padding:4px 11px;border-radius:var(--r-full);background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-muted)}
+.incident-toggle{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:10.5px;font-weight:700;letter-spacing:.3px;color:var(--blue-400);transition:all var(--t-fast)}
+.incident-toggle i{transition:transform var(--t-med);font-size:10px}
+.incident-card.open .incident-toggle i{transform:rotate(180deg)}
+.incident-toggle:hover{color:var(--gold)}
+.incident-detail{max-height:0;overflow:hidden;transition:max-height .45s var(--e-out),opacity .35s ease;opacity:0}
+.incident-card.open .incident-detail{opacity:1}
+.incident-detail-inner{padding-top:16px;margin-top:14px;border-top:1px solid var(--border-subtle);text-align:left}
+.upd-item{position:relative;padding-left:20px;margin-bottom:14px;font-size:11.5px;color:var(--text-secondary);line-height:1.8}
+.upd-item:last-child{margin-bottom:0}
+.upd-item::before{content:'';position:absolute;left:0;top:7px;width:7px;height:7px;border-radius:50%;background:var(--blue-500);box-shadow:0 0 8px var(--blue-glow)}
+.upd-item.done::before{background:var(--green);box-shadow:0 0 8px var(--green-glow)}
+.upd-time{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);margin-bottom:3px;letter-spacing:.3px}
+.upd-item strong{color:var(--text-primary)}
+.no-incidents{text-align:center;padding:44px 20px;color:var(--text-muted);font-size:13px}
+.no-incidents i{display:block;font-size:32px;color:var(--green);margin-bottom:14px;opacity:.8}
+
+/* ============================================================
+   MAINTENANCE
+   ============================================================ */
+.maint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.maint-card{position:relative;background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--r-lg);padding:24px;overflow:hidden;transition:all var(--t-med)}
+.maint-card::after{content:'';position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:linear-gradient(135deg,var(--blue-500),transparent 42%,transparent 58%,var(--gold));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;opacity:0;transition:opacity var(--t-med);pointer-events:none}
+.maint-card:hover::after{opacity:.85}
+.maint-card:hover{border-color:var(--blue-700);box-shadow:var(--shadow-lg),0 0 34px -14px var(--blue-glow);transform:translateY(-3px)}
+.maint-status{display:inline-flex;align-items:center;gap:7px;font-size:9.5px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;padding:5px 12px;border-radius:var(--r-full);margin-bottom:14px}
+.maint-status.scheduled{background:rgba(96,165,250,.11);color:var(--blue-400);border:1px solid rgba(96,165,250,.32)}
+.maint-status.progress{background:rgba(251,191,36,.11);color:var(--amber);border:1px solid rgba(251,191,36,.32)}
+.maint-status.completed{background:rgba(52,211,153,.11);color:var(--green);border:1px solid rgba(52,211,153,.30)}
+.maint-card h4{font-size:15.5px;color:var(--text-primary);margin-bottom:8px;line-height:1.35}
+.maint-card p{font-size:12px;color:var(--text-secondary);line-height:1.75;margin-bottom:16px}
+.maint-meta{display:flex;flex-direction:column;gap:9px;padding-top:14px;border-top:1px solid var(--border-subtle);font-size:11px;color:var(--text-muted)}
+.maint-meta div{display:flex;align-items:center;gap:9px}
+.maint-meta i{width:14px;text-align:center;color:var(--blue-400);font-size:11px}
+.maint-meta strong{color:var(--text-secondary);font-family:var(--font-mono);font-weight:600;font-size:10.5px}
+.maint-progress{height:6px;border-radius:var(--r-full);background:var(--bar-empty);overflow:hidden;margin-top:14px}
+.maint-progress span{display:block;height:100%;border-radius:var(--r-full);background:linear-gradient(90deg,var(--amber),var(--gold));box-shadow:0 0 12px -2px var(--amber-glow);transition:width 1.2s var(--e-out)}
+
+/* ============================================================
+   SUBSCRIBE
+   ============================================================ */
+.subscribe-card{position:relative;max-width:820px;margin:0 auto;background:var(--card-bg);border:1px solid var(--glass-border);border-radius:var(--r-xl);padding:38px 32px;box-shadow:var(--shadow-lg);overflow:hidden;text-align:center}
+.subscribe-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--blue-500),var(--gold),transparent)}
+.subscribe-card::after{content:'';position:absolute;top:-100px;right:-80px;width:280px;height:280px;border-radius:50%;background:var(--blue-glow-soft);filter:blur(90px);pointer-events:none;animation:apiPulse 10s ease-in-out infinite}
+.subscribe-icon{position:relative;z-index:1;width:58px;height:58px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-md);background:var(--blue-glow-soft);border:1px solid var(--blue-800);color:var(--blue-400);font-size:22px;box-shadow:0 0 26px -8px var(--blue-glow)}
+.subscribe-card h3{position:relative;z-index:1;font-size:23px;font-weight:400;color:var(--text-primary);margin-bottom:10px}
+.subscribe-card p{position:relative;z-index:1;font-size:12.5px;color:var(--text-muted);line-height:1.85;max-width:520px;margin:0 auto 22px}
+.subscribe-form{position:relative;z-index:1;display:flex;gap:10px;max-width:480px;margin:0 auto;flex-wrap:wrap}
+.subscribe-form input{flex:1;min-width:200px;padding:13px 18px;border-radius:var(--r-sm);background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-primary);font-size:13px;outline:none;transition:all var(--t-fast)}
+.subscribe-form input::placeholder{color:var(--text-faint)}
+.subscribe-form input:focus{border-color:var(--blue-500);box-shadow:0 0 0 3px var(--blue-glow-soft);background:var(--bg-elevated)}
+.subscribe-form button{flex-shrink:0}
+.subscribe-channels{position:relative;z-index:1;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:20px;border-top:1px solid var(--border-subtle)}
+.channel-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:var(--r-full);background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-secondary);font-size:11px;font-weight:700;transition:all var(--t-fast)}
+.channel-btn:hover{transform:translateY(-2px)}
+.channel-btn.tg:hover{border-color:var(--telegram);color:var(--telegram);background:rgba(0,136,204,.10);box-shadow:0 0 20px -8px rgba(0,136,204,.5)}
+.channel-btn.rss:hover{border-color:var(--hot);color:var(--hot);background:rgba(245,158,11,.10);box-shadow:0 0 20px -8px rgba(245,158,11,.5)}
+.channel-btn.mail:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-glow-soft);box-shadow:0 0 20px -8px var(--gold-glow)}
+
+/* ============================================================
+   FAQ
+   ============================================================ */
+.faq-list{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.faq-item{background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--r-md);overflow:hidden;transition:border-color var(--t-fast),box-shadow var(--t-fast)}
+.faq-item:hover{border-color:var(--blue-700)}
+.faq-item.open{border-color:var(--blue-600);box-shadow:0 0 24px -10px var(--blue-glow)}
+.faq-q{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:18px 22px;background:transparent;border:none;color:var(--text-primary);font-size:13.5px;font-weight:600;text-align:left;transition:color var(--t-fast)}
+.faq-q:hover{color:var(--blue-400)}
+.faq-q i{color:var(--blue-400);font-size:12px;transition:transform var(--t-med);flex-shrink:0}
+.faq-item.open .faq-q i{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;padding:0 22px;font-size:12.5px;color:var(--text-secondary);line-height:1.85;transition:max-height var(--t-med),padding var(--t-med)}
+.faq-item.open .faq-a{padding-bottom:20px}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer{position:relative;z-index:1;padding:64px 24px 32px;border-top:1px solid var(--glass-border);background:var(--bg-secondary)}
+.footer::before{content:'';position:absolute;top:-1px;left:50%;transform:translateX(-50%);width:min(620px,82vw);height:1px;background:linear-gradient(90deg,transparent,var(--blue-500),var(--gold),transparent);opacity:.65}
+.footer-inner{max-width:var(--shell);margin:0 auto}
+.footer-brand-row{display:flex;align-items:center;justify-content:center;margin-bottom:40px}
+.footer-brand{display:flex;align-items:center;gap:14px;padding:10px 18px;border-radius:var(--r-md);transition:all var(--t-fast)}
+.footer-brand:hover{transform:translateY(-2px)}
+.footer-brand-logo{width:42px;height:42px;filter:drop-shadow(0 0 14px var(--blue-glow))}
+.footer-brand-text{text-align:left}
+.footer-brand-name{font-family:var(--font-display);font-size:22px;letter-spacing:1.2px;color:var(--blue-400);line-height:1;text-shadow:0 0 24px var(--blue-glow-soft)}
+.footer-brand-name span{color:var(--gold)}
+.footer-brand-tagline{font-size:10.5px;color:var(--text-muted);margin-top:5px;letter-spacing:.3px}
+
+.footer-social-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:760px;margin:0 auto 36px}
+.social-card{position:relative;display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:var(--r-md);background:var(--bg-tertiary);border:1px solid var(--border-color);overflow:hidden;transition:all var(--t-med)}
+.social-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--brand-soft,transparent),transparent 65%);opacity:0;transition:opacity var(--t-med);pointer-events:none}
+.social-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--brand-gradient,linear-gradient(90deg,var(--blue-500),var(--gold)));transform:scaleX(0);transform-origin:left;transition:transform var(--t-med)}
+.social-card:hover::before{opacity:1}
+.social-card:hover::after{transform:scaleX(1)}
+.social-card:hover{border-color:var(--brand-color,var(--blue-500));transform:translateY(-4px);box-shadow:0 14px 34px -12px var(--brand-glow,var(--blue-glow))}
+.social-icon{position:relative;z-index:1;width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;background:var(--brand-gradient,linear-gradient(135deg,var(--blue-600),var(--blue-500)));flex-shrink:0;transition:transform var(--t-med),box-shadow var(--t-med);box-shadow:0 4px 12px -2px var(--brand-glow,var(--blue-glow))}
+.social-card:hover .social-icon{transform:scale(1.1) rotate(-6deg);box-shadow:0 8px 24px -4px var(--brand-glow,var(--blue-glow))}
+.social-info{position:relative;z-index:1;flex:1;text-align:left;min-width:0}
+.social-name{font-size:13px;font-weight:700;color:var(--text-primary);line-height:1.2}
+.social-handle{font-size:10.5px;color:var(--text-muted);margin-top:3px;font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.social-arrow{position:relative;z-index:1;color:var(--text-muted);font-size:12px;transition:transform var(--t-med),color var(--t-med);flex-shrink:0}
+.social-card:hover .social-arrow{color:var(--brand-color,var(--blue-400));transform:translateX(5px)}
+.social-telegram{--brand-color:#0088cc;--brand-glow:rgba(0,136,204,.45);--brand-gradient:linear-gradient(135deg,#0088cc,#00a8e8);--brand-soft:rgba(0,136,204,.09)}
+.social-tiktok{--brand-color:#69c9d0;--brand-glow:rgba(105,201,208,.45);--brand-gradient:linear-gradient(135deg,#161823,#69c9d0);--brand-soft:rgba(105,201,208,.09)}
+.social-email{--brand-color:var(--gold);--brand-glow:var(--gold-glow);--brand-gradient:linear-gradient(135deg,var(--gold),var(--gold-dark));--brand-soft:rgba(212,165,116,.09)}
+
+.footer-links-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:1000px;margin:0 auto 34px}
+.footer-link-card{position:relative;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--r-md);background:var(--bg-tertiary);border:1px solid var(--border-color);overflow:hidden;transition:all var(--t-med)}
+.footer-link-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--blue-glow-soft),transparent 65%);opacity:0;transition:opacity var(--t-med);pointer-events:none}
+.footer-link-card:hover::before{opacity:1}
+.footer-link-card:hover{border-color:var(--blue-600);transform:translateY(-3px);box-shadow:0 12px 30px -12px var(--blue-glow)}
+.footer-link-icon{position:relative;z-index:1;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;background:var(--blue-glow-soft);color:var(--blue-400);border:1px solid var(--blue-800);flex-shrink:0;transition:all var(--t-med)}
+.footer-link-card:hover .footer-link-icon{background:linear-gradient(135deg,var(--blue-600),var(--blue-500));color:#fff;border-color:transparent;transform:scale(1.08);box-shadow:0 6px 20px -4px var(--blue-glow)}
+.footer-link-content{position:relative;z-index:1;flex:1;text-align:left;min-width:0}
+.footer-link-title{font-size:12.5px;font-weight:700;color:var(--text-primary);line-height:1.2}
+.footer-link-desc{font-size:10px;color:var(--text-muted);margin-top:3px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.footer-link-arrow{position:relative;z-index:1;color:var(--text-muted);font-size:11px;transition:transform var(--t-med),color var(--t-med);flex-shrink:0}
+.footer-link-card:hover .footer-link-arrow{color:var(--blue-400);transform:translateX(5px)}
+
+.footer-bottom{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:26px;border-top:1px solid var(--border-subtle);font-size:11px;color:var(--text-muted);line-height:1.9}
+.footer-bottom > span:first-child{flex:1;min-width:240px}
+.footer-status{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10.5px;padding:7px 14px;border-radius:var(--r-full);background:var(--bg-tertiary);border:1px solid var(--border-color);white-space:nowrap}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:statusPulse 2s ease-in-out infinite;flex-shrink:0}
+
+/* ---------- TOAST / BACK TO TOP / COOKIE ---------- */
+.toast{position:fixed;bottom:28px;right:28px;z-index:300;display:flex;align-items:center;gap:12px;max-width:380px;padding:16px 22px;border-radius:var(--r-md);background:var(--bg-elevated);border:1px solid var(--border-subtle);box-shadow:var(--shadow-lg);font-size:12.5px;font-weight:500;color:var(--text-primary);opacity:0;pointer-events:none;transition:all var(--t-med)}
+.toast.show{opacity:1;pointer-events:auto;animation:toastIn .45s var(--e-spring)}
+@keyframes toastIn{from{opacity:0;transform:translateY(24px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+.toast i{font-size:18px}
+.toast.success i{color:var(--green)}
+.toast.error i{color:var(--red)}
+.toast.info i{color:var(--blue-400)}
+
+.back-to-top{position:fixed;bottom:28px;left:28px;z-index:90;width:46px;height:46px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--bg-elevated);border:1px solid var(--border-subtle);color:var(--text-secondary);font-size:14px;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transform:translateY(16px);transition:all var(--t-med)}
+.back-to-top.show{opacity:1;pointer-events:auto;transform:translateY(0)}
+.back-to-top:hover{border-color:var(--blue-500);color:var(--blue-400);box-shadow:0 0 26px -8px var(--blue-glow);transform:translateY(-3px)}
+
+.cookie-banner{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120%);z-index:180;max-width:560px;width:calc(100% - 40px);display:flex;align-items:center;gap:16px;padding:16px 20px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:var(--r-md);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);box-shadow:var(--shadow-xl);font-size:12px;color:var(--text-secondary);transition:transform .55s var(--e-out)}
+.cookie-banner.show{transform:translateX(-50%) translateY(0)}
+.cookie-banner i{font-size:18px;color:var(--gold);flex-shrink:0}
+.cookie-banner .cookie-text{flex:1;line-height:1.55}
+.cookie-banner .cookie-text a{color:var(--blue-400);text-decoration:underline}
+.cookie-actions{display:flex;gap:8px;flex-shrink:0}
+.cookie-actions button{padding:8px 14px;border-radius:var(--r-xs);font-size:11px;font-weight:700;border:1px solid transparent;transition:all var(--t-fast)}
+.cookie-accept{background:linear-gradient(135deg,var(--blue-600),var(--blue-500));color:#fff}
+.cookie-accept:hover{box-shadow:0 6px 20px -6px var(--blue-glow);transform:translateY(-1px)}
+.cookie-decline{background:transparent;color:var(--text-muted);border-color:var(--border-subtle)}
+.cookie-decline:hover{color:var(--text-secondary);border-color:var(--border-subtle)}
+
+/* ---------- COMMAND PALETTE ---------- */
+.cmdk-overlay{position:fixed;inset:0;z-index:250;display:flex;align-items:flex-start;justify-content:center;padding:14vh 20px 20px;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:opacity var(--t-med)}
+.cmdk-overlay.active{opacity:1;pointer-events:auto}
+.cmdk-box{position:relative;width:100%;max-width:560px;background:var(--bg-secondary);border:1px solid var(--glass-border);border-radius:var(--r-lg);box-shadow:var(--shadow-xl);overflow:hidden;transform:translateY(-24px) scale(.96);transition:transform var(--t-spring)}
+.cmdk-overlay.active .cmdk-box{transform:translateY(0) scale(1)}
+.cmdk-search{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border-subtle)}
+.cmdk-search i{color:var(--blue-400);font-size:14px}
+.cmdk-search input{flex:1;background:transparent;border:none;outline:none;color:var(--text-primary);font-size:15px}
+.cmdk-search input::placeholder{color:var(--text-muted)}
+.cmdk-search kbd{font-family:var(--font-mono);font-size:10px;padding:3px 7px;border-radius:4px;background:var(--bg-tertiary);border:1px solid var(--border-subtle);color:var(--text-muted)}
+.cmdk-list{max-height:400px;overflow-y:auto;padding:8px}
+.cmdk-group-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--text-muted);padding:10px 14px 6px}
+.cmdk-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--r-sm);cursor:pointer;transition:background var(--t-fast),color var(--t-fast);font-size:13px;color:var(--text-secondary)}
+.cmdk-item:hover,.cmdk-item.active{background:var(--blue-glow-soft);color:var(--blue-400)}
+.cmdk-item i{width:18px;text-align:center;font-size:13px;color:var(--blue-500)}
+.cmdk-item .cmdk-key{margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
+.cmdk-empty{padding:32px 20px;text-align:center;color:var(--text-muted);font-size:12.5px}
+.cmdk-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-top:1px solid var(--border-subtle);font-size:10.5px;color:var(--text-muted)}
+.cmdk-footer kbd{font-family:var(--font-mono);font-size:9px;padding:2px 6px;border-radius:4px;background:var(--bg-tertiary);border:1px solid var(--border-subtle)}
+
+/* ---------- SCROLL STARS ---------- */
+.scroll-stars{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+.scroll-star{position:absolute;border-radius:50%;background:var(--star-white);box-shadow:0 0 6px rgba(232,237,245,.35),0 0 12px rgba(232,237,245,.18);opacity:0;transition:opacity .8s ease;animation:starTwinkle 2.8s ease-in-out infinite;will-change:opacity,transform}
+.scroll-star.stay{animation:starStay 5s ease-in-out infinite}
+.scroll-star.blink{animation:starBlink 2s ease-in-out infinite}
+.scroll-star.visible{opacity:.5}
+.scroll-star.visible.stay{opacity:.68}
+.scroll-star.visible.blink{opacity:.42}
+@keyframes starTwinkle{0%,100%{opacity:.22;transform:scale(1)}50%{opacity:.72;transform:scale(1.3)}}
+@keyframes starStay{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.78;transform:scale(1.1)}}
+@keyframes starBlink{0%,100%{opacity:.12}50%{opacity:.62}}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width:1080px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:22px 16px}
+  .stat-item:nth-child(3)::before,.stat-item:nth-child(4)::before{display:none}
+  .status-summary-bar{grid-template-columns:repeat(2,1fr)}
+  .api-monitor-top{grid-template-columns:1fr}
+}
+@media (max-width:900px){
+  .header-right{display:none}
+  .burger-btn{display:flex}
+  .header{padding:0 16px;height:66px}
+  :root{--header-h:66px}
+  .footer-social-cards{grid-template-columns:1fr;max-width:460px}
+  .footer-links-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:768px){
+  .status-hero{padding:36px 16px 22px}
+  .status-head h1{font-size:clamp(26px,7vw,34px)}
+  .status-head p{font-size:12.5px}
+  .overall-banner{padding:22px 20px;gap:16px}
+  .overall-icon{width:54px;height:54px;font-size:21px}
+  .overall-title{font-size:18px}
+  .overall-actions{width:100%}
+  .overall-actions .icon-btn{flex:1;justify-content:center}
+  .refresh-pill{width:100%;justify-content:center}
+  .section{padding:42px 16px}
+  .service-card{padding:18px 16px}
+  .service-right{margin-left:0;width:100%;justify-content:space-between}
+  .chart-card{padding:20px 16px 16px}
+  .chart-wrap{height:190px}
+  .timeline{padding-left:26px}
+  .timeline::before{left:8px}
+  .tl-item::before{left:-24px;width:10px;height:10px}
+  .subscribe-card{padding:28px 20px}
+  .toast{bottom:16px;right:16px;left:16px;max-width:none}
+  .shape3d{display:none}
+  .moon{width:84px;height:84px;top:3%;right:5%}
+  .scroll-star{width:2px!important;height:2px!important}
+  .back-to-top{left:16px;bottom:80px}
+  .cookie-banner{flex-direction:column;align-items:flex-start;gap:12px}
+  .cookie-actions{width:100%}
+  .cookie-actions button{flex:1}
+  .cmdk-box{max-width:calc(100% - 24px)}
+  .cmdk-overlay{padding:8vh 12px 12px}
+  .stats-grid{padding:22px 18px;grid-template-columns:repeat(2,1fr)}
+  .footer{padding:48px 18px 26px}
+  .uptime-track{height:32px}
+  .api-endpoint-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+  .api-log-table td.t-region,.api-log-table th:nth-child(7){display:none}
+}
+@media (max-width:560px){
+  .footer-links-grid{grid-template-columns:1fr;max-width:460px;margin-left:auto;margin-right:auto}
+  .footer-brand-name{font-size:19px}
+  .footer-bottom{flex-direction:column;align-items:flex-start}
+  .footer-status{width:100%;justify-content:center}
+  .status-summary-bar{grid-template-columns:1fr 1fr}
+  .chart-stats{width:100%}
+  .chart-stat{flex:1}
+  .api-log-table td.t-size,.api-log-table th:nth-child(6){display:none}
+}
+@media (max-width:480px){
+  .status-head h1{font-size:23px}
+  .status-head p{font-size:12px}
+  .overall-title{font-size:16px}
+  .section-header h2{font-size:22px}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:18px 12px;padding:20px 14px}
+  .stat-value{font-size:26px}
+  .stat-label{font-size:9.5px}
+  .service-head{gap:10px}
+  .service-right{flex-direction:column;align-items:flex-start;gap:10px}
+  .service-uptime{text-align:left}
+  .uptime-track{height:26px}
+  .subscribe-form{flex-direction:column}
+  .subscribe-form input,.subscribe-form button{width:100%}
+  .chart-wrap{height:160px}
+  .api-endpoint-grid{grid-template-columns:1fr}
+  .api-log-table td.t-method .api-method{font-size:8px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .moon,.moon::after{animation:none}
+}
+</style>
+</head>
+<body>
+
+<div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+<div class="content-wrap">
+  <div class="css-3d-scene" aria-hidden="true">
+    <div class="moon"></div>
+    <div class="shape3d shape1"><div class="shape3d-cube"><div class="face"></div><div class="face"></div><div class="face"></div><div class="face"></div><div class="face"></div><div class="face"></div><div class="cube-core"></div></div></div>
+    <div class="shape3d shape2"><div class="shape3d-ring"></div></div>
+    <div class="shape3d shape3"><div class="shape3d-pyramid"></div></div>
+    <div class="shape3d shape4"><div class="shape3d-tetra"></div></div>
+    <div class="shape3d shape5"><div class="shape3d-octa"></div></div>
+    <div class="shape3d shape6"><div class="shape3d-ring"></div></div>
+    <div class="shape3d shape7"><div class="shape3d-pyramid"></div></div>
+    <div class="shape3d shape8"><div class="shape3d-cube"><div class="face"></div><div class="face"></div><div class="face"></div><div class="face"></div><div class="face"></div><div class="face"></div><div class="cube-core"></div></div></div>
+    <div class="shape3d shape9"><div class="shape3d-tetra"></div></div>
+    <div class="shape3d shape10"><div class="shape3d-octa"></div></div>
+    <div class="shape3d shape11"><div class="shape3d-sphere"></div></div>
+    <div class="shape3d shape12"><div class="shape3d-diamond"></div></div>
+  </div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+  <div class="grid-overlay"></div>
+
+  <header class="header" id="header">
+    <a href="/" class="header-logo">
+      <svg viewBox="0 0 60 60" fill="none" aria-hidden="true">
+        <defs><linearGradient id="hdrGrad" x1="0" y1="0" x2="60" y2="60"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#1e40af"/></linearGradient></defs>
+        <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#hdrGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <div class="logo-text">EMER<span>GENS</span></div>
+    </a>
+
+    <div class="header-right">
+      <a href="get-started.html#api" class="nav-link"><i class="fas fa-key"></i><span data-i18n="nav.api">API</span></a>
+      <a href="get-started.html#modules" class="nav-link"><i class="fas fa-layer-group"></i><span data-i18n="nav.modules">Modules</span></a>
+      <a href="/docs.html" class="nav-link"><i class="fas fa-book"></i><span data-i18n="nav.docs">Docs</span></a>
+      <a href="status.html" class="nav-link active"><i class="fas fa-heart-pulse"></i><span data-i18n="nav.status">Status</span></a>
+      <a href="/privacy.html" class="nav-link"><i class="fas fa-shield"></i><span data-i18n="nav.privacy">Privacy</span></a>
+      <button class="cmd-trigger" id="cmdTrigger" type="button" aria-label="Open command palette">
+        <i class="fas fa-magnifying-glass"></i>
+        <span data-i18n="cmd.trigger">Search</span>
+        <kbd id="cmdkKbd">⌘K</kbd>
+      </button>
+      <button class="lang-btn active" data-lang="en" type="button">EN</button>
+      <button class="lang-btn" data-lang="ms" type="button">BM</button>
+      <button class="lang-btn" data-lang="id" type="button">ID</button>
+      <button id="themeToggle" class="theme-btn" type="button" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
+      <a href="/login.html" class="btn btn-outline"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav.login">Log In</span></a>
+      <a href="/dashboard.html" class="btn btn-blue"><i class="fas fa-gauge"></i><span data-i18n="nav.dashboard">Dashboard</span></a>
+    </div>
+
+    <button class="burger-btn" id="burgerBtn" type="button" aria-label="Toggle navigation menu"><span></span><span></span><span></span></button>
+  </header>
+
+  <div class="mobile-overlay" id="mobileOverlay"></div>
+  <nav class="mobile-menu" id="mobileMenu">
+    <a href="/login.html"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav.login">Log In</span></a>
+    <a href="/dashboard.html"><i class="fas fa-gauge"></i><span data-i18n="nav.dashboard">Dashboard</span></a>
+    <div class="menu-divider"></div>
+    <a href="status.html"><i class="fas fa-heart-pulse"></i><span data-i18n="nav.status">Status</span></a>
+    <a href="#services"><i class="fas fa-server"></i><span data-i18n="nav.services">Services</span></a>
+    <a href="#api-monitor"><i class="fas fa-satellite-dish"></i><span data-i18n="nav.apiMonitor">API Monitor</span></a>
+    <a href="#performance"><i class="fas fa-chart-line"></i><span data-i18n="nav.performance">Performance</span></a>
+    <a href="#incidents"><i class="fas fa-triangle-exclamation"></i><span data-i18n="nav.incidents">Incidents</span></a>
+    <a href="#maintenance"><i class="fas fa-screwdriver-wrench"></i><span data-i18n="nav.maintenance">Maintenance</span></a>
+    <a href="#subscribe"><i class="fas fa-bell"></i><span data-i18n="nav.subscribe">Subscribe</span></a>
+    <a href="#faq"><i class="fas fa-circle-question"></i><span data-i18n="nav.faq">FAQ</span></a>
+    <div class="menu-divider"></div>
+    <a href="get-started.html"><i class="fas fa-rocket"></i><span data-i18n="nav.getStarted">Get Started</span></a>
+    <a href="/docs.html"><i class="fas fa-book"></i><span data-i18n="nav.docs">Documentation</span></a>
+    <a href="/privacy.html"><i class="fas fa-shield"></i><span data-i18n="nav.privacy">Privacy Policy</span></a>
+    <div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap;">
+      <button class="lang-btn active" data-lang="en" type="button">EN</button>
+      <button class="lang-btn" data-lang="ms" type="button">BM</button>
+      <button class="lang-btn" data-lang="id" type="button">ID</button>
+      <button id="themeToggleMobile" class="theme-btn" type="button" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
+    </div>
+  </nav>
+
+  <!-- ============================ HERO ============================ -->
+  <section class="status-hero" id="overview">
+    <div class="status-head">
+      <div class="status-eyebrow" data-i18n="status.eyebrow">Live System Status</div>
+      <h1>
+        <span data-i18n="status.title1">Platform</span>
+        <span class="blue-text" data-i18n="status.title2">Status</span>
+        <span data-i18n="status.title3">&amp;</span>
+        <span class="gold-text" data-i18n="status.title4">Uptime</span>
+      </h1>
+      <p data-i18n="status.desc">Real-time health of every Emergens service — API gateway, scanner engine, dashboard, integrations and infrastructure. Updated automatically every 60 seconds. Subscribe below to receive incident notifications the moment something changes.</p>
+    </div>
+
+    <div class="overall-banner" id="overallBanner">
+      <div class="overall-icon"><i class="fas fa-circle-check" id="overallIcon"></i></div>
+      <div class="overall-copy">
+        <div class="overall-title">
+          <span id="overallTitle" data-i18n="status.allOperational">All Systems Operational</span>
+        </div>
+        <div class="overall-sub" id="overallSub">
+          <span data-i18n="status.lastChecked">Last checked</span>
+          <strong id="lastCheckedTime">--:--:--</strong>
+          <span data-i18n="status.nextRefresh">· next auto-refresh in</span>
+          <strong id="refreshCountdown">60s</strong>
+        </div>
+      </div>
+      <div class="overall-actions">
+        <span class="refresh-pill"><span class="live-dot"></span><span data-i18n="status.live">LIVE</span> · deepnote.com</span>
+        <button class="icon-btn" id="refreshBtn" type="button"><i class="fas fa-rotate-right"></i><span data-i18n="status.refresh">Refresh</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ STATS ============================ -->
+  <div class="scroll-stars" id="scrollStars" aria-hidden="true"></div>
+
+  <section class="stats-band">
+    <div class="stats-grid reveal" id="statsGrid">
+      <div class="stat-item"><div class="stat-value is-green" data-count="99.98" data-decimals="2"><span class="stat-num">0</span><span class="stat-suffix">%</span></div><div class="stat-label" data-i18n="stats.uptime90">90-Day Uptime</div></div>
+      <div class="stat-item"><div class="stat-value" data-count="12"><span class="stat-num">0</span></div><div class="stat-label" data-i18n="stats.services">Monitored Services</div></div>
+      <div class="stat-item"><div class="stat-value is-gold" data-count="118" data-decimals="0"><span class="stat-num">0</span><span class="stat-suffix">ms</span></div><div class="stat-label" data-i18n="stats.avgResponse">Avg API Response</div></div>
+      <div class="stat-item"><div class="stat-value is-amber" data-count="0"><span class="stat-num">0</span></div><div class="stat-label" data-i18n="stats.activeIncidents">Active Incidents</div></div>
+    </div>
+  </section>
+
+  <!-- ============================ SERVICES ============================ -->
+  <section class="section" id="services">
+    <div class="section-header reveal">
+      <h2 data-i18n="services.title">Service Health</h2>
+      <p data-i18n="services.desc">Live status and 90-day uptime history for each component of the Emergens platform. Hover any bar to inspect that day's availability.</p>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="status-summary-bar reveal" id="statusSummary"></div>
+    <div class="service-list" id="serviceList"></div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:26px;" class="reveal">
+      <span class="uptime-key"><i style="background:var(--green)"></i><span data-i18n="legend.operational">Operational</span></span>
+      <span class="uptime-key"><i style="background:var(--amber)"></i><span data-i18n="legend.degraded">Degraded</span></span>
+      <span class="uptime-key"><i style="background:var(--red)"></i><span data-i18n="legend.outage">Outage</span></span>
+      <span class="uptime-key"><i style="background:var(--blue-400)"></i><span data-i18n="legend.maintenance">Maintenance</span></span>
+      <span class="uptime-key"><i style="background:var(--bar-empty)"></i><span data-i18n="legend.noData">No data</span></span>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       API REQUEST MONITOR
+       ============================================================ -->
+  <section class="section" id="api-monitor">
+    <div class="section-header reveal">
+      <h2 data-i18n="apim.title">Live API Request Monitor</h2>
+      <p data-i18n="apim.desc">Real-time status and response time for every Emergens API endpoint — measured from three global probe regions every 5 seconds. Watch requests flow in live below.</p>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="api-monitor-top">
+      <div class="api-live-panel reveal">
+        <div class="api-live-head">
+          <div>
+            <h4><span class="live-pip"></span><span data-i18n="apim.endpointsTitle">Endpoint Status</span></h4>
+            <p data-i18n="apim.endpointsDesc">Current response time and last HTTP status for each route</p>
+          </div>
+          <div class="api-live-actions">
+            <button class="icon-btn" id="apiRefreshBtn" type="button"><i class="fas fa-rotate-right"></i><span data-i18n="apim.probeNow">Probe Now</span></button>
+          </div>
+        </div>
+        <div class="api-endpoint-grid" id="apiEndpointGrid"></div>
+      </div>
+
+      <div class="api-side-panel reveal reveal-delay-1">
+        <div class="api-metric-card c-green">
+          <div class="api-metric-head">
+            <span class="api-metric-label" data-i18n="apim.requestsPerMin">Requests / min</span>
+            <span class="api-metric-icon"><i class="fas fa-bolt"></i></span>
+          </div>
+          <div class="api-metric-value" id="reqPerMin">—<small>rpm</small></div>
+          <div class="api-metric-sub" id="reqPerMinSub">—</div>
+        </div>
+        <div class="api-metric-card c-gold">
+          <div class="api-metric-head">
+            <span class="api-metric-label" data-i18n="apim.avgLatency">Avg Latency</span>
+            <span class="api-metric-icon"><i class="fas fa-stopwatch"></i></span>
+          </div>
+          <div class="api-metric-value" id="avgLatency">—<small>ms</small></div>
+          <div class="api-metric-sub" id="avgLatencySub">—</div>
+        </div>
+        <div class="api-metric-card c-green">
+          <div class="api-metric-head">
+            <span class="api-metric-label" data-i18n="apim.successRate">Success Rate</span>
+            <span class="api-metric-icon"><i class="fas fa-circle-check"></i></span>
+          </div>
+          <div class="api-metric-value" id="successRate">—<small>%</small></div>
+          <div class="api-metric-sub" id="successRateSub">—</div>
+        </div>
+        <div class="api-metric-card c-amber">
+          <div class="api-metric-head">
+            <span class="api-metric-label" data-i18n="apim.errorRate">Error Rate</span>
+            <span class="api-metric-icon"><i class="fas fa-triangle-exclamation"></i></span>
+          </div>
+          <div class="api-metric-value" id="errorRate">—<small>%</small></div>
+          <div class="api-metric-sub" id="errorRateSub">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="api-log-panel reveal">
+      <div class="api-log-head">
+        <div>
+          <h4><i class="fas fa-terminal"></i><span data-i18n="apim.logTitle">Live Request Log</span></h4>
+          <p data-i18n="apim.logDesc">Streaming last 40 API calls · newest at top · updates every 2 seconds</p>
+        </div>
+        <div class="api-log-controls">
+          <button class="log-filter-btn active" data-log-filter="all" type="button">ALL</button>
+          <button class="log-filter-btn" data-log-filter="2xx" type="button">2XX</button>
+          <button class="log-filter-btn" data-log-filter="4xx" type="button">4XX</button>
+          <button class="log-filter-btn" data-log-filter="5xx" type="button">5XX</button>
+          <button class="log-filter-btn" id="logPauseBtn" data-log-filter="pause" type="button"><i class="fas fa-pause"></i> <span data-i18n="apim.pause">Pause</span></button>
+        </div>
+      </div>
+      <div class="api-log-wrap" id="apiLogWrap">
+        <table class="api-log-table">
+          <thead>
+            <tr>
+              <th data-i18n="apim.col.time">Time</th>
+              <th data-i18n="apim.col.method">Method</th>
+              <th data-i18n="apim.col.path">Endpoint</th>
+              <th data-i18n="apim.col.code">Status</th>
+              <th data-i18n="apim.col.latency">Latency</th>
+              <th data-i18n="apim.col.size">Size</th>
+              <th data-i18n="apim.col.region">Region</th>
+            </tr>
+          </thead>
+          <tbody id="apiLogBody"></tbody>
+        </table>
+        <div class="api-log-empty" id="apiLogEmpty" hidden>
+          <i class="fas fa-inbox"></i>
+          <span data-i18n="apim.noLogs">No requests match this filter.</span>
+        </div>
+      </div>
+      <div class="api-log-footer">
+        <span class="lf-item"><span class="dot"></span><span data-i18n="apim.streaming">Streaming live</span></span>
+        <span class="lf-item" id="logStats">—</span>
+        <span class="lf-item" id="logUpdated">—</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ PERFORMANCE ============================ -->
+  <section class="section" id="performance">
+    <div class="section-header reveal">
+      <h2 data-i18n="perf.title">Response Time Performance</h2>
+      <p data-i18n="perf.desc">Average API gateway response time over the last 24 hours, measured from three global probe locations every 60 seconds.</p>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="chart-card reveal">
+      <div class="chart-head">
+        <div>
+          <h4 data-i18n="perf.chartTitle">API Gateway Latency — Last 24 Hours</h4>
+          <p data-i18n="perf.chartDesc">P50 median response time (solid) vs P95 tail latency (dashed). Lower is better.</p>
+        </div>
+        <div class="chart-stats">
+          <div class="chart-stat"><div class="cs-val g" id="p50Now">--</div><div class="cs-lbl" data-i18n="perf.p50">P50 Now</div></div>
+          <div class="chart-stat"><div class="cs-val a" id="p95Now">--</div><div class="cs-lbl" data-i18n="perf.p95">P95 Now</div></div>
+          <div class="chart-stat"><div class="cs-val" id="peakToday">--</div><div class="cs-lbl" data-i18n="perf.peak">24h Peak</div></div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg id="perfChart" viewBox="0 0 760 230" preserveAspectRatio="none" role="img" aria-label="API latency chart"></svg>
+      </div>
+      <div class="chart-legend">
+        <span><i style="background:var(--blue-500)"></i><span data-i18n="perf.legendP50">P50 median latency</span></span>
+        <span><i style="background:var(--gold)"></i><span data-i18n="perf.legendP95">P95 tail latency</span></span>
+        <span style="margin-left:auto;font-family:var(--font-mono);font-size:10px;" data-i18n="perf.updated">Updated every 60s</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ INCIDENTS ============================ -->
+  <section class="section" id="incidents">
+    <div class="section-header reveal">
+      <h2 data-i18n="inc.title">Incident History</h2>
+      <p data-i18n="inc.desc">Full transparency on every incident affecting Emergens services — including impact, root cause and resolution timeline.</p>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="incident-filters reveal" id="incidentFilters" role="tablist" aria-label="Filter incidents"></div>
+    <div class="timeline" id="incidentTimeline"></div>
+  </section>
+
+  <!-- ============================ MAINTENANCE ============================ -->
+  <section class="section" id="maintenance">
+    <div class="section-header reveal">
+      <h2 data-i18n="maint.title">Scheduled Maintenance</h2>
+      <p data-i18n="maint.desc">Planned windows are announced at least 72 hours in advance. We always aim for zero-downtime rolling deployments.</p>
+      <div class="section-divider"></div>
+    </div>
+    <div class="maint-grid" id="maintGrid"></div>
+  </section>
+
+  <!-- ============================ SUBSCRIBE ============================ -->
+  <section class="section" id="subscribe">
+    <div class="subscribe-card reveal">
+      <div class="subscribe-icon"><i class="fas fa-bell"></i></div>
+      <h3 data-i18n="sub.title">Subscribe to Status Updates</h3>
+      <p data-i18n="sub.desc">Get notified by email the moment an incident is opened, updated or resolved. No spam — only status changes, straight from our operations team.</p>
+      <form class="subscribe-form" id="subscribeForm" novalidate>
+        <input type="email" id="subscribeEmail" placeholder="you@company.com" autocomplete="email" aria-label="Email address" required>
+        <button class="btn btn-blue" type="submit"><i class="fas fa-paper-plane"></i><span data-i18n="sub.button">Subscribe</span></button>
+      </form>
+      <div class="subscribe-channels">
+        <a href="https://t.me/emergens" target="_blank" rel="noopener" class="channel-btn tg"><i class="fab fa-telegram"></i> Telegram</a>
+        <a href="#" class="channel-btn rss" id="rssBtn"><i class="fas fa-rss"></i> RSS Feed</a>
+        <a href="mailto:status@emergens.io" class="channel-btn mail"><i class="fas fa-envelope"></i> status@emergens.io</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ FAQ ============================ -->
+  <section class="section" id="faq">
+    <div class="section-header reveal">
+      <h2 data-i18n="faq.title">Status Page FAQ</h2>
+      <p data-i18n="faq.desc">How we measure uptime, what counts as an incident, and how you get notified.</p>
+      <div class="section-divider"></div>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item reveal">
+        <button class="faq-q" type="button"><span data-i18n="faq.q1">How is uptime calculated?</span><i class="fas fa-plus"></i></button>
+        <div class="faq-a" data-i18n="faq.a1">Uptime is measured from three independent probe regions (Frankfurt, Singapore, Virginia) hitting health endpoints every 60 seconds. A minute counts as "up" only if at least two of three probes receive a valid HTTP 200 response within 3 seconds. Monthly uptime is the percentage of qualifying minutes.</div>
+      </div>
+      <div class="faq-item reveal reveal-delay-1">
+        <button class="faq-q" type="button"><span data-i18n="faq.q2">What counts as a "degraded" status?</span><i class="fas fa-plus"></i></button>
+        <div class="faq-a" data-i18n="faq.a2">A service is marked degraded when its error rate exceeds 1% over 5 minutes, or its P95 latency exceeds twice the trailing 7-day baseline, but the service is still responding to the majority of requests.</div>
+      </div>
+      <div class="faq-item reveal reveal-delay-2">
+        <button class="faq-q" type="button"><span data-i18n="faq.q3">How fast will I be notified?</span><i class="fas fa-plus"></i></button>
+        <div class="faq-a" data-i18n="faq.a3">Incident notifications are dispatched within 60 seconds of an alert firing. Email subscribers receive the initial notice, every status update, and the final resolution summary. Telegram subscribers get the same feed instantly.</div>
+      </div>
+      <div class="faq-item reveal reveal-delay-3">
+        <button class="faq-q" type="button"><span data-i18n="faq.q4">Do you offer a public SLA?</span><i class="fas fa-plus"></i></button>
+        <div class="faq-a" data-i18n="faq.a4">Yes. Free, Starter and Standard plans include a 99.9% monthly uptime SLA. Team includes 99.95% and Enterprise includes 99.99% with financial credits if we miss the target. Full terms are in the Master Service Agreement.</div>
+      </div>
+      <div class="faq-item reveal reveal-delay-4">
+        <button class="faq-q" type="button"><span data-i18n="faq.q5">Where can I see historical data?</span><i class="fas fa-plus"></i></button>
+        <div class="faq-a" data-i18n="faq.a5">This page keeps 90 days of per-service uptime bars and 12 months of incident history. Enterprise customers can export the raw metrics from the dashboard or query them via the /api/status/history endpoint.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ FOOTER ============================ -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand-row">
+        <a href="/" class="footer-brand">
+          <svg viewBox="0 0 60 60" fill="none" class="footer-brand-logo" aria-hidden="true">
+            <defs><linearGradient id="ftrGrad" x1="0" y1="0" x2="60" y2="60"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#1e40af"/></linearGradient></defs>
+            <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#ftrGrad)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <div class="footer-brand-text">
+            <div class="footer-brand-name">EMER<span>GENS</span></div>
+            <div class="footer-brand-tagline" data-i18n="footer.brandTagline">Professional Web Security Suite</div>
+          </div>
+        </a>
+      </div>
+
+      <div class="footer-social-cards">
+        <a href="https://t.me/emergens" target="_blank" rel="noopener" class="social-card social-telegram">
+          <div class="social-icon" aria-hidden="true"><i class="fab fa-telegram"></i></div>
+          <div class="social-info">
+            <div class="social-name" data-i18n="footer.telegram.name">Telegram</div>
+            <div class="social-handle" data-i18n="footer.telegram.desc">@emergens</div>
+          </div>
+          <i class="fas fa-arrow-right social-arrow" aria-hidden="true"></i>
+        </a>
+        <a href="https://www.tiktok.com/@emergens" target="_blank" rel="noopener" class="social-card social-tiktok">
+          <div class="social-icon" aria-hidden="true"><i class="fab fa-tiktok"></i></div>
+          <div class="social-info">
+            <div class="social-name" data-i18n="footer.tiktok.name">TikTok</div>
+            <div class="social-handle" data-i18n="footer.tiktok.desc">@emergens</div>
+          </div>
+          <i class="fas fa-arrow-right social-arrow" aria-hidden="true"></i>
+        </a>
+        <a href="mailto:contact@emergens.io" class="social-card social-email">
+          <div class="social-icon" aria-hidden="true"><i class="fas fa-envelope"></i></div>
+          <div class="social-info">
+            <div class="social-name" data-i18n="footer.email.name">Email</div>
+            <div class="social-handle" data-i18n="footer.email.desc">contact@emergens.io</div>
+          </div>
+          <i class="fas fa-arrow-right social-arrow" aria-hidden="true"></i>
+        </a>
+      </div>
+
+      <div class="footer-links-grid">
+        <a href="/privacy.html" class="footer-link-card">
+          <div class="footer-link-icon" aria-hidden="true"><i class="fas fa-shield-halved"></i></div>
+          <div class="footer-link-content">
+            <div class="footer-link-title" data-i18n="footer.privacy.title">Privacy Policy</div>
+            <div class="footer-link-desc" data-i18n="footer.privacy.desc">How we handle your data</div>
+          </div>
+          <i class="fas fa-arrow-right footer-link-arrow" aria-hidden="true"></i>
+        </a>
+        <a href="/terms.html" class="footer-link-card">
+          <div class="footer-link-icon" aria-hidden="true"><i class="fas fa-file-contract"></i></div>
+          <div class="footer-link-content">
+            <div class="footer-link-title" data-i18n="footer.terms.title">Terms of Service</div>
+            <div class="footer-link-desc" data-i18n="footer.terms.desc">Rules &amp; conditions</div>
+          </div>
+          <i class="fas fa-arrow-right footer-link-arrow" aria-hidden="true"></i>
+        </a>
+        <a href="/docs.html" class="footer-link-card">
+          <div class="footer-link-icon" aria-hidden="true"><i class="fas fa-book"></i></div>
+          <div class="footer-link-content">
+            <div class="footer-link-title" data-i18n="footer.docs.title">Documentation</div>
+            <div class="footer-link-desc" data-i18n="footer.docs.desc">Guides &amp; API reference</div>
+          </div>
+          <i class="fas fa-arrow-right footer-link-arrow" aria-hidden="true"></i>
+        </a>
+        <a href="get-started.html#api" class="footer-link-card">
+          <div class="footer-link-icon" aria-hidden="true"><i class="fas fa-key"></i></div>
+          <div class="footer-link-content">
+            <div class="footer-link-title" data-i18n="footer.apiRef.title">API Reference</div>
+            <div class="footer-link-desc" data-i18n="footer.apiRef.desc">RESTful endpoints</div>
+          </div>
+          <i class="fas fa-arrow-right footer-link-arrow" aria-hidden="true"></i>
+        </a>
+      </div>
+
+      <div class="footer-bottom">
+        <span data-i18n="footer.copyright">Emergens © 2026 — Professional Web Security Testing Suite. All tools for authorized use only.</span>
+        <span class="footer-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="footerStatusText" data-i18n="footer.status">All systems operational</span>
+          <span style="opacity:.45">·</span>
+          <span>deepnote.com</span>
+        </span>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<div class="cmdk-overlay" id="cmdkOverlay" role="dialog" aria-modal="true" aria-labelledby="cmdkInput">
+  <div class="cmdk-box">
+    <div class="cmdk-search">
+      <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+      <input type="text" id="cmdkInput" placeholder="Search sections, actions…" autocomplete="off" spellcheck="false">
+      <kbd>ESC</kbd>
+    </div>
+    <div class="cmdk-list" id="cmdkList"></div>
+    <div class="cmdk-footer">
+      <span><kbd>↑</kbd> <kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> select · <kbd>ESC</kbd> close</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><i class="fas fa-check-circle"></i><span id="toastMessage"></span></div>
+<button class="back-to-top" id="backToTop" type="button" aria-label="Back to top"><i class="fas fa-arrow-up"></i></button>
+
+<div class="cookie-banner" id="cookieBanner" role="region" aria-label="Cookie consent">
+  <i class="fas fa-cookie-bite" aria-hidden="true"></i>
+  <div class="cookie-text">
+    <span data-i18n="cookie.text">We use cookies to enhance your browsing experience and analyze our traffic.</span>
+    <a href="/privacy.html" data-i18n="cookie.learnMore">Learn more</a>
+  </div>
+  <div class="cookie-actions">
+    <button class="cookie-decline" id="cookieDecline" type="button" data-i18n="cookie.decline">Decline</button>
+    <button class="cookie-accept" id="cookieAccept" type="button" data-i18n="cookie.accept">Accept</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ============================================================
+     i18n
+     ============================================================ */
+  const translations = {
+    en:{
+      'nav.api':'API','nav.modules':'Modules','nav.docs':'Docs','nav.privacy':'Privacy','nav.status':'Status',
+      'nav.login':'Log In','nav.dashboard':'Dashboard','nav.services':'Services','nav.apiMonitor':'API Monitor',
+      'nav.performance':'Performance','nav.incidents':'Incidents','nav.maintenance':'Maintenance','nav.subscribe':'Subscribe',
+      'nav.faq':'FAQ','nav.getStarted':'Get Started','cmd.trigger':'Search',
+
+      'status.eyebrow':'Live System Status',
+      'status.title1':'Platform','status.title2':'Status','status.title3':'&','status.title4':'Uptime',
+      'status.desc':'Real-time health of every Emergens service — API gateway, scanner engine, dashboard, integrations and infrastructure. Updated automatically every 60 seconds. Subscribe below to receive incident notifications the moment something changes.',
+      'status.allOperational':'All Systems Operational',
+      'status.someDegraded':'Partial Service Degradation',
+      'status.majorOutage':'Major Service Outage',
+      'status.lastChecked':'Last checked','status.nextRefresh':'· next auto-refresh in',
+      'status.live':'LIVE','status.refresh':'Refresh',
+      'status.refreshed':'Status refreshed — all probes responded',
+      'status.refreshFail':'Refresh failed — showing last known data',
+
+      'stats.uptime90':'90-Day Uptime','stats.services':'Monitored Services',
+      'stats.avgResponse':'Avg API Response','stats.activeIncidents':'Active Incidents',
+
+      'services.title':'Service Health',
+      'services.desc':'Live status and 90-day uptime history for each component of the Emergens platform. Hover any bar to inspect that day\'s availability.',
+      'services.operational':'Operational','services.degraded':'Degraded','services.outage':'Outage','services.maintenance':'Maintenance',
+      'services.uptime':'90-day uptime','services.response':'Avg response','services.lastIncident':'Last incident',
+      'services.none':'None in 90 days','services.days90':'90 days ago','services.today':'Today',
+
+      'legend.operational':'Operational','legend.degraded':'Degraded','legend.outage':'Outage',
+      'legend.maintenance':'Maintenance','legend.noData':'No data',
+
+      'apim.title':'Live API Request Monitor',
+      'apim.desc':'Real-time status and response time for every Emergens API endpoint — measured from three global probe regions every 5 seconds. Watch requests flow in live below.',
+      'apim.endpointsTitle':'Endpoint Status',
+      'apim.endpointsDesc':'Current response time and last HTTP status for each route',
+      'apim.probeNow':'Probe Now',
+      'apim.requestsPerMin':'Requests / min',
+      'apim.avgLatency':'Avg Latency',
+      'apim.successRate':'Success Rate',
+      'apim.errorRate':'Error Rate',
+      'apim.logTitle':'Live Request Log',
+      'apim.logDesc':'Streaming last 40 API calls · newest at top · updates every 2 seconds',
+      'apim.pause':'Pause','apim.resume':'Resume',
+      'apim.noLogs':'No requests match this filter.',
+      'apim.streaming':'Streaming live',
+      'apim.col.time':'Time','apim.col.method':'Method','apim.col.path':'Endpoint','apim.col.code':'Status',
+      'apim.col.latency':'Latency','apim.col.size':'Size','apim.col.region':'Region',
+      'apim.logStats':'{n} requests shown · {pct}% success',
+      'apim.logUpdated':'Last event {time}',
+      'apim.lastMin':'last min','apim.vsLastHour':'vs last hour',
+
+      'perf.title':'Response Time Performance',
+      'perf.desc':'Average API gateway response time over the last 24 hours, measured from three global probe locations every 60 seconds.',
+      'perf.chartTitle':'API Gateway Latency — Last 24 Hours',
+      'perf.chartDesc':'P50 median response time (solid) vs P95 tail latency (dashed). Lower is better.',
+      'perf.p50':'P50 Now','perf.p95':'P95 Now','perf.peak':'24h Peak',
+      'perf.legendP50':'P50 median latency','perf.legendP95':'P95 tail latency','perf.updated':'Updated every 60s',
+
+      'inc.title':'Incident History',
+      'inc.desc':'Full transparency on every incident affecting Emergens services — including impact, root cause and resolution timeline.',
+      'inc.all':'All','inc.resolved':'Resolved','inc.degraded':'Degraded','inc.outage':'Outage','inc.maintenance':'Maintenance',
+      'inc.showDetail':'Show full timeline','inc.hideDetail':'Hide timeline','inc.affected':'Affected:',
+      'inc.none':'No incidents match this filter.',
+
+      'maint.title':'Scheduled Maintenance',
+      'maint.desc':'Planned windows are announced at least 72 hours in advance. We always aim for zero-downtime rolling deployments.',
+      'maint.scheduled':'Scheduled','maint.inProgress':'In Progress','maint.completed':'Completed',
+      'maint.window':'Window','maint.duration':'Duration','maint.impact':'Expected impact',
+
+      'sub.title':'Subscribe to Status Updates',
+      'sub.desc':'Get notified by email the moment an incident is opened, updated or resolved. No spam — only status changes, straight from our operations team.',
+      'sub.button':'Subscribe','sub.success':'Subscribed! Check your inbox to confirm.','sub.invalid':'Please enter a valid email address.',
+      'sub.rss':'RSS feed URL copied to clipboard',
+
+      'faq.title':'Status Page FAQ',
+      'faq.desc':'How we measure uptime, what counts as an incident, and how you get notified.',
+      'faq.q1':'How is uptime calculated?',
+      'faq.a1':'Uptime is measured from three independent probe regions (Frankfurt, Singapore, Virginia) hitting health endpoints every 60 seconds. A minute counts as "up" only if at least two of three probes receive a valid HTTP 200 response within 3 seconds. Monthly uptime is the percentage of qualifying minutes.',
+      'faq.q2':'What counts as a "degraded" status?',
+      'faq.a2':'A service is marked degraded when its error rate exceeds 1% over 5 minutes, or its P95 latency exceeds twice the trailing 7-day baseline, but the service is still responding to the majority of requests.',
+      'faq.q3':'How fast will I be notified?',
+      'faq.a3':'Incident notifications are dispatched within 60 seconds of an alert firing. Email subscribers receive the initial notice, every status update, and the final resolution summary. Telegram subscribers get the same feed instantly.',
+      'faq.q4':'Do you offer a public SLA?',
+      'faq.a4':'Yes. Free, Starter and Standard plans include a 99.9% monthly uptime SLA. Team includes 99.95% and Enterprise includes 99.99% with financial credits if we miss the target. Full terms are in the Master Service Agreement.',
+      'faq.q5':'Where can I see historical data?',
+      'faq.a5':'This page keeps 90 days of per-service uptime bars and 12 months of incident history. Enterprise customers can export the raw metrics from the dashboard or query them via the /api/status/history endpoint.',
+
+      'footer.brandTagline':'Professional Web Security Suite',
+      'footer.telegram.name':'Telegram','footer.telegram.desc':'@emergens',
+      'footer.tiktok.name':'TikTok','footer.tiktok.desc':'@emergens',
+      'footer.email.name':'Email','footer.email.desc':'contact@emergens.io',
+      'footer.privacy.title':'Privacy Policy','footer.privacy.desc':'How we handle your data',
+      'footer.terms.title':'Terms of Service','footer.terms.desc':'Rules & conditions',
+      'footer.docs.title':'Documentation','footer.docs.desc':'Guides & API reference',
+      'footer.apiRef.title':'API Reference','footer.apiRef.desc':'RESTful endpoints',
+      'footer.status':'All systems operational',
+
+      'cookie.text':'We use cookies to enhance your browsing experience and analyze our traffic.',
+      'cookie.learnMore':'Learn more','cookie.accept':'Accept','cookie.decline':'Decline',
+      'footer.copyright':'Emergens © 2026 — Professional Web Security Testing Suite. All tools for authorized use only.',
+
+      'toast.dark':'Dark mode activated','toast.light':'Light mode activated',
+      'toast.langSwitched':'Language switched to {lang}',
+      'toast.barInfo':'{date} — {status}','toast.cmdNotFound':'No matching commands',
+      'toast.dayUp':'Operational · 100% availability','toast.dayDegraded':'Degraded · partial impact',
+      'toast.dayDown':'Outage · service unavailable','toast.dayMaint':'Scheduled maintenance',
+      'toast.dayEmpty':'No data recorded',
+      'toast.apiProbed':'API probe complete — all endpoints responded',
+      'toast.logPaused':'Live log paused','toast.logResumed':'Live log resumed',
+      'toast.endpointInfo':'{method} {path} — {code} in {time}ms'
+    },
+    ms:{
+      'nav.api':'API','nav.modules':'Modul','nav.docs':'Dokumen','nav.privacy':'Privasi','nav.status':'Status',
+      'nav.login':'Log Masuk','nav.dashboard':'Papan Pemuka','nav.services':'Perkhidmatan','nav.apiMonitor':'Monitor API',
+      'nav.performance':'Prestasi','nav.incidents':'Insiden','nav.maintenance':'Penyelenggaraan','nav.subscribe':'Langgan',
+      'nav.faq':'FAQ','nav.getStarted':'Mula','cmd.trigger':'Cari',
+
+      'status.eyebrow':'Status Sistem Langsung',
+      'status.title1':'Status','status.title2':'Platform','status.title3':'&','status.title4':'Masa Aktif',
+      'status.desc':'Kesihatan masa nyata setiap perkhidmatan Emergens — gerbang API, enjin pengimbas, papan pemuka, integrasi dan infrastruktur. Dikemas kini setiap 60 saat.',
+      'status.allOperational':'Semua Sistem Beroperasi',
+      'status.someDegraded':'Kemerosotan Perkhidmatan Separa',
+      'status.majorOutage':'Gangguan Perkhidmatan Besar',
+      'status.lastChecked':'Kali terakhir diperiksa','status.nextRefresh':'· muat semula automatik dalam',
+      'status.live':'LANGSUNG','status.refresh':'Muat Semula',
+      'status.refreshed':'Status dimuat semula — semua probe bertindak balas',
+      'status.refreshFail':'Muat semula gagal — menunjukkan data terakhir',
+
+      'stats.uptime90':'Masa Aktif 90 Hari','stats.services':'Perkhidmatan Dipantau',
+      'stats.avgResponse':'Purata Respons API','stats.activeIncidents':'Insiden Aktif',
+
+      'services.title':'Kesihatan Perkhidmatan',
+      'services.desc':'Status langsung dan sejarah masa aktif 90 hari untuk setiap komponen platform Emergens.',
+      'services.operational':'Beroperasi','services.degraded':'Merudum','services.outage':'Gangguan','services.maintenance':'Penyelenggaraan',
+      'services.uptime':'Masa aktif 90 hari','services.response':'Purata respons','services.lastIncident':'Insiden terakhir',
+      'services.none':'Tiada dalam 90 hari','services.days90':'90 hari lalu','services.today':'Hari ini',
+
+      'legend.operational':'Beroperasi','legend.degraded':'Merudum','legend.outage':'Gangguan',
+      'legend.maintenance':'Penyelenggaraan','legend.noData':'Tiada data',
+
+      'apim.title':'Monitor Permintaan API Langsung',
+      'apim.desc':'Status masa nyata dan masa respons untuk setiap endpoint API Emergens — diukur dari tiga wilayah probe global setiap 5 saat.',
+      'apim.endpointsTitle':'Status Endpoint',
+      'apim.endpointsDesc':'Masa respons semasa dan status HTTP terakhir untuk setiap laluan',
+      'apim.probeNow':'Probe Sekarang',
+      'apim.requestsPerMin':'Permintaan / min',
+      'apim.avgLatency':'Purata Kependaman',
+      'apim.successRate':'Kadar Kejayaan',
+      'apim.errorRate':'Kadar Ralat',
+      'apim.logTitle':'Log Permintaan Langsung',
+      'apim.logDesc':'Menstrim 40 panggilan API terakhir · terbaru di atas · dikemas kini setiap 2 saat',
+      'apim.pause':'Jeda','apim.resume':'Sambung',
+      'apim.noLogs':'Tiada permintaan sepadan penapis ini.',
+      'apim.streaming':'Menstrim langsung',
+      'apim.col.time':'Masa','apim.col.method':'Kaedah','apim.col.path':'Endpoint','apim.col.code':'Status',
+      'apim.col.latency':'Kependaman','apim.col.size':'Saiz','apim.col.region':'Wilayah',
+      'apim.logStats':'{n} permintaan dipaparkan · {pct}% berjaya',
+      'apim.logUpdated':'Peristiwa terakhir {time}',
+      'apim.lastMin':'minit lepas','apim.vsLastHour':'vs jam lepas',
+
+      'perf.title':'Prestasi Masa Respons',
+      'perf.desc':'Purata masa respons gerbang API sepanjang 24 jam terakhir, diukur dari tiga lokasi probe global setiap 60 saat.',
+      'perf.chartTitle':'Kependaman Gerbang API — 24 Jam Terakhir',
+      'perf.chartDesc':'Masa respons median P50 (pejal) vs kependaman ekor P95 (putus-putus). Lebih rendah lebih baik.',
+      'perf.p50':'P50 Kini','perf.p95':'P95 Kini','perf.peak':'Puncak 24j',
+      'perf.legendP50':'Kependaman median P50','perf.legendP95':'Kependaman ekor P95','perf.updated':'Dikemas kini setiap 60s',
+
+      'inc.title':'Sejarah Insiden',
+      'inc.desc':'Ketelusan penuh bagi setiap insiden yang menjejaskan perkhidmatan Emergens — termasuk impak, punca dan garis masa penyelesaian.',
+      'inc.all':'Semua','inc.resolved':'Selesai','inc.degraded':'Merudum','inc.outage':'Gangguan','inc.maintenance':'Penyelenggaraan',
+      'inc.showDetail':'Tunjuk garis masa penuh','inc.hideDetail':'Sembunyi garis masa','inc.affected':'Terjejas:',
+      'inc.none':'Tiada insiden sepadan penapis ini.',
+
+      'maint.title':'Penyelenggaraan Berjadual',
+      'maint.desc':'Tetingkap terancang diumumkan sekurang-kurangnya 72 jam lebih awal. Kami sentiasa menyasarkan penggunaan bergolek tanpa henti.',
+      'maint.scheduled':'Berjadual','maint.inProgress':'Sedang Berjalan','maint.completed':'Selesai',
+      'maint.window':'Tetingkap','maint.duration':'Tempoh','maint.impact':'Kesan dijangka',
+
+      'sub.title':'Langgan Kemas Kini Status',
+      'sub.desc':'Dapatkan notifikasi melalui e-mel sebaik sahaja insiden dibuka, dikemas kini atau diselesaikan. Tiada spam.',
+      'sub.button':'Langgan','sub.success':'Dilanggan! Semak peti masuk anda untuk mengesahkan.','sub.invalid':'Sila masukkan alamat e-mel yang sah.',
+      'sub.rss':'URL suapan RSS disalin ke papan klip',
+
+      'faq.title':'FAQ Halaman Status',
+      'faq.desc':'Bagaimana kami mengukur masa aktif, apa yang dikira insiden, dan bagaimana anda dimaklumkan.',
+      'faq.q1':'Bagaimana masa aktif dikira?',
+      'faq.a1':'Masa aktif diukur dari tiga wilayah probe bebas (Frankfurt, Singapura, Virginia) yang menghubungi endpoint kesihatan setiap 60 saat. Satu minit dikira "aktif" hanya jika sekurang-kurangnya dua daripada tiga probe menerima respons HTTP 200 yang sah dalam 3 saat.',
+      'faq.q2':'Apa yang dikira status "merudum"?',
+      'faq.a2':'Perkhidmatan ditandakan merudum apabila kadar ralatnya melebihi 1% selama 5 minit, atau kependaman P95 melebihi dua kali garis dasar 7 hari, tetapi perkhidmatan masih bertindak balas kepada majoriti permintaan.',
+      'faq.q3':'Berapa cepat saya akan dimaklumkan?',
+      'faq.a3':'Notifikasi insiden dihantar dalam 60 saat selepas amaran dicetuskan. Pelanggan e-mel menerima notis awal, setiap kemas kini status, dan ringkasan penyelesaian akhir. Pelanggan Telegram menerima suapan yang sama serta-merta.',
+      'faq.q4':'Adakah anda menawarkan SLA awam?',
+      'faq.a4':'Ya. Pelan Percuma, Permulaan dan Standard termasuk SLA masa aktif bulanan 99.9%. Pasukan termasuk 99.95% dan Perusahaan termasuk 99.99% dengan kredit kewangan jika kami terlepas sasaran.',
+      'faq.q5':'Di mana saya boleh lihat data sejarah?',
+      'faq.a5':'Halaman ini menyimpan 90 hari bar masa aktif setiap perkhidmatan dan 12 bulan sejarah insiden. Pelanggan Perusahaan boleh eksport metrik mentah dari papan pemuka atau pertanyaan melalui endpoint /api/status/history.',
+
+      'footer.brandTagline':'Suite Keselamatan Web Profesional',
+      'footer.telegram.name':'Telegram','footer.telegram.desc':'@emergens',
+      'footer.tiktok.name':'TikTok','footer.tiktok.desc':'@emergens',
+      'footer.email.name':'E-mel','footer.email.desc':'contact@emergens.io',
+      'footer.privacy.title':'Dasar Privasi','footer.privacy.desc':'Cara kami urus data anda',
+      'footer.terms.title':'Terma Perkhidmatan','footer.terms.desc':'Peraturan & syarat',
+      'footer.docs.title':'Dokumentasi','footer.docs.desc':'Panduan & rujukan API',
+      'footer.apiRef.title':'Rujukan API','footer.apiRef.desc':'Endpoint RESTful',
+      'footer.status':'Semua sistem beroperasi',
+
+      'cookie.text':'Kami menggunakan kuki untuk meningkatkan pengalaman melayari anda dan menganalisis trafik kami.',
+      'cookie.learnMore':'Ketahui lebih lanjut','cookie.accept':'Terima','cookie.decline':'Tolak',
+      'footer.copyright':'Emergens © 2026 — Suite Ujian Keselamatan Web Profesional. Semua alat untuk kegunaan sah sahaja.',
+
+      'toast.dark':'Mod gelap diaktifkan','toast.light':'Mod cerah diaktifkan',
+      'toast.langSwitched':'Bahasa ditukar ke {lang}',
+      'toast.barInfo':'{date} — {status}','toast.cmdNotFound':'Tiada arahan sepadan',
+      'toast.dayUp':'Beroperasi · ketersediaan 100%','toast.dayDegraded':'Merudum · impak separa',
+      'toast.dayDown':'Gangguan · perkhidmatan tidak tersedia','toast.dayMaint':'Penyelenggaraan berjadual',
+      'toast.dayEmpty':'Tiada data direkodkan',
+      'toast.apiProbed':'Probe API selesai — semua endpoint bertindak balas',
+      'toast.logPaused':'Log langsung dijeda','toast.logResumed':'Log langsung disambung',
+      'toast.endpointInfo':'{method} {path} — {code} dalam {time}ms'
+    },
+    id:{
+      'nav.api':'API','nav.modules':'Modul','nav.docs':'Dokumen','nav.privacy':'Privasi','nav.status':'Status',
+      'nav.login':'Masuk','nav.dashboard':'Dasbor','nav.services':'Layanan','nav.apiMonitor':'Monitor API',
+      'nav.performance':'Performa','nav.incidents':'Insiden','nav.maintenance':'Pemeliharaan','nav.subscribe':'Langgan',
+      'nav.faq':'FAQ','nav.getStarted':'Mulai','cmd.trigger':'Cari',
+
+      'status.eyebrow':'Status Sistem Langsung',
+      'status.title1':'Status','status.title2':'Platform','status.title3':'&','status.title4':'Uptime',
+      'status.desc':'Kesehatan real-time setiap layanan Emergens — gateway API, mesin pemindai, dasbor, integrasi dan infrastruktur. Diperbarui otomatis setiap 60 detik.',
+      'status.allOperational':'Semua Sistem Beroperasi',
+      'status.someDegraded':'Degradasi Layanan Sebagian',
+      'status.majorOutage':'Gangguan Layanan Besar',
+      'status.lastChecked':'Terakhir diperiksa','status.nextRefresh':'· refresh otomatis dalam',
+      'status.live':'LANGSUNG','status.refresh':'Refresh',
+      'status.refreshed':'Status diperbarui — semua probe merespons',
+      'status.refreshFail':'Refresh gagal — menampilkan data terakhir',
+
+      'stats.uptime90':'Uptime 90 Hari','stats.services':'Layanan Dipantau',
+      'stats.avgResponse':'Rata-rata Respons API','stats.activeIncidents':'Insiden Aktif',
+
+      'services.title':'Kesehatan Layanan',
+      'services.desc':'Status langsung dan riwayat uptime 90 hari untuk setiap komponen platform Emergens.',
+      'services.operational':'Beroperasi','services.degraded':'Terdegradasi','services.outage':'Gangguan','services.maintenance':'Pemeliharaan',
+      'services.uptime':'Uptime 90 hari','services.response':'Rata-rata respons','services.lastIncident':'Insiden terakhir',
+      'services.none':'Tidak ada dalam 90 hari','services.days90':'90 hari lalu','services.today':'Hari ini',
+
+      'legend.operational':'Beroperasi','legend.degraded':'Terdegradasi','legend.outage':'Gangguan',
+      'legend.maintenance':'Pemeliharaan','legend.noData':'Tidak ada data',
+
+      'apim.title':'Monitor Permintaan API Langsung',
+      'apim.desc':'Status real-time dan waktu respons untuk setiap endpoint API Emergens — diukur dari tiga wilayah probe global setiap 5 detik.',
+      'apim.endpointsTitle':'Status Endpoint',
+      'apim.endpointsDesc':'Waktu respons saat ini dan status HTTP terakhir untuk setiap rute',
+      'apim.probeNow':'Probe Sekarang',
+      'apim.requestsPerMin':'Permintaan / min',
+      'apim.avgLatency':'Rata-rata Latensi',
+      'apim.successRate':'Tingkat Sukses',
+      'apim.errorRate':'Tingkat Error',
+      'apim.logTitle':'Log Permintaan Langsung',
+      'apim.logDesc':'Streaming 40 panggilan API terakhir · terbaru di atas · diperbarui setiap 2 detik',
+      'apim.pause':'Jeda','apim.resume':'Lanjut',
+      'apim.noLogs':'Tidak ada permintaan yang cocok dengan filter ini.',
+      'apim.streaming':'Streaming langsung',
+      'apim.col.time':'Waktu','apim.col.method':'Metode','apim.col.path':'Endpoint','apim.col.code':'Status',
+      'apim.col.latency':'Latensi','apim.col.size':'Ukuran','apim.col.region':'Wilayah',
+      'apim.logStats':'{n} permintaan ditampilkan · {pct}% sukses',
+      'apim.logUpdated':'Peristiwa terakhir {time}',
+      'apim.lastMin':'menit terakhir','apim.vsLastHour':'vs jam lalu',
+
+      'perf.title':'Performa Waktu Respons',
+      'perf.desc':'Rata-rata waktu respons gateway API selama 24 jam terakhir, diukur dari tiga lokasi probe global setiap 60 detik.',
+      'perf.chartTitle':'Latensi Gateway API — 24 Jam Terakhir',
+      'perf.chartDesc':'Waktu respons median P50 (padat) vs latensi ekor P95 (putus-putus). Lebih rendah lebih baik.',
+      'perf.p50':'P50 Kini','perf.p95':'P95 Kini','perf.peak':'Puncak 24j',
+      'perf.legendP50':'Latensi median P50','perf.legendP95':'Latensi ekor P95','perf.updated':'Diperbarui setiap 60s',
+
+      'inc.title':'Riwayat Insiden',
+      'inc.desc':'Transparansi penuh atas setiap insiden yang memengaruhi layanan Emergens — termasuk dampak, akar penyebab dan garis waktu penyelesaian.',
+      'inc.all':'Semua','inc.resolved':'Selesai','inc.degraded':'Terdegradasi','inc.outage':'Gangguan','inc.maintenance':'Pemeliharaan',
+      'inc.showDetail':'Tampilkan garis waktu lengkap','inc.hideDetail':'Sembunyikan garis waktu','inc.affected':'Terdampak:',
+      'inc.none':'Tidak ada insiden yang cocok dengan filter ini.',
+
+      'maint.title':'Pemeliharaan Terjadwal',
+      'maint.desc':'Jendela terencana diumumkan setidaknya 72 jam sebelumnya. Kami selalu menargetkan penerapan bergulir tanpa downtime.',
+      'maint.scheduled':'Terjadwal','maint.inProgress':'Sedang Berjalan','maint.completed':'Selesai',
+      'maint.window':'Jendela','maint.duration':'Durasi','maint.impact':'Dampak yang diharapkan',
+
+      'sub.title':'Langgan Pembaruan Status',
+      'sub.desc':'Dapatkan notifikasi via email saat insiden dibuka, diperbarui atau diselesaikan. Tanpa spam.',
+      'sub.button':'Langgan','sub.success':'Berlangganan! Periksa kotak masuk Anda untuk konfirmasi.','sub.invalid':'Harap masukkan alamat email yang valid.',
+      'sub.rss':'URL feed RSS disalin ke clipboard',
+
+      'faq.title':'FAQ Halaman Status',
+      'faq.desc':'Bagaimana kami mengukur uptime, apa yang dianggap insiden, dan bagaimana Anda diberi tahu.',
+      'faq.q1':'Bagaimana uptime dihitung?',
+      'faq.a1':'Uptime diukur dari tiga wilayah probe independen (Frankfurt, Singapura, Virginia) yang mengakses endpoint kesehatan setiap 60 detik. Satu menit dihitung "up" hanya jika setidaknya dua dari tiga probe menerima respons HTTP 200 yang valid dalam 3 detik.',
+      'faq.q2':'Apa yang dianggap status "terdegradasi"?',
+      'faq.a2':'Layanan ditandai terdegradasi ketika tingkat kesalahannya melebihi 1% selama 5 menit, atau latensi P95 melebihi dua kali baseline 7 hari, namun layanan masih merespons mayoritas permintaan.',
+      'faq.q3':'Seberapa cepat saya akan diberi tahu?',
+      'faq.a3':'Notifikasi insiden dikirim dalam 60 detik setelah alert dipicu. Pelanggan email menerima pemberitahuan awal, setiap pembaruan status, dan ringkasan penyelesaian akhir. Pelanggan Telegram menerima feed yang sama secara instan.',
+      'faq.q4':'Apakah Anda menawarkan SLA publik?',
+      'faq.a4':'Ya. Paket Gratis, Pemula dan Standar termasuk SLA uptime bulanan 99.9%. Tim termasuk 99.95% dan Enterprise termasuk 99.99% dengan kredit finansial jika kami melewatkan target.',
+      'faq.q5':'Di mana saya bisa melihat data historis?',
+      'faq.a5':'Halaman ini menyimpan 90 hari bar uptime per layanan dan 12 bulan riwayat insiden. Pelanggan Enterprise dapat mengekspor metrik mentah dari dasbor atau query melalui endpoint /api/status/history.',
+
+      'footer.brandTagline':'Suite Keamanan Web Profesional',
+      'footer.telegram.name':'Telegram','footer.telegram.desc':'@emergens',
+      'footer.tiktok.name':'TikTok','footer.tiktok.desc':'@emergens',
+      'footer.email.name':'Email','footer.email.desc':'contact@emergens.io',
+      'footer.privacy.title':'Kebijakan Privasi','footer.privacy.desc':'Cara kami menangani data Anda',
+      'footer.terms.title':'Ketentuan Layanan','footer.terms.desc':'Aturan & ketentuan',
+      'footer.docs.title':'Dokumentasi','footer.docs.desc':'Panduan & referensi API',
+      'footer.apiRef.title':'Referensi API','footer.apiRef.desc':'Endpoint RESTful',
+      'footer.status':'Semua sistem beroperasi',
+
+      'cookie.text':'Kami menggunakan cookie untuk meningkatkan pengalaman menjelajah Anda dan menganalisis lalu lintas kami.',
+      'cookie.learnMore':'Pelajari lebih lanjut','cookie.accept':'Terima','cookie.decline':'Tolak',
+      'footer.copyright':'Emergens © 2026 — Suite Pengujian Keamanan Web Profesional. Semua alat hanya untuk penggunaan resmi.',
+
+      'toast.dark':'Mode gelap diaktifkan','toast.light':'Mode terang diaktifkan',
+      'toast.langSwitched':'Bahasa diubah ke {lang}',
+      'toast.barInfo':'{date} — {status}','toast.cmdNotFound':'Tidak ada perintah yang cocok',
+      'toast.dayUp':'Beroperasi · ketersediaan 100%','toast.dayDegraded':'Terdegradasi · dampak sebagian',
+      'toast.dayDown':'Gangguan · layanan tidak tersedia','toast.dayMaint':'Pemeliharaan terjadwal',
+      'toast.dayEmpty':'Tidak ada data tercatat',
+      'toast.apiProbed':'Probe API selesai — semua endpoint merespons',
+      'toast.logPaused':'Log langsung dijeda','toast.logResumed':'Log langsung dilanjutkan',
+      'toast.endpointInfo':'{method} {path} — {code} dalam {time}ms'
+    }
+  };
+
+  let currentLang = localStorage.getItem('emergens-lang') || 'en';
+
+  function t(key, vars){
+    let s = translations[currentLang]?.[key] || translations.en[key] || key;
+    if (vars) Object.keys(vars).forEach(k => { s = s.replace(new RegExp('\\{'+k+'\\}','g'), vars[k]); });
+    return s;
+  }
+
+  const HTML_KEYS = new Set([]);
+
+  function applyTranslations(lang){
+    currentLang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const val = translations[lang]?.[key];
+      if (val == null) return;
+      if (HTML_KEYS.has(key)) el.innerHTML = val;
+      else el.textContent = val;
+    });
+
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+
+    const cmdInput = document.getElementById('cmdkInput');
+    if (cmdInput) cmdInput.placeholder = t('cmd.trigger') + '…';
+
+    document.querySelectorAll('.faq-item.open .faq-a').forEach(a => {
+      a.style.maxHeight = a.scrollHeight + 'px';
+    });
+
+    renderSummary();
+    renderServices();
+    renderEndpointGrid();
+    renderApiMetrics();
+    renderApiLog();
+    renderIncidents();
+    renderMaintenance();
+    updateOverallBanner();
+    updateLogStats();
+
+    localStorage.setItem('emergens-lang', lang);
+  }
+
+  /* ============================================================
+     TOAST
+     ============================================================ */
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toastMessage');
+  let toastTimeout;
+  function showToast(message, type='success'){
+    toastMessage.textContent = message;
+    toast.className = 'toast show ' + type;
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.remove('show'), 3200);
+  }
+
+  /* ============================================================
+     THEME
+     ============================================================ */
+  const root = document.documentElement;
+  const themeToggle = document.getElementById('themeToggle');
+  const themeToggleMobile = document.getElementById('themeToggleMobile');
+
+  function updateThemeIcon(){
+    const current = root.getAttribute('data-theme') === 'dark' ? 'fa-moon' : 'fa-sun';
+    document.querySelectorAll('#themeToggle i, #themeToggleMobile i').forEach(i => i.className = 'fas ' + current);
+  }
+  function setTheme(theme){ root.setAttribute('data-theme', theme); localStorage.setItem('emergens-theme', theme); updateThemeIcon(); }
+  setTheme(localStorage.getItem('emergens-theme') || 'dark');
+  function toggleTheme(){
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    showToast(next === 'dark' ? t('toast.dark') : t('toast.light'));
+  }
+  themeToggle.addEventListener('click', toggleTheme);
+  themeToggleMobile.addEventListener('click', toggleTheme);
+
+  /* ============================================================
+     HEADER + PROGRESS + BACK TO TOP
+     ============================================================ */
+  const header = document.getElementById('header');
+  const progress = document.getElementById('scrollProgress');
+  const backToTop = document.getElementById('backToTop');
+
+  function onScroll(){
+    const y = window.scrollY;
+    header.classList.toggle('scrolled', y > 30);
+    const docH = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.width = docH > 0 ? Math.min(100, (y / docH) * 100) + '%' : '0%';
+    backToTop.classList.toggle('show', y > 700);
+  }
+  window.addEventListener('scroll', onScroll, { passive:true });
+  backToTop.addEventListener('click', () => window.scrollTo({ top:0, behavior:'smooth' }));
+
+  /* ============================================================
+     MOBILE NAV
+     ============================================================ */
+  const burgerBtn = document.getElementById('burgerBtn');
+  const mobileMenu = document.getElementById('mobileMenu');
+  const mobileOverlay = document.getElementById('mobileOverlay');
+
+  function toggleMobileMenu(forceClose=false){
+    const isOpen = mobileMenu.classList.contains('open');
+    if (forceClose || isOpen){
+      mobileMenu.classList.remove('open'); burgerBtn.classList.remove('active');
+      mobileOverlay.classList.remove('active'); document.body.style.overflow = '';
+    } else {
+      mobileMenu.classList.add('open'); burgerBtn.classList.add('active');
+      mobileOverlay.classList.add('active'); document.body.style.overflow = 'hidden';
+    }
+  }
+  burgerBtn.addEventListener('click', () => toggleMobileMenu());
+  mobileOverlay.addEventListener('click', () => toggleMobileMenu(true));
+  mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => toggleMobileMenu(true)));
+
+  /* ============================================================
+     MOTION / POINTER
+     ============================================================ */
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  (function(){
+    if (reduceMotion || !finePointer) return;
+    const scene3D = document.querySelector('.css-3d-scene');
+    if (!scene3D) return;
+    let tx=0, ty=0, cx=0, cy=0;
+    window.addEventListener('mousemove', e => {
+      tx = (e.clientX / window.innerWidth - .5) * 2;
+      ty = (e.clientY / window.innerHeight - .5) * 2;
+    }, { passive:true });
+    (function tick(){
+      cx += (tx-cx) * .05; cy += (ty-cy) * .05;
+      scene3D.style.transform = 'translate3d('+(cx*-18).toFixed(2)+'px,'+(cy*-14).toFixed(2)+'px,0)';
+      requestAnimationFrame(tick);
+    })();
+  })();
+
+  /* ============================================================
+     SCROLL REVEAL
+     ============================================================ */
+  const revealObserver = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold:.08, rootMargin:'0px 0px -20px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+  /* ============================================================
+     STAT COUNTERS
+     ============================================================ */
+  function initCounters(){
+    const stats = document.getElementById('statsGrid');
+    if (!stats) return;
+    const counters = stats.querySelectorAll('[data-count]');
+    let started = false;
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting && !started){
+          started = true;
+          counters.forEach(el => {
+            const target = parseFloat(el.dataset.count);
+            const decimals = parseInt(el.dataset.decimals || '0', 10);
+            const numEl = el.querySelector('.stat-num');
+            if (!numEl) return;
+            const duration = 1600;
+            const start = performance.now();
+            const ease = tt => 1 - Math.pow(1-tt, 3);
+            (function frame(now){
+              const p = Math.min(1, (now - start) / duration);
+              const v = target * ease(p);
+              numEl.textContent = decimals > 0 ? v.toFixed(decimals) : Math.round(v);
+              if (p < 1) requestAnimationFrame(frame);
+              else numEl.textContent = decimals > 0 ? target.toFixed(decimals) : String(target);
+            })(performance.now());
+          });
+          io.disconnect();
+        }
+      });
+    }, { threshold:.35 });
+    io.observe(stats);
+  }
+  initCounters();
+
+  /* ============================================================
+     SCROLL STARS
+     ============================================================ */
+  (function(){
+    const container = document.getElementById('scrollStars');
+    if (!container || reduceMotion) return;
+    for (let i = 0; i < 70; i++){
+      const star = document.createElement('div');
+      star.className = 'scroll-star';
+      star.style.left = (Math.random()*100).toFixed(2)+'%';
+      star.style.top  = (Math.random()*100).toFixed(2)+'%';
+      star.style.animationDelay = (Math.random()*5).toFixed(2)+'s';
+      star.style.animationDuration = (2+Math.random()*4).toFixed(2)+'s';
+      const s = (2+Math.random()*3).toFixed(1);
+      star.style.width = s+'px'; star.style.height = s+'px';
+      const r = Math.random();
+      if (r < .35) star.classList.add('stay');
+      else if (r < .65) star.classList.add('blink');
+      container.appendChild(star);
+      setTimeout(() => star.classList.add('visible'), Math.random()*1500);
+    }
+  })();
+
+  /* ============================================================
+     DATA — deterministic PRNG
+     ============================================================ */
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let tt = Math.imul(a ^ a >>> 15, 1 | a);
+      tt = tt + Math.imul(tt ^ tt >>> 7, 61 | tt) ^ tt;
+      return ((tt ^ tt >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function buildDays(seed, uptimePct){
+    const rnd = mulberry32(seed);
+    const days = [];
+    const downChance = Math.max(0, (100 - uptimePct)) / 100 * 1.15;
+    for (let i = 0; i < 90; i++){
+      const r = rnd();
+      if (r < downChance * 0.20) days.push('down');
+      else if (r < downChance * 0.62) days.push('degraded');
+      else if (r < downChance * 0.70) days.push('maint');
+      else days.push('up');
+    }
+    return days;
+  }
+
+  const services = [
+    { key:'api', name:'API Gateway', cat:'Core Platform', icon:'fa-key', desc:'RESTful API endpoints, authentication & rate limiting', uptime:99.99, response:42, status:'operational', days:buildDays(11, 99.99) },
+    { key:'dash', name:'Web Dashboard', cat:'Core Platform', icon:'fa-gauge', desc:'Customer dashboard, scan management & reporting UI', uptime:99.97, response:88, status:'operational', days:buildDays(22, 99.97) },
+    { key:'scan', name:'Scanner Engine', cat:'Core Platform', icon:'fa-radar', desc:'32-module vulnerability scanning & analysis pipeline', uptime:99.95, response:1240, status:'operational', days:buildDays(33, 99.95) },
+    { key:'queue', name:'Job Queue', cat:'Infrastructure', icon:'fa-list-check', desc:'Async scan scheduling, retry logic & worker pool', uptime:99.98, response:18, status:'operational', days:buildDays(44, 99.98) },
+    { key:'db', name:'Primary Database', cat:'Infrastructure', icon:'fa-database', desc:'PostgreSQL cluster with streaming replication', uptime:99.99, response:9, status:'operational', days:buildDays(55, 99.99) },
+    { key:'cdn', name:'CDN & Static Assets', cat:'Infrastructure', icon:'fa-globe', desc:'Global edge delivery for dashboard assets & reports', uptime:100.00, response:31, status:'operational', days:buildDays(66, 100) },
+    { key:'report', name:'Report Generator', cat:'Processing', icon:'fa-file-lines', desc:'PDF/JSON report rendering & CVSS scoring engine', uptime:99.93, response:2640, status:'operational', days:buildDays(77, 99.93) },
+    { key:'osint', name:'OSINT Services', cat:'Security Modules', icon:'fa-user-secret', desc:'Username enumeration, breach lookup & domain intel', uptime:99.91, response:890, status:'operational', days:buildDays(88, 99.91) },
+    { key:'phish', name:'Phishing Simulator', cat:'Security Modules', icon:'fa-fish-fins', desc:'Campaign delivery, landing page clone & click tracking', uptime:99.94, response:412, status:'operational', days:buildDays(99, 99.94) },
+    { key:'rat', name:'RAT Sandbox', cat:'Security Modules', icon:'fa-bug', desc:'Isolated malware analysis environment with C2 detection', uptime:99.88, response:3100, status:'degraded', days:buildDays(110, 99.88) },
+    { key:'webhook', name:'Webhook Delivery', cat:'Integrations', icon:'fa-satellite-dish', desc:'Outbound event delivery with retry & signature signing', uptime:99.96, response:156, status:'operational', days:buildDays(121, 99.96) },
+    { key:'tg', name:'Telegram Bot', cat:'Integrations', icon:'fa-paper-plane', desc:'Remote scan control, notifications & report delivery', uptime:99.92, response:224, status:'operational', days:buildDays(132, 99.92) }
+  ];
+
+  const STATUS_META = {
+    operational:{ labelKey:'services.operational', cls:'badge-operational', card:'', vkey:'up' },
+    degraded:   { labelKey:'services.degraded',    cls:'badge-degraded',    card:'is-degraded', vkey:'degraded' },
+    outage:     { labelKey:'services.outage',      cls:'badge-outage',      card:'is-outage',   vkey:'down' },
+    maintenance:{ labelKey:'services.maintenance', cls:'badge-maintenance', card:'is-maintenance', vkey:'maint' }
+  };
+
+  /* ============================================================
+     SUMMARY CHIPS
+     ============================================================ */
+  function renderSummary(){
+    const wrap = document.getElementById('statusSummary');
+    if (!wrap) return;
+    const counts = { operational:0, degraded:0, outage:0, maintenance:0 };
+    services.forEach(s => counts[s.status]++);
+    const chips = [
+      { cls:'chip-operational', n:counts.operational, key:'legend.operational' },
+      { cls:'chip-degraded',    n:counts.degraded,    key:'legend.degraded' },
+      { cls:'chip-outage',      n:counts.outage,      key:'legend.outage' },
+      { cls:'chip-maintenance', n:counts.maintenance, key:'legend.maintenance' }
+    ];
+    wrap.innerHTML = chips.map(c =>
+      '<div class="summary-chip ' + c.cls + '">' +
+        '<span class="chip-dot"></span>' +
+        '<div><div class="chip-num">' + c.n + '</div>' +
+        '<div class="chip-label">' + t(c.key) + '</div></div>' +
+      '</div>'
+    ).join('');
+  }
+
+  /* ============================================================
+     SERVICE LIST
+     ============================================================ */
+  function uptimeText(days){
+    const total = days.length;
+    const ok = days.filter(d => d === 'up' || d === 'maint').length;
+    const pct = (ok / total) * 100;
+    return pct.toFixed(2) + '%';
+  }
+
+  function renderServices(){
+    const list = document.getElementById('serviceList');
+    if (!list) return;
+
+    const groups = {};
+    services.forEach(s => { (groups[s.cat] = groups[s.cat] || []).push(s); });
+
+    const html = Object.keys(groups).map(cat => {
+      const items = groups[cat].map(s => {
+        const meta = STATUS_META[s.status] || STATUS_META.operational;
+        const bars = s.days.map((d, di) => {
+          const cls = d === 'up' ? '' :
+                      d === 'degraded' ? ' lv-degraded' :
+                      d === 'down' ? ' lv-down' :
+                      d === 'maint' ? ' lv-maint' : ' lv-empty';
+          const dt = new Date(Date.now() - (89 - di) * 86400000);
+          const dateStr = dt.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+          const statusText = d === 'up' ? t('toast.dayUp') :
+                             d === 'degraded' ? t('toast.dayDegraded') :
+                             d === 'down' ? t('toast.dayDown') :
+                             d === 'maint' ? t('toast.dayMaint') : t('toast.dayEmpty');
+          return '<div class="uptime-bar' + cls + '" data-date="' + dateStr + '" data-status="' + statusText + '" title="' + dateStr + ' — ' + statusText + '"></div>';
+        }).join('');
+
+        const lastIncident = s.days.some(d => d === 'down' || d === 'degraded') ? '3d' : t('services.none');
+
+        return '<article class="service-card ' + meta.card + ' reveal" data-service="' + s.key + '">' +
+          '<div class="service-head">' +
+            '<div class="service-icon"><i class="fas ' + s.icon + '"></i></div>' +
+            '<div class="service-meta">' +
+              '<div class="service-name">' + s.name + '<span class="service-tag">' + cat + '</span></div>' +
+              '<div class="service-desc">' + s.desc + '</div>' +
+            '</div>' +
+            '<div class="service-right">' +
+              '<div class="service-uptime">' +
+                '<strong>' + uptimeText(s.days) + '</strong>' +
+                t('services.uptime') +
+              '</div>' +
+              '<span class="status-badge ' + meta.cls + '"><span class="bdot"></span>' + t(meta.labelKey) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="uptime-track">' + bars + '</div>' +
+          '<div class="uptime-legend">' +
+            '<span>' + t('services.days90') + '</span>' +
+            '<span>' + t('services.today') + '</span>' +
+          '</div>' +
+          '<div class="service-foot">' +
+            '<span class="sf-item"><i class="fas fa-stopwatch"></i>' + t('services.response') + ': <strong>' + s.response + 'ms</strong></span>' +
+            '<span class="sf-item"><i class="fas fa-clock-rotate-left"></i>' + t('services.lastIncident') + ': <strong>' + lastIncident + '</strong></span>' +
+          '</div>' +
+        '</article>';
+      }).join('');
+      return '<div class="service-group-label">' + cat + '</div>' + items;
+    }).join('');
+
+    list.innerHTML = html;
+
+    list.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+    list.querySelectorAll('.uptime-bar').forEach(bar => {
+      bar.addEventListener('click', () => {
+        showToast(t('toast.barInfo', { date: bar.dataset.date, status: bar.dataset.status }), 'info');
+      });
+    });
+  }
+
+  /* ============================================================
+     OVERALL BANNER
+     ============================================================ */
+  function updateOverallBanner(){
+    const banner = document.getElementById('overallBanner');
+    const icon = document.getElementById('overallIcon');
+    const title = document.getElementById('overallTitle');
+    const footerStatus = document.getElementById('footerStatusText');
+    if (!banner) return;
+
+    const hasOutage = services.some(s => s.status === 'outage');
+    const hasDegraded = services.some(s => s.status === 'degraded');
+    const hasMaint = services.some(s => s.status === 'maintenance');
+
+    banner.classList.remove('degraded','outage');
+    let state = 'ok';
+
+    if (hasOutage){
+      state = 'outage';
+      banner.classList.add('outage');
+      icon.className = 'fas fa-circle-exclamation';
+      title.textContent = t('status.majorOutage');
+    } else if (hasDegraded || hasMaint){
+      state = 'degraded';
+      banner.classList.add('degraded');
+      icon.className = 'fas fa-triangle-exclamation';
+      title.textContent = t('status.someDegraded');
+    } else {
+      icon.className = 'fas fa-circle-check';
+      title.textContent = t('status.allOperational');
+    }
+
+    if (footerStatus){
+      footerStatus.textContent = state === 'ok' ? t('footer.status') : title.textContent;
+    }
+
+    const activeEl = document.querySelector('[data-count="0"] .stat-num');
+    const activeCount = services.filter(s => s.status === 'outage' || s.status === 'degraded').length;
+    if (activeEl) activeEl.textContent = String(activeCount);
+    const statBox = document.querySelector('[data-count="0"]');
+    if (statBox){
+      statBox.dataset.count = String(activeCount);
+      statBox.classList.toggle('is-green', activeCount === 0);
+    }
+  }
+
+  /* ============================================================
+     REFRESH / COUNTDOWN
+     ============================================================ */
+  let countdown = 60;
+  let lastChecked = new Date();
+
+  function updateClock(){
+    const el = document.getElementById('lastCheckedTime');
+    if (el) el.textContent = lastChecked.toLocaleTimeString();
+    const cd = document.getElementById('refreshCountdown');
+    if (cd) cd.textContent = countdown + 's';
+  }
+
+  function doRefresh(){
+    countdown = 60;
+    lastChecked = new Date();
+    updateClock();
+
+    services.forEach(s => {
+      s.response = Math.max(5, Math.round(s.response + (Math.random() * 24 - 12)));
+    });
+    renderServices();
+    updateOverallBanner();
+    renderChart();
+    renderEndpointGrid();
+    renderApiMetrics();
+  }
+
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn){
+    refreshBtn.addEventListener('click', () => {
+      refreshBtn.classList.add('spinning');
+      setTimeout(() => {
+        doRefresh();
+        refreshBtn.classList.remove('spinning');
+        showToast(t('status.refreshed'), 'success');
+      }, 650);
+    });
+  }
+
+  setInterval(() => {
+    countdown--;
+    if (countdown <= 0){ doRefresh(); }
+    updateClock();
+  }, 1000);
+  updateClock();
+
+  /* ============================================================
+     PERFORMANCE CHART
+     ============================================================ */
+  const perfChart = document.getElementById('perfChart');
+  let p50Series = [];
+  let p95Series = [];
+
+  (function buildSeries(){
+    const rnd = mulberry32(20260214);
+    let base = 118;
+    for (let i = 0; i < 24; i++){
+      base += (rnd() - .5) * 22;
+      base = Math.max(72, Math.min(210, base));
+      const p50 = Math.round(base);
+      const p95 = Math.round(p50 * (1.55 + rnd() * 0.55));
+      p50Series.push(p50);
+      p95Series.push(p95);
+    }
+  })();
+
+  function renderChart(){
+    if (!perfChart) return;
+    const W = 760, H = 230;
+    const padL = 44, padR = 14, padT = 16, padB = 28;
+    const innerW = W - padL - padR;
+    const innerH = H - padT - padB;
+
+    const all = p50Series.concat(p95Series);
+    const maxV = Math.ceil(Math.max.apply(null, all) / 50) * 50;
+    const minV = 0;
+
+    const xFor = i => padL + (i / (p50Series.length - 1)) * innerW;
+    const yFor = v => padT + innerH - ((v - minV) / (maxV - minV)) * innerH;
+
+    let gridLines = '';
+    const steps = 4;
+    for (let s = 0; s <= steps; s++){
+      const v = minV + (maxV - minV) * (s / steps);
+      const y = yFor(v);
+      gridLines += '<line class="chart-grid-line" x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '"/>';
+      gridLines += '<text class="chart-axis-label" x="' + (padL - 8) + '" y="' + (y + 3.5) + '" text-anchor="end">' + Math.round(v) + 'ms</text>';
+    }
+
+    let xLabels = '';
+    [0, 6, 12, 18, 23].forEach(i => {
+      const x = xFor(i);
+      const h = (23 - i);
+      const lbl = h === 0 ? 'now' : ('-' + h + 'h');
+      xLabels += '<text class="chart-axis-label" x="' + x + '" y="' + (H - 8) + '" text-anchor="middle">' + lbl + '</text>';
+    });
+
+    const p50Path = p50Series.map((v, i) => (i === 0 ? 'M' : 'L') + xFor(i).toFixed(1) + ' ' + yFor(v).toFixed(1)).join(' ');
+    const p95Path = p95Series.map((v, i) => (i === 0 ? 'M' : 'L') + xFor(i).toFixed(1) + ' ' + yFor(v).toFixed(1)).join(' ');
+    const areaPath = p50Path + ' L' + xFor(p50Series.length - 1).toFixed(1) + ' ' + (padT + innerH) + ' L' + xFor(0).toFixed(1) + ' ' + (padT + innerH) + ' Z';
+
+    let dots = '';
+    p50Series.forEach((v, i) => {
+      if (i % 3 === 0){
+        dots += '<circle class="chart-dot" cx="' + xFor(i).toFixed(1) + '" cy="' + yFor(v).toFixed(1) + '" r="4"><title>' + v + 'ms</title></circle>';
+      }
+    });
+
+    perfChart.innerHTML =
+      '<defs>' +
+        '<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0%" stop-color="rgba(59,130,246,.32)"/>' +
+          '<stop offset="100%" stop-color="rgba(59,130,246,0)"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      gridLines +
+      '<path class="chart-area" d="' + areaPath + '"/>' +
+      '<path class="chart-line-2" d="' + p95Path + '"/>' +
+      '<path class="chart-line" d="' + p50Path + '"/>' +
+      dots +
+      xLabels;
+
+    const lastP50 = p50Series[p50Series.length - 1];
+    const lastP95 = p95Series[p95Series.length - 1];
+    const peak = Math.max.apply(null, p50Series);
+    const p50El = document.getElementById('p50Now');
+    const p95El = document.getElementById('p95Now');
+    const peakEl = document.getElementById('peakToday');
+    if (p50El) p50El.textContent = lastP50 + 'ms';
+    if (p95El) p95El.textContent = lastP95 + 'ms';
+    if (peakEl) peakEl.textContent = peak + 'ms';
+  }
+
+  /* ============================================================
+     API REQUEST MONITOR — LIVE DATA
+     ============================================================ */
+  const ENDPOINTS = [
+    { method:'POST', path:'/api/scan/start',          icon:'fa-play',        base:124, weight:0.22, regions:['FRA','SIN','IAD'] },
+    { method:'GET',  path:'/api/scan/{id}/status',   icon:'fa-spinner',     base:38,  weight:0.28, regions:['FRA','SIN','IAD'] },
+    { method:'GET',  path:'/api/scan/{id}/results',  icon:'fa-file-lines',  base:212, weight:0.10, regions:['FRA','SIN'] },
+    { method:'POST', path:'/api/auth/login',          icon:'fa-right-to-bracket', base:186, weight:0.08, regions:['FRA','SIN','IAD'] },
+    { method:'GET',  path:'/api/user/me',            icon:'fa-user',        base:52,  weight:0.12, regions:['FRA','SIN','IAD'] },
+    { method:'GET',  path:'/api/modules',            icon:'fa-layer-group', base:24,  weight:0.09, regions:['FRA','IAD'] },
+    { method:'POST', path:'/api/report/generate',    icon:'fa-file-export', base:1840,weight:0.03, regions:['FRA'] },
+    { method:'GET',  path:'/api/status/health',      icon:'fa-heart-pulse', base:12,  weight:0.08, regions:['FRA','SIN','IAD'] }
+  ];
+
+  const REGION_LABEL = { FRA:'Frankfurt', SIN:'Singapore', IAD:'Virginia' };
+
+  const endpointHist = {};
+  ENDPOINTS.forEach(ep => {
+    const rnd = mulberry32(ep.path.length * 97);
+    const hist = [];
+    for (let i = 0; i < 20; i++){
+      const jitter = (rnd() - .5) * ep.base * 0.35;
+      hist.push(Math.max(6, Math.round(ep.base + jitter)));
+    }
+    endpointHist[ep.path] = hist;
+  });
+
+  function pickMethodClass(m){
+    if (m === 'GET') return 'method-get';
+    if (m === 'POST') return 'method-post';
+    if (m === 'PUT' || m === 'PATCH') return 'method-put';
+    if (m === 'DELETE') return 'method-del';
+    return 'method-ws';
+  }
+
+  function codeClass(code){
+    if (code >= 200 && code < 300) return 'code-2xx';
+    if (code >= 400 && code < 500) return 'code-4xx';
+    if (code >= 500) return 'code-5xx';
+    return '';
+  }
+
+  function pickCode(weight){
+    const r = Math.random();
+    if (r < 0.965) return 200;
+    if (r < 0.985) return 201;
+    if (r < 0.992) return 204;
+    if (r < 0.998) return 400;
+    if (r < 0.999) return 404;
+    if (r < 0.9996) return 429;
+    if (r < 1.0) return 500;
+    return 200;
+  }
+
+  function renderEndpointGrid(){
+    const grid = document.getElementById('apiEndpointGrid');
+    if (!grid) return;
+
+    grid.innerHTML = ENDPOINTS.map(ep => {
+      const hist = endpointHist[ep.path];
+      const current = hist[hist.length - 1];
+      const code = ep._lastCode || 200;
+      const isWarn = code >= 400 && code < 500;
+      const isErr = code >= 500;
+      const cls = isErr ? 'is-err' : (isWarn ? 'is-warn' : '');
+
+      const max = Math.max.apply(null, hist);
+      const min = Math.min.apply(null, hist);
+      const range = Math.max(1, max - min);
+      const sparkW = 72, sparkH = 26, barW = 3, gap = 0.6;
+      const bars = hist.map((v, i) => {
+        const h = 4 + ((v - min) / range) * (sparkH - 6);
+        const x = i * (barW + gap);
+        const y = sparkH - h;
+        return '<rect class="spark-bar" x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW + '" height="' + h.toFixed(2) + '" rx="1"/>';
+      }).join('');
+
+      const timeLabel = current > 1500 ? (current/1000).toFixed(2) + '<small>s</small>' : current + '<small>ms</small>';
+
+      return '<div class="api-endpoint ' + cls + '" data-ep="' + ep.path + '">' +
+        '<div class="api-ep-head">' +
+          '<span class="api-method ' + pickMethodClass(ep.method) + '">' + ep.method + '</span>' +
+          '<span class="api-ep-path">' + ep.path + '</span>' +
+        '</div>' +
+        '<div class="api-ep-body">' +
+          '<div class="api-ep-time">' + timeLabel + '</div>' +
+          '<div class="api-ep-spark"><svg viewBox="0 0 ' + (sparkW) + ' ' + sparkH + '" preserveAspectRatio="none">' + bars + '</svg></div>' +
+        '</div>' +
+        '<div class="api-ep-foot">' +
+          '<span class="api-ep-code ' + codeClass(code) + '"><i class="fas fa-circle"></i> ' + code + ' ' + (code === 200 ? 'OK' : (code === 201 ? 'Created' : (code === 204 ? 'No Content' : (code === 400 ? 'Bad Request' : (code === 404 ? 'Not Found' : (code === 429 ? 'Rate Limited' : (code === 500 ? 'Server Error' : 'OK'))))))) + '</span>' +
+          '<span>' + (ep.regions.length) + ' regions</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    grid.querySelectorAll('.api-endpoint').forEach(card => {
+      card.addEventListener('click', () => {
+        const path = card.dataset.ep;
+        const ep = ENDPOINTS.find(e => e.path === path);
+        if (!ep) return;
+        const hist = endpointHist[path];
+        const time = hist[hist.length - 1];
+        const code = ep._lastCode || 200;
+        showToast(t('toast.endpointInfo', { method: ep.method, path: ep.path, code: code, time: time }), 'info');
+      });
+    });
+  }
+
+  function probeEndpoints(silent){
+    ENDPOINTS.forEach(ep => {
+      const hist = endpointHist[ep.path];
+      const prev = hist[hist.length - 1];
+      const jitter = (Math.random() - .5) * ep.base * 0.38;
+      let next = Math.max(6, Math.round(prev * 0.55 + (ep.base + jitter) * 0.45));
+      hist.push(next);
+      if (hist.length > 20) hist.shift();
+      ep._lastCode = pickCode(ep.weight);
+    });
+    renderEndpointGrid();
+    renderApiMetrics();
+    if (!silent) showToast(t('toast.apiProbed'), 'success');
+  }
+
+  /* ============================================================
+     API METRICS
+     ============================================================ */
+  let reqPerMin = 412;
+  let avgLatency = 118;
+  let successRate = 99.94;
+  let errorRate = 0.06;
+
+  function renderApiMetrics(){
+    let total = 0, sum = 0;
+    ENDPOINTS.forEach(ep => {
+      const h = endpointHist[ep.path];
+      sum += h[h.length - 1] * ep.weight;
+      total += ep.weight;
+    });
+    avgLatency = Math.round(sum / total);
+
+    reqPerMin = Math.max(180, Math.min(720, Math.round(reqPerMin + (Math.random() - .5) * 24)));
+
+    const r = Math.random();
+    if (r < 0.03) successRate = Math.max(98.2, successRate - 0.05);
+    else successRate = Math.min(99.99, successRate + 0.02);
+    successRate = Math.round(successRate * 100) / 100;
+    errorRate = Math.round((100 - successRate) * 100) / 100;
+
+    const rpm = document.getElementById('reqPerMin');
+    const rpms = document.getElementById('reqPerMinSub');
+    const avg = document.getElementById('avgLatency');
+    const avgs = document.getElementById('avgLatencySub');
+    const sr = document.getElementById('successRate');
+    const srs = document.getElementById('successRateSub');
+    const er = document.getElementById('errorRate');
+    const ers = document.getElementById('errorRateSub');
+
+    if (rpm) rpm.innerHTML = reqPerMin + '<small>rpm</small>';
+    if (rpms) rpms.innerHTML = '<span class="up">▲ ' + (Math.random() * 4 + 1).toFixed(1) + '%</span> ' + t('apim.vsLastHour');
+
+    const avgLabel = avgLatency > 1000 ? (avgLatency/1000).toFixed(2) + '<small>s</small>' : avgLatency + '<small>ms</small>';
+    if (avg) avg.innerHTML = avgLabel;
+    if (avgs) {
+      const delta = (Math.random() * 6 - 3).toFixed(1);
+      const cls = delta < 0 ? 'up' : 'down';
+      avgs.innerHTML = '<span class="' + cls + '">' + (delta < 0 ? '▼ ' : '▲ ') + Math.abs(delta) + '%</span> ' + t('apim.vsLastHour');
+    }
+
+    if (sr) sr.innerHTML = successRate.toFixed(2) + '<small>%</small>';
+    if (srs) srs.innerHTML = '<span class="up">▲ 0.01%</span> ' + t('apim.vsLastHour');
+
+    if (er) er.innerHTML = errorRate.toFixed(2) + '<small>%</small>';
+    if (ers) ers.innerHTML = t('apim.lastMin') + ' · ' + Math.round(reqPerMin * errorRate / 100) + ' errors';
+  }
+
+  /* ============================================================
+     LIVE REQUEST LOG
+     ============================================================ */
+  const logRows = [];
+  let logPaused = false;
+  let logFilter = 'all';
+
+  function makeLogRow(){
+    const r = Math.random();
+    let acc = 0;
+    let ep = ENDPOINTS[0];
+    for (const e of ENDPOINTS){
+      acc += e.weight;
+      if (r <= acc){ ep = e; break; }
+    }
+    const code = pickCode(ep.weight);
+    const hist = endpointHist[ep.path];
+    const baseTime = hist[hist.length - 1];
+    const latency = Math.max(6, Math.round(baseTime * (0.75 + Math.random() * 0.5)));
+    const region = ep.regions[Math.floor(Math.random() * ep.regions.length)];
+    const size = Math.round(120 + Math.random() * 4200);
+    const now = new Date();
+    return {
+      ts: now,
+      method: ep.method,
+      path: ep.path,
+      code: code,
+      latency: latency,
+      size: size,
+      region: region
+    };
+  }
+
+  function fmtTime(d){
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    return hh + ':' + mm + ':' + ss;
+  }
+
+  function fmtSize(b){
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b/1024).toFixed(1) + ' KB';
+    return (b/1024/1024).toFixed(2) + ' MB';
+  }
+
+  function fmtLatency(ms){
+    if (ms >= 1000) return (ms/1000).toFixed(2) + 's';
+    return ms + 'ms';
+  }
+
+  function codeShortLabel(code){
+    if (code === 200) return 'OK';
+    if (code === 201) return 'Created';
+    if (code === 204) return 'No Content';
+    if (code === 400) return 'Bad Request';
+    if (code === 404) return 'Not Found';
+    if (code === 429) return 'Rate Limited';
+    if (code === 500) return 'Server Error';
+    return '';
+  }
+
+  function rowMatchesFilter(row){
+    if (logFilter === 'all') return true;
+    if (logFilter === '2xx') return row.code >= 200 && row.code < 300;
+    if (logFilter === '4xx') return row.code >= 400 && row.code < 500;
+    if (logFilter === '5xx') return row.code >= 500;
+    return true;
+  }
+
+  function renderApiLog(){
+    const body = document.getElementById('apiLogBody');
+    const empty = document.getElementById('apiLogEmpty');
+    if (!body) return;
+
+    const visible = logRows.filter(rowMatchesFilter);
+    if (!visible.length){
+      body.innerHTML = '';
+      if (empty) empty.hidden = false;
+      updateLogStats();
+      return;
+    }
+    if (empty) empty.hidden = true;
+
+    const maxLat = Math.max.apply(null, visible.map(r => r.latency)) || 1;
+    const html = visible.slice(0, 40).map(row => {
+      const latCls = row.code >= 500 ? 'err' : (row.code >= 400 ? 'warn' : '');
+      const barW = Math.max(6, Math.round((row.latency / maxLat) * 64));
+      const isNew = row._isNew;
+      row._isNew = false;
+      return '<tr class="' + (isNew ? 'row-new' : '') + '">' +
+        '<td class="t-time">' + fmtTime(row.ts) + '</td>' +
+        '<td class="t-method"><span class="api-method ' + pickMethodClass(row.method) + '">' + row.method + '</span></td>' +
+        '<td class="t-path" title="' + row.path + '">' + row.path + '</td>' +
+        '<td class="t-code ' + codeClass(row.code) + '">' + row.code + '</td>' +
+        '<td class="t-time-val"><span class="log-bar-mini ' + latCls + '" style="width:' + barW + 'px"></span>' + fmtLatency(row.latency) + '</td>' +
+        '<td class="t-size">' + fmtSize(row.size) + '</td>' +
+        '<td class="t-region">' + row.region + '</td>' +
+      '</tr>';
+    }).join('');
+    body.innerHTML = html;
+    updateLogStats();
+  }
+
+  function updateLogStats(){
+    const statsEl = document.getElementById('logStats');
+    const updEl = document.getElementById('logUpdated');
+    const visible = logRows.filter(rowMatchesFilter);
+    if (statsEl){
+      const ok = visible.filter(r => r.code >= 200 && r.code < 300).length;
+      const pct = visible.length ? ((ok / visible.length) * 100).toFixed(1) : '0.0';
+      statsEl.textContent = t('apim.logStats', { n: visible.length, pct: pct });
+    }
+    if (updEl && logRows.length){
+      updEl.textContent = t('apim.logUpdated', { time: fmtTime(logRows[0].ts) });
+    }
+  }
+
+  function pushLogRow(){
+    if (logPaused) return;
+    const row = makeLogRow();
+    row._isNew = true;
+    logRows.unshift(row);
+    if (logRows.length > 80) logRows.pop();
+    renderApiLog();
+  }
+
+  document.querySelectorAll('.log-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const f = btn.dataset.logFilter;
+      if (f === 'pause'){
+        logPaused = !logPaused;
+        const label = btn.querySelector('span');
+        const icon = btn.querySelector('i');
+        if (logPaused){
+          icon.className = 'fas fa-play';
+          if (label) label.textContent = t('apim.resume');
+          btn.classList.add('active');
+          showToast(t('toast.logPaused'), 'info');
+        } else {
+          icon.className = 'fas fa-pause';
+          if (label) label.textContent = t('apim.pause');
+          btn.classList.remove('active');
+          showToast(t('toast.logResumed'), 'success');
+        }
+        return;
+      }
+      logFilter = f;
+      document.querySelectorAll('.log-filter-btn').forEach(b => {
+        if (b.dataset.logFilter !== 'pause') b.classList.toggle('active', b.dataset.logFilter === f);
+      });
+      renderApiLog();
+    });
+  });
+
+  setInterval(pushLogRow, 2000);
+  for (let i = 0; i < 22; i++){
+    const row = makeLogRow();
+    row.ts = new Date(Date.now() - (i * 1900 + Math.random() * 800));
+    row._isNew = false;
+    logRows.push(row);
+  }
+  renderApiLog();
+
+  const apiRefreshBtn = document.getElementById('apiRefreshBtn');
+  if (apiRefreshBtn){
+    apiRefreshBtn.addEventListener('click', () => {
+      apiRefreshBtn.classList.add('spinning');
+      setTimeout(() => {
+        probeEndpoints(false);
+        apiRefreshBtn.classList.remove('spinning');
+      }, 550);
+    });
+  }
+
+  setInterval(() => probeEndpoints(true), 5000);
+  probeEndpoints(true);
+  renderApiMetrics();
+
+  /* ============================================================
+     INCIDENTS
+     ============================================================ */
+  const incidents = [
+    {
+      id:'INC-2026-0148', sev:'degraded', statusKey:'inc.degraded', resolved:true,
+      title:'Elevated API latency on /api/scan/start',
+      date:'2026-02-14T09:42:00Z', relative:'2 hours ago',
+      summary:'A burst of concurrent scan submissions from a single tenant caused queue backpressure, raising P95 latency on the scan-start endpoint to ~4.2s for 18 minutes.',
+      affected:['API Gateway','Job Queue'],
+      updates:[
+        { time:'09:42 UTC', text:'<strong>Investigating</strong> — Alert fired: P95 latency on /api/scan/start exceeded 3000ms for 5 consecutive minutes.' },
+        { time:'09:49 UTC', text:'<strong>Identified</strong> — Root cause traced to a single tenant submitting 12,000 scan requests in 4 minutes, bypassing client-side throttling.' },
+        { time:'09:55 UTC', text:'<strong>Mitigating</strong> — Per-tenant rate limit tightened from 500/min to 120/min. Queue drained with additional workers spun up.' },
+        { time:'10:00 UTC', text:'<strong>Resolved</strong> — P95 latency back under 800ms. Monitoring for 30 minutes before closing.' , done:true }
+      ]
+    },
+    {
+      id:'INC-2026-0141', sev:'outage', statusKey:'inc.outage', resolved:true,
+      title:'Scanner Engine unavailable for 6 minutes',
+      date:'2026-02-11T03:18:00Z', relative:'3 days ago',
+      summary:'A routine rolling restart of the scanner worker pool did not drain in-flight jobs correctly, causing a 6-minute window where new scans returned 503. No data was lost.',
+      affected:['Scanner Engine','Job Queue','Report Generator'],
+      updates:[
+        { time:'03:18 UTC', text:'<strong>Investigating</strong> — Health checks failing on 8 of 12 scanner workers. /api/scan/start returning 503.' },
+        { time:'03:21 UTC', text:'<strong>Identified</strong> — Deploy script drained connections before jobs finished; in-flight jobs aborted and workers stuck in unhealthy state.' },
+        { time:'03:24 UTC', text:'<strong>Mitigating</strong> — Rolled back deploy. Restarted worker pool with corrected drain logic.' },
+        { time:'03:31 UTC', text:'<strong>Resolved</strong> — All 12 workers healthy. Backlog of 47 aborted jobs automatically requeued and completed.' , done:true }
+      ]
+    },
+    {
+      id:'INC-2026-0135', sev:'maintenance', statusKey:'inc.maintenance', resolved:true,
+      title:'Scheduled database maintenance — primary cluster',
+      date:'2026-02-07T01:00:00Z', relative:'1 week ago',
+      summary:'Planned minor-version upgrade of PostgreSQL 16.2 → 16.4 with streaming replica promotion. Executed with zero measurable downtime.',
+      affected:['Primary Database'],
+      updates:[
+        { time:'01:00 UTC', text:'<strong>Scheduled</strong> — Maintenance window opened. Replica promoted to primary.' },
+        { time:'01:12 UTC', text:'<strong>Completed</strong> — Old primary patched and rejoined as replica. Replication lag caught up in 38 seconds.' , done:true }
+      ]
+    },
+    {
+      id:'INC-2026-0129', sev:'degraded', statusKey:'inc.degraded', resolved:true,
+      title:'RAT Sandbox elevated analysis queue times',
+      date:'2026-02-02T16:05:00Z', relative:'2 weeks ago',
+      summary:'Sample uploads to the RAT sandbox spiked 4x above baseline. Average analysis time increased from 45s to 3m10s. Queued samples processed with no loss.',
+      affected:['RAT Sandbox'],
+      updates:[
+        { time:'16:05 UTC', text:'<strong>Investigating</strong> — Sandbox queue depth exceeded 200 samples; analysis SLA at risk.' },
+        { time:'16:22 UTC', text:'<strong>Mitigating</strong> — Added 6 ephemeral sandbox VMs to the analysis pool.' },
+        { time:'17:04 UTC', text:'<strong>Resolved</strong> — Queue drained. Analysis time back to 48s average.' , done:true }
+      ]
+    },
+    {
+      id:'INC-2026-0112', sev:'degraded', statusKey:'inc.degraded', resolved:true,
+      title:'Webhook delivery delays to third-party endpoints',
+      date:'2026-01-24T11:33:00Z', relative:'3 weeks ago',
+      summary:'A DNS resolver issue on two of three delivery nodes caused webhook retries to back off aggressively, delaying notifications by up to 9 minutes.',
+      affected:['Webhook Delivery','Telegram Bot'],
+      updates:[
+        { time:'11:33 UTC', text:'<strong>Investigating</strong> — Webhook success rate dropped from 99.9% to 91%.' },
+        { time:'11:47 UTC', text:'<strong>Identified</strong> — Upstream DNS resolver timeouts on delivery nodes 2 and 3.' },
+        { time:'12:05 UTC', text:'<strong>Resolved</strong> — Switched to secondary resolver. Backlog of 1,240 webhooks delivered successfully.' , done:true }
+      ]
+    }
+  ];
+
+  const INC_FILTERS = [
+    { key:'all',         labelKey:'inc.all' },
+    { key:'resolved',    labelKey:'inc.resolved' },
+    { key:'degraded',    labelKey:'inc.degraded' },
+    { key:'outage',      labelKey:'inc.outage' },
+    { key:'maintenance', labelKey:'inc.maintenance' }
+  ];
+  let incFilter = 'all';
+
+  function renderIncidentFilters(){
+    const bar = document.getElementById('incidentFilters');
+    if (!bar) return;
+    bar.innerHTML = INC_FILTERS.map(f => {
+      let count = incidents.length;
+      if (f.key === 'resolved') count = incidents.filter(i => i.sev === 'degraded' || i.sev === 'outage').length;
+      else if (f.key !== 'all') count = incidents.filter(i => i.sev === f.key).length;
+      return '<button class="inc-filter-btn' + (incFilter === f.key ? ' active' : '') + '" data-f="' + f.key + '" role="tab" aria-selected="' + (incFilter === f.key) + '">' +
+        t(f.labelKey) + ' <span class="filter-count">' + count + '</span></button>';
+    }).join('');
+
+    bar.querySelectorAll('.inc-filter-btn').forEach(btn => {
+      btn.addEventListener('click', function(){
+        if (this.dataset.f === incFilter) return;
+        incFilter = this.dataset.f;
+        renderIncidentFilters();
+        renderIncidents();
+      });
+    });
+  }
+
+  function incidentMatches(inc){
+    if (incFilter === 'all') return true;
+    if (incFilter === 'resolved') return inc.sev === 'degraded' || inc.sev === 'outage';
+    return inc.sev === incFilter;
+  }
+
+  function renderIncidents(){
+    const tl = document.getElementById('incidentTimeline');
+    if (!tl) return;
+
+    const list = incidents.filter(incidentMatches);
+    if (!list.length){
+      tl.innerHTML = '<div class="no-incidents"><i class="fas fa-circle-check"></i>' + t('inc.none') + '</div>';
+      return;
+    }
+
+    tl.innerHTML = list.map(inc => {
+      const affected = inc.affected.map(a => '<span class="affected-chip">' + a + '</span>').join('');
+      const updates = inc.updates.map(u =>
+        '<div class="upd-item' + (u.done ? ' done' : '') + '">' +
+          '<span class="upd-time">' + u.time + '</span>' + u.text +
+        '</div>'
+      ).join('');
+      return '<div class="tl-item sev-' + inc.sev + '">' +
+        '<article class="incident-card" data-inc="' + inc.id + '">' +
+          '<div class="incident-top">' +
+            '<span class="sev-badge sev-' + inc.sev + '">' + t(inc.statusKey) + '</span>' +
+            '<h4 class="incident-title">' + inc.title + '</h4>' +
+            '<span class="incident-date">' + inc.relative + ' · ' + inc.id + '</span>' +
+          '</div>' +
+          '<p class="incident-summary">' + inc.summary + '</p>' +
+          '<div class="incident-affected">' +
+            '<span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-faint);">' + t('inc.affected') + '</span>' +
+            affected +
+          '</div>' +
+          '<span class="incident-toggle"><i class="fas fa-chevron-down"></i><span class="inc-toggle-label">' + t('inc.showDetail') + '</span></span>' +
+          '<div class="incident-detail"><div class="incident-detail-inner">' + updates + '</div></div>' +
+        '</article>' +
+      '</div>';
+    }).join('');
+
+    tl.querySelectorAll('.incident-card').forEach(card => {
+      const detail = card.querySelector('.incident-detail');
+      const label = card.querySelector('.inc-toggle-label');
+      card.addEventListener('click', function(){
+        const isOpen = card.classList.contains('open');
+        if (isOpen){
+          card.classList.remove('open');
+          detail.style.maxHeight = '0px';
+          if (label) label.textContent = t('inc.showDetail');
+        } else {
+          card.classList.add('open');
+          detail.style.maxHeight = detail.scrollHeight + 'px';
+          if (label) label.textContent = t('inc.hideDetail');
+        }
+      });
+    });
+  }
+
+  /* ============================================================
+     MAINTENANCE
+     ============================================================ */
+  const maintenance = [
+    {
+      status:'inProgress',
+      title:'Rolling upgrade — Scanner Engine v7.3',
+      desc:'Deploying the v7.3 scanner engine with improved payload mutation and 14% faster SQL injection detection. Workers are drained and replaced one at a time so no scans are interrupted.',
+      window:'Feb 14, 2026 · 22:00 – 23:30 UTC',
+      duration:'~90 minutes',
+      impact:'None expected — rolling deploy with zero downtime',
+      progress:62
+    },
+    {
+      status:'scheduled',
+      title:'Database minor version upgrade (PostgreSQL 16.4 → 16.5)',
+      desc:'Applying the latest security patch to the primary database cluster. Executed via replica promotion to guarantee no downtime.',
+      window:'Feb 21, 2026 · 01:00 – 02:00 UTC',
+      duration:'~45 minutes',
+      impact:'None expected — replica promotion, no query interruption',
+      progress:0
+    },
+    {
+      status:'scheduled',
+      title:'CDN edge configuration refresh',
+      desc:'Updating cache-control rules and deploying new edge worker code across all 42 global PoPs.',
+      window:'Feb 28, 2026 · 03:00 – 04:00 UTC',
+      duration:'~30 minutes',
+      impact:'Static assets may be served from origin for up to 2 minutes',
+      progress:0
+    },
+    {
+      status:'completed',
+      title:'Report generator memory optimisation',
+      desc:'Upgraded the PDF rendering pipeline to streaming mode, cutting peak memory usage by 68% for large reports.',
+      window:'Feb 7, 2026 · 01:00 – 01:12 UTC',
+      duration:'12 minutes',
+      impact:'None — completed ahead of schedule',
+      progress:100
+    }
+  ];
+
+  function renderMaintenance(){
+    const grid = document.getElementById('maintGrid');
+    if (!grid) return;
+    const meta = {
+      scheduled:{ cls:'scheduled', key:'maint.scheduled' },
+      inProgress:{ cls:'progress', key:'maint.inProgress' },
+      completed:{ cls:'completed', key:'maint.completed' }
+    };
+    grid.innerHTML = maintenance.map(m => {
+      const mm = meta[m.status] || meta.scheduled;
+      const prog = m.progress > 0 && m.progress < 100
+        ? '<div class="maint-progress"><span style="width:' + m.progress + '%"></span></div>'
+        : (m.progress === 100 ? '<div class="maint-progress"><span style="width:100%"></span></div>' : '');
+      return '<article class="maint-card reveal">' +
+        '<span class="maint-status ' + mm.cls + '">' + t(mm.key) + '</span>' +
+        '<h4>' + m.title + '</h4>' +
+        '<p>' + m.desc + '</p>' +
+        '<div class="maint-meta">' +
+          '<div><i class="fas fa-calendar-day"></i><span>' + t('maint.window') + ': <strong>' + m.window + '</strong></span></div>' +
+          '<div><i class="fas fa-hourglass-half"></i><span>' + t('maint.duration') + ': <strong>' + m.duration + '</strong></span></div>' +
+          '<div><i class="fas fa-triangle-exclamation"></i><span>' + t('maint.impact') + ': <strong>' + m.impact + '</strong></span></div>' +
+        '</div>' +
+        prog +
+      '</article>';
+    }).join('');
+    grid.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+  }
+
+  /* ============================================================
+     SUBSCRIBE FORM
+     ============================================================ */
+  const subscribeForm = document.getElementById('subscribeForm');
+  const subscribeEmail = document.getElementById('subscribeEmail');
+  if (subscribeForm){
+    subscribeForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const val = (subscribeEmail.value || '').trim();
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val);
+      if (!ok){
+        showToast(t('sub.invalid'), 'error');
+        subscribeEmail.focus();
+        return;
+      }
+      showToast(t('sub.success'), 'success');
+      subscribeEmail.value = '';
+    });
+  }
+  const rssBtn = document.getElementById('rssBtn');
+  if (rssBtn){
+    rssBtn.addEventListener('click', e => {
+      e.preventDefault();
+      const url = 'https://deepnote.com/api/status/rss';
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).then(() => showToast(t('sub.rss'), 'success'))
+          .catch(() => showToast(url, 'info'));
+      } else showToast(url, 'info');
+    });
+  }
+
+  /* ============================================================
+     FAQ ACCORDION
+     ============================================================ */
+  document.querySelectorAll('.faq-item').forEach(item => {
+    const q = item.querySelector('.faq-q');
+    const a = item.querySelector('.faq-a');
+    q.addEventListener('click', () => {
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item').forEach(x => {
+        x.classList.remove('open');
+        const a2 = x.querySelector('.faq-a');
+        if (a2) a2.style.maxHeight = '0px';
+      });
+      if (!isOpen){
+        item.classList.add('open');
+        a.style.maxHeight = a.scrollHeight + 'px';
+      }
+    });
+  });
+
+  /* ============================================================
+     LANGUAGE BUTTONS
+     ============================================================ */
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      const lang = b.dataset.lang;
+      applyTranslations(lang);
+      showToast(t('toast.langSwitched', { lang: lang.toUpperCase() }));
+    });
+  });
+
+  /* ============================================================
+     COMMAND PALETTE
+     ============================================================ */
+  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+  const kbdLabel = isMac ? '⌘K' : 'Ctrl K';
+  const cmdkKbd = document.getElementById('cmdkKbd');
+  if (cmdkKbd) cmdkKbd.textContent = kbdLabel;
+
+  const cmdkOverlay = document.getElementById('cmdkOverlay');
+  const cmdkInput = document.getElementById('cmdkInput');
+  const cmdkList = document.getElementById('cmdkList');
+  const cmdTrigger = document.getElementById('cmdTrigger');
+
+  const commands = [
+    { group:'Sections', items:[
+      { i:'fa-heart-pulse', label:'Overview', action:() => scrollToId('overview') },
+      { i:'fa-server', label:'Service Health', action:() => scrollToId('services') },
+      { i:'fa-satellite-dish', label:'API Monitor', action:() => scrollToId('api-monitor') },
+      { i:'fa-chart-line', label:'Performance', action:() => scrollToId('performance') },
+      { i:'fa-triangle-exclamation', label:'Incident History', action:() => scrollToId('incidents') },
+      { i:'fa-screwdriver-wrench', label:'Scheduled Maintenance', action:() => scrollToId('maintenance') },
+      { i:'fa-bell', label:'Subscribe to Updates', action:() => scrollToId('subscribe') },
+      { i:'fa-circle-question', label:'FAQ', action:() => scrollToId('faq') }
+    ]},
+    { group:'Actions', items:[
+      { i:'fa-rotate-right', label:'Refresh status now', key:'R', action:() => { doRefresh(); showToast(t('status.refreshed')); } },
+      { i:'fa-satellite-dish', label:'Probe all API endpoints', key:'P', action:() => probeEndpoints(false) },
+      { i:'fa-moon', label:'Toggle theme', key:'T', action:() => toggleTheme() },
+      { i:'fa-rss', label:'Copy RSS feed URL', key:'C', action:() => { if (rssBtn) rssBtn.click(); } },
+      { i:'fa-rocket', label:'Go to Get Started', action:() => location.href='get-started.html' },
+      { i:'fa-gauge', label:'Go to Dashboard', action:() => location.href='/dashboard.html' },
+      { i:'fa-book', label:'Open Docs', action:() => location.href='/docs.html' },
+      { i:'fa-telegram', label:'Contact on Telegram', action:() => window.open('https://t.me/emergens','_blank') }
+    ]}
+  ];
+
+  let cmdkActive = 0;
+  let cmdkFlat = [];
+
+  function buildCmdk(filter){
+    const q = (filter || '').trim().toLowerCase();
+    cmdkFlat = [];
+    const html = commands.map(grp => {
+      const matched = grp.items.filter(it => !q || it.label.toLowerCase().includes(q) || grp.group.toLowerCase().includes(q));
+      if (!matched.length) return '';
+      const items = matched.map(it => {
+        const idx = cmdkFlat.length;
+        cmdkFlat.push(it);
+        return '<div class="cmdk-item' + (idx === cmdkActive ? ' active' : '') + '" data-idx="' + idx + '">' +
+          '<i class="fas ' + it.i + '"></i><span>' + it.label + '</span>' +
+          (it.key ? '<span class="cmdk-key">' + it.key + '</span>' : '') +
+          '</div>';
+      }).join('');
+      return '<div class="cmdk-group-label">' + grp.group + '</div>' + items;
+    }).filter(Boolean).join('');
+    cmdkList.innerHTML = html || '<div class="cmdk-empty">' + t('toast.cmdNotFound') + '</div>';
+    cmdkList.querySelectorAll('.cmdk-item').forEach(el => {
+      el.addEventListener('mouseenter', () => { cmdkActive = +el.dataset.idx; updateCmdkActive(); });
+      el.addEventListener('click', () => {
+        const cmd = cmdkFlat[+el.dataset.idx];
+        if (cmd){ closeCmdk(); setTimeout(() => cmd.action(), 120); }
+      });
+    });
+    if (cmdkActive >= cmdkFlat.length) cmdkActive = 0;
+    updateCmdkActive();
+  }
+  function updateCmdkActive(){
+    cmdkList.querySelectorAll('.cmdk-item').forEach(el => el.classList.toggle('active', +el.dataset.idx === cmdkActive));
+  }
+  function scrollToId(id){ const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }
+  function openCmdk(){ cmdkActive = 0; cmdkOverlay.classList.add('active'); document.body.style.overflow = 'hidden'; buildCmdk(''); setTimeout(() => cmdkInput.focus(), 60); }
+  function closeCmdk(){ cmdkOverlay.classList.remove('active'); document.body.style.overflow = ''; cmdkInput.value = ''; }
+
+  cmdTrigger.addEventListener('click', openCmdk);
+  cmdkOverlay.addEventListener('click', e => { if (e.target === cmdkOverlay) closeCmdk(); });
+  cmdkInput.addEventListener('input', e => { cmdkActive = 0; buildCmdk(e.target.value); });
+  cmdkInput.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown'){ e.preventDefault(); cmdkActive = Math.min(cmdkFlat.length - 1, cmdkActive + 1); updateCmdkActive(); }
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); cmdkActive = Math.max(0, cmdkActive - 1); updateCmdkActive(); }
+    else if (e.key === 'Enter'){ e.preventDefault(); const cmd = cmdkFlat[cmdkActive]; if (cmd){ closeCmdk(); setTimeout(() => cmd.action(), 120); } }
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){
+      e.preventDefault();
+      if (cmdkOverlay.classList.contains('active')) closeCmdk(); else openCmdk();
+      return;
+    }
+    if (e.key === 'Escape'){
+      if (cmdkOverlay.classList.contains('active')) closeCmdk();
+      toggleMobileMenu(true);
+    }
+  });
+
+  /* ============================================================
+     COOKIE BANNER
+     ============================================================ */
+  (function(){
+    const banner = document.getElementById('cookieBanner');
+    const accept = document.getElementById('cookieAccept');
+    const decline = document.getElementById('cookieDecline');
+    if (!banner) return;
+    if (localStorage.getItem('emergens-cookie-consent')) return;
+    setTimeout(() => banner.classList.add('show'), 1800);
+    function dismiss(v){ localStorage.setItem('emergens-cookie-consent', v); banner.classList.remove('show'); }
+    accept.addEventListener('click', () => dismiss('accepted'));
+    decline.addEventListener('click', () => dismiss('declined'));
+  })();
+
+  /* ============================================================
+     BOOTSTRAP
+     ============================================================ */
+  renderIncidentFilters();
+  applyTranslations(currentLang);
+  renderChart();
+  onScroll();
+
+  console.log('%cEmergens Status Page v10 — with live API monitor','color:#60a5fa;font-size:16px;font-weight:bold;font-family:monospace;');
+  console.log('%cAPI Endpoint: https://deepnote.com','color:#34d399;font-size:12px;font-family:monospace;');
+  console.log('%c12 services · live API probe every 5s · live request log every 2s · EN/BM/ID i18n','color:#d4a574;font-size:12px;font-family:monospace;');
+})();
+</script>
+</body>
+</html>
