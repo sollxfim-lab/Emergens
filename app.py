@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Oxysintx - Main Flask Application (v3.9.0)
+Oxysintx - Main Flask Application (v4.0.0)
 
-Changelog v3.9.0
+Changelog v4.0.0
 ----------------
-- Rename wordlists: cvePaths.txt, exploitdb_all.txt, lottery-dirs.txt
-- _ensure_wordlist_dir() now seeds the three named lists above
-- Migration: if an old wordlist1/2/3.txt exists and the new file doesn't,
-  it gets auto-renamed on first boot
+- SQLi wordlists auto-download from GitHub on first boot
+- New endpoint POST /api/exploit/wordlists/download (raw.githubusercontent.com only)
+- New endpoint GET  /api/exploit/wordlists/sources  (catalogue of known sources)
+- Startup banner shows wordlist download statistics
+- _download_sqli_wordlists() with per-file error tolerance and skip-if-present
+- Migrates old wordlist1/2/3.txt -> cvePaths/exploitdb_all/lottery-dirs.txt
 
 Author: Yanxzyx
 """
@@ -162,13 +164,12 @@ _MHDDOS_AMP = {"MEM", "NTP", "DNS", "ARD", "CLDAP", "CHAR", "RDP"}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Wordlist management — cvePaths.txt, exploitdb_all.txt, lottery-dirs.txt
+# Wordlist management — local seeds + GitHub auto-download
 # ═══════════════════════════════════════════════════════════════════════════
 WORDLIST_DIR = _PROJECT_ROOT / "wordlist"
 
-# ── cvePaths.txt — CVE-specific paths harvested from public advisories ────
+# ── Local seed content (created if missing) ──────────────────────────────
 _SEED_CVEPATHS = """# cvePaths.txt — CVE-referenced paths, harvested from public advisories
-# Format: one path per line, no leading slash
 forum/admin/fck2/editor/filemanager/browser/default/browser.html
 civica/press/display.asp
 pivotx/index.php
@@ -188,8 +189,6 @@ wp-content/plugins/revslider/temp/update_extract/
 wp-content/plugins/revslider/admin/revslider-admin.php
 wp-content/plugins/wp-symposium/server/server.php
 wp-content/plugins/formcraft/file-upload/server/php/
-wp-content/plugins/contact-form-7/includes/js/jquery.form.min.js
-wp-content/plugins/woocommerce/includes/wc-template-functions.php
 wp-admin/admin-ajax.php
 wp-admin/includes/ajax-actions.php
 wp-admin/setup-config.php
@@ -237,7 +236,6 @@ public.php
 status.php
 """
 
-# ── exploitdb_all.txt — paths scraped from Exploit-DB entries ─────────────
 _SEED_EXPLOITDB_ALL = """# exploitdb_all.txt — paths harvested from Exploit-DB entries
 forum/admin/fck2/editor/filemanager/browser/default/browser.html
 civica/press/display.asp
@@ -336,7 +334,6 @@ bootstrap.properties
 .env.docker
 """
 
-# ── lottery-dirs.txt — high-value directory lottery ──────────────────────
 _SEED_LOTTERY_DIRS = """# lottery-dirs.txt — high-value path lottery for direct hit discovery
 forum/admin/fck2/editor/filemanager/browser/default/browser.html
 civica/press/display.asp
@@ -352,7 +349,6 @@ adminarea/
 admin_area/
 admincp/
 admin-console/
-admin-console/
 admincontrol/
 admincontrolpanel/
 adminpanel/
@@ -365,8 +361,6 @@ adminer.php
 adminer/
 administer/
 administration/
-adminpanel/
-administrator/
 admins/
 adminx/
 admindir/
@@ -546,7 +540,53 @@ patches/
 """
 
 
-# Migration map — if an old file exists and the new one doesn't, rename it
+# ── GitHub wordlist sources for SQLi Exploiter ─────────────────────────
+SQLI_WORDLIST_SOURCES = {
+    # mad12wader/ffufwordlist — curated per-technique SQLi lists
+    "sqli_time_based.txt": {
+        "url": "https://raw.githubusercontent.com/mad12wader/ffufwordlist/main/Generic%20Time%20Based%20SQL%20Injection%20Payloads",
+        "source": "mad12wader/ffufwordlist",
+        "technique": "time-based",
+    },
+    "sqli_error_based.txt": {
+        "url": "https://raw.githubusercontent.com/mad12wader/ffufwordlist/main/Generic%20Error%20Based%20Payloads",
+        "source": "mad12wader/ffufwordlist",
+        "technique": "error-based",
+    },
+    "sqli_auth_bypass.txt": {
+        "url": "https://raw.githubusercontent.com/mad12wader/ffufwordlist/main/SQL%20Injection%20Auth%20Bypass%20Payloads",
+        "source": "mad12wader/ffufwordlist",
+        "technique": "auth-bypass",
+    },
+    "sqli_union_select.txt": {
+        "url": "https://raw.githubusercontent.com/mad12wader/ffufwordlist/main/Union%20Select%20Payloads",
+        "source": "mad12wader/ffufwordlist",
+        "technique": "union-based",
+    },
+    # coffinxp/payloads — bug-bounty curated payloads
+    "sqli_coffinxp.txt": {
+        "url": "https://raw.githubusercontent.com/coffinxp/payloads/main/allsqli.txt",
+        "source": "coffinxp/payloads",
+        "technique": "multi",
+    },
+    # SecLists — the largest curated collection
+    "sqli_seclists_generic.txt": {
+        "url": "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/Databases/SQL/Generic-SQLi.txt",
+        "source": "danielmiessler/SecLists",
+        "technique": "generic",
+    },
+    "sqli_seclists_quick.txt": {
+        "url": "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/Databases/SQLi/quick-SQLi.txt",
+        "source": "danielmiessler/SecLists",
+        "technique": "quick",
+    },
+    "sqli_seclists_polyglots.txt": {
+        "url": "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/Databases/SQLi/SQLi-Polyglots.txt",
+        "source": "danielmiessler/SecLists",
+        "technique": "polyglot",
+    },
+}
+
 _WORDLIST_MIGRATION = {
     "wordlist1.txt": "cvePaths.txt",
     "wordlist2.txt": "exploitdb_all.txt",
@@ -583,11 +623,51 @@ def _ensure_wordlist_dir():
                 logger.warning(f"Could not seed {path}: {e}")
 
 
-def _safe_wordlist_path(name):
-    """Resolve a wordlist name to a file inside WORDLIST_DIR.
+def _download_sqli_wordlists(force=False):
+    """Download SQLi wordlists from GitHub on first boot.
 
-    Only basenames with .txt are accepted. Guards against traversal.
+    Skips any file that already exists with content unless `force=True`.
+    Failures are logged but never fatal.
     """
+    WORDLIST_DIR.mkdir(parents=True, exist_ok=True)
+    stats = {"downloaded": 0, "skipped": 0, "failed": 0}
+
+    for name, meta in SQLI_WORDLIST_SOURCES.items():
+        path = WORDLIST_DIR / name
+        if path.exists() and path.stat().st_size > 0 and not force:
+            stats["skipped"] += 1
+            continue
+        try:
+            r = requests.get(
+                meta["url"], timeout=20,
+                headers={"User-Agent": "Emergens-SQLi-Wordlist/1.0"},
+            )
+            if r.status_code != 200:
+                logger.warning(f"SQLi wordlist {name}: HTTP {r.status_code}")
+                stats["failed"] += 1
+                continue
+            text = r.text
+            # Validate — we only want line-oriented output
+            lines = [l.strip() for l in text.splitlines() if l.strip()]
+            if not lines:
+                logger.warning(f"SQLi wordlist {name}: empty response")
+                stats["failed"] += 1
+                continue
+            path.write_text(text, encoding="utf-8")
+            logger.info(f"Downloaded {name} — {len(lines)} payloads from {meta['source']}")
+            stats["downloaded"] += 1
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"SQLi wordlist {name}: network error {e}")
+            stats["failed"] += 1
+        except OSError as e:
+            logger.warning(f"SQLi wordlist {name}: write error {e}")
+            stats["failed"] += 1
+
+    return stats
+
+
+def _safe_wordlist_path(name):
+    """Resolve a wordlist name to a file inside WORDLIST_DIR."""
     if not name:
         return None, "wordlist name is required"
     base = Path(name).name
@@ -639,10 +719,13 @@ def _list_wordlists():
                     s = line.strip()
                     if s and not s.startswith("#"):
                         count += 1
+            meta = SQLI_WORDLIST_SOURCES.get(path.name, {})
             out.append({
                 "name": path.name,
                 "size": size,
                 "count": count,
+                "category": meta.get("technique", "custom"),
+                "source": meta.get("source", "local"),
                 "modified": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat(),
             })
         except OSError:
@@ -1639,7 +1722,7 @@ def _proxy_osint(endpoint_slug, username):
         resp = requests.get(
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username}, timeout=15,
-            headers={"User-Agent": "Oxysintx/3.9.0"})
+            headers={"User-Agent": "Oxysintx/4.0.0"})
         if resp.status_code == 200: return jsonify(resp.json())
         return jsonify({"status": False, "error": f"Upstream API returned {resp.status_code}"}), 502
     except requests.exceptions.RequestException as e:
@@ -2286,16 +2369,33 @@ def mhddos_preview_command():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# EXPLOIT SUITE — Directory Fuzzer + Wordlist management
+# EXPLOIT SUITE — Wordlists + Directory Fuzzer
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/exploit/wordlists")
 @login_required
 def api_exploit_wordlists():
-    """List every .txt wordlist in wordlist/ with line count and size."""
+    """List every .txt wordlist in wordlist/ with line count, size, category."""
     return jsonify({
         "directory": str(WORDLIST_DIR),
         "wordlists": _list_wordlists(),
     })
+
+
+@app.route("/api/exploit/wordlists/sources")
+@login_required
+def api_exploit_wordlists_sources():
+    """Catalogue of every known GitHub SQLi wordlist source + local status."""
+    existing = {w["name"] for w in _list_wordlists()}
+    sources = []
+    for name, meta in SQLI_WORDLIST_SOURCES.items():
+        sources.append({
+            "name": name,
+            "url": meta["url"],
+            "source": meta["source"],
+            "technique": meta["technique"],
+            "downloaded": name in existing,
+        })
+    return jsonify({"sources": sources})
 
 
 @app.route("/api/exploit/wordlists/<name>")
@@ -2307,6 +2407,75 @@ def api_exploit_wordlist_preview(name):
     if err:
         return jsonify({"error": err}), 404
     return jsonify({"name": Path(name).name, "count": len(lines), "lines": lines})
+
+
+@app.route("/api/exploit/wordlists/download", methods=["POST"])
+@login_required
+def api_exploit_wordlist_download():
+    """Download a SQLi wordlist from a whitelisted GitHub source.
+
+    Body parameters:
+      name  — one of the keys in SQLI_WORDLIST_SOURCES, OR
+      url   — explicit raw.githubusercontent.com URL, and `name` for the file
+      force — bool, re-download even if the local file exists (default false)
+    """
+    body = request.get_json(silent=True) or {}
+    name = (body.get("name") or "").strip()
+    explicit_url = (body.get("url") or "").strip()
+    force = bool(body.get("force", False))
+
+    if name and name in SQLI_WORDLIST_SOURCES and not explicit_url:
+        meta = SQLI_WORDLIST_SOURCES[name]
+        url = meta["url"]
+    elif name and explicit_url:
+        # Custom URL — enforce the raw.githubusercontent.com prefix
+        if not explicit_url.startswith("https://raw.githubusercontent.com/"):
+            return jsonify({"error": "only raw.githubusercontent.com URLs are allowed"}), 400
+        name = Path(name).name
+        if not name.endswith(".txt"):
+            name += ".txt"
+        url = explicit_url
+    else:
+        return jsonify({
+            "error": "name (or name + url) required",
+            "known_sources": list(SQLI_WORDLIST_SOURCES.keys()),
+        }), 400
+
+    path = WORDLIST_DIR / name
+    if path.exists() and path.stat().st_size > 0 and not force:
+        return jsonify({
+            "success": True, "skipped": True, "name": name,
+            "reason": "file already exists (pass force=true to overwrite)",
+        })
+
+    try:
+        r = requests.get(url, timeout=20,
+                        headers={"User-Agent": "Emergens-SQLi-Wordlist/1.0"})
+        if r.status_code != 200:
+            return jsonify({"error": f"upstream HTTP {r.status_code}"}), 502
+        text = r.text
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        if not lines:
+            return jsonify({"error": "empty response"}), 502
+        path.write_text(text, encoding="utf-8")
+        return jsonify({
+            "success": True, "name": name, "lines": len(lines),
+            "source_url": url, "size": path.stat().st_size,
+        })
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"network error: {e}"}), 500
+    except OSError as e:
+        return jsonify({"error": f"write error: {e}"}), 500
+
+
+@app.route("/api/exploit/wordlists/download-all", methods=["POST"])
+@login_required
+def api_exploit_wordlists_download_all():
+    """Bulk-download every SQLi wordlist defined in SQLI_WORDLIST_SOURCES."""
+    body = request.get_json(silent=True) or {}
+    force = bool(body.get("force", False))
+    stats = _download_sqli_wordlists(force=force)
+    return jsonify({"success": True, **stats})
 
 
 @app.route("/api/exploit/dirfuzz", methods=["POST"])
@@ -2358,7 +2527,7 @@ def api_exploit_dirfuzz():
     if not wordlist:
         return jsonify({"error": "wordlist is empty", "source": source_label}), 400
 
-    headers = {"User-Agent": "Emergens-ExploitSuite/3.9"}
+    headers = {"User-Agent": "Emergens-ExploitSuite/4.0"}
     timeout = 5
     hits = []
 
@@ -2840,8 +3009,14 @@ def _print_startup(port=None):
     info_lines.append(f"  Attack log : {_MHDDOS_LOG_DIR}")
     wl = _list_wordlists()
     info_lines.append(f"  Wordlists  : {len(wl)} file(s) in {WORDLIST_DIR.name}/")
-    for w in wl:
+    sqli = [w for w in wl if w["name"].startswith("sqli_")]
+    other = [w for w in wl if not w["name"].startswith("sqli_")]
+    for w in other:
         info_lines.append(f"               • {w['name']}  ({w['count']} lines)")
+    if sqli:
+        info_lines.append(f"  SQLi lists : {len(sqli)} file(s) downloaded")
+        for w in sqli:
+            info_lines.append(f"               • {w['name']}  ({w['count']} payloads, {w['source']})")
     print("\n".join(info_lines), flush=True)
     print(flush=True)
 
@@ -2869,6 +3044,16 @@ if __name__ == "__main__":
     auto_restart_bot()
     _ensure_engine_layout()
     _ensure_wordlist_dir()
+
+    # Download SQLi wordlists from GitHub (skips any that already exist)
+    print("[INFO] Checking SQLi wordlists from GitHub…", flush=True)
+    wl_stats = _download_sqli_wordlists()
+    if wl_stats["downloaded"]:
+        print(f"[INFO] Downloaded {wl_stats['downloaded']} new SQLi wordlist(s)", flush=True)
+    if wl_stats["skipped"]:
+        print(f"[INFO] {wl_stats['skipped']} SQLi wordlist(s) already present", flush=True)
+    if wl_stats["failed"]:
+        print(f"[WARN] {wl_stats['failed']} SQLi wordlist(s) could not be downloaded", flush=True)
 
     default_port = int(Config.PORT) if hasattr(Config, 'PORT') else 8080
     while True:
