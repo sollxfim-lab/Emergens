@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
-   EMERGENS DASHBOARD — styles.css v4 (PRODUCTION READY)
-   Fix: School Search "blue circle X" bug + all missing classes
+   EMERGENS DASHBOARD — styles.css v5 (PRODUCTION READY)
+   Adds: MHDDoS Engine panel + sidebar button (§48)
    ═══════════════════════════════════════════════════════════════ */
 
 /* ─── 1. DESIGN TOKENS ──────────────────────────────────────── */
@@ -22,6 +22,13 @@
     --on-accent:#fff;
     --accent:var(--red-400);
     --accent2:var(--red-500);
+
+    /* MHDDoS accent tokens */
+    --mhd-red:#ff4757;
+    --mhd-red-light:#ff6b7a;
+    --mhd-red-dark:#e63946;
+    --mhd-glow:rgba(255,71,87,.28);
+    --mhd-glow-soft:rgba(255,71,87,.12);
 
     --radius-sm:8px; --radius-md:13px; --radius-lg:20px; --radius-xl:28px;
     --transition-fast:180ms cubic-bezier(.4,0,.2,1);
@@ -67,11 +74,6 @@ a{color:inherit}
 img{max-width:100%;display:block}
 pre{font-family:var(--font-mono)}
 
-/* ─── 🎯 FIX A: BUTTON & INPUT GLOBAL RESET ────────────────────
-   Ini yang menyelesaikan "lingkaran biru X":
-   1. Buang native appearance pada semua button (browser default theme)
-   2. Buang native focus ring biru pada Chrome/Safari
-   3. Buang native clear button pada input (iOS/Chrome) */
 button{
     cursor:pointer;
     background:none;
@@ -79,7 +81,7 @@ button{
     font-family:inherit;
     font-size:inherit;
     color:inherit;
-    -webkit-appearance:none;      /* 🎯 kill native theme button */
+    -webkit-appearance:none;
     appearance:none;
     -webkit-tap-highlight-color:transparent;
 }
@@ -89,10 +91,9 @@ input,textarea,select{
 }
 input[type="text"],input[type="search"],input[type="email"],
 input[type="password"],input[type="url"],input[type="tel"]{
-    -webkit-appearance:none;      /* 🎯 kill native input decorations */
+    -webkit-appearance:none;
     appearance:none;
 }
-/* 🎯 Kill native search clear (X in circle) on all browsers */
 input::-webkit-search-cancel-button,
 input::-webkit-search-decoration,
 input::-webkit-search-results-button,
@@ -143,6 +144,8 @@ a:focus-visible,[tabindex]:focus-visible{
 @keyframes gcConnectingPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.5}}
 @keyframes planeFly{0%{transform:translate(0,4px) rotate(-6deg);opacity:0}15%{opacity:1}85%{opacity:1}100%{transform:translate(-130px,-40px) rotate(-6deg);opacity:0}}
 @keyframes creeperCharge{0%,100%{filter:brightness(1) drop-shadow(0 0 0 transparent)}50%{filter:brightness(1.4) drop-shadow(0 0 12px rgba(96,165,250,.6))}}
+@keyframes mhdPulse{0%{box-shadow:0 0 0 0 rgba(255,71,87,.7)}70%{box-shadow:0 0 0 10px rgba(255,71,87,0)}100%{box-shadow:0 0 0 0 rgba(255,71,87,0)}}
+@keyframes mhdToastFadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .spin{animation:spin 1s linear infinite}
 
 /* ─── 4. APP SHELL ─────────────────────────────────────────── */
@@ -395,10 +398,8 @@ table.data-table tbody tr:hover td{background:var(--bg-tertiary)}
 .empty-state .hint{font-size:.76rem;color:var(--text-muted)}
 
 /* ═══════════════════════════════════════════════════════════════
-   🎯 FIX B: SCHOOL SEARCH — SEMUA KELAS YANG HILANG
-   Ini penyelesaian utama "lingkaran biru X"
+   FIX B: SCHOOL SEARCH
    ═══════════════════════════════════════════════════════════════ */
-
 .school-search-bar{
     display:flex;
     gap:10px;
@@ -448,12 +449,10 @@ table.data-table tbody tr:hover td{background:var(--bg-tertiary)}
     min-width:0;
     -webkit-appearance:none!important;
     appearance:none!important;
-    /* 🎯 Kill native iOS/Chrome clear button (the "blue circle X") */
     -webkit-search-cancel-button:none;
     -webkit-search-decoration:none;
 }
 .school-search-input::placeholder{color:var(--text-muted)}
-/* 🎯 Belt-and-braces: kill native clear button pseudo-elements */
 .school-search-input::-webkit-search-cancel-button,
 .school-search-input::-webkit-search-decoration,
 .school-search-input::-webkit-search-results-button,
@@ -467,16 +466,13 @@ table.data-table tbody tr:hover td{background:var(--bg-tertiary)}
     height:0!important;
 }
 
-/* 🎯 The custom clear button — properly styled, no native appearance */
 .school-search-clear{
-    /* Reset native button completely */
     -webkit-appearance:none!important;
     appearance:none!important;
     border:none!important;
     background:transparent!important;
     box-shadow:none!important;
     outline:none;
-    /* Layout */
     width:24px;
     height:24px;
     min-width:24px;
@@ -503,7 +499,6 @@ table.data-table tbody tr:hover td{background:var(--bg-tertiary)}
     outline:2px solid var(--red-400);
     outline-offset:2px;
 }
-/* 🎯 HARD override: hidden attribute must ALWAYS win */
 .school-search-clear[hidden]{
     display:none!important;
     visibility:hidden!important;
@@ -567,10 +562,6 @@ table.data-table tbody tr:hover td{background:var(--bg-tertiary)}
 .school-card-detail{display:flex;align-items:flex-start;gap:8px;font-size:.74rem;
     color:var(--text-secondary);line-height:1.5;word-break:break-word}
 .school-card-detail i{color:var(--red-400);margin-top:3px;flex-shrink:0;width:13px;text-align:center}
-
-/* ═══════════════════════════════════════════════════════════════
-   END FIX B — School Search
-   ═══════════════════════════════════════════════════════════════ */
 
 /* ─── 15. QUICK MENU FAB ───────────────────────────────────── */
 .qm-fab{position:fixed;right:24px;bottom:24px;z-index:150}
@@ -1457,7 +1448,6 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     .gc-msg-time{display:none}
     .osint-profile-card{flex-direction:column;align-items:flex-start}
     .osint-profile-link{align-self:stretch;justify-content:center}
-    /* 🎯 FIX: school search stack on small screens */
     .school-search-bar{flex-direction:column}
     .school-search-submit{width:100%}
     .school-search-input-wrap{min-width:100%}
@@ -1492,3 +1482,414 @@ body.is-touch-device .gc-input-row button{min-width:44px}
 .mb-2{margin-bottom:8px}
 .mb-3{margin-bottom:12px}
 .w-full{width:100%}
+
+/* ═══════════════════════════════════════════════════════════════
+   48. MHDDoS ENGINE — Attack Console
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── 48.1 Sidebar button + live-dot ─────────────────────────── */
+.nav-item-mhddos{position:relative}
+.nav-item-mhddos i{color:var(--text-muted);transition:color var(--transition-fast)}
+.nav-item-mhddos:hover{border-color:var(--mhd-red);background:var(--mhd-glow-soft)}
+.nav-item-mhddos:hover i{color:var(--mhd-red-light)}
+.nav-item-mhddos.active{
+    background:linear-gradient(90deg,var(--mhd-glow-soft),transparent 75%);
+    border-color:var(--mhd-red)}
+.nav-item-mhddos.active i{color:var(--mhd-red-light)}
+.nav-live-dot{
+    position:absolute;top:9px;right:11px;
+    width:8px;height:8px;border-radius:50%;
+    background:var(--mhd-red);
+    box-shadow:0 0 0 0 rgba(255,71,87,.7);
+    animation:mhdPulse 1.6s ease-in-out infinite;
+    pointer-events:none}
+.nav-live-dot[hidden]{display:none!important}
+
+/* ─── 48.2 Hero banner ──────────────────────────────────────── */
+.mhd-hero{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:20px;padding:22px 26px;margin-bottom:18px;
+    border-radius:var(--radius-lg);
+    background:linear-gradient(135deg,var(--mhd-glow-soft),transparent 65%),
+               linear-gradient(180deg,var(--bg-secondary),var(--bg-tertiary));
+    border:1px solid rgba(255,71,87,.22);
+    position:relative;overflow:hidden}
+.mhd-hero::after{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(360px 220px at 88% 10%,var(--mhd-glow),transparent 70%);
+    pointer-events:none}
+.mhd-hero-text{position:relative;z-index:1;min-width:0}
+.mhd-hero-text h2{
+    margin:4px 0 6px;font-family:var(--font-display);
+    font-size:1.5rem;font-weight:800;letter-spacing:-.2px;
+    color:var(--text-primary)}
+.mhd-hero-text p{
+    margin:0;font-size:.82rem;color:var(--text-secondary);
+    max-width:620px;line-height:1.55}
+.mhd-hero-eyebrow{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--mhd-red-light);font-weight:800}
+.mhd-hero-eyebrow i{font-size:.7rem}
+.mhd-hero-stats{position:relative;z-index:1;flex-shrink:0}
+.mhd-hero-stat{
+    background:var(--mhd-glow-soft);
+    border:1px solid rgba(255,71,87,.3);
+    border-radius:var(--radius-md);
+    padding:12px 22px;min-width:92px;text-align:center;
+    box-shadow:0 4px 20px rgba(255,71,87,.12)}
+.mhd-hero-stat span{
+    display:block;font-family:var(--font-display);
+    font-size:1.7rem;font-weight:800;color:var(--mhd-red-light);
+    line-height:1;font-variant-numeric:tabular-nums}
+.mhd-hero-stat small{
+    display:block;margin-top:4px;
+    font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--text-muted);font-weight:700}
+
+/* ─── 48.3 Cards ────────────────────────────────────────────── */
+.mhd-card{
+    background:var(--bg-secondary);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-lg);
+    padding:20px 22px;
+    margin-bottom:16px;
+    transition:border-color var(--transition-med),box-shadow var(--transition-med)}
+.mhd-card:hover{border-color:var(--border-subtle);box-shadow:var(--shadow-md)}
+.mhd-card-head{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;margin-bottom:16px;
+    padding-bottom:12px;border-bottom:1px solid var(--border-subtle);
+    flex-wrap:wrap}
+.mhd-card-head h3{
+    margin:0;font-size:.95rem;font-weight:700;
+    display:flex;align-items:center;gap:8px;
+    letter-spacing:.02em;color:var(--text-primary)}
+.mhd-card-head h3 i{color:var(--mhd-red-light);font-size:.85rem}
+
+/* ─── 48.4 Engine status badge ─────────────────────────────── */
+.mhd-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:5px 11px;border-radius:999px;
+    font-size:.66rem;font-weight:800;
+    letter-spacing:.08em;text-transform:uppercase;
+    background:var(--green-glow);color:var(--green);
+    border:1px solid var(--green-glow)}
+.mhd-badge.busy{
+    background:var(--amber-glow);color:var(--amber);
+    border-color:var(--amber-glow)}
+.mhd-badge.error{
+    background:var(--red-glow-soft);color:var(--red-500);
+    border-color:var(--red-glow)}
+.mhd-badge i{font-size:.5rem}
+
+/* ─── 48.5 Layer tabs ──────────────────────────────────────── */
+.mhd-layer-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.mhd-layer-tab{
+    flex:1;min-width:160px;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:11px 16px;
+    background:var(--bg-tertiary);
+    border:1px solid var(--border-color);
+    color:var(--text-secondary);
+    border-radius:var(--radius-md);
+    font-size:.82rem;font-weight:700;
+    letter-spacing:.02em;
+    cursor:pointer;
+    transition:all var(--transition-fast)}
+.mhd-layer-tab:hover{
+    background:var(--mhd-glow-soft);
+    border-color:rgba(255,71,87,.3);
+    color:var(--text-primary)}
+.mhd-layer-tab.active{
+    background:linear-gradient(135deg,rgba(255,71,87,.18),rgba(255,71,87,.06));
+    border-color:var(--mhd-red);
+    color:var(--mhd-red-light);
+    box-shadow:0 4px 18px rgba(255,71,87,.18)}
+.mhd-tab-hint{font-size:.64rem;font-weight:500;opacity:.7}
+
+/* ─── 48.6 Method panel + pills ────────────────────────────── */
+.mhd-method-panel{margin-bottom:20px}
+.mhd-layer-panel[hidden]{display:none!important}
+.mhd-label{
+    display:block;font-size:.66rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--text-muted);
+    margin-bottom:10px;font-weight:800}
+.mhd-pill-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+    gap:8px;
+    max-height:280px;
+    overflow-y:auto;
+    padding-right:4px;
+    scrollbar-width:thin}
+.mhd-pill{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:9px 8px;
+    background:var(--bg-tertiary);
+    border:1px solid var(--border-color);
+    color:var(--text-secondary);
+    border-radius:9px;
+    font-size:.72rem;font-weight:700;
+    letter-spacing:.02em;
+    cursor:pointer;
+    transition:all var(--transition-fast);
+    text-align:center;min-width:0}
+.mhd-pill i{font-size:.68rem;opacity:.75;flex-shrink:0}
+.mhd-pill span{
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    min-width:0}
+.mhd-pill:hover{
+    background:var(--mhd-glow-soft);
+    border-color:rgba(255,71,87,.3);
+    color:var(--text-primary);
+    transform:translateY(-1px)}
+.mhd-pill.selected{
+    background:linear-gradient(135deg,rgba(255,71,87,.24),rgba(255,71,87,.10));
+    border-color:var(--mhd-red);
+    color:var(--mhd-red-light);
+    box-shadow:0 0 0 1px rgba(255,71,87,.35),0 6px 20px rgba(255,71,87,.22)}
+.mhd-pill.selected i{opacity:1}
+
+/* ─── 48.7 Form grid ───────────────────────────────────────── */
+.mhd-form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px;
+    margin-bottom:14px}
+.mhd-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.mhd-field-wide{grid-column:1 / -1}
+.mhd-field label{
+    font-size:.68rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--text-muted);
+    font-weight:800;
+    display:inline-flex;align-items:center;gap:6px}
+.mhd-field label i{font-size:.64rem;opacity:.75}
+.mhd-field input,
+.mhd-field select{
+    background:rgba(0,0,0,.24);
+    border:1px solid var(--border-color);
+    color:var(--text-primary);
+    border-radius:9px;
+    padding:10px 12px;
+    font-size:.84rem;
+    font-family:inherit;
+    outline:none;
+    transition:border-color var(--transition-fast),box-shadow var(--transition-fast);
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%}
+.mhd-field select{
+    background-image:linear-gradient(45deg,transparent 50%,var(--text-muted) 50%),
+                     linear-gradient(135deg,var(--text-muted) 50%,transparent 50%);
+    background-position:calc(100% - 16px) calc(50% - 2px),calc(100% - 11px) calc(50% - 2px);
+    background-size:5px 5px,5px 5px;
+    background-repeat:no-repeat;
+    padding-right:32px}
+.mhd-field input::placeholder{color:var(--text-muted)}
+.mhd-field input:focus,
+.mhd-field select:focus{
+    border-color:rgba(255,71,87,.55);
+    box-shadow:0 0 0 3px rgba(255,71,87,.12)}
+
+/* ─── 48.8 Checkbox ────────────────────────────────────────── */
+.mhd-checkbox{
+    display:inline-flex;align-items:center;gap:10px;
+    font-size:.78rem;color:var(--text-secondary);
+    padding:10px 0;cursor:pointer;
+    user-select:none}
+.mhd-checkbox input{
+    accent-color:var(--mhd-red);
+    width:16px;height:16px;cursor:pointer}
+.mhd-checkbox code{
+    background:var(--bg-tertiary);
+    padding:1px 6px;border-radius:4px;
+    font-size:.72rem;font-family:var(--font-mono);
+    color:var(--mhd-red-light);
+    margin:0 2px}
+.mhd-checkbox i{color:var(--text-muted);font-size:.72rem;margin-right:2px}
+
+/* ─── 48.9 Actions ─────────────────────────────────────────── */
+.mhd-actions{
+    display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+.mhd-start-btn{
+    flex:1;min-width:180px;
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    padding:13px 20px;
+    background:linear-gradient(135deg,var(--mhd-red),var(--mhd-red-dark));
+    color:#fff;font-weight:800;
+    font-size:.86rem;letter-spacing:.08em;text-transform:uppercase;
+    border:none;border-radius:11px;
+    cursor:pointer;
+    transition:transform var(--transition-fast),box-shadow var(--transition-med);
+    box-shadow:0 6px 22px rgba(255,71,87,.28)}
+.mhd-start-btn:hover:not(:disabled){
+    transform:translateY(-1px);
+    box-shadow:0 10px 30px rgba(255,71,87,.42)}
+.mhd-start-btn:active:not(:disabled){transform:translateY(0)}
+.mhd-start-btn:disabled{
+    opacity:.4;cursor:not-allowed;
+    box-shadow:none;filter:grayscale(.4)}
+.mhd-start-btn i{font-size:.9rem}
+
+.mhd-stopall-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:13px 20px;
+    background:var(--bg-tertiary);
+    border:1px solid var(--border-color);
+    color:var(--text-secondary);
+    font-weight:700;font-size:.82rem;
+    border-radius:11px;cursor:pointer;
+    transition:all var(--transition-fast);
+    white-space:nowrap}
+.mhd-stopall-btn:hover{
+    background:var(--mhd-glow-soft);
+    border-color:rgba(255,71,87,.35);
+    color:var(--mhd-red-light)}
+
+/* ─── 48.10 Empty state ───────────────────────────────────── */
+.mhd-empty{
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:8px;padding:26px 12px;
+    color:var(--text-muted);
+    font-size:.82rem;
+    background:rgba(255,255,255,.015);
+    border:1px dashed var(--border-color);
+    border-radius:var(--radius-md);
+    grid-column:1 / -1;
+    text-align:center}
+.mhd-empty i{font-size:1.4rem;opacity:.5;color:var(--mhd-red-light)}
+
+/* ─── 48.11 Active attack cards ───────────────────────────── */
+.mhd-active-list{display:flex;flex-direction:column;gap:10px}
+.mhd-active-card{
+    background:linear-gradient(135deg,rgba(255,71,87,.06),rgba(255,71,87,.01));
+    border:1px solid rgba(255,71,87,.22);
+    border-radius:var(--radius-md);
+    padding:14px 16px;
+    animation:fadeSlideUp .3s ease both}
+.mhd-active-head{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.mhd-active-head > div{min-width:0}
+.mhd-active-method{
+    display:inline-block;
+    background:rgba(255,71,87,.18);
+    color:var(--mhd-red-light);
+    font-family:var(--font-mono);
+    font-size:.72rem;font-weight:800;
+    padding:3px 9px;border-radius:6px;
+    letter-spacing:.06em;
+    margin-right:8px;
+    vertical-align:middle}
+.mhd-active-target{
+    font-family:var(--font-mono);
+    font-size:.82rem;
+    color:var(--text-primary);
+    word-break:break-all;
+    vertical-align:middle}
+.mhd-stop-btn{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 12px;
+    background:rgba(255,71,87,.14);
+    border:1px solid rgba(255,71,87,.35);
+    color:var(--mhd-red-light);
+    border-radius:8px;
+    font-size:.72rem;font-weight:800;
+    letter-spacing:.04em;
+    cursor:pointer;
+    transition:all var(--transition-fast);
+    flex-shrink:0;
+    text-transform:uppercase}
+.mhd-stop-btn:hover{background:var(--mhd-red);color:#fff}
+.mhd-stop-btn:disabled{opacity:.6;cursor:not-allowed}
+.mhd-active-progress{
+    height:4px;background:rgba(255,255,255,.06);
+    border-radius:4px;overflow:hidden;margin-bottom:9px}
+.mhd-active-fill{
+    height:100%;
+    background:linear-gradient(90deg,var(--mhd-red-light),var(--mhd-red));
+    border-radius:4px;
+    transition:width .5s ease;
+    box-shadow:0 0 10px rgba(255,71,87,.55)}
+.mhd-active-meta{
+    display:flex;align-items:center;gap:14px;
+    font-size:.7rem;color:var(--text-muted);
+    font-family:var(--font-mono);
+    flex-wrap:wrap}
+.mhd-active-meta i{opacity:.65;margin-right:4px}
+.mhd-active-id{
+    margin-left:auto;
+    color:var(--text-secondary);
+    letter-spacing:.05em;
+    opacity:.72;
+    font-size:.66rem}
+
+/* ─── 48.12 History rows ──────────────────────────────────── */
+.mhd-history-list{display:flex;flex-direction:column;gap:6px}
+.mhd-history-row{
+    display:grid;
+    grid-template-columns:78px 1fr 92px 96px;
+    gap:12px;align-items:center;
+    padding:10px 14px;
+    background:var(--bg-tertiary);
+    border:1px solid var(--border-subtle);
+    border-radius:9px;
+    font-size:.76rem;
+    transition:background var(--transition-fast),border-color var(--transition-fast)}
+.mhd-history-row:hover{
+    background:var(--bg-elevated);
+    border-color:var(--border-color)}
+.mhd-h-method{
+    font-family:var(--font-mono);
+    font-weight:800;
+    color:var(--mhd-red-light);
+    font-size:.72rem;
+    letter-spacing:.04em;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mhd-h-target{
+    font-family:var(--font-mono);
+    color:var(--text-primary);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    min-width:0}
+.mhd-h-status{
+    display:inline-block;
+    padding:3px 9px;border-radius:6px;
+    font-size:.62rem;font-weight:800;
+    letter-spacing:.06em;text-transform:uppercase;
+    text-align:center}
+.mhd-h-status.ok  {background:var(--green-glow);color:var(--green)}
+.mhd-h-status.run {background:var(--amber-glow);color:var(--amber)}
+.mhd-h-status.stop{background:rgba(124,141,181,.16);color:var(--steel)}
+.mhd-h-status.fail{background:var(--red-glow-soft);color:var(--red-500)}
+.mhd-h-id{
+    font-family:var(--font-mono);
+    font-size:.64rem;
+    color:var(--text-muted);
+    text-align:right;
+    letter-spacing:.03em;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ─── 48.13 Responsive ────────────────────────────────────── */
+@media (max-width:720px){
+    .mhd-hero{flex-direction:column;align-items:flex-start}
+    .mhd-hero-stats{width:100%}
+    .mhd-hero-stat{width:100%}
+    .mhd-history-row{grid-template-columns:66px 1fr 84px}
+    .mhd-h-id{display:none}
+    .mhd-actions{flex-direction:column}
+    .mhd-start-btn,.mhd-stopall-btn{width:100%}
+    .mhd-layer-tab{min-width:0;font-size:.78rem;padding:10px 12px}
+    .mhd-tab-hint{display:none}
+}
+@media (max-width:480px){
+    .mhd-pill-grid{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
+    .mhd-active-head{flex-direction:column;align-items:flex-start}
+    .mhd-stop-btn{width:100%;justify-content:center}
+    .mhd-card{padding:16px}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   END MHDDoS
+   ═══════════════════════════════════════════════════════════════ */
