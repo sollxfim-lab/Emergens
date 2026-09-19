@@ -44,6 +44,7 @@
             <button class="nav-item active" data-section="overview"><i class="fas fa-gauge-high"></i><span data-i18n="nav_overview">Overview</span></button>
             <button class="nav-item" id="navToolsHub"><i class="fas fa-grip"></i><span data-i18n="nav_tools_hub">Tools</span></button>
             <button class="nav-item" data-section="testing"><i class="fas fa-magnifying-glass"></i><span data-i18n="nav_testing">Security Testing</span></button>
+            <button class="nav-item nav-item-mhddos" data-section="mhddos"><i class="fas fa-satellite-dish"></i><span data-i18n="nav_mhddos">MHDDoS Engine</span><span class="nav-live-dot" id="mhdNavDot" hidden></span></button>
             <button class="nav-item" data-section="assets"><i class="fas fa-layer-group"></i><span data-i18n="nav_assets">Assets</span></button>
             <button class="nav-item" data-section="console"><i class="fas fa-terminal"></i><span data-i18n="nav_console">System Console</span></button>
             <button class="nav-item" data-section="chat"><i class="fas fa-comments"></i><span data-i18n="nav_chat">AI Assistant</span></button>
@@ -224,6 +225,133 @@
                         </div>
                     </div>
                     <div class="result-grid" id="scanResultGrid"></div>
+                </div>
+            </section>
+
+            <!-- ========== MHDDoS ENGINE ========== -->
+            <section class="content-section" id="section-mhddos">
+                <div class="mhd-hero">
+                    <div class="mhd-hero-text">
+                        <span class="mhd-hero-eyebrow"><i class="fas fa-tower-broadcast"></i> Attack Console</span>
+                        <h2>MHDDoS Engine</h2>
+                        <p>Launch Layer 7 and Layer 4 stress tests through the bundled MHDDoS engine. Only target hosts you own or are explicitly authorized to test.</p>
+                    </div>
+                    <div class="mhd-hero-stats">
+                        <div class="mhd-hero-stat">
+                            <span id="mhdActiveCount">0</span>
+                            <small>Active</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mhd-card">
+                    <div class="mhd-card-head">
+                        <h3><i class="fas fa-sliders"></i> Configuration</h3>
+                        <span class="mhd-badge" id="mhdEngineStatus">
+                            <i class="fas fa-circle"></i> Ready
+                        </span>
+                    </div>
+
+                    <div class="mhd-layer-tabs">
+                        <button type="button" class="mhd-layer-tab active" data-layer="7">
+                            <i class="fas fa-globe"></i> Layer 7 <span class="mhd-tab-hint">HTTP flood</span>
+                        </button>
+                        <button type="button" class="mhd-layer-tab" data-layer="4">
+                            <i class="fas fa-network-wired"></i> Layer 4 <span class="mhd-tab-hint">TCP/UDP/AMP</span>
+                        </button>
+                    </div>
+
+                    <div class="mhd-method-panel mhd-layer-panel active" data-layer="7">
+                        <label class="mhd-label">Select method</label>
+                        <div class="mhd-pill-grid" id="mhdMethodGrid-7">
+                            <div class="mhd-empty"><i class="fas fa-spinner fa-spin"></i> Loading methods…</div>
+                        </div>
+                    </div>
+
+                    <div class="mhd-method-panel mhd-layer-panel" data-layer="4" hidden>
+                        <label class="mhd-label">Select method</label>
+                        <div class="mhd-pill-grid" id="mhdMethodGrid-4">
+                            <div class="mhd-empty"><i class="fas fa-spinner fa-spin"></i> Loading methods…</div>
+                        </div>
+                    </div>
+
+                    <div class="mhd-form-grid">
+                        <div class="mhd-field mhd-field-wide">
+                            <label for="mhdTargetInput"><i class="fas fa-crosshairs"></i> Target</label>
+                            <input type="text" id="mhdTargetInput" placeholder="example.com  or  1.2.3.4:80" autocomplete="off">
+                        </div>
+                        <div class="mhd-field">
+                            <label for="mhdThreads"><i class="fas fa-microchip"></i> Threads</label>
+                            <input type="number" id="mhdThreads" value="10" min="1" max="1000">
+                        </div>
+                        <div class="mhd-field">
+                            <label for="mhdDuration"><i class="fas fa-hourglass-half"></i> Duration (s)</label>
+                            <input type="number" id="mhdDuration" value="60" min="1" max="3600">
+                        </div>
+                        <div class="mhd-field">
+                            <label for="mhdProxyType"><i class="fas fa-exchange-alt"></i> Proxy type</label>
+                            <select id="mhdProxyType">
+                                <option value="0">0 — All (config)</option>
+                                <option value="1">1 — HTTP</option>
+                                <option value="4">4 — SOCKS4</option>
+                                <option value="5">5 — SOCKS5</option>
+                                <option value="6">6 — Random</option>
+                            </select>
+                        </div>
+                        <div class="mhd-field">
+                            <label for="mhdProxyFile"><i class="fas fa-file-lines"></i> Proxy file</label>
+                            <select id="mhdProxyFile">
+                                <option value="proxies.txt">proxies.txt</option>
+                                <option value="http.txt">http.txt</option>
+                                <option value="socks4.txt">socks4.txt</option>
+                                <option value="socks5.txt">socks5.txt</option>
+                            </select>
+                        </div>
+                        <div class="mhd-field">
+                            <label for="mhdRpc"><i class="fas fa-repeat"></i> RPC / req-per-conn</label>
+                            <input type="number" id="mhdRpc" value="1" min="1" max="10000">
+                        </div>
+                        <div class="mhd-field">
+                            <label for="mhdReflector"><i class="fas fa-bullseye"></i> Reflector file</label>
+                            <select id="mhdReflector">
+                                <option value="">(none)</option>
+                                <option value="reflectors.txt">reflectors.txt</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label class="mhd-checkbox">
+                        <input type="checkbox" id="mhdDebug">
+                        <span><i class="fas fa-bug"></i> Debug mode (append <code>debug</code> flag)</span>
+                    </label>
+
+                    <div class="mhd-actions">
+                        <button class="mhd-start-btn" id="mhdStartBtn" disabled>
+                            <i class="fas fa-rocket"></i>
+                            <span>Launch Attack</span>
+                        </button>
+                        <button class="mhd-stopall-btn" id="mhdStopAllBtn">
+                            <i class="fas fa-hand"></i> Stop All
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mhd-card">
+                    <div class="mhd-card-head">
+                        <h3><i class="fas fa-fire"></i> Active Attacks</h3>
+                    </div>
+                    <div class="mhd-active-list" id="mhdActiveList">
+                        <div class="mhd-empty"><i class="fas fa-shield-halved"></i> No active attacks</div>
+                    </div>
+                </div>
+
+                <div class="mhd-card">
+                    <div class="mhd-card-head">
+                        <h3><i class="fas fa-clock-rotate-left"></i> Recent History</h3>
+                    </div>
+                    <div class="mhd-history-list" id="mhdHistoryList">
+                        <div class="mhd-empty">No history yet.</div>
+                    </div>
                 </div>
             </section>
 
@@ -512,6 +640,8 @@
                             <button class="ui-mode-choice" data-mode="mobile" id="uiModeMobile"><i class="fas fa-mobile-screen"></i><span data-i18n="prefs_ui_mobile">Phone Layout</span></button>
                             <button class="ui-mode-choice" data-mode="desktop" id="uiModeDesktop"><i class="fas fa-laptop"></i><span data-i18n="prefs_ui_desktop">Laptop Layout</span></button>
                         </div>
+                    </div>
+
                     <div class="settings-option-card">
                         <div class="settings-option-title"><i class="fas fa-bars"></i><span data-i18n="prefs_sidebar_title">Sidebar / Menu Appearance</span></div>
                         <div class="settings-option-desc" data-i18n="prefs_sidebar_desc">Customize how the navigation sidebar looks and behaves. Changes apply immediately.</div>
@@ -850,6 +980,7 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="script.js"></script>
+<script src="mhddos.js" defer></script>
 </div><!-- /app-shell -->
 </body>
 </html>
