@@ -1891,24 +1891,24 @@ body.is-touch-device .gc-input-row button{min-width:44px}
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   49. EXPLOIT SUITE — Red / Angry Shark Edition (fixed)
-   No color-mix() — universal rgba() with fallbacks
+   49. EXPLOIT SUITE — Red / Angry Shark Edition (v3)
+   No color-mix(). Universal rgba() with RGB fallbacks.
    ═══════════════════════════════════════════════════════════════ */
 
-/* Global defaults so var(--ex-color-rgb) always resolves */
 :root{
     --ex-color:      #e11d48;
     --ex-color-rgb:  225,29,72;
     --ex-color-dark: #a3061f;
 }
 
+/* ─── Sidebar button ─────────────────────────────────────────── */
 .nav-item-exploit i{color:var(--text-muted);transition:color var(--transition-fast)}
 .nav-item-exploit:hover{border-color:#e11d48;background:rgba(225,29,72,.06)}
 .nav-item-exploit:hover i{color:#ff3b5c}
 .nav-item-exploit.active{background:linear-gradient(90deg,rgba(225,29,72,.18),transparent 75%);border-color:#e11d48}
 .nav-item-exploit.active i{color:#ff3b5c}
 
-/* ─── Hero with shark ─────────────────────────────────────────── */
+/* ─── Hero with shark ────────────────────────────────────────── */
 .ex-hero{
     display:flex;align-items:center;gap:22px;
     padding:22px 26px;margin-bottom:18px;border-radius:var(--radius-lg);
@@ -1923,22 +1923,50 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     background:radial-gradient(400px 240px at 90% 10%,rgba(225,29,72,.22),transparent 70%);
     pointer-events:none;
 }
+
+/* ─── Shark wrapper ──────────────────────────────────────────── */
 .ex-hero-shark{
-    position:relative;z-index:1;flex-shrink:0;width:76px;height:76px;
-    filter:drop-shadow(0 6px 22px rgba(225,29,72,.5));
-    animation:exSharkIdle 4s ease-in-out infinite;
+    position:relative;z-index:1;flex-shrink:0;
+    width:88px;height:88px;
+    display:flex;align-items:center;justify-content:center;
+    filter:drop-shadow(0 8px 26px rgba(225,29,72,.55));
+    animation:exSharkIdle 5s ease-in-out infinite;
+    transform-origin:50% 50%;
+    will-change:transform;
 }
-.ex-hero-shark svg{width:100%;height:100%;display:block}
+.ex-hero-shark::before{
+    /* soft red halo behind the shark */
+    content:"";position:absolute;inset:-8px;border-radius:50%;
+    background:radial-gradient(circle,rgba(225,29,72,.32) 0%,transparent 70%);
+    animation:exSharkHalo 4s ease-in-out infinite;
+    pointer-events:none;z-index:0;
+}
+.ex-hero-shark svg{
+    position:relative;z-index:1;
+    width:100%;height:100%;display:block;
+    overflow:visible;
+}
+
 @keyframes exSharkIdle{
-    0%,100%{transform:translateY(0) rotate(-2deg)}
-    50%    {transform:translateY(-4px) rotate(2deg)}
+    0%,100%{transform:translateY(0)     rotate(-3deg)}
+    50%    {transform:translateY(-6px)  rotate(3deg)}
 }
+@keyframes exSharkHalo{
+    0%,100%{opacity:.4;transform:scale(.9)}
+    50%    {opacity:.85;transform:scale(1.15)}
+}
+
+/* ─── Text column ────────────────────────────────────────────── */
 .ex-hero-text{position:relative;z-index:1;min-width:0;flex:1}
 .ex-hero-text h2{
     margin:4px 0 6px;font-family:var(--font-display);
-    font-size:1.55rem;font-weight:800;letter-spacing:-.2px;color:var(--text-primary);
+    font-size:1.55rem;font-weight:800;letter-spacing:-.2px;
+    color:var(--text-primary);
 }
-.ex-hero-text p{margin:0;font-size:.82rem;color:var(--text-secondary);max-width:640px;line-height:1.55}
+.ex-hero-text p{
+    margin:0;font-size:.82rem;color:var(--text-secondary);
+    max-width:640px;line-height:1.55;
+}
 .ex-hero-eyebrow{
     display:inline-flex;align-items:center;gap:6px;
     font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;
@@ -1963,7 +1991,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     color:var(--text-muted);font-weight:700;
 }
 
-/* ─── Tool cards ──────────────────────────────────────────────── */
+/* ─── Tool cards ─────────────────────────────────────────────── */
 .ex-tools-grid{
     display:grid;
     grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
@@ -2031,7 +2059,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     border:1px solid rgba(225,29,72,.3);
 }
 
-/* ─── Detail panel ────────────────────────────────────────────── */
+/* ─── Detail panel ───────────────────────────────────────────── */
 .ex-detail-wrap{margin-top:18px;animation:fadeSlideUp .3s ease both}
 .ex-detail-card{
     background:var(--bg-secondary);
@@ -2082,7 +2110,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
 }
 .ex-back-btn:hover{background:#e11d48;color:#fff;border-color:#e11d48}
 
-/* ─── Callout ─────────────────────────────────────────────────── */
+/* ─── Callout ────────────────────────────────────────────────── */
 .ex-callout{
     display:flex;align-items:flex-start;gap:10px;
     padding:12px 15px;
@@ -2094,7 +2122,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
 }
 .ex-callout i{color:#ff3b5c;margin-top:1px;flex-shrink:0}
 
-/* ─── Form grid ───────────────────────────────────────────────── */
+/* ─── Form grid ──────────────────────────────────────────────── */
 .ex-form-grid{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
@@ -2125,10 +2153,12 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     width:100%;
 }
 .ex-field select{
-    background-image:linear-gradient(45deg,transparent 50%,#ff3b5c 50%),
-                     linear-gradient(135deg,#ff3b5c 50%,transparent 50%);
-    background-position:calc(100% - 16px) calc(50% - 2px),
-                        calc(100% - 11px) calc(50% - 2px);
+    background-image:
+        linear-gradient(45deg,transparent 50%,#ff3b5c 50%),
+        linear-gradient(135deg,#ff3b5c 50%,transparent 50%);
+    background-position:
+        calc(100% - 16px) calc(50% - 2px),
+        calc(100% - 11px) calc(50% - 2px);
     background-size:5px 5px,5px 5px;
     background-repeat:no-repeat;
     padding-right:32px;
@@ -2140,7 +2170,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
 }
 .ex-field input::placeholder{color:var(--text-muted)}
 
-/* ─── Actions ─────────────────────────────────────────────────── */
+/* ─── Actions ────────────────────────────────────────────────── */
 .ex-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .ex-run-btn{
     display:inline-flex;align-items:center;gap:8px;
@@ -2171,7 +2201,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     background:rgba(225,29,72,.06);
 }
 
-/* ─── Result area ─────────────────────────────────────────────── */
+/* ─── Result area ────────────────────────────────────────────── */
 .ex-result-area{margin-top:6px;min-height:60px}
 .ex-result-area:empty{display:none}
 .ex-loading{
@@ -2200,7 +2230,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
 .ex-empty i{font-size:1.6rem;opacity:.5;color:#ff3b5c}
 .ex-empty strong{color:var(--text-secondary)}
 
-/* ─── Progress ────────────────────────────────────────────────── */
+/* ─── Progress ───────────────────────────────────────────────── */
 .ex-progress{
     margin:6px 0 16px;padding:12px 14px;
     background:var(--bg-tertiary);
@@ -2241,7 +2271,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     to{background-position:-200% 0}
 }
 
-/* ─── Verdict banners ─────────────────────────────────────────── */
+/* ─── Verdict banners ────────────────────────────────────────── */
 .ex-verdict{
     display:flex;align-items:center;gap:11px;
     padding:14px 16px;border-radius:10px;
@@ -2264,7 +2294,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     color:#2ed573;
 }
 
-/* ─── Stats ───────────────────────────────────────────────────── */
+/* ─── Stats ──────────────────────────────────────────────────── */
 .ex-stat-row{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
@@ -2290,7 +2320,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     color:var(--text-muted);font-weight:700;margin-top:3px;
 }
 
-/* ─── Section titles ──────────────────────────────────────────── */
+/* ─── Section titles ─────────────────────────────────────────── */
 .ex-section-title{
     display:flex;align-items:center;gap:9px;
     font-size:.78rem;font-weight:800;
@@ -2308,7 +2338,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     letter-spacing:0;text-transform:none;
 }
 
-/* ─── Tables ──────────────────────────────────────────────────── */
+/* ─── Tables ─────────────────────────────────────────────────── */
 .ex-table-wrap{
     overflow-x:auto;
     border:1px solid rgba(225,29,72,.16);
@@ -2366,7 +2396,7 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     border:1px solid rgba(96,165,250,.3);
 }
 
-/* ─── HTTP logger console ─────────────────────────────────────── */
+/* ─── HTTP logger console ────────────────────────────────────── */
 .ex-log-console{
     background:#080404;
     border:1px solid rgba(225,29,72,.24);
@@ -2453,10 +2483,10 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     100%{box-shadow:0 0 0 0 rgba(46,213,115,0)}
 }
 
-/* ─── Responsive ──────────────────────────────────────────────── */
+/* ─── Responsive ─────────────────────────────────────────────── */
 @media (max-width:720px){
     .ex-hero{flex-direction:column;align-items:flex-start}
-    .ex-hero-shark{width:64px;height:64px}
+    .ex-hero-shark{width:72px;height:72px}
     .ex-hero-stats{width:100%}
     .ex-hero-stat{width:100%}
     .ex-tools-grid{grid-template-columns:1fr}
@@ -2465,9 +2495,10 @@ body.is-touch-device .gc-input-row button{min-width:44px}
     .ex-run-btn,.ex-reset-btn{width:100%;justify-content:center}
 }
 
-/* Respect reduced-motion */
+/* ─── Reduced motion ─────────────────────────────────────────── */
 @media (prefers-reduced-motion:reduce){
     .ex-hero-shark{animation:none}
+    .ex-hero-shark::before{animation:none}
     .ex-progress-fill::after{animation:none}
     .ex-live-badge .dot{animation:none}
 }
