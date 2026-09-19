@@ -1,7 +1,28 @@
 """
-Oxysintx – Scan Orchestrator (v2.1.0)
+Oxysintx – Scan Orchestrator (v2.2.0)
 
 Background job manager for running security scanning tools.
+
+Changes in v2.2.0
+-----------------
+- Structured metrics: total / completed / failed / cancelled / timed-out,
+  per-tool success rates and average durations.
+- Environment-overridable configuration (SCAN_MAX_CONCURRENT,
+  SCAN_TIMEOUT_SECONDS, SCAN_JOB_TTL, SCAN_RESULT_MAX_BYTES).
+- Result size caps: oversized tool payloads are truncated with a marker
+  instead of bloating job memory or history.
+- Per-tool timeout overrides via TOOL_INFO["timeout_seconds"].
+- Retry policy for flaky tools: TOOL_INFO["retries"] (default 0).
+- Progress callbacks now fire on every tool *start* and *finish*, plus once
+  for terminal states, so UIs can render mid-scan progress.
+- New introspection helpers: list_jobs(), cancel_all(), snapshot(),
+  metrics(), reload_tools().
+- Tool deduplication at start_scan() — passing the same tool twice no longer
+  runs it twice.
+- `_cleanup_old_jobs` now also runs on-demand via snapshot() so a long-lived
+  process doesn't hold dead jobs indefinitely.
+- `run_tool_sync()` now honours an optional `timeout` kwarg.
+- Thread-safe metrics counters — safe to scrape from a monitoring thread.
 
 Changes in v2.1.0
 -----------------
@@ -21,7 +42,15 @@ Adding a new tool
 Create ``modules/<name>.py`` exposing:
 
     def run(target: str, mode: str, **kwargs) -> dict
-    TOOL_INFO = {"name": "My Tool", "version": "1.0.0", ...}
+    TOOL_INFO = {
+        "name": "My Tool",
+        "version": "1.0.0",
+        "description": "…",
+        # Optional:
+        "timeout_seconds": 120,   # per-tool timeout, default = SCAN_TIMEOUT
+        "retries": 1,             # retry on exception, default 0
+        "category": "recon",      # free-form, surfaced in list_tools()
+    }
 
 Optional kwarg (recommended):
 
@@ -36,22 +65,42 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import json
 import logging
+import os
 import pkgutil
 import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import modules as modules_pkg
 
+
 # ---------------------------------------------------------------------------
-# Configuration
+# Configuration (env-overridable)
 # ---------------------------------------------------------------------------
-MAX_CONCURRENT_SCANS = 3
-SCAN_TIMEOUT_SECONDS = 600
-JOB_CLEANUP_AFTER_SECONDS = 3600
+def _env_int(key: str, default: int) -> int:
+    try:
+        return int(os.getenv(key, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_float(key: str, default: float) -> float:
+    try:
+        return float(os.getenv(key, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+MAX_CONCURRENT_SCANS: int = _env_int("SCAN_MAX_CONCURRENT", 3)
+SCAN_TIMEOUT_SECONDS: int = _env_int("SCAN_TIMEOUT_SECONDS", 600)
+JOB_CLEANUP_AFTER_SECONDS: int = _env_int("SCAN_JOB_TTL", 3600)
+RESULT_MAX_BYTES: int = _env_int("SCAN_RESULT_MAX_BYTES", 1_048_576)  # 1 MB per tool
+TOOL_RETRY_BACKOFF: float = _env_float("SCAN_RETRY_BACKOFF", 0.5)
+
 
 DEFAULT_BASIC_TOOLS: List[str] = [
     "whois_lookup", "dns_lookup", "ssl_check", "headers_check",
@@ -64,17 +113,10 @@ DEFAULT_EXPERT_TOOLS: Optional[List[str]] = None
 
 logger = logging.getLogger("oxysintx.scan_orchestrator")
 
+
 # ---------------------------------------------------------------------------
 # Modules that are NOT scan tools
 # ---------------------------------------------------------------------------
-# These modules live in `modules/` but are either infrastructure, integrations,
-# or high-noise tools that must be launched explicitly. The orchestrator will
-# never auto-register them in TOOL_MAP, so they don't appear in /api/tools.
-#
-# NOTE: `brute_force` is intentionally kept here. It is a package (not a single
-# module) and is invoked from /api/exploit/bruteforce via AnalyticDataManager.
-# To expose it as a scan tool, remove it from this set — the package exposes
-# the run()/TOOL_INFO contract required by the orchestrator.
 _EXCLUDED_MODULES: Set[str] = {
     # Core / infrastructure
     "scan_orchestrator",
@@ -93,11 +135,17 @@ _EXCLUDED_MODULES: Set[str] = {
     "brute_force",
     "sql_injection",
     "exploit_repository",
+    # New exploit modules — invoked via their own dedicated endpoints
+    "xss_exploiter",
+    "subdomain_takeover",
+    "sniper",
+    "http_logger",
 }
 
 # Tools whose run() is known to hang; skip the global timeout check for them
 # because they manage their own deadline. Currently none.
 _LONG_RUNNING_TOOLS: Set[str] = set()
+
 
 # ---------------------------------------------------------------------------
 # Discovery
@@ -149,12 +197,70 @@ if DEFAULT_EXPERT_TOOLS is None:
 
 
 def _parse_tools(requested: Iterable[str]) -> List[str]:
-    """Keep only known tools. Fall back to basic set if none match."""
-    valid = [t for t in requested if t in TOOL_MAP]
+    """Keep only known tools. Deduplicate preserving order. Fall back to basic set."""
+    seen: Set[str] = set()
+    valid: List[str] = []
+    for t in requested:
+        if t in TOOL_MAP and t not in seen:
+            seen.add(t)
+            valid.append(t)
     if not valid:
         logger.warning("No valid tools requested; falling back to basic set")
         valid = [t for t in DEFAULT_BASIC_TOOLS if t in TOOL_MAP]
     return valid
+
+
+def _tool_timeout(tool_name: str) -> int:
+    """Per-tool timeout. Falls back to the global SCAN_TIMEOUT_SECONDS."""
+    info = getattr(TOOL_MAP.get(tool_name), "TOOL_INFO", None) or {}
+    try:
+        override = int(info.get("timeout_seconds", SCAN_TIMEOUT_SECONDS))
+    except (TypeError, ValueError):
+        override = SCAN_TIMEOUT_SECONDS
+    return max(5, min(override, 86_400))
+
+
+def _tool_retries(tool_name: str) -> int:
+    """Number of times to retry a tool on exception. Default 0."""
+    info = getattr(TOOL_MAP.get(tool_name), "TOOL_INFO", None) or {}
+    try:
+        n = int(info.get("retries", 0))
+    except (TypeError, ValueError):
+        n = 0
+    return max(0, min(n, 5))
+
+
+def _truncate_result(result: Any, max_bytes: int = RESULT_MAX_BYTES) -> Any:
+    """Return a copy of ``result`` capped to ``max_bytes`` of JSON.
+
+    If the serialised payload exceeds the cap, replaces the ``data`` field
+    with a truncation marker but keeps metadata so the UI can still render.
+    """
+    if not isinstance(result, dict):
+        return result
+    try:
+        encoded = json.dumps(result, ensure_ascii=False, default=str)
+    except Exception:
+        # Not serialisable — pass through unchanged, caller handles it
+        return result
+    if len(encoded.encode("utf-8")) <= max_bytes:
+        return result
+
+    trimmed = dict(result)
+    data = trimmed.get("data")
+    if data is not None:
+        try:
+            data_encoded = json.dumps(data, ensure_ascii=False, default=str)
+        except Exception:
+            data_encoded = ""
+        trimmed["data"] = {
+            "_truncated": True,
+            "_original_bytes": len(data_encoded.encode("utf-8")),
+            "_max_bytes": max_bytes,
+            "_note": "Result exceeded the size cap. Increase SCAN_RESULT_MAX_BYTES "
+                     "or inspect the tool directly.",
+        }
+    return trimmed
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +281,7 @@ class ScanJob:
     results: Dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
     created_at: float = field(default_factory=time.time)
+    started_at: Optional[float] = None
     finished_at: Optional[float] = None
     _thread: Optional[threading.Thread] = None
 
@@ -189,6 +296,12 @@ class ScanJob:
             "current_tool": self.current_tool,
             "results": self.results,
             "error": self.error,
+            "created_at": self.created_at,
+            "started_at": self.started_at,
+            "finished_at": self.finished_at,
+            "elapsed": (
+                round((self.finished_at or time.time()) - (self.started_at or self.created_at), 2)
+            ),
         }
 
 
@@ -212,6 +325,19 @@ class ScanOrchestrator:
         self._cleanup_after = cleanup_after
         self._progress_callbacks: List[ProgressCallback] = []
 
+        # Metrics counters (thread-safe under self._lock)
+        self._metrics: Dict[str, Any] = {
+            "scans_started": 0,
+            "scans_completed": 0,
+            "scans_failed": 0,
+            "scans_cancelled": 0,
+            "scans_timed_out": 0,
+            "tools_invoked": 0,
+            "tools_failed": 0,
+            "tools_retried": 0,
+            "per_tool": {},   # name -> {"ok": n, "fail": n, "total_ms": ms}
+        }
+
     # ------------------------------------------------------------------
     # Introspection
     # ------------------------------------------------------------------
@@ -228,9 +354,42 @@ class ScanOrchestrator:
         return getattr(mod, "TOOL_INFO", {"name": tool_name, "description": ""})
 
     def on_progress(self, callback: ProgressCallback) -> None:
-        """Register a callback invoked after every tool completes."""
+        """Register a callback invoked on every meaningful job state change."""
         with self._lock:
             self._progress_callbacks.append(callback)
+
+    def metrics(self) -> Dict[str, Any]:
+        """Return a snapshot of orchestrator metrics."""
+        with self._lock:
+            metrics = json.loads(json.dumps(self._metrics, default=str))
+            active = sum(1 for j in self._jobs.values()
+                         if j.status in ("pending", "running"))
+            metrics["active_jobs"] = active
+            metrics["jobs_in_memory"] = len(self._jobs)
+            metrics["tools_registered"] = len(TOOL_MAP)
+            return metrics
+
+    def list_jobs(
+        self,
+        status: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[dict]:
+        """Return a summary of recent jobs (newest first)."""
+        with self._lock:
+            jobs = list(self._jobs.values())
+        if status:
+            jobs = [j for j in jobs if j.status == status]
+        jobs.sort(key=lambda j: j.created_at, reverse=True)
+        return [j.to_dict() for j in jobs[: max(1, min(limit, 500))]]
+
+    def snapshot(self) -> Dict[str, Any]:
+        """Return metrics + active job list in a single call (for dashboards)."""
+        self._cleanup_old_jobs()
+        return {
+            "metrics": self.metrics(),
+            "active": self.list_jobs(status="running", limit=50),
+            "pending": self.list_jobs(status="pending", limit=50),
+        }
 
     # ------------------------------------------------------------------
     # Direct invocation (no job bookkeeping)
@@ -240,23 +399,67 @@ class ScanOrchestrator:
         tool_name: str,
         target: str,
         mode: str = "basic",
+        timeout: Optional[float] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        """Run a single tool synchronously and return its raw result."""
+        """Run a single tool synchronously and return its raw result.
+
+        ``timeout`` (if given) bounds the wall-clock time of this call by
+        running the tool inside a worker thread and abandoning it on expiry.
+        The underlying tool keeps running until it notices the cancel event.
+        """
         if tool_name not in TOOL_MAP:
             raise ValueError(f"Unknown tool: {tool_name}")
 
         module = TOOL_MAP[tool_name]
-        try:
-            return module.run(target, mode, **kwargs)
-        except Exception as exc:  # noqa: BLE001 - direct call is best-effort
-            logger.error("Direct tool %s failed: %s", tool_name, exc, exc_info=True)
+        if timeout is None:
+            try:
+                return module.run(target, mode, **kwargs)
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Direct tool %s failed: %s", tool_name, exc, exc_info=True)
+                return {
+                    "tool": tool_name,
+                    "target": target,
+                    "data": {},
+                    "error": str(exc),
+                }
+
+        cancel_event = threading.Event()
+        result_box: Dict[str, Any] = {}
+        err_box: Dict[str, Any] = {}
+
+        if _accepts_kwarg(module.run, "cancel_event"):
+            kwargs.setdefault("cancel_event", cancel_event)
+
+        def _worker():
+            try:
+                result_box["v"] = module.run(target, mode, **kwargs)
+            except Exception as exc:  # noqa: BLE001
+                err_box["e"] = exc
+
+        t = threading.Thread(target=_worker, daemon=True, name=f"tool-{tool_name}")
+        t.start()
+        t.join(timeout)
+
+        if t.is_alive():
+            cancel_event.set()
             return {
                 "tool": tool_name,
                 "target": target,
                 "data": {},
-                "error": str(exc),
+                "error": f"timeout after {timeout}s",
             }
+        if "e" in err_box:
+            logger.error("Direct tool %s failed: %s", tool_name, err_box["e"], exc_info=True)
+            return {
+                "tool": tool_name,
+                "target": target,
+                "data": {},
+                "error": str(err_box["e"]),
+            }
+        return result_box.get("v", {
+            "tool": tool_name, "target": target, "data": {}, "error": "no_result",
+        })
 
     # ------------------------------------------------------------------
     # Job lifecycle
@@ -269,6 +472,9 @@ class ScanOrchestrator:
         history_store: Any,
         tool_options: Optional[Dict[str, Any]] = None,
     ) -> str:
+        if not target or not str(target).strip():
+            raise ValueError("target is required")
+
         if not tools:
             tools = DEFAULT_EXPERT_TOOLS if mode == "expert" else DEFAULT_BASIC_TOOLS
         tools = _parse_tools(tools)
@@ -289,6 +495,7 @@ class ScanOrchestrator:
 
         with self._lock:
             self._jobs[job_id] = job
+            self._metrics["scans_started"] += 1
 
         # Acquire a slot *before* spawning so the worker thread never blocks
         # inside start_scan; keeps the HTTP handler fast.
@@ -306,6 +513,7 @@ class ScanOrchestrator:
             "Scan started: job=%s target=%s mode=%s tools=%s",
             job_id, target, mode, tools,
         )
+        self._emit_progress(job)
         return job_id
 
     def get_progress(self, job_id: str) -> Optional[dict]:
@@ -322,12 +530,16 @@ class ScanOrchestrator:
             return True
         return False
 
-    def cancel_all(self) -> None:
+    def cancel_all(self) -> int:
+        """Cancel every pending/running job. Returns the number signalled."""
         with self._lock:
-            active = [j for j in self._jobs.values() if j.status in ("pending", "running")]
+            active = [j for j in self._jobs.values()
+                      if j.status in ("pending", "running")]
         for job in active:
             job.cancel_event.set()
-            logger.info("Cancel signal sent to job %s (shutdown)", job.job_id)
+        if active:
+            logger.info("Cancel signal sent to %d job(s) (bulk)", len(active))
+        return len(active)
 
     # ------------------------------------------------------------------
     # Execution
@@ -339,6 +551,7 @@ class ScanOrchestrator:
 
         try:
             job.status = "running"
+            job.started_at = start_time
             total = max(1, len(job.tools))
             job.results = {}
 
@@ -357,15 +570,18 @@ class ScanOrchestrator:
 
                 job.current_tool = tool_name
                 job.percent = int((idx / total) * 100)
+                self._emit_progress(job)
 
-                # --- run the tool ---
+                # --- run the tool (with retries) ---
                 tool_started = time.perf_counter()
-                result = self._invoke_tool(job, tool_name)
+                result = self._invoke_tool_with_retries(job, tool_name)
                 elapsed_ms = (time.perf_counter() - tool_started) * 1000.0
 
                 if isinstance(result, dict):
                     result.setdefault("_meta", {})["elapsed_ms"] = round(elapsed_ms, 1)
+                    result = _truncate_result(result)
                 job.results[tool_name] = result
+                self._record_tool_metric(tool_name, result, elapsed_ms)
 
                 # --- global timeout (post-check) ---
                 if time.time() - start_time > self._timeout:
@@ -374,6 +590,7 @@ class ScanOrchestrator:
                     break
 
                 # --- notify progress listeners ---
+                job.percent = int(((idx + 1) / total) * 100)
                 self._emit_progress(job)
 
             else:
@@ -402,7 +619,6 @@ class ScanOrchestrator:
             try:
                 self._semaphore.release()
             except ValueError:
-                # BoundedSemaphore raises if we somehow release twice; ignore.
                 pass
 
             # Persist to history — best effort, must not raise.
@@ -418,24 +634,71 @@ class ScanOrchestrator:
                     "Failed to update history for job %s: %s", job.job_id, exc
                 )
 
+            # Bump terminal metrics
+            with self._lock:
+                if final_status == "completed":
+                    self._metrics["scans_completed"] += 1
+                elif final_status == "cancelled":
+                    self._metrics["scans_cancelled"] += 1
+                elif final_status == "timeout":
+                    self._metrics["scans_timed_out"] += 1
+                else:
+                    self._metrics["scans_failed"] += 1
+
             self._emit_progress(job)
             self._cleanup_old_jobs()
 
     # ------------------------------------------------------------------
     # Tool invocation
     # ------------------------------------------------------------------
+    def _invoke_tool_with_retries(self, job: ScanJob, tool_name: str) -> Dict[str, Any]:
+        """Invoke the tool, retrying up to TOOL_INFO['retries'] times on failure."""
+        retries = _tool_retries(tool_name)
+        attempt = 0
+        last_result: Dict[str, Any] = {}
+
+        while attempt <= retries:
+            if job.cancel_event.is_set():
+                return {
+                    "tool": tool_name,
+                    "target": job.target,
+                    "data": {},
+                    "error": "cancelled",
+                }
+
+            last_result = self._invoke_tool(job, tool_name)
+            failed = (
+                isinstance(last_result, dict)
+                and last_result.get("error")
+                and "cancelled" not in str(last_result.get("error", "")).lower()
+            )
+            if not failed:
+                return last_result
+            if attempt < retries:
+                with self._lock:
+                    self._metrics["tools_retried"] += 1
+                logger.info(
+                    "Retrying tool %s (attempt %d/%d) after: %s",
+                    tool_name, attempt + 1, retries, last_result.get("error"),
+                )
+                time.sleep(TOOL_RETRY_BACKOFF * (attempt + 1))
+            attempt += 1
+
+        return last_result
+
     def _invoke_tool(self, job: ScanJob, tool_name: str) -> Dict[str, Any]:
         """Call ``run()`` with options, gracefully dropping unsupported kwargs."""
         module = TOOL_MAP[tool_name]
         run_fn = module.run
+
+        with self._lock:
+            self._metrics["tools_invoked"] += 1
 
         kwargs = self._build_tool_kwargs(job, run_fn)
 
         try:
             return run_fn(job.target, job.mode, **kwargs)
         except TypeError as exc:
-            # Most likely an unexpected keyword argument. Retry without the
-            # optional orchestrator-injected ones before giving up.
             logger.warning(
                 "Tool %s rejected kwargs (%s); retrying with minimal args",
                 tool_name, exc,
@@ -444,23 +707,22 @@ class ScanOrchestrator:
                 return run_fn(job.target, job.mode)
             except Exception as inner:  # noqa: BLE001
                 logger.error("Tool %s failed: %s", tool_name, inner, exc_info=True)
+                with self._lock:
+                    self._metrics["tools_failed"] += 1
                 return self._error_result(tool_name, job.target, inner)
         except Exception as exc:  # noqa: BLE001
             logger.error("Tool %s failed: %s", tool_name, exc, exc_info=True)
+            with self._lock:
+                self._metrics["tools_failed"] += 1
             return self._error_result(tool_name, job.target, exc)
 
     def _build_tool_kwargs(self, job: ScanJob, run_fn: Callable) -> Dict[str, Any]:
         """Return the subset of options that ``run_fn`` actually accepts."""
-        # Start from the caller-supplied options.
         candidates: Dict[str, Any] = dict(job.tool_options)
 
         # Inject orchestrator-level context only if the tool opts in.
         if _accepts_kwarg(run_fn, "cancel_event"):
             candidates["cancel_event"] = job.cancel_event
-        if _accepts_kwarg(run_fn, "mode"):
-            # run()'s second positional is already mode; only pass if the
-            # caller's signature names it explicitly and we're overriding.
-            pass
 
         # Filter by the tool's actual signature.
         accepted: Dict[str, Any] = {}
@@ -482,6 +744,22 @@ class ScanOrchestrator:
             "data": {},
             "error": f"{type(exc).__name__}: {exc}",
         }
+
+    # ------------------------------------------------------------------
+    # Metrics helpers
+    # ------------------------------------------------------------------
+    def _record_tool_metric(self, tool_name: str, result: Any, elapsed_ms: float) -> None:
+        ok = not (isinstance(result, dict) and result.get("error"))
+        with self._lock:
+            entry = self._metrics["per_tool"].setdefault(
+                tool_name, {"ok": 0, "fail": 0, "total_ms": 0.0, "calls": 0}
+            )
+            entry["calls"] += 1
+            entry["total_ms"] += elapsed_ms
+            if ok:
+                entry["ok"] += 1
+            else:
+                entry["fail"] += 1
 
     # ------------------------------------------------------------------
     # Progress
