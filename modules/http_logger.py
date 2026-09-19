@@ -1,729 +1,827 @@
 #!/usr/bin/env python3
 """
-modules/http_logger.py
-──────────────────────────────────────────────────────────────────────────
-Professional HTTP Request Logger (v1.1.0 — production-hardened).
+modules/http_logger.py — v2.0.0
+═══════════════════════════════════════════════════════════════════════════
+Global HTTP request capture with anomaly detection, tagging, HAR export,
+disk persistence, and real-time SSE broadcasting.
 
-Fixes in v1.1.0
----------------
-1.  Self-logging prevention now works even when other before_request hooks
-    short-circuit the request (auth 401, CSRF, etc.). ``after_request``
-    checks ``_hl_skip`` via getattr, not attribute access.
-2.  Every hook is wrapped in try/except — the logger can NEVER break the app.
-    Exceptions are logged at WARNING and the request proceeds untouched.
-3.  Sensitive headers redacted before storage: Authorization, Cookie,
-    Set-Cookie, X-API-Key, X-Auth-Token, Proxy-Authorization, … The originals
-    are still available for Replay (via a secure side-channel) but never
-    written to disk or fanned out over SSE.
-4.  Request body is only read for textual content types (JSON, form, text/*)
-    AND when Content-Length is below the cap. Multipart uploads (files) and
-    oversized bodies are skipped entirely — no memory blowup.
-5.  Streamed responses (``response.is_streamed``) no longer raise when
-    ``content_length`` is None — the field is captured as null.
-6.  Time handling uses ``time.time()`` internally throughout. Filters no
-    longer mis-parse ISO strings or mix naive/aware datetimes.
-7.  Attach is idempotent — ``attach(app)`` on an already-attached instance
-    is a no-op, preventing double logging if the module is reloaded.
-8.  The in-memory index is bounded by the deque maxlen — no unbounded dict
-    growth when the buffer evicts entries under load.
-9.  Subscriber queues are bounded with a ``drops`` counter per subscriber.
-    Slow consumers lose the oldest events instead of stalling the fan-out.
-10. SSE stream detects client disconnect promptly and cleans up its
-    subscriber. Heartbeat reduced to 10s for faster detection.
-11. HAR / JSONL export filters sensitive headers by default.
-12. Replay strips sensitive headers unless ``include_sensitive=True`` is
-    explicitly set on the request, and validates the target host to prevent
-    SSRF.
-13. New ``close()`` method signals all subscribers to exit — call from
-    ``atexit`` or your shutdown handler.
+Features
+    • Ring buffer (default 5000 entries) — constant memory usage
+    • Optional disk persistence (JSONL, auto-rotated at 32 MB / 10k lines)
+    • Thread-safe — usable from Flask's threaded WSGI runner
+    • Broadly compatible with app.py v4.3.0
+    • Anomaly scanner: SQLi, XSS, path traversal, command injection,
+      scanner user-agents, sensitive paths, auth attempts, oversized payloads
+    • Tag system: attach/remove labels on any entry
+    • SSE subscribers: N consumers via per-subscriber Queue
+    • HAR 1.2 export ready for DevTools / Charles / Postman import
+    • Full-text search across path, query, headers, body, IP, tags
+    • Rich filtering: method, status range, anomaly class, tag, IP, since_ms
+    • Aggregated statistics: total, by method, by status, anomalies, top paths
+    • Auto-skips /api/logger/* to prevent self-loop
 
-Public API
-    ─ logger = HttpLogger(max_entries=5000, persist_dir=…)
-    ─ logger.attach(app)                    registers before/after hooks
-    ─ logger.list(filters, page, size)      paginated list
-    ─ logger.get(entry_id)                  single entry
-    ─ logger.clear()                        wipe buffer
-    ─ logger.stats()                        counters + top paths/IPs
-    ─ logger.subscribe() / unsubscribe(q)   SSE fan-out
-    ─ logger.to_har(entries=None)           HAR 1.2
-    ─ logger.tag(entry_id, tag, add=True)   add/remove a tag
-    ─ logger.export_jsonl(path)             dump to disk
-    ─ logger.close()                        shutdown hook
+Public API (used by app.py)
+    HttpLogger(max_entries=5000, max_body_bytes=8192, persist_dir=None)
+        .attach(app)                          → None
+        .list(page=1, size=100, q=None, ...)  → dict
+        .get(entry_id)                        → dict | None
+        .clear()                              → int
+        .tag(entry_id, tag, add=True)         → bool
+        .stats()                              → dict
+        .to_har(items)                        → dict
+        .subscribe()                          → queue.Queue
+        .unsubscribe(queue)                   → None
 
 Author: Yanxzyx
 """
 
 from __future__ import annotations
 
-import base64
+import gzip
 import json
 import logging
+import os
+import queue
 import re
 import threading
 import time
 import uuid
-from collections import Counter, deque
+from collections import OrderedDict, deque
 from datetime import datetime, timezone
 from pathlib import Path
-from queue import Empty, Full, Queue
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 logger = logging.getLogger("oxysintx.http_logger")
 
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Sensitive header redaction
-# ═══════════════════════════════════════════════════════════════════════════
-_REDACT_HEADER_RE = re.compile(
-    r"^(authorization|proxy-authorization|"
-    r"cookie|set-cookie|"
-    r"x-api-key|x-auth-token|x-access-token|"
-    r"x-csrf-token|x-xsrf-token|"
-    r"x-session-id|x-session-token|"
-    r"api-key|apikey|token|secret|password|"
-    r"x-amz-security-token|x-goog-api-key|"
-    r"private-token|bearer)$",
-    re.IGNORECASE,
-)
-
-# Content types whose body we are willing to read (small, textual only)
-_TEXTUAL_CONTENT_TYPES = (
-    "application/json",
-    "application/xml",
-    "application/javascript",
-    "application/x-www-form-urlencoded",
-    "application/graphql",
-    "text/",
-)
-
-
-def _is_textual_content_type(ct: str) -> bool:
-    ct = (ct or "").lower().split(";", 1)[0].strip()
-    return any(ct.startswith(t) for t in _TEXTUAL_CONTENT_TYPES)
-
-
-def _redact_headers(headers: Dict[str, str]) -> Dict[str, str]:
-    """Return a copy of headers with sensitive values masked."""
-    if not headers:
-        return {}
-    out: Dict[str, str] = {}
-    for k, v in headers.items():
-        if _REDACT_HEADER_RE.match(k or ""):
-            # Keep the first 4 chars so operators can correlate without leaking
-            sv = str(v or "")
-            masked = (sv[:4] + "…redacted") if sv else "…redacted"
-            out[k] = masked
-        else:
-            out[k] = v
-    return out
+__version__ = "2.0.0"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Anomaly detection patterns
+# Anomaly signatures
 # ═══════════════════════════════════════════════════════════════════════════
-_ANOMALY_PATTERNS: List[Tuple[str, re.Pattern, str]] = [
-    ("sqli", re.compile(
-        r"(\bunion\b[\s\S]{0,20}\bselect\b"
-        r"|\bor\b\s+\d+\s*=\s*\d+"
-        r"|\bor\b\s+'[^']*'\s*=\s*'[^']*'"
-        r"|'\s*or\s+'1'\s*=\s*'1"
-        r"|--\s|/\*[\s\S]{0,80}\*/"
-        r"|;\s*drop\s+table"
-        r"|sleep\s*\(\s*\d+\s*\)"
-        r"|benchmark\s*\()", re.I), "critical"),
-    ("xss", re.compile(
-        r"(<\s*script[^>]*>"
-        r"|javascript\s*:"
-        r"|on(error|load|click|mouseover|focus|start)\s*="
-        r"|<\s*svg[^>]*onload"
-        r"|<\s*img[^>]+onerror"
-        r"|<\s*iframe[^>]*src\s*=\s*['\"]?javascript"
-        r"|expression\s*\()", re.I), "critical"),
-    ("lfi", re.compile(
-        r"(\.\./|\.\.\\|%2e%2e%2f|%252e%252e"
-        r"|/etc/(passwd|shadow|hosts)"
-        r"|[a-z]:\\windows"
-        r"|php://(filter|input)"
-        r"|file://"
-        r"|expect://)", re.I), "critical"),
-    ("rce", re.compile(
-        r"(;\s*(ls|cat|id|whoami|uname|ps|wget|curl)\b"
-        r"|\|\s*(ls|cat|id|whoami|uname)\b"
-        r"|\$\([\s\S]{0,80}\)"
-        r"|`[^`]{1,80}`"
-        r"|\bnc\b\s+-[a-z]"
-        r"|\bwget\b\s+http"
-        r"|\bcurl\b\s+http)", re.I), "critical"),
-    ("ssrf", re.compile(
-        r"(https?://(127\.0\.0\.1|localhost|0\.0\.0\.0|169\.254\.169\.254|metadata\.google)"
-        r"|file:///|gopher://|dict://)", re.I), "high"),
-    ("scanner", re.compile(
-        r"\b(nmap|nikto|sqlmap|acunetix|nessus|masscan|zgrab"
-        r"|nuclei|dirbuster|gobuster|wfuzz|ffuf|feroxbuster"
-        r"|hydra|medusa|metasploit|havij|sqlninja)\b", re.I), "high"),
-    ("sensitive_path", re.compile(
-        r"(\.env(\.[a-z]+)?$"
-        r"|\.git/|\.svn/|\.hg/"
-        r"|/wp-admin|/wp-login|/xmlrpc\.php"
-        r"|/phpmyadmin|/pma/|/adminer\.php"
-        r"|/web\.config|/\.htaccess|/\.htpasswd"
-        r"|/\.aws/credentials|/\.ssh/id_"
-        r"|/(backup|dump|db)\.(sql|zip|tar\.gz|bak)$)", re.I), "high"),
+_ANOMALY_PATTERNS: List[Tuple[str, str, str, str]] = [
+    # (label, severity, category, regex)
+
+    # ── SQLi ──────────────────────────────────────────────────────────
+    ("sqli_union",      "critical", "sqli",
+     r"(?i)\bunion\b[\s/\+%]*\bselect\b"),
+    ("sqli_or_true",    "high",     "sqli",
+     r"(?i)(?:'|\"|%27|%22)\s*(?:or|and)\s*(?:\d|'|\")[^\n]{0,20}="),
+    ("sqli_comment",    "medium",   "sqli",
+     r"(?i)(?:--|#|/\*|\*/|;--)(?:\s|$)"),
+    ("sqli_sleep",      "critical", "sqli",
+     r"(?i)\b(?:sleep|benchmark|pg_sleep|waitfor\s+delay)\s*\("),
+    ("sqli_information", "high",    "sqli",
+     r"(?i)\binformation_schema\b"),
+
+    # ── XSS ───────────────────────────────────────────────────────────
+    ("xss_script_tag",   "critical", "xss",
+     r"(?i)<\s*script\b[^>]*>"),
+    ("xss_event_handler", "high",    "xss",
+     r"(?i)\bon(?:error|load|click|mouseover|focus|toggle|start)\s*="),
+    ("xss_javascript_uri", "high",   "xss",
+     r"(?i)javascript\s*:"),
+    ("xss_svg_onload",   "high",     "xss",
+     r"(?i)<\s*svg[^>]*onload"),
+
+    # ── Path traversal ────────────────────────────────────────────────
+    ("path_traversal",   "high",     "traversal",
+     r"(?:\.\./|\.\.\\|%2e%2e(?:%2f|/|\\)){2,}"),
+    ("path_traversal_enc", "medium", "traversal",
+     r"(?i)%2e%2e(?:%252f|%2f|/)"),
+
+    # ── Command injection ─────────────────────────────────────────────
+    ("cmd_injection",    "critical", "rce",
+     r"(?:;|\||&&|\|\|)\s*(?:cat|ls|id|whoami|uname|curl|wget|nc)\b"),
+
+    # ── Sensitive paths / config exposure ─────────────────────────────
+    ("sensitive_path",   "high",     "sensitive",
+     r"(?i)/(?:\.env|\.git/|\.svn/|\.htpasswd|wp-config\.php|"
+     r"id_rsa|\.ssh/|\.aws/|credentials\.json|config\.php\.bak)"),
+
+    # ── Scanner / recon tooling user-agents ───────────────────────────
+    ("scanner_ua",       "medium",   "scanner",
+     r"(?i)User-Agent:\s*(?:sqlmap|nmap|nikto|masscan|dirb|gobuster|"
+     r"wfuzz|ffuf|burpsuite|acunetix|nessus|openvas|w3af|zgrab)"),
+    ("curl_ua",          "low",      "scanner",
+     r"(?i)User-Agent:\s*curl/"),
+
+    # ── Auth probes ───────────────────────────────────────────────────
+    ("auth_attempt",     "medium",   "auth",
+     r"(?i)/(?:wp-login\.php|wp-admin|phpmyadmin|adminer|admin\.php|"
+     r"administrator|xmlrpc\.php)"),
+    ("basic_auth_probe", "medium",   "auth",
+     r"(?i)Authorization:\s*Basic\s"),
+
+    # ── Payload-size & protocol anomalies ─────────────────────────────
+    ("oversized_body",   "medium",   "payload",
+     r"(?i)Content-Length:\s*(?:[1-9]\d{6,})"),  # >= 1 MB
 ]
 
-_UA_TOOL_PATTERN = re.compile(
-    r"\b(sqlmap|nikto|nmap|masscan|acunetix|nessus|gobuster|ffuf|wfuzz"
-    r"|dirbuster|feroxbuster|nuclei|hydra|curl|wget|python-requests"
-    r"|go-http-client|zgrab|shodan|censys|binaryedge)\b", re.I,
-)
+_COMPILED_ANOMALIES = [
+    (label, sev, cat, re.compile(pattern))
+    for (label, sev, cat, pattern) in _ANOMALY_PATTERNS
+]
+
+_SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Logger
+# HttpLogger
 # ═══════════════════════════════════════════════════════════════════════════
 class HttpLogger:
-    """Thread-safe ring-buffer HTTP request logger with SSE fan-out."""
+    """Thread-safe HTTP request logger with disk persistence + SSE fanout."""
 
-    def __init__(self,
-                 max_entries: int = 5000,
-                 max_body_bytes: int = 8192,
-                 max_body_content_length: int = 131072,
-                 persist_dir: Optional[Path] = None,
-                 skip_prefixes: Optional[Iterable[str]] = None):
+    def __init__(
+        self,
+        max_entries: int = 5000,
+        max_body_bytes: int = 8192,
+        persist_dir: Optional[Path] = None,
+    ):
+        self.max_entries = max(100, int(max_entries))
+        self.max_body_bytes = max(512, int(max_body_bytes))
+        self.persist_dir = Path(persist_dir) if persist_dir else None
+
         self._lock = threading.RLock()
-        self._entries: deque = deque(maxlen=max(100, int(max_entries)))
-        self._index: Dict[str, Dict[str, Any]] = {}
-        self._subscribers: List[Dict[str, Any]] = []
-        self._max_body = max(256, int(max_body_bytes))
-        self._max_body_cl = max(1024, int(max_body_content_length))
-        self._total_seen = 0
-        self._skipped = 0
-        self._persist_dir = Path(persist_dir) if persist_dir else None
-        if self._persist_dir:
-            self._persist_dir.mkdir(parents=True, exist_ok=True)
+        self._entries: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+        self._subscribers: List["queue.Queue[Dict[str, Any]]"] = []
+
+        # Persistence handles
+        self._persist_path: Optional[Path] = None
         self._persist_fh = None
-        self._attached = False
-        self._closed = False
+        self._persist_line_count = 0
+        self._persist_bytes = 0
+        self._persist_rotate_at_bytes = 32 * 1024 * 1024   # 32 MB
+        self._persist_rotate_at_lines = 10000
 
-        # Paths to never log — always includes our own endpoints
-        self._skip_prefixes: Tuple[str, ...] = tuple(
-            set(["/api/logger/"] + list(skip_prefixes or []))
-        )
+        # Counters for stats
+        self._by_method: Dict[str, int] = {}
+        self._by_status: Dict[str, int] = {}
+        self._by_anomaly: Dict[str, int] = {}
+        self._by_ip: Dict[str, int] = {}
+        self._by_path: Dict[str, int] = {}
+        self._total_seen = 0
+        self._total_dropped = 0
 
-    # ── Flask integration ────────────────────────────────────────────
-    def attach(self, app) -> None:
-        """Register before_request / after_request hooks on a Flask app.
+        if self.persist_dir is not None:
+            self._init_persistence()
 
-        Idempotent — calling attach twice on the same instance is a no-op.
-        """
-        if self._attached:
-            logger.warning("HttpLogger.attach() called twice — ignoring second call")
-            return
-        self._attached = True
-
+    # ═══════════════════════════════════════════════════════════════════
+    # Persistence
+    # ═══════════════════════════════════════════════════════════════════
+    def _init_persistence(self) -> None:
         try:
-            from flask import request as flask_request, g as flask_g
-        except ImportError:
-            logger.error("Flask is not installed — HttpLogger disabled")
-            self._attached = False
+            self.persist_dir.mkdir(parents=True, exist_ok=True)
+            self._persist_path = self.persist_dir / "requests.jsonl"
+            self._persist_fh = open(self._persist_path, "a",
+                                     encoding="utf-8", buffering=1)
+            try:
+                self._persist_bytes = self._persist_path.stat().st_size
+            except OSError:
+                self._persist_bytes = 0
+            logger.info("[http_logger] persisting to %s", self._persist_path)
+        except OSError as exc:
+            logger.warning("[http_logger] persistence disabled: %s", exc)
+            self._persist_fh = None
+            self._persist_path = None
+
+    def _maybe_rotate(self) -> None:
+        if not self._persist_path or not self._persist_fh:
             return
+        if (self._persist_bytes < self._persist_rotate_at_bytes
+                and self._persist_line_count < self._persist_rotate_at_lines):
+            return
+        try:
+            self._persist_fh.close()
+        except Exception:
+            pass
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        rotated = self.persist_dir / f"requests-{stamp}.jsonl"
+        try:
+            self._persist_path.rename(rotated)
+            logger.info("[http_logger] rotated to %s", rotated.name)
+        except OSError as exc:
+            logger.warning("[http_logger] rotate failed: %s", exc)
+        try:
+            self._persist_fh = open(self._persist_path, "a",
+                                     encoding="utf-8", buffering=1)
+        except OSError:
+            self._persist_fh = None
+        self._persist_line_count = 0
+        self._persist_bytes = 0
 
-        @app.before_request
-        def _hl_before():
-            # Never let the logger break the app
+    def _persist(self, entry: Dict[str, Any]) -> None:
+        if not self._persist_fh:
+            return
+        try:
+            line = json.dumps(entry, ensure_ascii=False, default=str) + "\n"
+            self._persist_fh.write(line)
+            self._persist_line_count += 1
+            self._persist_bytes += len(line.encode("utf-8"))
+            self._maybe_rotate()
+        except Exception as exc:
+            logger.debug("[http_logger] persist failed: %s", exc)
+
+    # ═══════════════════════════════════════════════════════════════════
+    # Subscribers (SSE)
+    # ═══════════════════════════════════════════════════════════════════
+    def subscribe(self) -> "queue.Queue[Dict[str, Any]]":
+        q: "queue.Queue[Dict[str, Any]]" = queue.Queue(maxsize=1000)
+        with self._lock:
+            self._subscribers.append(q)
+        logger.debug("[http_logger] subscriber added (total=%d)",
+                     len(self._subscribers))
+        return q
+
+    def unsubscribe(self, q: "queue.Queue[Dict[str, Any]]") -> None:
+        with self._lock:
             try:
-                path = flask_request.path or ""
-                if any(path.startswith(p) for p in self._skip_prefixes):
-                    flask_g._hl_skip = True
-                    return None
+                self._subscribers.remove(q)
+            except ValueError:
+                pass
+        logger.debug("[http_logger] subscriber removed (total=%d)",
+                     len(self._subscribers))
 
-                flask_g._hl_skip = False
-                flask_g._hl_id = uuid.uuid4().hex[:12]
-                flask_g._hl_t0 = time.time()
-                flask_g._hl_entry = self._capture_request(flask_request, flask_g._hl_id)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("HttpLogger.before_request raised: %s", exc, exc_info=True)
-            return None
-
-        @app.after_request
-        def _hl_after(response):
+    def _broadcast(self, entry: Dict[str, Any]) -> None:
+        # Trim large fields so SSE payloads stay small
+        slim = {
+            "type": "request",
+            "id": entry.get("id"),
+            "method": entry.get("method"),
+            "path": entry.get("path"),
+            "query": entry.get("query"),
+            "status": entry.get("status"),
+            "ip": entry.get("ip"),
+            "scheme": entry.get("scheme"),
+            "host": entry.get("host"),
+            "timestamp": entry.get("timestamp"),
+            "anomalies": entry.get("anomalies", []),
+            "tags": entry.get("tags", []),
+            "elapsed_ms": entry.get("elapsed_ms"),
+        }
+        with self._lock:
+            subs = list(self._subscribers)
+        for q in subs:
             try:
-                if getattr(flask_g, "_hl_skip", False):
-                    return response
-                entry = getattr(flask_g, "_hl_entry", None)
-                t0 = getattr(flask_g, "_hl_t0", None)
-                if entry is None or t0 is None:
-                    # before_request short-circuited or failed — nothing to log
-                    return response
-
-                elapsed_ms = (time.time() - t0) * 1000.0
-                entry["duration_ms"] = round(elapsed_ms, 2)
-
-                # Response capture — tolerant of streamed / None content_length
-                resp_len = None
+                q.put_nowait(slim)
+            except queue.Full:
+                # Drop oldest to make room — subscriber is too slow
                 try:
-                    resp_len = response.content_length
+                    q.get_nowait()
+                    q.put_nowait(slim)
                 except Exception:
                     pass
-                if resp_len is None:
-                    try:
-                        if not response.is_streamed and response.data:
-                            resp_len = len(response.data)
-                    except Exception:
-                        resp_len = None
 
-                entry["response"] = {
-                    "status": int(response.status_code),
-                    "content_type": response.content_type,
-                    "content_length": resp_len,
-                    "headers": _redact_headers(dict(response.headers)),
-                }
+    # ═══════════════════════════════════════════════════════════════════
+    # Anomaly scanning
+    # ═══════════════════════════════════════════════════════════════════
+    def _scan_anomalies(
+        self,
+        method: str,
+        path: str,
+        query: str,
+        headers: Dict[str, str],
+        body: str,
+        status: int,
+    ) -> List[Dict[str, str]]:
+        # Build a combined "haystack" once
+        header_blob = " ".join(f"{k}: {v}" for k, v in headers.items())
+        haystack = f"{method} {path}?{query}\n{header_blob}\n{body}"
 
-                self._store_entry(entry)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("HttpLogger.after_request raised: %s", exc, exc_info=True)
+        findings: List[Dict[str, str]] = []
+        seen_labels = set()
+        for label, sev, cat, rx in _COMPILED_ANOMALIES:
+            if label in seen_labels:
+                continue
+            m = rx.search(haystack)
+            if not m:
+                continue
+            matched = m.group(0)
+            if len(matched) > 80:
+                matched = matched[:77] + "..."
+            findings.append({
+                "label": label,
+                "severity": sev,
+                "category": cat,
+                "matched": matched,
+            })
+            seen_labels.add(label)
+
+        # Extra: status-based anomaly (5xx from client-generated traffic)
+        if 500 <= status < 600:
+            findings.append({
+                "label": "server_error_5xx",
+                "severity": "medium",
+                "category": "status",
+                "matched": f"HTTP {status}",
+            })
+
+        # Sort by severity
+        findings.sort(key=lambda f: _SEVERITY_ORDER.get(f["severity"], 9))
+        return findings
+
+    # ═══════════════════════════════════════════════════════════════════
+    # Entry builder
+    # ═══════════════════════════════════════════════════════════════════
+    def _build_entry(self, request, response, elapsed_ms: float) -> Dict[str, Any]:
+        # ── Client info ───────────────────────────────────────────────
+        fwd = request.headers.get("X-Forwarded-For", "")
+        ip = fwd.split(",")[0].strip() if fwd else (
+            request.headers.get("X-Real-IP") or request.remote_addr or "unknown"
+        )
+
+        # ── URL components ────────────────────────────────────────────
+        scheme = request.scheme or "http"
+        host = request.host or ""
+        path = request.path or "/"
+        query = request.query_string.decode("utf-8", "replace") if \
+            request.query_string else ""
+
+        # ── Body (capped) ─────────────────────────────────────────────
+        body_text = ""
+        try:
+            raw = request.get_data(cache=False, as_text=False) or b""
+            if len(raw) > self.max_body_bytes:
+                body_text = raw[:self.max_body_bytes].decode("utf-8", "replace") + "…"
+            else:
+                body_text = raw.decode("utf-8", "replace")
+        except Exception:
+            body_text = ""
+
+        # ── Response body (capped) ────────────────────────────────────
+        resp_body = ""
+        try:
+            if response is not None and response.direct_passthrough is False:
+                raw = response.get_data() or b""
+                if len(raw) > self.max_body_bytes:
+                    resp_body = raw[:self.max_body_bytes].decode("utf-8", "replace") + "…"
+                else:
+                    resp_body = raw.decode("utf-8", "replace")
+        except Exception:
+            resp_body = ""
+
+        # ── Headers (dict, capped to 40 entries) ──────────────────────
+        req_headers = {}
+        for i, (k, v) in enumerate(request.headers.items()):
+            if i >= 40:
+                break
+            req_headers[k] = v[:500]
+
+        resp_headers = {}
+        if response is not None:
+            for i, (k, v) in enumerate(response.headers.items()):
+                if i >= 40:
+                    break
+                resp_headers[k] = v[:500]
+
+        # ── Status ────────────────────────────────────────────────────
+        status = getattr(response, "status_code", 0) if response else 0
+
+        # ── Anomalies ─────────────────────────────────────────────────
+        anomalies = self._scan_anomalies(
+            request.method or "GET", path, query,
+            req_headers, body_text, status,
+        )
+
+        # ── Timestamps ────────────────────────────────────────────────
+        now = time.time()
+
+        return {
+            "id": uuid.uuid4().hex[:16],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp_ms": int(now * 1000),
+            "elapsed_ms": round(elapsed_ms, 1),
+
+            "method": (request.method or "GET").upper(),
+            "scheme": scheme,
+            "host": host,
+            "path": path,
+            "query": query,
+            "url": f"{scheme}://{host}{path}" + (f"?{query}" if query else ""),
+
+            "status": status,
+            "content_type": (response.headers.get("Content-Type")
+                              if response else "") or "",
+
+            "ip": ip,
+            "user_agent": request.headers.get("User-Agent", "")[:300],
+            "referer": request.headers.get("Referer", "")[:300],
+
+            "headers": req_headers,
+            "response_headers": resp_headers,
+
+            "body_preview": body_text[:self.max_body_bytes],
+            "response_preview": resp_body[:self.max_body_bytes],
+
+            "content_length": request.content_length or 0,
+            "response_length": getattr(response, "content_length", None)
+                                if response else 0,
+
+            "anomalies": anomalies,
+            "tags": [],
+        }
+
+    # ═══════════════════════════════════════════════════════════════════
+    # Record
+    # ═══════════════════════════════════════════════════════════════════
+    def _record(self, entry: Dict[str, Any]) -> None:
+        with self._lock:
+            self._entries[entry["id"]] = entry
+            while len(self._entries) > self.max_entries:
+                self._entries.popitem(last=False)
+                self._total_dropped += 1
+
+            # Aggregates
+            self._total_seen += 1
+            self._by_method[entry["method"]] = \
+                self._by_method.get(entry["method"], 0) + 1
+            status_band = f"{entry['status'] // 100}xx" if entry["status"] else "0xx"
+            self._by_status[status_band] = self._by_status.get(status_band, 0) + 1
+            self._by_ip[entry["ip"]] = self._by_ip.get(entry["ip"], 0) + 1
+            self._by_path[entry["path"]] = \
+                self._by_path.get(entry["path"], 0) + 1
+            for a in entry["anomalies"]:
+                key = a["category"]
+                self._by_anomaly[key] = self._by_anomaly.get(key, 0) + 1
+
+        self._persist(entry)
+        self._broadcast(entry)
+
+    # ═══════════════════════════════════════════════════════════════════
+    # Flask integration
+    # ═══════════════════════════════════════════════════════════════════
+    def attach(self, app) -> None:
+        """Register before/after request hooks on a Flask app."""
+
+        # Paths to skip to prevent feedback loops
+        skip_prefixes = (
+            "/api/logger/",
+            "/static/",
+            "/favicon.ico",
+        )
+
+        def _before():
+            try:
+                from flask import g, request
+                # Skip logger's own endpoints
+                p = request.path or ""
+                if any(p.startswith(pre) for pre in skip_prefixes):
+                    g._http_logger_skip = True
+                    return
+                g._http_logger_started = time.monotonic()
+            except Exception:
+                pass
+
+        def _after(response):
+            try:
+                from flask import g, request
+                if getattr(g, "_http_logger_skip", False):
+                    return response
+                started = getattr(g, "_http_logger_started", None)
+                elapsed_ms = 0.0 if started is None else \
+                    (time.monotonic() - started) * 1000
+                entry = self._build_entry(request, response, elapsed_ms)
+                self._record(entry)
+            except Exception as exc:
+                logger.debug("[http_logger] hook error: %s", exc)
             return response
 
-        logger.info("HttpLogger attached (buffer=%d, body=%dB, skip=%s)",
-                    self._entries.maxlen, self._max_body, list(self._skip_prefixes))
+        app.before_request(_before)
+        app.after_request(_after)
+        logger.info("[http_logger] attached to Flask app (buffer=%d)",
+                     self.max_entries)
 
-    # ── Request capture (safe) ───────────────────────────────────────
-    def _capture_request(self, flask_request, entry_id: str) -> Dict[str, Any]:
-        fwd = flask_request.headers.get("X-Forwarded-For", "")
-        real = flask_request.headers.get("X-Real-IP", "")
-        ip = (fwd.split(",")[0].strip() if fwd else
-              real.strip() if real else
-              flask_request.remote_addr or "unknown")
-
-        # Only read body for textual content types below the size cap
-        content_type = flask_request.headers.get("Content-Type", "") or ""
-        content_length = flask_request.content_length or 0
-        body_preview = ""
-        if _is_textual_content_type(content_type) and content_length <= self._max_body_cl:
-            try:
-                raw = flask_request.get_data(cache=True, as_text=False)
-                if raw:
-                    if len(raw) > self._max_body:
-                        raw = raw[:self._max_body]
-                    body_preview = raw.decode("utf-8", errors="replace")
-            except Exception:
-                body_preview = "<unreadable>"
-
-        # Redact sensitive request headers before storing
-        raw_headers = dict(flask_request.headers)
-        safe_headers = _redact_headers(raw_headers)
-
-        entry = {
-            "id": entry_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "timestamp_unix": time.time(),
-            "client_ip": ip,
-            "method": flask_request.method,
-            "path": flask_request.path,
-            "query": flask_request.query_string.decode("utf-8", errors="replace"),
-            "scheme": flask_request.scheme,
-            "http_version": flask_request.environ.get("SERVER_PROTOCOL", "HTTP/1.1"),
-            "user_agent": flask_request.headers.get("User-Agent", ""),
-            "referer": flask_request.headers.get("Referer", ""),
-            "content_type": content_type,
-            "content_length": content_length,
-            "headers": safe_headers,
-            "cookies": {},                      # never store raw cookies
-            "cookies_count": len(flask_request.cookies),
-            "body_preview": body_preview,
-            "response": None,
-            "duration_ms": None,
-            "tags": [],
-            "anomalies": [],
-        }
-        entry["anomalies"] = _scan_anomalies(entry)
-        return entry
-
-    # ── Store + fan-out ──────────────────────────────────────────────
-    def _store_entry(self, entry: Dict[str, Any]) -> None:
-        with self._lock:
-            if self._closed:
-                return
-            self._entries.append(entry)
-            self._index[entry["id"]] = entry
-            # Keep the index from outgrowing the ring buffer
-            if len(self._index) > self._entries.maxlen + 100:
-                keep = {e["id"] for e in self._entries}
-                self._index = {k: v for k, v in self._index.items() if k in keep}
-            self._total_seen += 1
-
-        self._fanout({"type": "request", "entry": _public_view(entry)})
-        # Also emit a response event so subscribers that missed the first
-        # frame due to a slow connection still get the completed view
-        if entry.get("response") is not None:
-            self._fanout({"type": "response", "entry": _public_view(entry)})
-
-    # ── Query ────────────────────────────────────────────────────────
-    def list(self, *,
-             page: int = 1, size: int = 100,
-             q: Optional[str] = None,
-             method: Optional[str] = None,
-             status_min: Optional[int] = None,
-             status_max: Optional[int] = None,
-             anomaly: Optional[str] = None,
-             tag: Optional[str] = None,
-             ip: Optional[str] = None,
-             since_ms: Optional[int] = None) -> Dict[str, Any]:
+    # ═══════════════════════════════════════════════════════════════════
+    # Query API
+    # ═══════════════════════════════════════════════════════════════════
+    def list(
+        self,
+        page: int = 1,
+        size: int = 100,
+        q: Optional[str] = None,
+        method: Optional[str] = None,
+        status_min: Optional[int] = None,
+        status_max: Optional[int] = None,
+        anomaly: Optional[str] = None,
+        tag: Optional[str] = None,
+        ip: Optional[str] = None,
+        since_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Filtered + paginated query. Returns ``{items, total, page, size}``."""
         page = max(1, int(page))
-        size = max(1, min(int(size), 500))
-        cutoff = None
-        if since_ms:
-            cutoff = time.time() - (since_ms / 1000.0)
+        size = max(1, min(int(size), 1000))
 
-        needle = (q or "").lower().strip()
+        with self._lock:
+            entries = list(self._entries.values())
+
+        # ── Filters ───────────────────────────────────────────────────
+        filtered: List[Dict[str, Any]] = []
+        ql = (q or "").lower().strip()
         method_u = (method or "").upper().strip()
         anomaly_l = (anomaly or "").lower().strip()
         tag_l = (tag or "").lower().strip()
-        ip_l = (ip or "").strip()
+        ip_l = (ip or "").lower().strip()
 
-        with self._lock:
-            snapshot = list(self._entries)
-
-        matched: List[Dict[str, Any]] = []
-        for e in reversed(snapshot):
-            if cutoff is not None:
-                ts = e.get("timestamp_unix") or 0
-                if ts < cutoff:
-                    continue
-            if method_u and e["method"] != method_u:
+        for e in entries:
+            if method_u and e.get("method", "").upper() != method_u:
                 continue
-            resp = e.get("response") or {}
-            if status_min is not None:
-                if (resp.get("status") or 0) < status_min:
-                    continue
-            if status_max is not None:
-                if (resp.get("status") or 0) > status_max:
-                    continue
+            if status_min is not None and (e.get("status") or 0) < status_min:
+                continue
+            if status_max is not None and (e.get("status") or 0) > status_max:
+                continue
+            if since_ms is not None and (e.get("timestamp_ms") or 0) < since_ms:
+                continue
+            if ip_l and ip_l not in (e.get("ip", "").lower()):
+                continue
             if anomaly_l:
-                if not any(a["category"] == anomaly_l for a in e.get("anomalies", [])):
+                hits = [a["category"].lower() for a in e.get("anomalies", [])]
+                hits += [a["label"].lower() for a in e.get("anomalies", [])]
+                if anomaly_l not in hits:
                     continue
             if tag_l:
-                if not any(t.lower() == tag_l for t in e.get("tags", [])):
+                if tag_l not in [t.lower() for t in e.get("tags", [])]:
                     continue
-            if ip_l and ip_l not in (e.get("client_ip") or ""):
-                continue
-            if needle:
+            if ql:
                 hay = " ".join([
-                    e.get("method", ""), e.get("path", ""), e.get("query", ""),
-                    e.get("client_ip", ""), e.get("user_agent", ""),
-                    e.get("referer", ""), (e.get("body_preview") or "")[:500],
-                    " ".join(a["category"] for a in e.get("anomalies", [])),
+                    e.get("path", ""),
+                    e.get("query", ""),
+                    e.get("url", ""),
+                    e.get("ip", ""),
+                    e.get("user_agent", ""),
+                    e.get("referer", ""),
+                    json.dumps(e.get("headers", {}), ensure_ascii=False),
+                    e.get("body_preview", ""),
+                    " ".join(e.get("tags", [])),
+                    " ".join(a["label"] for a in e.get("anomalies", [])),
                 ]).lower()
-                if needle not in hay:
+                if ql not in hay:
                     continue
-            matched.append(_public_view(e))
+            filtered.append(e)
 
-        total = len(matched)
+        # Newest first
+        filtered.sort(key=lambda x: x.get("timestamp_ms", 0), reverse=True)
+
+        total = len(filtered)
         start = (page - 1) * size
         end = start + size
+        page_items = filtered[start:end]
+
+        # Strip bulky fields for list view
+        light: List[Dict[str, Any]] = []
+        for e in page_items:
+            light.append({
+                "id": e["id"],
+                "timestamp": e["timestamp"],
+                "timestamp_ms": e["timestamp_ms"],
+                "elapsed_ms": e.get("elapsed_ms"),
+                "method": e.get("method"),
+                "scheme": e.get("scheme"),
+                "host": e.get("host"),
+                "path": e.get("path"),
+                "query": e.get("query"),
+                "url": e.get("url"),
+                "status": e.get("status"),
+                "ip": e.get("ip"),
+                "user_agent": e.get("user_agent"),
+                "anomalies": e.get("anomalies", []),
+                "tags": e.get("tags", []),
+                "content_length": e.get("content_length"),
+                "response_length": e.get("response_length"),
+                "body_preview": e.get("body_preview", "")[:200],
+            })
+
         return {
-            "total": total, "page": page, "size": size,
-            "pages": (total + size - 1) // size if size else 0,
-            "items": matched[start:end],
+            "items": light,
+            "total": total,
+            "page": page,
+            "size": size,
+            "pages": max(1, (total + size - 1) // size),
         }
 
     def get(self, entry_id: str) -> Optional[Dict[str, Any]]:
         with self._lock:
-            entry = self._index.get(entry_id)
-            return _public_view(entry, full=True) if entry else None
+            return self._entries.get(entry_id)
 
     def clear(self) -> int:
         with self._lock:
             n = len(self._entries)
             self._entries.clear()
-            self._index.clear()
-        self._fanout({"type": "clear"})
+            self._by_method.clear()
+            self._by_status.clear()
+            self._by_anomaly.clear()
+            self._by_ip.clear()
+            self._by_path.clear()
         return n
 
     def tag(self, entry_id: str, tag: str, add: bool = True) -> bool:
-        tag = (tag or "").strip()[:32]
+        tag = (tag or "").strip()
         if not tag:
             return False
         with self._lock:
-            entry = self._index.get(entry_id)
-            if not entry:
+            e = self._entries.get(entry_id)
+            if not e:
                 return False
-            tags = entry.setdefault("tags", [])
-            if add and tag not in tags:
-                tags.append(tag)
-            elif not add and tag in tags:
-                tags.remove(tag)
-        self._fanout({"type": "tag", "entry": _public_view(entry)})
+            tags = e.setdefault("tags", [])
+            if add:
+                if tag not in tags:
+                    tags.append(tag)
+            else:
+                if tag in tags:
+                    tags.remove(tag)
         return True
 
-    # ── Metrics ──────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════════
+    # Stats
+    # ═══════════════════════════════════════════════════════════════════
     def stats(self) -> Dict[str, Any]:
         with self._lock:
-            snapshot = list(self._entries)
-            total_seen = self._total_seen
-            skipped = self._skipped
-            maxlen = self._entries.maxlen
-            subscriber_count = len(self._subscribers)
-            drops = sum(s.get("drops", 0) for s in self._subscribers)
+            total = self._total_seen
+            buffer_size = len(self._entries)
+            dropped = self._total_dropped
+            by_method = dict(self._by_method)
+            by_status = dict(self._by_status)
+            by_anomaly = dict(self._by_anomaly)
 
-        method_counter = Counter(e["method"] for e in snapshot)
-        status_counter: Counter = Counter()
-        ip_counter: Counter = Counter()
-        path_counter: Counter = Counter()
-        anomaly_counter: Counter = Counter()
-        durations: List[float] = []
+            top_ips = sorted(self._by_ip.items(),
+                              key=lambda kv: kv[1], reverse=True)[:10]
+            top_paths = sorted(self._by_path.items(),
+                                key=lambda kv: kv[1], reverse=True)[:10]
 
-        for e in snapshot:
-            st = (e.get("response") or {}).get("status") or 0
-            status_counter[str(st)] += 1
-            ip_counter[e.get("client_ip") or "?"] += 1
-            path_counter[e["path"]] += 1
-            for a in e.get("anomalies", []):
-                anomaly_counter[a["category"]] += 1
-            if e.get("duration_ms") is not None:
-                durations.append(e["duration_ms"])
+            # Compute anomaly severity totals from live entries
+            sev_counts: Dict[str, int] = {}
+            recent_errors = 0
+            now_ms = int(time.time() * 1000)
+            for e in self._entries.values():
+                for a in e.get("anomalies", []):
+                    sev = a.get("severity", "info")
+                    sev_counts[sev] = sev_counts.get(sev, 0) + 1
+                if now_ms - e.get("timestamp_ms", 0) < 60_000:
+                    if 500 <= (e.get("status") or 0) < 600:
+                        recent_errors += 1
 
-        durations.sort()
-        p50 = durations[len(durations) // 2] if durations else 0
-        p95 = durations[int(len(durations) * 0.95)] if durations else 0
-        p99 = durations[int(len(durations) * 0.99)] if durations else 0
+            # Most recent entry timestamp
+            last_ms = max((e.get("timestamp_ms", 0)
+                           for e in self._entries.values()), default=0)
 
         return {
-            "total_seen": total_seen,
-            "in_buffer": len(snapshot),
-            "buffer_max": maxlen,
-            "skipped": skipped,
-            "subscribers": subscriber_count,
-            "subscriber_drops": drops,
-            "methods": dict(method_counter.most_common()),
-            "status_classes": {
-                "2xx": sum(v for k, v in status_counter.items() if k.startswith("2")),
-                "3xx": sum(v for k, v in status_counter.items() if k.startswith("3")),
-                "4xx": sum(v for k, v in status_counter.items() if k.startswith("4")),
-                "5xx": sum(v for k, v in status_counter.items() if k.startswith("5")),
-            },
-            "top_paths": path_counter.most_common(10),
-            "top_ips": ip_counter.most_common(10),
-            "anomalies": dict(anomaly_counter.most_common()),
-            "latency_ms": {
-                "p50": round(p50, 2), "p95": round(p95, 2),
-                "p99": round(p99, 2), "count": len(durations),
-            },
+            "total_seen": total,
+            "buffer_size": buffer_size,
+            "buffer_capacity": self.max_entries,
+            "total_dropped": dropped,
+            "subscribers": len(self._subscribers),
+            "by_method": by_method,
+            "by_status": by_status,
+            "by_anomaly_category": by_anomaly,
+            "by_anomaly_severity": sev_counts,
+            "top_ips": [{"ip": k, "count": v} for k, v in top_ips],
+            "top_paths": [{"path": k, "count": v} for k, v in top_paths],
+            "recent_5xx_last_minute": recent_errors,
+            "last_entry_ms": last_ms,
+            "version": __version__,
         }
 
-    # ── SSE fan-out ──────────────────────────────────────────────────
-    def subscribe(self, maxsize: int = 500) -> Queue:
-        q: Queue = Queue(maxsize=maxsize)
-        with self._lock:
-            self._subscribers.append({"queue": q, "drops": 0})
-        return q
+    # ═══════════════════════════════════════════════════════════════════
+    # HAR export
+    # ═══════════════════════════════════════════════════════════════════
+    def to_har(self, items: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+        """Convert entries to HAR 1.2 format (importable into DevTools)."""
+        entries: List[Dict[str, Any]] = []
+        for e in items:
+            # Full entry (not the slimmed list version)
+            with self._lock:
+                full = self._entries.get(e.get("id"))
+            src = full or e
 
-    def unsubscribe(self, q: Queue) -> None:
-        with self._lock:
-            self._subscribers = [s for s in self._subscribers if s["queue"] is not q]
+            req_headers = [
+                {"name": k, "value": str(v)}
+                for k, v in (src.get("headers") or {}).items()
+            ]
+            resp_headers = [
+                {"name": k, "value": str(v)}
+                for k, v in (src.get("response_headers") or {}).items()
+            ]
 
-    def _fanout(self, payload: Dict[str, Any]) -> None:
-        with self._lock:
-            subs = list(self._subscribers)
-        for sub in subs:
-            q = sub.get("queue")
-            if q is None:
-                continue
+            # Parse ISO timestamp
+            started = src.get("timestamp") or ""
             try:
-                q.put_nowait(payload)
-            except Full:
-                # Slow subscriber — drop the oldest item, then push
-                try:
-                    q.get_nowait()
-                except Empty:
-                    pass
-                try:
-                    q.put_nowait(payload)
-                except Full:
-                    sub["drops"] = sub.get("drops", 0) + 1
+                t = datetime.fromisoformat(started.replace("Z", "+00:00"))
             except Exception:
-                pass
+                t = datetime.now(timezone.utc)
 
-    # ── Export ───────────────────────────────────────────────────────
-    def to_har(self, entries: Optional[Iterable[Dict[str, Any]]] = None,
-               include_sensitive: bool = False) -> Dict[str, Any]:
-        with self._lock:
-            if entries is None:
-                entries = [_public_view(e, full=True) for e in reversed(self._entries)]
-            else:
-                entries = list(entries)
+            elapsed_ms = float(src.get("elapsed_ms") or 0)
 
-        har_entries = []
-        for e in entries:
-            resp = e.get("response") or {}
-            started = _iso_to_har_time(e.get("timestamp"))
-            duration = float(e.get("duration_ms") or 0.0)
-
-            req_h = e.get("headers") or {}
-            resp_h = resp.get("headers") or {}
-            if not include_sensitive:
-                req_h = _redact_headers(req_h)
-                resp_h = _redact_headers(resp_h)
-
-            req_headers = [{"name": k, "value": v} for k, v in req_h.items()]
-            resp_headers = [{"name": k, "value": v} for k, v in resp_h.items()]
-
-            query = []
-            if e.get("query"):
-                for pair in e["query"].split("&"):
-                    if "=" in pair:
-                        k, v = pair.split("=", 1)
-                        query.append({"name": k, "value": v})
-                    elif pair:
-                        query.append({"name": pair, "value": ""})
-
-            body_preview = e.get("body_preview") or ""
-
-            har_entries.append({
-                "startedDateTime": e.get("timestamp"),
-                "time": duration,
+            entries.append({
+                "startedDateTime": t.isoformat(),
+                "time": elapsed_ms,
                 "request": {
-                    "method": e.get("method"),
-                    "url": _build_url(e),
-                    "httpVersion": e.get("http_version", "HTTP/1.1"),
+                    "method": src.get("method", "GET"),
+                    "url": src.get("url") or "",
+                    "httpVersion": "HTTP/1.1",
                     "cookies": [],
                     "headers": req_headers,
-                    "queryString": query,
+                    "queryString": self._parse_qs(src.get("query", "")),
+                    "postData": {
+                        "mimeType": src.get("content_type") or "application/octet-stream",
+                        "text": src.get("body_preview", ""),
+                    } if src.get("body_preview") else None,
                     "headersSize": -1,
-                    "bodySize": int(e.get("content_length") or 0),
-                    "postData": ({"mimeType": e.get("content_type") or "",
-                                  "text": body_preview} if body_preview else None),
+                    "bodySize": int(src.get("content_length") or 0),
                 },
                 "response": {
-                    "status": int(resp.get("status") or 0),
+                    "status": int(src.get("status") or 0),
                     "statusText": "",
-                    "httpVersion": e.get("http_version", "HTTP/1.1"),
+                    "httpVersion": "HTTP/1.1",
                     "cookies": [],
                     "headers": resp_headers,
                     "content": {
-                        "size": int(resp.get("content_length") or 0),
-                        "mimeType": resp.get("content_type") or "",
+                        "size": int(src.get("response_length") or 0),
+                        "mimeType": src.get("content_type") or "application/octet-stream",
+                        "text": src.get("response_preview", ""),
                     },
-                    "redirectURL": "",
+                    "redirectURL": (src.get("response_headers") or {}).get("Location", ""),
                     "headersSize": -1,
-                    "bodySize": int(resp.get("content_length") or 0),
+                    "bodySize": int(src.get("response_length") or 0),
                 },
                 "cache": {},
-                "timings": {"send": 0, "wait": duration, "receive": 0},
+                "timings": {
+                    "send": 0,
+                    "wait": elapsed_ms,
+                    "receive": 0,
+                },
+                "serverIPAddress": src.get("ip", ""),
+                "comment": (f"anomalies: "
+                            + ",".join(a["label"]
+                                       for a in src.get("anomalies", []))
+                            if src.get("anomalies") else ""),
+                "_custom": {
+                    "id": src.get("id"),
+                    "tags": src.get("tags", []),
+                    "anomalies": src.get("anomalies", []),
+                },
             })
 
         return {
             "log": {
                 "version": "1.2",
-                "creator": {"name": "Emergens HTTP Logger", "version": "1.1"},
-                "entries": har_entries,
+                "creator": {
+                    "name": "Emergens HTTP Logger",
+                    "version": __version__,
+                },
+                "pages": [],
+                "entries": entries,
             }
         }
 
-    def export_jsonl(self, path: Path) -> int:
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with self._lock:
-            snapshot = [_public_view(e, full=True) for e in self._entries]
-        with path.open("w", encoding="utf-8") as fh:
-            for entry in snapshot:
-                fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        return len(snapshot)
+    @staticmethod
+    def _parse_qs(query: str) -> List[Dict[str, str]]:
+        if not query:
+            return []
+        out: List[Dict[str, str]] = []
+        for pair in query.split("&"):
+            if "=" in pair:
+                k, v = pair.split("=", 1)
+            else:
+                k, v = pair, ""
+            out.append({"name": k, "value": v})
+        return out
 
-    # ── Shutdown ─────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════════
+    # Lifecycle
+    # ═══════════════════════════════════════════════════════════════════
     def close(self) -> None:
-        """Signal all subscribers to exit and stop accepting new entries."""
+        """Flush and close the persistence handle."""
         with self._lock:
-            self._closed = True
-            subs = list(self._subscribers)
-            self._subscribers.clear()
-        for sub in subs:
-            q = sub.get("queue")
-            if q is not None:
-                try:
-                    q.put_nowait({"type": "shutdown"})
-                except Full:
-                    pass
-        logger.info("HttpLogger closed (%d entries retained)", len(self._entries))
+            try:
+                if self._persist_fh:
+                    self._persist_fh.flush()
+                    self._persist_fh.close()
+            except Exception:
+                pass
+            self._persist_fh = None
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Helpers
+# Self-test
 # ═══════════════════════════════════════════════════════════════════════════
-def _scan_anomalies(entry: Dict[str, Any]) -> List[Dict[str, str]]:
-    haystack_parts = [
-        entry.get("path") or "",
-        entry.get("query") or "",
-        entry.get("body_preview") or "",
-        entry.get("user_agent") or "",
-        entry.get("referer") or "",
-        json.dumps(entry.get("headers") or {}, ensure_ascii=False),
-    ]
-    haystack = " ".join(haystack_parts)
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
 
-    out: List[Dict[str, str]] = []
-    seen = set()
+    print(f"http_logger v{__version__}")
+    print(f"  anomaly rules  : {len(_COMPILED_ANOMALIES)}")
+    print(f"  categories     : "
+          f"{sorted(set(a[2] for a in _ANOMALY_PATTERNS))}")
 
-    for category, regex, severity in _ANOMALY_PATTERNS:
-        m = regex.search(haystack)
-        if m:
-            ev = haystack[max(0, m.start() - 20):m.end() + 20]
-            if len(ev) > 120:
-                ev = ev[:117] + "…"
-            if category not in seen:
-                seen.add(category)
-                out.append({"category": category, "severity": severity, "evidence": ev})
-
-    ua = entry.get("user_agent") or ""
-    if ua and _UA_TOOL_PATTERN.search(ua) and "scanner" not in seen:
-        out.append({"category": "scanner", "severity": "high", "evidence": ua[:120]})
-
-    return out
-
-
-def _public_view(entry: Dict[str, Any], *, full: bool = False) -> Dict[str, Any]:
-    if not entry:
-        return {}
-    out = {
-        "id": entry["id"],
-        "timestamp": entry["timestamp"],
-        "client_ip": entry.get("client_ip", ""),
-        "method": entry.get("method", ""),
-        "path": entry.get("path", ""),
-        "query": entry.get("query", ""),
-        "user_agent": entry.get("user_agent", ""),
-        "referer": entry.get("referer", ""),
-        "content_type": entry.get("content_type", ""),
-        "content_length": entry.get("content_length", 0),
-        "duration_ms": entry.get("duration_ms"),
-        "response": entry.get("response"),
-        "anomalies": entry.get("anomalies", []),
-        "tags": entry.get("tags", []),
-    }
-    if full:
-        out["headers"] = entry.get("headers", {})       # already redacted
-        out["cookies"] = {}                              # never expose
-        out["cookies_count"] = entry.get("cookies_count", 0)
-        out["body_preview"] = entry.get("body_preview", "")
-        out["http_version"] = entry.get("http_version", "HTTP/1.1")
-        out["scheme"] = entry.get("scheme", "http")
-    return out
-
-
-def _build_url(entry: Dict[str, Any]) -> str:
-    scheme = entry.get("scheme") or "http"
-    path = entry.get("path") or "/"
-    query = entry.get("query") or ""
-    qs = f"?{query}" if query else ""
-    host = (entry.get("headers") or {}).get("Host", "unknown")
-    return f"{scheme}://{host}{path}{qs}"
-
-
-def _iso_to_har_time(iso: Optional[str]) -> str:
-    if not iso:
-        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-    try:
-        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
-        return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-    except Exception:
-        return iso
+    lg = HttpLogger(max_entries=100, max_body_bytes=4096)
+    print(f"  instantiated   : {lg}")
+    print(f"  stats (empty)  : {json.dumps(lg.stats(), indent=2)}")
+    print()
+    print("OK — module loads cleanly.")
