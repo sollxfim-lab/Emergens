@@ -1,8 +1,21 @@
 #!/usr/bin/env python3
 """
-Oxysintx / Emergens — app.py v4.2.0
+Oxysintx / Emergens — app.py v4.3.0
 ═══════════════════════════════════════════════════════════════════════════
 Advanced production build.
+
+Changelog v4.3.0
+    • New ASCII banner — "EMERGEN"
+    • sse_response() now handles string yields cleanly
+    • Idempotent signal handlers (no double-fire on SIGINT+SIGTERM)
+    • Startup route collision detection with warning
+    • request.get_json() is defensive — always returns a dict
+    • _load_json() keeps a .bak before overwriting
+    • atexit + signal handlers no longer race each other
+    • New /api/version endpoint
+    • Content-Type validation on JSON POST endpoints
+    • Oversize body logging
+    • Precise server_start_time for uptime
 
 Changelog v4.2.0
     • Job Manager singleton — unified lifecycle for all async jobs
@@ -137,10 +150,10 @@ _quick_menu_bp = None
 _quick_menu_available = False
 try:
     from modules import quick_menu
-    if hasattr(quick_menu, 'quick_menu_bp'):
+    if hasattr(quick_menu, "quick_menu_bp"):
         _quick_menu_bp = quick_menu.quick_menu_bp
         _quick_menu_available = True
-    elif hasattr(quick_menu, 'bp'):
+    elif hasattr(quick_menu, "bp"):
         _quick_menu_bp = quick_menu.bp
         _quick_menu_available = True
 except ImportError:
@@ -148,18 +161,22 @@ except ImportError:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STARTUP BANNER
+# STARTUP BANNER — "EMERGEN"
 # ═══════════════════════════════════════════════════════════════════════════
 BANNER = r"""
-    ▄▀▀▀▀▀▀▀▀▀█ █▀▀▀▀▀▀▀▀▀▄▀▀▀▀▀▄   ▄▀▀▀▀▀▀▀▀▀█ █▀▀▀▀▀▀▀▀▀▄
-    █·   ▄▄▄▄▄▄█ ▀    ▄▄     ▄    █ █·   ▄▄▄▄▄▄█ ▀    ▄▄
-    ▓  . ▓▄▄▄▄▄▄ ▓    ▓ ▌   ▓ ▌   ▓ ▓  . ▓▄▄▄▄▄▄ ▓    ▓▄▌
-    ▒ ∙  ▄▄▄▄▄▄▒ ▒    ▒ ▒ · ▒ ▒ · ▒ ▒ ∙  ▄▄▄▄▄▄▒ ▒   ·▄▄▄
-    ░    ░▄▄▄▄▄▄ ░   ∙░ ░   ░ ░   ░ ░    ░▄▄▄▄▄▄ ░ .  ░ ░
-    █    .    ·█ █ ∙  █ █   █ █   █ █    .    ·█ █    █ █∙
-    █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█ █▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█
-                 EMERGENS — v4.2.0
+▓█████  ███▄ ▄███▓▓█████  ██▀███    ▄████ ▓█████  ███▄    █   ██████
+▓█   ▀ ▓██▒▀█▀ ██▒▓█   ▀ ▓██ ▒ ██▒ ██▒ ▀█▒▓█   ▀ ██ ▀█   █ ▒██    ▒
+▒███   ▓██    ▓██░▒███   ▓██ ░▄█ ▒▒██░▄▄▄░▒███  ▓██  ▀█ ██▒░ ▓██▄
+▒▓█  ▄ ▒██    ▒██ ▒▓█  ▄ ▒██▀▀█▄  ░▓█  ██▓▒▓█  ▄▓██▒  ▐▌██▒  ▒   ██▒
+░▒████▒▒██▒   ░██▒░▒████▒░██▓ ▒██▒░▒▓███▀▒░▒████▒██░   ▓██░▒██████▒▒
+░░ ▒░ ░░ ▒░   ░  ░░░ ▒░ ░░ ▒▓ ░▒▓░ ░▒   ▒ ░░ ▒░ ░ ▒░   ▒ ▒ ▒ ▒▓▒ ▒ ░
+ ░ ░  ░░  ░      ░ ░ ░  ░  ░▒ ░ ▒░  ░   ░  ░ ░  ░ ░░   ░ ▒░░ ░▒  ░ ░
+   ░   ░      ░      ░     ░░   ░ ░ ░   ░    ░     ░   ░ ░ ░  ░  ░
+   ░  ░       ░      ░  ░   ░           ░    ░  ░        ░       ░
 """
+
+BANNER_VERSION = "v4.3.0"
+BANNER_TAGLINE = "  Field Intelligence Console  •  Python 3.13  •  Emergens Ops"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -168,7 +185,7 @@ BANNER = r"""
 _PROJECT_ROOT = Path(__file__).resolve().parent
 MHDDOS_SCRIPT = _PROJECT_ROOT / "start.py"
 
-_VENV_PY_WIN  = _PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+_VENV_PY_WIN = _PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
 _VENV_PY_UNIX = _PROJECT_ROOT / ".venv" / "bin" / "python"
 if _VENV_PY_WIN.exists():
     PYTHON_EXE = str(_VENV_PY_WIN)
@@ -187,10 +204,13 @@ MHDDOS_LOG_DIR = _PROJECT_ROOT / "logs" / "mhddos"
 HTTP_LOGGER_DIR = _PROJECT_ROOT / "logs" / "http_logger"
 
 # ── Limits ─────────────────────────────────────────────────────────────
-MAX_JSON_BODY_BYTES = 256 * 1024     # 256 KB cap on POST bodies
-JOB_TTL_DEFAULT = 1800               # 30 min
-HEARTBEAT_INTERVAL = 10.0            # SSE heartbeat
-JOB_SWEEP_INTERVAL = 60.0            # cleanup sweep cadence
+MAX_JSON_BODY_BYTES = 256 * 1024
+JOB_TTL_DEFAULT = 1800
+HEARTBEAT_INTERVAL = 10.0
+JOB_SWEEP_INTERVAL = 60.0
+
+# ── Server uptime tracking ─────────────────────────────────────────────
+SERVER_START_TIME = time.time()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -242,15 +262,13 @@ class _Job:
 class JobManager:
     """Thread-safe registry for all background scan jobs."""
 
-    def __init__(self, ttl: float = JOB_TTL_DEFAULT,
-                 max_per_kind: int = 3):
+    def __init__(self, ttl: float = JOB_TTL_DEFAULT, max_per_kind: int = 3):
         self._jobs: Dict[str, _Job] = {}
         self._lock = threading.RLock()
         self._ttl = float(ttl)
         self._max_per_kind = max_per_kind
         self._sweeper_started = False
 
-    # ── registration ──────────────────────────────────────────────────
     def new_id(self, prefix: str) -> str:
         return f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
 
@@ -272,10 +290,8 @@ class JobManager:
 
     def list_by_kind(self, kind: Optional[str] = None) -> List[_Job]:
         with self._lock:
-            return [
-                j for j in self._jobs.values()
-                if kind is None or j.kind == kind
-            ]
+            return [j for j in self._jobs.values()
+                    if kind is None or j.kind == kind]
 
     def finish(self, job_id: str, *, results: Optional[Dict[str, Any]] = None,
                error: Optional[str] = None) -> None:
@@ -317,7 +333,6 @@ class JobManager:
                     n += 1
         return n
 
-    # ── background sweeper ────────────────────────────────────────────
     def start_sweeper(self) -> None:
         if self._sweeper_started:
             return
@@ -334,13 +349,12 @@ class JobManager:
     def _sweep(self) -> None:
         cutoff = time.time() - self._ttl
         with self._lock:
-            for jid in [k for k, v in self._jobs.items()
-                        if v.created < cutoff]:
+            for jid in [k for k, v in self._jobs.items() if v.created < cutoff]:
                 self._jobs[jid].cancel.set()
                 del self._jobs[jid]
 
     def update_progress(self, job_id: str, done: int, total: int,
-                         label: str = "") -> None:
+                        label: str = "") -> None:
         with self._lock:
             job = self._jobs.get(job_id)
             if not job:
@@ -588,7 +602,8 @@ def _serialise_mhddos_entry(entry, *, include_runtime=False):
         return None
     out = {k: entry[k] for k in _MHDDOS_SERIALISABLE_FIELDS if k in entry}
     for key, value in entry.items():
-        if key in out or key in ("process", "log_fh", "thread", "cancel_event", "_lock"):
+        if key in out or key in ("process", "log_fh", "thread",
+                                  "cancel_event", "_lock"):
             continue
         if isinstance(value, (str, int, float, bool)) or value is None:
             out[key] = value
@@ -606,7 +621,9 @@ def _serialise_mhddos_entry(entry, *, include_runtime=False):
                 started_dt = datetime.fromisoformat(started.replace("Z", "+00:00"))
                 if started_dt.tzinfo is None:
                     started_dt = started_dt.replace(tzinfo=timezone.utc)
-                elapsed = max(0, int((datetime.now(timezone.utc) - started_dt).total_seconds()))
+                elapsed = max(0, int(
+                    (datetime.now(timezone.utc) - started_dt).total_seconds()
+                ))
                 out["elapsed"] = elapsed
                 out["remaining"] = max(0, duration - elapsed)
                 out["progress_pct"] = min(100, round((elapsed / duration) * 100, 1))
@@ -731,7 +748,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Thread-safe JSON I/O
+# Thread-safe JSON I/O — with automatic .bak on overwrite
 # ═══════════════════════════════════════════════════════════════════════════
 _json_locks: Dict[str, threading.Lock] = defaultdict(threading.Lock)
 
@@ -744,14 +761,29 @@ def _load_json(name: str, default: Any) -> Any:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Corrupt JSON at %s (%s) — trying .bak", path, exc)
+            bak = path + ".bak"
+            if os.path.exists(bak):
+                try:
+                    with open(bak, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                except (json.JSONDecodeError, OSError):
+                    pass
             return default
 
 
 def _save_json(name: str, data: Any) -> None:
     path = os.path.join(DATA_DIR, f"{name}.json")
     tmp = path + ".tmp"
+    bak = path + ".bak"
     with _json_locks[name]:
+        # Rotate current → .bak before overwriting
+        if os.path.exists(path):
+            try:
+                os.replace(path, bak)
+            except OSError:
+                pass
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
             f.flush()
@@ -778,6 +810,14 @@ def _client_ip() -> str:
     if real:
         return real
     return request.remote_addr or "unknown"
+
+
+def _json_body() -> Dict[str, Any]:
+    """Defensive JSON extraction — always returns a dict."""
+    data = request.get_json(silent=True)
+    if isinstance(data, dict):
+        return data
+    return {}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -812,6 +852,9 @@ def _inbound_stats() -> tuple:
 # ═══════════════════════════════════════════════════════════════════════════
 @app.errorhandler(413)
 def _payload_too_large(_e):
+    logger.warning("413 payload_too_large from %s — %s",
+                    _client_ip(),
+                    request.content_length or "unknown")
     return jsonify({"error": "payload_too_large",
                     "max_bytes": MAX_JSON_BODY_BYTES}), 413
 
@@ -819,33 +862,52 @@ def _payload_too_large(_e):
 # ═══════════════════════════════════════════════════════════════════════════
 # SSE helper — uniform streaming response with heartbeat
 # ═══════════════════════════════════════════════════════════════════════════
-def sse_response(generator: Iterator[Dict[str, Any]],
+def sse_response(generator: Iterator[Any],
                  heartbeat: float = HEARTBEAT_INTERVAL) -> Response:
-    """Wrap a generator into a proper SSE Response with heartbeat."""
+    """Wrap a generator into a proper SSE Response with heartbeat.
+
+    The generator may yield dicts (auto-serialised as JSON ``data:``) or
+    pre-formatted SSE strings (used as-is). Heartbeats are injected
+    whenever the stream goes quiet for longer than ``heartbeat`` seconds.
+    """
 
     def _gen():
         try:
             yield ": connected\n\n"
             last_hb = time.time()
             for event in generator:
-                # Inject heartbeats between events if idle
-                now = time.time()
-                if now - last_hb > heartbeat:
-                    yield f"data: {json.dumps({'type': 'heartbeat', 'elapsed': round(now - last_hb, 2)})}\n\n"
-                    last_hb = now
                 if isinstance(event, str):
                     yield event
-                else:
-                    yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
-                if event.get("type") in ("complete", "result", "error"):
-                    yield ": flush\n\n"
                     last_hb = time.time()
+                    continue
+
+                now = time.time()
+                if now - last_hb > heartbeat:
+                    yield (f"data: "
+                           f"{json.dumps({'type': 'heartbeat', 'elapsed': round(now - last_hb, 2)})}"
+                           f"\n\n")
+                    last_hb = now
+
+                try:
+                    payload = json.dumps(event, ensure_ascii=False, default=str)
+                except (TypeError, ValueError):
+                    payload = json.dumps({"type": "error",
+                                           "message": "unserialisable event"})
+                yield f"data: {payload}\n\n"
+
+                if isinstance(event, dict) and event.get("type") in (
+                    "complete", "result", "error",
+                ):
+                    yield ": flush\n\n"
+                last_hb = time.time()
         except GeneratorExit:
             return
         except Exception as e:  # noqa: BLE001
             logger.exception("SSE stream raised")
             try:
-                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                yield (f"data: "
+                       f"{json.dumps({'type': 'error', 'message': str(e)})}"
+                       f"\n\n")
             except Exception:
                 pass
 
@@ -877,8 +939,7 @@ def _public_key_view(k: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _record_server_activity(key_prefix: str, username: str,
-                             req) -> None:
+def _record_server_activity(key_prefix: str, username: str, req) -> None:
     reported_name = (
         req.headers.get("X-Server-Name")
         or (req.get_json(silent=True) or {}).get("server_name")
@@ -1116,6 +1177,31 @@ def owner_required(f):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Version endpoint
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/version")
+def api_version():
+    return jsonify({
+        "app": "Emergens",
+        "version": BANNER_VERSION,
+        "python": sys.version.split()[0],
+        "server_started": SERVER_START_TIME,
+        "uptime_seconds": int(time.time() - SERVER_START_TIME),
+        "modules": {
+            "xss":      _xss_available,
+            "sniper":   _sniper_available,
+            "takeover": _takeover_available,
+            "dirfuzz":  _dirfuzz_available,
+            "http_logger": _http_logger_available,
+            "analytic": _analytic_available,
+            "testing":  _testing_available,
+            "downsea":  _downsea_available,
+            "quick_menu": _quick_menu_available,
+        },
+    })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Page routes
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/")
@@ -1278,11 +1364,11 @@ def get_payment_plans():
 
 @app.route("/api/payment/submit", methods=["POST"])
 def submit_payment():
-    data = request.get_json(silent=True) or {}
-    plan = data.get("plan", "").strip()
-    amount = data.get("amount", "").strip()
+    data = _json_body()
+    plan = (data.get("plan") or "").strip()
+    amount = (data.get("amount") or "").strip()
     payment_method = data.get("payment_method", "card")
-    requested_username = data.get("requested_username", "").strip()
+    requested_username = (data.get("requested_username") or "").strip()
     card_last4 = data.get("card_number_last4", "")
 
     if not plan or not amount or not requested_username:
@@ -1357,7 +1443,7 @@ def manage_get_plans():
 @app.route("/api/payment/manage/plans", methods=["POST"])
 @role_required("owner")
 def manage_update_plans():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     new_plans = data.get("plans")
     if not isinstance(new_plans, dict):
         return jsonify({"error": "Invalid plans format"}), 400
@@ -1440,7 +1526,7 @@ ADB_ROLE = "owner"
 
 @app.route("/api/adb_login", methods=["POST"])
 def api_adb_login():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     code = (data.get("code") or "").strip().upper()
     if not code:
         return jsonify({"error": "code_required"}), 400
@@ -1468,7 +1554,7 @@ def api_login():
     ip = _client_ip()
     if _is_locked_out(ip):
         return jsonify({"error": "too_many_attempts"}), 429
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
     if verify_credentials(username, password):
@@ -1492,7 +1578,7 @@ def api_logout():
 
 @app.route("/api/token", methods=["POST"])
 def api_get_token():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     username = (data.get("username") or data.get("address") or "").strip()
     password = data.get("password") or ""
     if not username or not password:
@@ -1530,7 +1616,7 @@ def _is_valid_email(email: str) -> bool:
 
 @app.route("/api/register", methods=["POST"])
 def api_register():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     name = (data.get("name") or "").strip()
     email = (data.get("email") or "").strip().lower()
     username = (data.get("username") or "").strip()
@@ -1570,7 +1656,7 @@ def api_list_users():
 @app.route("/api/settings/create-account", methods=["POST"])
 @role_required("owner")
 def api_create_account():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     username = (data.get("username") or "").strip()
     role = data.get("role") or ""
     if not username:
@@ -1642,8 +1728,8 @@ def api_tools():
 @app.route("/api/scan/start", methods=["POST"])
 @role_required("owner", "analyst")
 def api_scan_start():
-    data = request.get_json(silent=True) or {}
-    target = data.get("target", "").strip()
+    data = _json_body()
+    target = (data.get("target") or "").strip()
     mode = data.get("mode", "basic")
     tools = data.get("tools", [])
     if not target:
@@ -1678,7 +1764,7 @@ def api_scan_tool_direct(tool_name):
     if tool_name not in TOOL_MAP:
         return jsonify({"error": "unknown_tool",
                         "available": list(TOOL_MAP.keys())}), 404
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     target = (data.get("target") or "").strip()
     mode = data.get("mode", "basic")
     if not target:
@@ -1730,11 +1816,11 @@ def api_scan_cancel_all():
 @api_login_required
 def api_leakdata_search():
     if request.method == "POST":
-        data = request.get_json(silent=True) or {}
-        target = data.get("target", data.get("query", ""))
+        data = _json_body()
+        target = data.get("target") or data.get("query") or ""
     else:
         target = request.args.get("q", "")
-    target = target.strip()
+    target = (target or "").strip()
     if not target:
         return jsonify({"error": "query_required"}), 400
     try:
@@ -1788,6 +1874,7 @@ def api_system_stats():
         "disk_percent": disk,
         "network_in": total_seen,
         "network_in_rate": last_minute,
+        "uptime_seconds": int(time.time() - SERVER_START_TIME),
     })
 
 
@@ -1850,7 +1937,7 @@ def api_logs():
 @app.route("/api/fetch-source", methods=["POST"])
 @api_login_required
 def api_fetch_source():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     url = (data.get("url") or "").strip()
     extract = data.get("extract", False)
     if not url:
@@ -1872,7 +1959,7 @@ def api_fetch_source():
 @app.route("/api/chat", methods=["POST"])
 @role_required("owner", "analyst")
 def api_chat():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     return jsonify(chat_handler.send(data.get("message", "")))
 
 
@@ -1916,7 +2003,7 @@ def api_telegram_status():
 @app.route("/api/telegram/connect", methods=["POST"])
 @role_required("owner", "analyst")
 def api_telegram_connect():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     token = (data.get("token") or "").strip()
     username = (data.get("username") or "").strip()
     owner_id = (data.get("owner_id") or "").strip()
@@ -1939,8 +2026,8 @@ def api_telegram_disconnect():
 @app.route("/api/telegram/update-settings", methods=["POST"])
 @role_required("owner", "analyst")
 def api_telegram_update_settings():
-    data = request.get_json(silent=True) or {}
-    settings = {}
+    data = _json_body()
+    settings: Dict[str, Any] = {}
     if "owner_id" in data:
         settings["owner_id"] = str(data["owner_id"]).strip()
     if "public_mode" in data:
@@ -1953,7 +2040,7 @@ def api_telegram_update_settings():
 @app.route("/api/telegram/broadcast", methods=["POST"])
 @role_required("owner", "analyst")
 def api_telegram_broadcast():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     message = (data.get("message") or "").strip()
     if not message:
         return jsonify({"error": "message_required"}), 400
@@ -1979,8 +2066,8 @@ def api_read_file():
 def api_write_file():
     if not _testing_available:
         return jsonify({"error": "Testing module not available"}), 503
-    data = request.get_json(silent=True) or {}
-    file_path = data.get("file_path", "").strip()
+    data = _json_body()
+    file_path = (data.get("file_path") or "").strip()
     content = data.get("content", "")
     if not file_path:
         return jsonify({"error": "file_path required"}), 400
@@ -1992,7 +2079,7 @@ def api_write_file():
 def api_run_code_test():
     if not _testing_available:
         return jsonify({"error": "Testing module is not installed"}), 503
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     code = data.get("code", "")
     if not code:
         return jsonify({"error": "No code provided"}), 400
@@ -2019,7 +2106,7 @@ def api_list_code_test_files():
 def api_backup_file():
     if not _testing_available:
         return jsonify({"error": "Testing module not available"}), 503
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     file_path = data.get("file_path")
     if not file_path:
         return jsonify({"error": "file_path required"}), 400
@@ -2045,7 +2132,7 @@ def api_workspace_info():
 @app.route("/api/code_test/scan", methods=["POST"])
 @api_login_required
 def api_code_test_scan():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     target = (data.get("target") or "").strip()
     mode = data.get("mode", "basic")
     tools = data.get("tools", [])
@@ -2077,7 +2164,7 @@ def mhddos_methods():
 @app.route("/api/mhddos/start", methods=["POST"])
 @login_required
 def mhddos_start():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     method = (data.get("method") or "").strip().upper()
     target = (data.get("target") or "").strip()
     try:
@@ -2129,7 +2216,7 @@ def mhddos_start():
 @app.route("/api/mhddos/stop", methods=["POST"])
 @login_required
 def mhddos_stop():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     attack_id = (data.get("attack_id") or "").strip()
     if not attack_id:
         return jsonify({"error": "attack_id required"}), 400
@@ -2190,7 +2277,7 @@ def mhddos_log(attack_id):
 @app.route("/api/mhddos/command", methods=["POST"])
 @login_required
 def mhddos_preview_command():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     method = (data.get("method") or "").strip().upper()
     target = (data.get("target") or "").strip()
     if method not in _MHDDOS_METHODS or not target:
@@ -2219,7 +2306,7 @@ def mhddos_preview_command():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# EXPLOIT SUITE — Wordlists + Directory Fuzzer
+# EXPLOIT SUITE — Wordlists
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/exploit/wordlists")
 @login_required
@@ -2233,7 +2320,7 @@ def api_exploit_wordlists():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# DIRFUZZ — async + SSE + cancel
+# DIRFUZZ
 # ═══════════════════════════════════════════════════════════════════════════
 def _dirfuzz_normalise(body: Dict[str, Any]) -> Dict[str, Any]:
     def _i(key, default, lo, hi):
@@ -2269,7 +2356,7 @@ def _dirfuzz_normalise(body: Dict[str, Any]) -> Dict[str, Any]:
 def api_exploit_dirfuzz_start():
     if not _dirfuzz_available or dirfuzz_module is None:
         return jsonify({"error": "dirfuzz module not available"}), 503
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     base = (body.get("base") or body.get("url") or "").strip()
     if not base:
         return jsonify({"error": "base URL required"}), 400
@@ -2326,7 +2413,7 @@ def api_exploit_dirfuzz_wordlists():
         return jsonify({"error": "dirfuzz module not available"}), 503
     return jsonify({
         "wordlists": dirfuzz_module.list_wordlists(),
-        "sources":   dirfuzz_module.WORDLIST_SOURCES,
+        "sources":   getattr(dirfuzz_module, "WORDLIST_SOURCES", {}),
     })
 
 
@@ -2335,7 +2422,7 @@ def api_exploit_dirfuzz_wordlists():
 def api_exploit_dirfuzz_stream():
     if not _dirfuzz_available or dirfuzz_module is None:
         return jsonify({"error": "dirfuzz module not available"}), 503
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     base = (body.get("base") or body.get("url") or "").strip()
     if not base:
         return jsonify({"error": "base URL required"}), 400
@@ -2344,7 +2431,7 @@ def api_exploit_dirfuzz_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# XSS — async + SSE + cancel
+# XSS
 # ═══════════════════════════════════════════════════════════════════════════
 def _xss_normalise(body: Dict[str, Any]) -> Dict[str, Any]:
     def _i(key, default, lo, hi):
@@ -2364,15 +2451,15 @@ def _xss_normalise(body: Dict[str, Any]) -> Dict[str, Any]:
         return bool(v) if v is not None else default
 
     return {
-        "max_payloads": int(_i("max_payloads", 20, 5, 120)),
-        "max_params":   int(_i("max_params", 8, 3, 40)),
-        "concurrency":  int(_i("concurrency", 8, 1, 32)),
-        "rate_limit":   float(_f("rate_limit", 25.0, 1.0, 100.0)),
-        "timeout":      float(_f("timeout", 8.0, 2.0, 20.0)),
-        "waf_bypass":   bool(_b("waf_bypass", False)),
+        "max_payloads": _i("max_payloads", 20, 5, 120),
+        "max_params":   _i("max_params", 8, 3, 40),
+        "concurrency":  _i("concurrency", 8, 1, 32),
+        "rate_limit":   _f("rate_limit", 25.0, 1.0, 100.0),
+        "timeout":      _f("timeout", 8.0, 2.0, 20.0),
+        "waf_bypass":   _b("waf_bypass", False),
         "params":       body.get("params") or None,
         "method":       (body.get("method") or "GET").upper(),
-        "max_duration": float(_f("max_duration", 60.0, 10.0, 180.0)),
+        "max_duration": _f("max_duration", 60.0, 10.0, 180.0),
     }
 
 
@@ -2381,7 +2468,7 @@ def _xss_normalise(body: Dict[str, Any]) -> Dict[str, Any]:
 def api_exploit_xss_start():
     if not _xss_available or xss_module is None:
         return jsonify({"error": "xss_exploiter module not available"}), 503
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     url = (body.get("url") or "").strip()
     if not url:
         return jsonify({"error": "URL required"}), 400
@@ -2447,7 +2534,7 @@ def api_exploit_xss_stream():
         return jsonify({"error": "xss_exploiter module not available"}), 503
     if not hasattr(xss_module, "run_streaming"):
         return jsonify({"error": "stream not supported by this module version"}), 501
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     url = (body.get("url") or "").strip()
     if not url:
         return jsonify({"error": "URL required"}), 400
@@ -2457,13 +2544,12 @@ def api_exploit_xss_stream():
     return sse_response(xss_module.run_streaming(url, options))
 
 
-# Keep legacy endpoint working — delegates to async job + immediate block
 @app.route("/api/exploit/xss", methods=["POST"])
 @login_required
 def api_exploit_xss_legacy():
     if not _xss_available or xss_module is None:
         return jsonify({"error": "xss_exploiter module not available"}), 503
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     url = (data.get("url") or "").strip()
     if not url:
         return jsonify({"error": "URL required"}), 400
@@ -2477,9 +2563,6 @@ def api_exploit_xss_legacy():
         return jsonify({"error": "scan_failed", "detail": str(e)}), 500
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# XSS wordlist endpoints
-# ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/exploit/xss/wordlist")
 @login_required
 def api_exploit_xss_wordlist():
@@ -2528,7 +2611,7 @@ def api_exploit_xss_wordlist_refresh():
 def api_exploit_sql_inject():
     if not _analytic_available:
         return jsonify({"error": "Analytic data module not available"}), 503
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     url = data.get("url", "")
     if not url:
         return jsonify({"error": "URL required"}), 400
@@ -2540,7 +2623,7 @@ def api_exploit_sql_inject():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Subdomain Takeover — async + SSE + cancel
+# Subdomain Takeover
 # ═══════════════════════════════════════════════════════════════════════════
 def _takeover_normalise(body: Dict[str, Any]) -> Dict[str, Any]:
     def _i(key, default, lo, hi):
@@ -2577,7 +2660,7 @@ def _takeover_normalise(body: Dict[str, Any]) -> Dict[str, Any]:
 def api_exploit_takeover_start():
     if not _takeover_available or takeover_module is None:
         return jsonify({"error": "subdomain_takeover module not available"}), 503
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     domain = (body.get("domain") or "").strip().lower()
     if not domain:
         return jsonify({"error": "domain required"}), 400
@@ -2602,8 +2685,8 @@ def api_exploit_takeover_start():
     def _worker():
         try:
             result = takeover_module.run(domain, {**options,
-                                                   "cancel_event": job.cancel,
-                                                   "progress_cb": _progress})
+                                                    "cancel_event": job.cancel,
+                                                    "progress_cb": _progress})
             job_manager.finish(job_id, results=result)
         except Exception as e:
             logger.exception("Takeover job %s failed", job_id)
@@ -2647,7 +2730,7 @@ def api_exploit_takeover_stream():
         return jsonify({"error": "subdomain_takeover module not available"}), 503
     if not hasattr(takeover_module, "run_streaming"):
         return jsonify({"error": "stream not supported by this module version"}), 501
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     domain = (body.get("domain") or "").strip().lower()
     if not domain:
         return jsonify({"error": "domain required"}), 400
@@ -2660,7 +2743,7 @@ def api_exploit_takeover_stream():
 def api_exploit_takeover_legacy():
     if not _takeover_available or takeover_module is None:
         return jsonify({"error": "subdomain_takeover module not available"}), 503
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     domain = (body.get("domain") or "").strip().lower()
     if not domain:
         return jsonify({"error": "domain required"}), 400
@@ -2674,7 +2757,7 @@ def api_exploit_takeover_legacy():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Sniper — async + SSE + cancel
+# Sniper
 # ═══════════════════════════════════════════════════════════════════════════
 def _sniper_normalise(body: Dict[str, Any]) -> Dict[str, Any]:
     def _i(key, default, lo, hi):
@@ -2729,7 +2812,7 @@ def _sniper_normalise(body: Dict[str, Any]) -> Dict[str, Any]:
 def api_exploit_sniper_start():
     if not _sniper_available or sniper_module is None:
         return jsonify({"error": "sniper module not available"}), 503
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     target = (body.get("target") or "").strip()
     if not target:
         return jsonify({"error": "target required"}), 400
@@ -2794,7 +2877,7 @@ def api_exploit_sniper_jobs():
 def api_exploit_sniper_stream():
     if not _sniper_available or sniper_module is None:
         return jsonify({"error": "sniper module not available"}), 503
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     target = (body.get("target") or "").strip()
     if not target:
         return jsonify({"error": "target required"}), 400
@@ -2807,7 +2890,7 @@ def api_exploit_sniper_stream():
 def api_exploit_sniper_legacy():
     if not _sniper_available or sniper_module is None:
         return jsonify({"error": "sniper module not available"}), 503
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     target = (body.get("target") or "").strip()
     if not target:
         return jsonify({"error": "target required"}), 400
@@ -2820,7 +2903,7 @@ def api_exploit_sniper_legacy():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Exploit search / stats / brute-force (AnalyticDataManager wrapper)
+# Exploit search / stats / brute-force
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/exploit/stats")
 @login_required
@@ -2852,7 +2935,7 @@ def api_exploit_list():
 def api_exploit_search():
     if not _analytic_available:
         return jsonify({"error": "Analytic data module not available"}), 503
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     query = data.get("query", "")
     if not query:
         return jsonify({"error": "Query required"}), 400
@@ -2867,8 +2950,8 @@ def api_exploit_search():
 def api_exploit_bruteforce():
     if not _analytic_available:
         return jsonify({"error": "Analytic data module not available"}), 503
-    data = request.get_json(silent=True) or {}
-    target = data.get("target", "").strip()
+    data = _json_body()
+    target = (data.get("target") or "").strip()
     if not target:
         return jsonify({"error": "Target required"}), 400
     try:
@@ -2958,7 +3041,7 @@ def api_logger_tag(entry_id):
     guard = _require_http_logger()
     if guard:
         return guard
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     tag = (body.get("tag") or "").strip()
     add = bool(body.get("add", True))
     if not tag:
@@ -3062,7 +3145,7 @@ def api_logger_replay(entry_id):
     if not entry:
         return jsonify({"error": "not_found"}), 404
 
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     override_host = (body.get("override_host") or "").strip()
     headers = entry.get("headers") or {}
     host = override_host or headers.get("Host", "")
@@ -3153,8 +3236,8 @@ def c2_activities():
 @app.route("/api/c2/register_device", methods=["POST"])
 @login_required
 def c2_register_device():
-    data = request.get_json(silent=True) or {}
-    device_id = data.get("id", "").strip()
+    data = _json_body()
+    device_id = (data.get("id") or "").strip()
     if not device_id:
         return jsonify({"error": "Device ID is required"}), 400
     device = {
@@ -3182,9 +3265,9 @@ def c2_register_device():
 @app.route("/api/c2/log_activity", methods=["POST"])
 @login_required
 def c2_log_activity():
-    data = request.get_json(silent=True) or {}
-    device_id = data.get("device_id", "").strip()
-    action = data.get("action", "").strip()
+    data = _json_body()
+    device_id = (data.get("device_id") or "").strip()
+    action = (data.get("action") or "").strip()
     if not device_id or not action:
         return jsonify({"error": "device_id and action are required"}), 400
     device_name = next(
@@ -3205,6 +3288,8 @@ def c2_log_activity():
 # ═══════════════════════════════════════════════════════════════════════════
 @app.errorhandler(404)
 def page_not_found(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "not_found", "path": request.path}), 404
     username = session.get("username") if session.get("authenticated") else "Guest"
     html = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
@@ -3244,7 +3329,7 @@ def server_name():
     if u and u.get("role") != "owner":
         return jsonify({"error": "Owner access required"}), 403
 
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     with _json_lock("settings"):
         settings = _load_json("settings", {})
         settings["server_name"] = (body.get("name") or "").strip()
@@ -3269,7 +3354,7 @@ def profile_photo():
     u = current_user()
     if not u:
         return jsonify({"error": "Not authenticated"}), 401
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
 
     with _json_lock("profiles"):
         profiles = _load_json("profiles", {})
@@ -3281,7 +3366,7 @@ def profile_photo():
             return jsonify({"ok": True, "avatar_url": None})
 
         if body.get("url"):
-            url = body["url"].strip()
+            url = (body["url"] or "").strip()
             if not (url.startswith("http://") or url.startswith("https://")):
                 return jsonify({"error": "Please provide a valid http(s) image URL."}), 400
             profile["avatar_url"] = url
@@ -3362,7 +3447,7 @@ def chat_send():
     u = current_user()
     if not u:
         return jsonify({"error": "Not authenticated"}), 401
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     text = (body.get("text") or "").strip()
     if not text:
         return jsonify({"error": "Message text is required."}), 400
@@ -3388,7 +3473,7 @@ def chat_send():
 @app.route("/api/chat/lock", methods=["POST"])
 @owner_required
 def chat_lock():
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     with _json_lock("chat"):
         chat = _load_json("chat", {"messages": [], "locked": False})
         chat["locked"] = bool(body.get("locked"))
@@ -3409,7 +3494,7 @@ def chat_lock():
 @app.route("/api/osint/search", methods=["POST"])
 @login_required
 def osint_search():
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     method = body.get("method")
     query = (body.get("query") or "").strip()
     if method not in ("username", "email", "number") or not query:
@@ -3441,7 +3526,7 @@ def v1_ping():
 @app.route("/api/v1/scan", methods=["POST"])
 @_api_key_required
 def v1_scan_start():
-    body = request.get_json(silent=True) or {}
+    body = _json_body()
     target = (body.get("target") or "").strip()
     mode = body.get("mode") or "basic"
     tools = body.get("tools") or []
@@ -3508,8 +3593,23 @@ def _ensure_engine_layout() -> None:
         )
 
 
+def _check_route_collisions() -> None:
+    """Warn if two rules produce the same (rule, method) pair."""
+    seen: Dict[tuple, str] = {}
+    for rule in app.url_map.iter_rules():
+        for method in (rule.methods or set()) - {"HEAD", "OPTIONS"}:
+            key = (rule.rule, method)
+            if key in seen:
+                logger.warning("Route collision: %s %s (from %s and %s)",
+                                method, rule.rule, seen[key], rule.endpoint)
+            seen[key] = rule.endpoint
+
+
 def _print_startup(port: Optional[int] = None) -> None:
     print(BANNER, flush=True)
+    print(BANNER_TAGLINE, flush=True)
+    print(f"  {'─' * 68}", flush=True)
+
     info_lines = []
     if port is not None:
         info_lines.append(f"  Server     : http://localhost:{port}")
@@ -3520,28 +3620,39 @@ def _print_startup(port: Optional[int] = None) -> None:
     info_lines.append(f"  Engine py  : {PYTHON_EXE}")
     info_lines.append(f"  HTTP log   : {'ready' if http_logger else 'unavailable'}")
 
-    module_status = []
-    if _xss_available:      module_status.append("XSS")
-    if _sniper_available:   module_status.append("Sniper")
-    if _takeover_available: module_status.append("Takeover")
-    if _dirfuzz_available:  module_status.append("Dirfuzz")
-    info_lines.append(f"  Exploit    : {', '.join(module_status) or 'none'}")
-
-    if _dirfuzz_available and dirfuzz_module is not None:
-        try:
-            wl = dirfuzz_module.list_wordlists()
-            info_lines.append(f"  Wordlists  : {len(wl)} file(s)")
-        except Exception:
-            pass
+    mod_status = []
+    if _xss_available:      mod_status.append("XSS")
+    if _sniper_available:   mod_status.append("Sniper")
+    if _takeover_available: mod_status.append("Takeover")
+    if _dirfuzz_available:  mod_status.append("Dirfuzz")
+    info_lines.append(f"  Exploit    : {', '.join(mod_status) or 'none'}")
 
     print("\n".join(info_lines), flush=True)
+    print(f"  {'─' * 68}", flush=True)
+    print(f"  Started at : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+          flush=True)
     print(flush=True)
 
 
+# ── Idempotent shutdown ────────────────────────────────────────────────
+_shutdown_lock = threading.Lock()
+_shutdown_done = False
+
+
 def _graceful_shutdown(*_args) -> None:
+    global _shutdown_done
+    with _shutdown_lock:
+        if _shutdown_done:
+            return
+        _shutdown_done = True
+
     logger.info("Shutdown signal received — cancelling jobs")
     try:
         job_manager.cancel_all()
+    except Exception:
+        pass
+    try:
+        scan_orchestrator.cancel_all()
     except Exception:
         pass
     try:
@@ -3551,13 +3662,18 @@ def _graceful_shutdown(*_args) -> None:
     time.sleep(0.5)
 
 
-# Register shutdown hooks
 atexit.register(_graceful_shutdown)
-for sig_name in ("SIGINT", "SIGTERM"):
-    if hasattr(signal, sig_name):
+
+
+def _signal_handler(signum, _frame):
+    _graceful_shutdown()
+    sys.exit(0)
+
+
+for _sig_name in ("SIGINT", "SIGTERM"):
+    if hasattr(signal, _sig_name):
         try:
-            signal.signal(getattr(signal, sig_name),
-                          lambda *a: (_graceful_shutdown(*a), sys.exit(0)))
+            signal.signal(getattr(signal, _sig_name), _signal_handler)
         except (ValueError, OSError):
             pass
 
@@ -3591,6 +3707,7 @@ if __name__ == "__main__":
 
     auto_restart_bot()
     _ensure_engine_layout()
+    _check_route_collisions()
 
     # Start the background job sweeper
     job_manager.start_sweeper()
@@ -3606,7 +3723,7 @@ if __name__ == "__main__":
         if _dirfuzz_available and dirfuzz_module is not None:
             try:
                 n = len(dirfuzz_module.load_wordlist("lottery-dirs.txt",
-                                                       max_lines=200))
+                                                      max_lines=200))
                 logger.info("Dirfuzz wordlist ready — %d entries", n)
             except Exception as e:
                 logger.warning("Dirfuzz wordlist warmup failed: %s", e)
@@ -3639,6 +3756,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=port,
         debug=False,
-        threaded=True,          # critical — allows concurrent requests
-        use_reloader=False,     # prevent double-startup in dev
+        threaded=True,
+        use_reloader=False,
     )
