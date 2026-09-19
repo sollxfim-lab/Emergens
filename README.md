@@ -1,4 +1,4 @@
-# Emergens — Security Testing & OSINT Dashboard
+# Emergens — Security Testing & Exploiter Dashboard
 
 A private dashboard for passive security testing and OSINT on domains you own or have written authorization to test.
 
