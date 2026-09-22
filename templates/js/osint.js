@@ -3,34 +3,15 @@
  * @description Professional OSINT client for Emergens Console.
  *              Multi-source lookup: Username / Email / Phone Number.
  *
- *              Integrates with TWO UIs:
- *                1. School Section (premium panel) — #schoolOsint*
- *                2. Tools Hub    (compact panel)  — #osint*
+ *              Integrates with THREE UIs:
+ *                1. School Section (premium panel)  — #schoolOsint*
+ *                2. Tools Hub    (compact panel)    — #osint*
+ *                3. Security Testing (auto-injected below #scanBtn)
  *
- * Features:
- *   - Animated method slider
- *   - Floating label + has-value detection
- *   - Ripple effect on submit
- *   - Scanning line animations
- *   - Validation shake on invalid input
- *   - Suggestion chips with auto method detection
- *   - Debounced input, Enter to search
- *   - In-memory TTL cache, rate limiting
- *   - Retry with exponential backoff
- *   - Fallback endpoints
- *   - AbortController for stale requests
- *   - Copy-to-clipboard per field
- *   - JSON export per result set
- *   - Debug logging via localStorage.OSINT_DEBUG = "1"
+ *              The Security Testing launcher + panel are injected at runtime
+ *              via bindSecurityPanel() — no HTML edits required.
  *
- * Public API:
- *   Osint.search(query, { method }) -> Promise<Result>
- *   Osint.run(query, mode, opts)    -> alias for search
- *   Osint.setMethod('username'|'email'|'number')
- *   Osint.clearCache()
- *   Osint.TOOL_INFO
- *
- * @version 2.2.0
+ * @version 2.3.0
  * @author  Yanxzyx
  * @license MIT
  */
@@ -44,10 +25,11 @@
   const TOOL_INFO = Object.freeze({
     name: 'Osint',
     description: 'Multi-source OSINT lookup: username, email, phone number.',
-    version: '2.2.0',
+    version: '2.3.0',
     category: 'Recon',
     author: 'Yanxzyx',
-    capabilities: ['username', 'email', 'number', 'cache', 'export', 'ripple-ui'],
+    capabilities: ['username', 'email', 'number', 'cache', 'export', 'ripple-ui',
+                    'security-testing-inline'],
   });
 
   const CONFIG = Object.freeze({
@@ -63,6 +45,8 @@
     retryBaseMs: 600,
     rippleDurationMs: 600,
     shakeDurationMs: 500,
+    /** Inject the OSINT launcher inside the Security Testing section. */
+    injectInSecurityTesting: true,
   });
 
   const METHOD_PLACEHOLDER = Object.freeze({
@@ -160,7 +144,6 @@
       }
     },
 
-    /** Trigger a ripple effect on a button at a given click coordinate. */
     ripple(button, event) {
       if (!button) return;
       const ripple = button.querySelector('.osint-input-premium__ripple');
@@ -178,12 +161,11 @@
       ripple.style.top    = `${clientY - rect.top  - size / 2}px`;
 
       button.classList.remove('is-rippling');
-      void button.offsetWidth; // reflow
+      void button.offsetWidth;
       button.classList.add('is-rippling');
       setTimeout(() => button.classList.remove('is-rippling'), CONFIG.rippleDurationMs);
     },
 
-    /** Trigger a shake animation on the input wrapper. */
     shake(wrapper) {
       if (!wrapper) return;
       wrapper.classList.remove('is-invalid');
@@ -346,7 +328,6 @@
           ? `<div class="osint-more">+${rows.length - CONFIG.maxResults} more (truncated)</div>`
           : ''}`;
 
-      // Wire export / clear
       el.querySelector('[data-osint-act="export"]')?.addEventListener(
         'click',
         () => Osint._export(rows, method, query)
@@ -356,7 +337,6 @@
         () => { el.innerHTML = ''; }
       );
 
-      // Wire copy buttons
       el.querySelectorAll('[data-copy]').forEach((btn) => {
         btn.addEventListener('click', async () => {
           const text = btn.getAttribute('data-copy') || '';
@@ -443,12 +423,10 @@
     TOOL_INFO,
     CONFIG,
 
-    /* ------------ search ------------ */
     async search(query, opts = {}) {
       const method = (opts.method || _state.method || 'username').toLowerCase();
       const q = String(query ?? '').trim();
 
-      // -- Validation --
       if (!q || q.length < CONFIG.minQueryLen) {
         return this._fail('query_too_short', {
           message: `Query must be at least ${CONFIG.minQueryLen} characters.`,
@@ -466,21 +444,18 @@
         return this._fail('invalid_phone', { message: 'Invalid phone number format.' });
       }
 
-      // -- Cache --
       const cached = _cache.get(method, q);
       if (cached) {
         Logger.debug('cache HIT', method, q);
         return cached;
       }
 
-      // -- Rate limit --
       const wait = _limiter.check();
       if (wait > 0) {
         Logger.debug('rate-limited, waiting', wait, 'ms');
         await new Promise((r) => setTimeout(r, wait));
       }
 
-      // -- Abort stale request --
       if (_state.controller) {
         try { _state.controller.abort(); } catch { /* noop */ }
       }
@@ -498,7 +473,6 @@
       const startedAt = Date.now();
       let res, json, err;
 
-      // -- Retry loop --
       for (let attempt = 0; attempt <= CONFIG.retryCount; attempt++) {
         try {
           res = await Util.fetchWithTimeout(
@@ -572,12 +546,10 @@
       return out;
     },
 
-    /* ------------ alias ------------ */
     run(query, mode = 'basic', opts = {}) {
       return this.search(query, { ...opts, mode });
     },
 
-    /* ------------ setters ------------ */
     setMethod(m) {
       if (!METHOD_ORDER.includes(m)) return;
       _state.method = m;
@@ -593,7 +565,6 @@
       Logger.info('cache cleared');
     },
 
-    /* ------------ internal ------------ */
     _fail(code, extra = {}) {
       return {
         tool: 'osint',
@@ -665,41 +636,36 @@
       const method = btn.getAttribute('data-method') || 'username';
       if (!silent) Osint.setMethod(method);
 
-      // Sync input placeholder in same panel
       const panel = toggleEl.closest('.osint-panel-premium, .tool-detail') || document;
       const input = panel.querySelector('.osint-input-premium > input');
       if (input) updatePlaceholder(input, method);
 
-      // Sync all sliders on page if method changes
+      // Mirror selection across all other OSINT panels on the page
       if (!silent) {
         document.querySelectorAll('.osint-method-toggle').forEach((other) => {
           if (other === toggleEl) return;
-          const otherBtns = other.querySelectorAll('.osint-method-btn');
-          otherBtns.forEach((x) => {
+          const otherBtns = Array.from(other.querySelectorAll('.osint-method-btn'));
+          const otherSlider = other.querySelector('.osint-method-toggle__slider');
+          let activeIdx = 0;
+          otherBtns.forEach((x, i) => {
             const m = x.getAttribute('data-method');
             const isActive = m === method;
             x.classList.toggle('active', isActive);
-            if (isActive) moveSlider.call(null, x);
+            if (isActive) activeIdx = i;
           });
-          // Move other slider
-          const otherSlider = other.querySelector('.osint-method-toggle__slider');
-          const otherBtnsArr = Array.from(other.querySelectorAll('.osint-method-btn'));
-          const activeBtn = otherBtnsArr.find((x) => x.getAttribute('data-method') === method);
-          if (otherSlider && activeBtn) {
-            const idx = otherBtnsArr.indexOf(activeBtn);
-            const pct = idx * 100;
+          if (otherSlider) {
             const gap = 4;
-            otherSlider.style.transform = `translateX(calc(${pct}% + ${idx * gap}px))`;
+            otherSlider.style.transform =
+              `translateX(calc(${activeIdx * 100}% + ${activeIdx * gap}px))`;
           }
         });
       }
     }
 
-    // Bind clicks
     btns.forEach((b) => {
       b.addEventListener('click', () => {
         activate(b, false);
-        // Auto-search if query valid
+
         const panel = toggleEl.closest('.osint-panel-premium, .tool-detail') || document;
         const input = panel.querySelector('.osint-input-premium > input');
         if (input && input.value.trim().length >= CONFIG.minQueryLen) {
@@ -709,7 +675,6 @@
       });
     });
 
-    // Initialize
     const active = btns.find((x) => x.classList.contains('active')) || btns[0];
     activate(active, true);
 
@@ -719,14 +684,13 @@
   }
 
   /* ==================================================================
-   * HELPERS — PLACEHOLDER + HAS-VALUE
+   * HELPERS — PLACEHOLDER + HAS-VALUE + RIPPLE
    * ================================================================== */
 
   function updatePlaceholder(input, method) {
     if (!input) return;
-    input.placeholder = ' '; // keep for floating label
+    input.placeholder = ' ';
     input.dataset.placeholder = METHOD_PLACEHOLDER[method] || 'Search…';
-    // Also set actual placeholder when supported for accessibility
     input.setAttribute('aria-label', METHOD_PLACEHOLDER[method] || 'Search');
   }
 
@@ -749,7 +713,7 @@
   }
 
   /* ==================================================================
-   * PANEL BINDER — shared logic between School & Tools Hub
+   * PANEL BINDER
    * ================================================================== */
 
   function bindPanel(cfg) {
@@ -764,9 +728,8 @@
       submitBtn,
       clearBtn,
       resultArea,
-      hubBtn,
       exportBtn,
-      defaultOpen = false,
+      hubBtn,
     } = cfg;
 
     if (!input || !submitBtn || !resultArea) {
@@ -774,20 +737,17 @@
       return null;
     }
 
-    // Idempotency
     if (submitBtn.dataset.panelBound === '1') {
       Logger.debug(`[${name}] already bound.`);
       return submitBtn._panelApi;
     }
     submitBtn.dataset.panelBound = '1';
 
-    // --- attach sub-components ---
     const sliderApi = attachMethodSlider(methodToggle);
     attachHasValue(inputWrap);
     attachRipple(submitBtn);
     if (clearBtn) attachRipple(clearBtn);
 
-    // --- panel open / close ---
     function setOpen(open) {
       if (!panelEl) return;
       panelEl.hidden = !open;
@@ -803,13 +763,12 @@
     toggleBtn?.addEventListener('click', () => setOpen(panelEl?.hidden ?? true));
     closeBtn?.addEventListener('click', () => setOpen(false));
 
-    // --- initialization ---
-    const initMethod = (methodToggle?.querySelector('.osint-method-btn.active')?.getAttribute('data-method'))
-                    || _state.method;
+    const initMethod =
+      methodToggle?.querySelector('.osint-method-btn.active')?.getAttribute('data-method')
+      || _state.method;
     Osint.setMethod(initMethod);
     updatePlaceholder(input, initMethod);
 
-    // --- submit ---
     async function doSearch() {
       const q = input.value.trim();
       if (!q) { Util.shake(inputWrap); input.focus(); return; }
@@ -826,13 +785,10 @@
         return;
       }
 
-      // Loading state
       submitBtn.disabled = true;
       const prevLabel = submitBtn.querySelector('.osint-input-premium__submit-label');
       const prevHtml = prevLabel?.innerHTML ?? 'Search';
-      if (prevLabel) {
-        prevLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-      }
+      if (prevLabel) prevLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
       Renderer.loading(resultArea, `Searching ${METHOD_LABEL[method]}…`);
 
       try {
@@ -865,7 +821,6 @@
       }
     });
 
-    // --- clear ---
     clearBtn?.addEventListener('click', () => {
       input.value = '';
       inputWrap?.classList.remove('has-value');
@@ -874,34 +829,24 @@
       input.focus();
     });
 
-    // --- export ---
     exportBtn?.addEventListener('click', () => {
       const payload = _state.lastPayload;
       if (!payload?.data?.results?.length) return;
       Osint._export(payload.data.results, payload.method, payload.query);
     });
 
-    // --- hub redirect ---
     hubBtn?.addEventListener('click', () => {
       setOpen(false);
       const hubBox = document.querySelector('.tool-box[data-tool="osint"]');
-      if (hubBox) {
-        hubBox.click();
-      } else {
-        const modal = document.getElementById('toolsHubModal');
-        if (modal) modal.hidden = false;
-        const detail = document.getElementById('toolDetail-osint');
-        if (detail) detail.hidden = false;
-      }
+      if (hubBox) hubBox.click();
     });
 
-    // --- suggestion chips ---
-    document.querySelectorAll(`[data-osint-panel="${name}"] .osint-chip, #${name}Suggest .osint-chip, .osint-chip`)
-      .forEach((chip) => {
-        // Ensure we only bind chips inside this panel (or global if no marker)
-        if (!chip.closest(`#${name}Panel`) && !chip.closest(`#${name}Suggest`) && name === 'school') {
-          return;
-        }
+    // ── Suggestion chips — SCOPED per-panel ─────────────────────────
+    // Find chips inside this panel's own suggest row only.
+    const localSuggestRow = panelEl?.querySelector('.osint-suggest-premium')
+                          || document.getElementById(name + 'Suggest');
+    if (localSuggestRow) {
+      localSuggestRow.querySelectorAll('.osint-chip').forEach((chip) => {
         if (chip.dataset.chipBound === '1') return;
         chip.dataset.chipBound = '1';
 
@@ -910,7 +855,6 @@
           input.value = v;
           inputWrap?.classList.add('has-value');
 
-          // Auto-detect method
           let m = 'username';
           if (Util.isEmail(v)) m = 'email';
           else if (Util.isPhone(v) && Util.normPhone(v).length >= 6) m = 'number';
@@ -922,12 +866,11 @@
           }
           updatePlaceholder(input, m);
 
-          // Small delay so ripple/slide animation shows
           setTimeout(doSearch, 120);
         });
       });
+    }
 
-    // --- Return API ---
     const api = { doSearch, setOpen, sliderApi };
     submitBtn._panelApi = api;
 
@@ -936,7 +879,7 @@
   }
 
   /* ==================================================================
-   * BIND — SCHOOL PANEL (premium)
+   * BIND — SCHOOL PANEL
    * ================================================================== */
 
   function bindSchoolPanel() {
@@ -956,7 +899,7 @@
   }
 
   /* ==================================================================
-   * BIND — TOOLS HUB PANEL (compact)
+   * BIND — TOOLS HUB PANEL
    * ================================================================== */
 
   function bindToolsHubPanel() {
@@ -976,14 +919,213 @@
   }
 
   /* ==================================================================
+   * BIND — SECURITY TESTING (auto-injected)
+   * ================================================================== */
+
+  /**
+   * Injects a premium OSINT launcher + panel directly below the
+   * Security Testing "Start Scan" button (#scanBtn). Reuses the same
+   * premium CSS classes as the School panel — no stylesheet edits needed.
+   * Idempotent: safe to call repeatedly.
+   */
+  function bindSecurityPanel() {
+    if (!CONFIG.injectInSecurityTesting) return null;
+
+    // ── Locate the anchor — Security Testing's scan button ─────────
+    const scanBtn = document.getElementById('scanBtn');
+    if (!scanBtn || !scanBtn.parentNode) {
+      Logger.debug('[security] #scanBtn not found (yet)');
+      return null;
+    }
+    if (scanBtn.dataset.osintInjected === '1') {
+      // Already injected — ensure slider is bound in case DOM was moved
+      return bindPanel({
+        name: 'sec',
+        toggleBtn:    document.getElementById('secOsintToggleBtn'),
+        panelEl:      document.getElementById('secOsintPanel'),
+        closeBtn:     document.getElementById('secOsintCloseBtn'),
+        methodToggle: document.getElementById('secOsintMethodToggle'),
+        inputWrap:    document.getElementById('secOsintInputWrap'),
+        input:        document.getElementById('secOsintQueryInput'),
+        submitBtn:    document.getElementById('secOsintSearchBtn'),
+        clearBtn:     document.getElementById('secOsintClearBtn'),
+        resultArea:   document.getElementById('secOsintResultArea'),
+        exportBtn:    document.getElementById('secOsintExportBtn'),
+      });
+    }
+
+    // ── Launcher button (uses same CSS as School CTA) ──────────────
+    const ctaWrap = document.createElement('div');
+    ctaWrap.className = 'osint-cta-wrap osint-cta-wrap--security';
+    ctaWrap.style.marginTop = '14px';
+    ctaWrap.innerHTML = `
+      <button class="osint-cta-premium" id="secOsintToggleBtn"
+              aria-expanded="false" aria-controls="secOsintPanel"
+              type="button">
+        <span class="osint-cta-premium__glow" aria-hidden="true"></span>
+        <span class="osint-cta-premium__border" aria-hidden="true"></span>
+        <span class="osint-cta-premium__content">
+          <span class="osint-cta-premium__icon">
+            <i class="fas fa-fingerprint"></i>
+            <span class="osint-cta-premium__pulse" aria-hidden="true"></span>
+          </span>
+          <span class="osint-cta-premium__text">
+            <span class="osint-cta-premium__title">Run OSINT Lookup</span>
+            <span class="osint-cta-premium__sub">Username · Email · Phone · before you scan</span>
+          </span>
+          <span class="osint-cta-premium__arrow">
+            <i class="fas fa-arrow-right"></i>
+          </span>
+        </span>
+      </button>`;
+
+    // ── Panel markup (uses same premium CSS) ───────────────────────
+    const panel = document.createElement('div');
+    panel.className = 'osint-panel-premium osint-panel-premium--security';
+    panel.id = 'secOsintPanel';
+    panel.hidden = true;
+    panel.style.marginTop = '14px';
+    panel.innerHTML = `
+      <div class="osint-panel-premium__bg" aria-hidden="true">
+        <span class="osint-panel-premium__grid"></span>
+        <span class="osint-panel-premium__scanline"></span>
+      </div>
+
+      <div class="osint-panel-premium__inner">
+        <div class="osint-panel-premium__head">
+          <div class="osint-panel-premium__head-icon">
+            <i class="fas fa-shield-halved"></i>
+            <span class="osint-panel-premium__head-pulse"></span>
+          </div>
+          <div class="osint-panel-premium__head-text">
+            <div class="osint-panel-premium__head-title">OSINT Lookup Console</div>
+            <div class="osint-panel-premium__head-sub">
+              Cari maklumat awam sebelum memulakan pengimbasan.
+            </div>
+          </div>
+          <button class="osint-panel-premium__close" id="secOsintCloseBtn"
+                  aria-label="Close" type="button">
+            <i class="fas fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="osint-method-toggle" id="secOsintMethodToggle">
+          <span class="osint-method-toggle__slider" aria-hidden="true"></span>
+          <button class="osint-method-btn active" data-method="username" type="button">
+            <i class="fas fa-at"></i><span>Username</span>
+          </button>
+          <button class="osint-method-btn" data-method="email" type="button">
+            <i class="fas fa-envelope"></i><span>Email</span>
+          </button>
+          <button class="osint-method-btn" data-method="number" type="button">
+            <i class="fas fa-phone"></i><span>Number</span>
+          </button>
+        </div>
+
+        <div class="osint-input-premium" id="secOsintInputWrap">
+          <span class="osint-input-premium__scan" aria-hidden="true"></span>
+          <span class="osint-input-premium__icon">
+            <i class="fas fa-magnifying-glass"></i>
+          </span>
+          <input type="text" id="secOsintQueryInput"
+                 placeholder=" " autocomplete="off" spellcheck="false"
+                 maxlength="120" aria-label="OSINT query">
+          <label class="osint-input-premium__label" for="secOsintQueryInput">
+            Masukkan username, email atau nombor telefon
+          </label>
+          <button class="osint-input-premium__clear" id="secOsintClearBtn"
+                  type="button" aria-label="Clear">
+            <i class="fas fa-xmark"></i>
+          </button>
+          <button class="osint-input-premium__submit" id="secOsintSearchBtn"
+                  type="button">
+            <span class="osint-input-premium__submit-label">Search</span>
+            <i class="fas fa-arrow-right"></i>
+            <span class="osint-input-premium__ripple" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="osint-suggest-premium" id="secSuggest">
+          <span class="osint-suggest-premium__label">Cuba:</span>
+          <button class="osint-chip" data-suggest="johndoe" style="--i:0" type="button">
+            <i class="fas fa-at"></i> johndoe</button>
+          <button class="osint-chip" data-suggest="admin" style="--i:1" type="button">
+            <i class="fas fa-user-shield"></i> admin</button>
+          <button class="osint-chip" data-suggest="user@example.com" style="--i:2" type="button">
+            <i class="fas fa-envelope"></i> user@example.com</button>
+          <button class="osint-chip" data-suggest="08123456789" style="--i:3" type="button">
+            <i class="fas fa-phone"></i> 08123456789</button>
+        </div>
+
+        <div class="osint-result-premium" id="secOsintResultArea"></div>
+
+        <div class="osint-panel-premium__foot">
+          <span class="osint-panel-premium__hint">
+            <i class="fas fa-circle-info"></i>
+            <span>Hasil diambil dari sumber awam. Sahkan sebelum digunakan.</span>
+          </span>
+          <button class="osint-panel-premium__export" id="secOsintExportBtn" type="button">
+            <i class="fas fa-download"></i>
+            <span>Export</span>
+          </button>
+        </div>
+      </div>`;
+
+    // ── Insert below #scanBtn ──────────────────────────────────────
+    scanBtn.parentNode.insertBefore(ctaWrap, scanBtn.nextSibling);
+    ctaWrap.parentNode.insertBefore(panel, ctaWrap.nextSibling);
+    scanBtn.dataset.osintInjected = '1';
+
+    Logger.info('[security] OSINT launcher injected below #scanBtn');
+
+    // ── Hook: when launcher opens, pre-fill from #scanTarget ───────
+    const toggleBtn = document.getElementById('secOsintToggleBtn');
+    const panelEl   = document.getElementById('secOsintPanel');
+    if (toggleBtn && panelEl) {
+      toggleBtn.addEventListener('click', () => {
+        const targetInput = document.getElementById('scanTarget');
+        const osintInput  = document.getElementById('secOsintQueryInput');
+        if (targetInput && osintInput && !osintInput.value.trim()) {
+          const v = targetInput.value.trim();
+          if (v) {
+            // Strip scheme/path — keep host only
+            const host = v.replace(/^https?:\/\//i, '').split('/')[0].split(':')[0];
+            if (host && host.length >= CONFIG.minQueryLen) {
+              osintInput.value = host;
+              document.getElementById('secOsintInputWrap')
+                ?.classList.add('has-value');
+            }
+          }
+        }
+      });
+    }
+
+    // ── Bind the new panel ─────────────────────────────────────────
+    return bindPanel({
+      name: 'sec',
+      toggleBtn:    document.getElementById('secOsintToggleBtn'),
+      panelEl:      document.getElementById('secOsintPanel'),
+      closeBtn:     document.getElementById('secOsintCloseBtn'),
+      methodToggle: document.getElementById('secOsintMethodToggle'),
+      inputWrap:    document.getElementById('secOsintInputWrap'),
+      input:        document.getElementById('secOsintQueryInput'),
+      submitBtn:    document.getElementById('secOsintSearchBtn'),
+      clearBtn:     document.getElementById('secOsintClearBtn'),
+      resultArea:   document.getElementById('secOsintResultArea'),
+      exportBtn:    document.getElementById('secOsintExportBtn'),
+    });
+  }
+
+  /* ==================================================================
    * BOOTSTRAP
    * ================================================================== */
 
   global.Osint = Osint;
 
   function initAll() {
-    try { bindSchoolPanel(); } catch (e) { Logger.error('school bind failed', e); }
-    try { bindToolsHubPanel(); } catch (e) { Logger.error('hub bind failed', e); }
+    try { bindSchoolPanel(); }    catch (e) { Logger.error('school bind failed', e); }
+    try { bindToolsHubPanel(); }  catch (e) { Logger.error('hub bind failed', e); }
+    try { bindSecurityPanel(); }  catch (e) { Logger.error('security bind failed', e); }
   }
 
   if (document.readyState === 'loading') {
@@ -992,7 +1134,7 @@
     initAll();
   }
 
-  // Re-bind lazily when sections open (idempotent)
+  /* ── Lazy rebind on user navigation ─────────────────────────────── */
   document.addEventListener('click', (e) => {
     const schoolsNav = e.target.closest?.('[data-section="schools"]');
     if (schoolsNav) setTimeout(bindSchoolPanel, 80);
@@ -1002,28 +1144,39 @@
 
     const toolsNav = e.target.closest?.('#navToolsHub');
     if (toolsNav) setTimeout(bindToolsHubPanel, 120);
-  });
 
-  // Re-init slider when panel becomes visible (hidden → shown)
+    // Security Testing section
+    const testingNav = e.target.closest?.('[data-section="testing"]');
+    if (testingNav) setTimeout(bindSecurityPanel, 80);
+  }, true);
+
+  /* ── Re-inject if #scanBtn appears later (dynamic rendering) ───── */
   if (typeof MutationObserver !== 'undefined') {
-    const mo = new MutationObserver((muts) => {
-      muts.forEach((m) => {
-        if (m.type !== 'attributes' || m.attributeName !== 'hidden') return;
-        const el = m.target;
-        if (el.id === 'schoolOsintPanel' && !el.hidden) {
-          bindSchoolPanel();
+    const mo = new MutationObserver(() => {
+      try {
+        const scanBtn = document.getElementById('scanBtn');
+        if (scanBtn && scanBtn.dataset.osintInjected !== '1') {
+          bindSecurityPanel();
         }
-        if (el.id === 'toolDetail-osint' && !el.hidden) {
-          bindToolsHubPanel();
-        }
-      });
+        const secPanel = document.getElementById('secOsintPanel');
+        if (secPanel && !secPanel.hidden) bindSecurityPanel();
+        const schoolPanel = document.getElementById('schoolOsintPanel');
+        if (schoolPanel && !schoolPanel.hidden) bindSchoolPanel();
+        const hubPanel = document.getElementById('toolDetail-osint');
+        if (hubPanel && !hubPanel.hidden) bindToolsHubPanel();
+      } catch (e) {
+        Logger.error('mutation rebind failed', e);
+      }
     });
 
-    // Observe when DOM ready
     const startObserving = () => {
-      ['schoolOsintPanel', 'toolDetail-osint'].forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) mo.observe(el, { attributes: true, attributeFilter: ['hidden'] });
+      const content = document.querySelector('.content-area')
+                   || document.body;
+      mo.observe(content, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['hidden', 'class'],
       });
     };
 
