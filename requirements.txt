@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════════
-# EMERGENS — requirements.txt
+# EMERGENS — requirements.txt  (updated 2026-09-22)
 # Python 3.11+ recommended  (3.13 tested)
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -17,12 +17,12 @@ asgiref==3.9.1
 
 # ─── Auth & crypto ───────────────────────────────────────────────────────
 PyJWT==2.13.0
-cryptography==44.0.3
+cryptography==48.0.1
 passlib==1.7.4
 
 # ─── HTTP & scraping ─────────────────────────────────────────────────────
-requests==2.33.0
-urllib3==2.7.0
+requests==2.34.2
+urllib3==2.8.0
 certifi==2026.7.22
 chardet==5.2.0
 charset-normalizer==3.5.1
@@ -30,7 +30,7 @@ idna==3.19.0
 httpx==0.28.1
 cloudscraper==1.2.71
 yarl==1.20.1
-beautifulsoup4==4.14.3
+beautifulsoup4==4.15.0
 lxml==6.0.1
 soupsieve==2.8.4
 
@@ -49,35 +49,29 @@ pycryptodome==3.23.0
 pyroxy @ git+https://github.com/MatrixTM/PyRoxy.git
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SQLi ENGINE — NEW
+# SQLi ENGINE
 # ═══════════════════════════════════════════════════════════════════════════
-# The HTTP client is already covered by `requests` + `urllib3` above.
-# The following add: retry logic, SQL parsing, and post-exploitation
-# database drivers used when SQLi reveals credentials.
 
 # ── Retry / backoff ──────────────────────────────────────────────────────
-# Blind & time-based SQLi need stable retries on transient failures.
-# tenacity provides exponential backoff + custom stop conditions.
-tenacity==9.0.0
+tenacity==9.1.4
 
-# ── SQL parsing (context-aware payload generation) ───────────────────────
-# Used to tokenise injected SQL and infer the target DB dialect.
-sqlparse==0.5.3
+# ── SQL parsing ──────────────────────────────────────────────────────────
+sqlparse==0.6.0
 
 # ── Database drivers (post-exploitation / direct DB connection) ──────────
-psycopg2-binary==2.9.10           # PostgreSQL — primary driver
-pymysql==1.1.1                    # MySQL pure-python fallback
-pymssql==2.3.2                    # Microsoft SQL Server (TDS)
-oracledb==2.5.1                   # Oracle — thin mode (no instant client)
-redis==5.2.1                      # Redis (SSRF → redis:// pivot)
-pymongo==4.11.1                   # MongoDB (NoSQL injection vector)
+psycopg2-binary==2.9.12          # PostgreSQL — primary driver
+pymysql==1.1.1                   # MySQL pure-python fallback
+pymssql==2.4.1                   # MS SQL Server — setuptools_scm<11.0 fix
+oracledb==2.5.1                  # Oracle — thin mode
+redis==8.1.0                     # Redis
+pymongo==4.18.0                  # MongoDB (NoSQL injection vector)
 
 # ─── AI ──────────────────────────────────────────────────────────────────
 anthropic==0.120.2
 
 # ─── Integrations ────────────────────────────────────────────────────────
 python-telegram-bot==22.8
-mysql-connector-python==9.7.0     # MySQL / MariaDB — additional driver
+mysql-connector-python==9.7.0
 
 # ─── Utilities ───────────────────────────────────────────────────────────
 python-dotenv==1.1.1
