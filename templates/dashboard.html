@@ -62,50 +62,50 @@
         </div>
 
         <nav class="sidebar-nav">
-            <button class="nav-item active" data-section="overview">
+            <button class="nav-item active" data-section="overview" type="button">
                 <i class="fas fa-gauge-high"></i><span data-i18n="nav_overview">Overview</span></button>
-            <button class="nav-item" id="navToolsHub">
+            <button class="nav-item" id="navToolsHub" type="button">
                 <i class="fas fa-grip"></i><span data-i18n="nav_tools_hub">Tools</span></button>
-            <button class="nav-item" data-section="testing">
+            <button class="nav-item" data-section="testing" type="button">
                 <i class="fas fa-magnifying-glass"></i><span data-i18n="nav_testing">Security Testing</span></button>
-            <button class="nav-item nav-item-mhddos" data-section="mhddos">
+            <button class="nav-item nav-item-mhddos" data-section="mhddos" type="button">
                 <i class="fas fa-satellite-dish"></i><span data-i18n="nav_mhddos">MHDDoS Engine</span>
                 <span class="nav-live-dot" id="mhdNavDot" hidden></span></button>
-            <button class="nav-item nav-item-exploit" data-section="exploit">
+            <button class="nav-item nav-item-exploit" data-section="exploit" type="button">
                 <i class="fas fa-bug"></i><span data-i18n="nav_exploit">Exploit Suite</span></button>
-            <button class="nav-item" data-section="assets">
+            <button class="nav-item" data-section="assets" type="button">
                 <i class="fas fa-layer-group"></i><span data-i18n="nav_assets">Assets</span></button>
-            <button class="nav-item" data-section="console">
+            <button class="nav-item" data-section="console" type="button">
                 <i class="fas fa-terminal"></i><span data-i18n="nav_console">System Console</span></button>
-            <button class="nav-item" data-section="chat">
+            <button class="nav-item" data-section="chat" type="button">
                 <i class="fas fa-comments"></i><span data-i18n="nav_chat">AI Assistant</span></button>
 
             <div class="nav-label" data-i18n="nav_label_data">Data</div>
-            <button class="nav-item" data-section="schools">
+            <button class="nav-item" data-section="schools" type="button">
                 <i class="fas fa-school"></i><span data-i18n="nav_schools">School Search</span></button>
-            <button class="nav-item" data-section="minecraft">
+            <button class="nav-item" data-section="minecraft" type="button">
                 <i class="fas fa-cubes"></i><span data-i18n="nav_minecraft">Minecraft Status</span></button>
 
             <div class="nav-label" data-i18n="nav_label_integrations">Integrations</div>
-            <button class="nav-item telegram-nav" data-section="telegram">
+            <button class="nav-item telegram-nav" data-section="telegram" type="button">
                 <i class="fab fa-telegram-plane"></i><span data-i18n="nav_telegram">Telegram Bot</span></button>
 
             <div class="nav-label" data-i18n="nav_label_resources">Resources</div>
-            <button class="nav-item" data-section="docs">
+            <button class="nav-item" data-section="docs" type="button">
                 <i class="fas fa-book"></i><span data-i18n="nav_docs">Documentation</span></button>
-            <button class="nav-item" data-section="preferences">
+            <button class="nav-item" data-section="preferences" type="button">
                 <i class="fas fa-sliders"></i><span data-i18n="nav_preferences">Preferences</span></button>
-            <button class="nav-item owner-only" data-section="settings">
+            <button class="nav-item owner-only" data-section="settings" type="button">
                 <i class="fas fa-users-gear"></i><span data-i18n="nav_settings">User Management</span></button>
-            <button class="nav-item owner-only" data-section="api">
+            <button class="nav-item owner-only" data-section="api" type="button">
                 <i class="fas fa-key"></i><span data-i18n="nav_api">API Keys</span></button>
-            <button class="nav-item owner-only" data-section="panelmanager">
+            <button class="nav-item owner-only" data-section="panelmanager" type="button">
                 <i class="fas fa-server"></i><span data-i18n="nav_panel_manager">Panel Manager</span></button>
-            <button class="nav-item owner-only" id="navThemeStudio">
+            <button class="nav-item owner-only" id="navThemeStudio" type="button">
                 <i class="fas fa-palette"></i><span data-i18n="nav_theme_studio">Theme Studio</span></button>
-            <button class="nav-item" data-section="community">
+            <button class="nav-item" data-section="community" type="button">
                 <i class="fas fa-users"></i><span data-i18n="nav_community">Community</span></button>
-            <button class="nav-item" data-section="globalchat">
+            <button class="nav-item" data-section="globalchat" type="button">
                 <i class="fas fa-earth-asia"></i><span data-i18n="nav_globalchat">Global Chat</span>
                 <span class="nav-chat-badge" id="navChatBadge" hidden>0</span></button>
 
@@ -224,7 +224,7 @@
                     <div class="form-row">
                         <div class="input-group"><i class="fas fa-globe"></i>
                             <input type="text" id="quickScanTarget" placeholder="example.com" autocomplete="off"></div>
-                        <button class="btn-primary" id="quickScanBtn">
+                        <button class="btn-primary" id="quickScanBtn" type="button">
                             <i class="fas fa-play"></i>
                             <span data-i18n="btn_run_quick_scan">Run Quick Scan</span></button>
                     </div>
@@ -296,14 +296,14 @@
                     <div class="panel-title"><i class="fas fa-mosque"></i>
                         <span data-i18n="prayer_title">Waktu Solat</span>
                         <div class="segmented-control" id="prayerCountryToggle" style="margin-left:auto;">
-                            <button class="seg-btn active" data-country="MY">Malaysia</button>
-                            <button class="seg-btn" data-country="ID">Indonesia</button>
+                            <button class="seg-btn active" data-country="MY" type="button">Malaysia</button>
+                            <button class="seg-btn" data-country="ID" type="button">Indonesia</button>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="input-group" style="max-width:240px;"><i class="fas fa-city"></i>
                             <select id="prayerCitySelect"></select></div>
-                        <button class="btn-secondary" id="prayerRefreshBtn" title="Refresh">
+                        <button class="btn-secondary" id="prayerRefreshBtn" title="Refresh" type="button">
                             <i class="fas fa-rotate"></i></button>
                     </div>
                     <div class="prayer-times-grid" id="prayerTimesGrid">
@@ -342,7 +342,8 @@
                             <span data-i18n="briefing_video_empty">No briefing video configured yet.</span></div>
                         <video id="briefingVideo" playsinline autoplay muted loop
                                disablePictureInPicture disableRemotePlayback tabindex="-1"
-                               oncontextmenu="return false" hidden></video>
+                               oncontextmenu="return false" hidden
+                               preload="auto"></video>
                     </div>
                 </div>
 
@@ -360,15 +361,15 @@
                     </div>
                     <p class="tool-section-label" data-i18n="testing_select_tools">Swipe to browse &amp; select tools:</p>
                     <div class="method-carousel-wrap">
-                        <button class="method-nav-btn method-nav-prev" id="methodNavPrev" aria-label="Previous">
+                        <button class="method-nav-btn method-nav-prev" id="methodNavPrev" aria-label="Previous" type="button">
                             <i class="fas fa-chevron-left"></i></button>
                         <div class="method-carousel" id="methodCarousel"></div>
-                        <button class="method-nav-btn method-nav-next" id="methodNavNext" aria-label="Next">
+                        <button class="method-nav-btn method-nav-next" id="methodNavNext" aria-label="Next" type="button">
                             <i class="fas fa-chevron-right"></i></button>
                     </div>
                     <div class="method-carousel-dots" id="methodDots"></div>
                     <div id="toolChecklist" hidden></div>
-                    <button class="btn-primary" id="scanBtn">
+                    <button class="btn-primary" id="scanBtn" type="button">
                         <i class="fas fa-play"></i>
                         <span data-i18n="btn_start_scan">Start Scan</span></button>
                     <div id="scanProgressWrap" hidden style="margin-top:14px;">
@@ -488,9 +489,9 @@
                         <input type="checkbox" id="mhdDebug">
                         <span><i class="fas fa-bug"></i> Debug mode (append <code>debug</code> flag)</span></label>
                     <div class="mhd-actions">
-                        <button class="mhd-start-btn" id="mhdStartBtn" disabled>
+                        <button class="mhd-start-btn" id="mhdStartBtn" disabled type="button">
                             <i class="fas fa-rocket"></i> <span>Launch Attack</span></button>
-                        <button class="mhd-stopall-btn" id="mhdStopAllBtn">
+                        <button class="mhd-stopall-btn" id="mhdStopAllBtn" type="button">
                             <i class="fas fa-hand"></i> Stop All</button>
                     </div>
                 </div>
@@ -538,7 +539,7 @@
                             <div class="input-group" style="max-width:240px;"><i class="fas fa-search"></i>
                                 <input type="text" id="historySearch" placeholder="Filter by target..."
                                        data-i18n-ph="history_filter_ph"></div>
-                            <button class="btn-secondary" id="assetExportBtn" title="Export JSON">
+                            <button class="btn-secondary" id="assetExportBtn" title="Export JSON" type="button">
                                 <i class="fas fa-download"></i></button>
                         </div>
                     </div>
@@ -588,7 +589,7 @@
                         <i class="fas fa-comments"></i>
                         <span data-i18n="chat_title">AI Security Assistant</span>
                         <button class="btn-secondary btn-danger" id="chatClearBtn"
-                                style="margin-left:auto;font-size:0.75rem;">
+                                style="margin-left:auto;font-size:0.75rem;" type="button">
                             <i class="fas fa-trash"></i>
                             <span data-i18n="btn_clear">Clear</span></button>
                     </div>
@@ -596,13 +597,13 @@
                     <div class="chat-input-row">
                         <textarea id="chatInput" rows="1" placeholder="Ask about security testing..."
                                   data-i18n-ph="chat_input_ph"></textarea>
-                        <button class="btn-primary" id="chatSendBtn"><i class="fas fa-paper-plane"></i></button>
+                        <button class="btn-primary" id="chatSendBtn" type="button"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
             </section>
 
             <!-- ============================================================
-                 SCHOOLS + OSINT PREMIUM
+                 SCHOOLS + OSINT
                  ============================================================ -->
             <section class="content-section" id="section-schools">
                 <div class="panel">
@@ -614,29 +615,25 @@
                         Cari maklumat sekolah rendah &amp; menengah di Malaysia. Taip nama sekolah untuk melihat padanan.
                     </p>
 
-                    <!-- School search bar -->
                     <div class="school-search-bar">
                         <div class="school-search-input-wrap">
                             <i class="fas fa-search school-search-icon"></i>
                             <input type="text" id="schoolSearchInput" class="school-search-input"
                                    placeholder="Cth: SEKOLAH KEBANGSAAN LUBOK" autocomplete="off">
                             <button class="school-search-clear" id="schoolSearchClear"
-                                    aria-label="Clear" hidden>
+                                    aria-label="Clear" hidden type="button">
                                 <i class="fas fa-xmark"></i>
                             </button>
                         </div>
-                        <button class="btn-primary school-search-submit" id="schoolSearchBtn">
+                        <button class="btn-primary school-search-submit" id="schoolSearchBtn" type="button">
                             <i class="fas fa-search"></i>
                             <span data-i18n="btn_search">Cari</span>
                         </button>
                     </div>
 
-                    <!-- ============================================
-                         OSINT PREMIUM CTA — di bawah tombol Cari
-                         ============================================ -->
                     <div class="osint-cta-wrap">
                         <button class="osint-cta-premium" id="schoolOsintToggleBtn"
-                                aria-expanded="false" aria-controls="schoolOsintPanel">
+                                aria-expanded="false" aria-controls="schoolOsintPanel" type="button">
                             <span class="osint-cta-premium__glow" aria-hidden="true"></span>
                             <span class="osint-cta-premium__border" aria-hidden="true"></span>
                             <span class="osint-cta-premium__content">
@@ -661,9 +658,6 @@
                         </button>
                     </div>
 
-                    <!-- ============================================
-                         OSINT PANEL — PREMIUM ANIMATION
-                         ============================================ -->
                     <div class="osint-panel-premium" id="schoolOsintPanel" hidden>
                         <div class="osint-panel-premium__bg" aria-hidden="true">
                             <span class="osint-panel-premium__grid"></span>
@@ -671,7 +665,6 @@
                         </div>
 
                         <div class="osint-panel-premium__inner">
-                            <!-- Header -->
                             <div class="osint-panel-premium__head">
                                 <div class="osint-panel-premium__head-icon">
                                     <i class="fas fa-shield-halved"></i>
@@ -688,29 +681,27 @@
                                     </div>
                                 </div>
                                 <button class="osint-panel-premium__close" id="schoolOsintCloseBtn"
-                                        aria-label="Close">
+                                        aria-label="Close" type="button">
                                     <i class="fas fa-xmark"></i>
                                 </button>
                             </div>
 
-                            <!-- Method toggle (animated) -->
                             <div class="osint-method-toggle" id="schoolOsintMethodToggle">
                                 <span class="osint-method-toggle__slider" aria-hidden="true"></span>
-                                <button class="osint-method-btn active" data-method="username">
+                                <button class="osint-method-btn active" data-method="username" type="button">
                                     <i class="fas fa-at"></i>
                                     <span data-i18n="osint_username">Username</span>
                                 </button>
-                                <button class="osint-method-btn" data-method="email">
+                                <button class="osint-method-btn" data-method="email" type="button">
                                     <i class="fas fa-envelope"></i>
                                     <span data-i18n="osint_email">Email</span>
                                 </button>
-                                <button class="osint-method-btn" data-method="number">
+                                <button class="osint-method-btn" data-method="number" type="button">
                                     <i class="fas fa-phone"></i>
                                     <span data-i18n="osint_number">Number</span>
                                 </button>
                             </div>
 
-                            <!-- Floating label input -->
                             <div class="osint-input-premium" id="schoolOsintInputWrap">
                                 <span class="osint-input-premium__scan" aria-hidden="true"></span>
                                 <span class="osint-input-premium__icon">
@@ -736,23 +727,20 @@
                                 </button>
                             </div>
 
-                            <!-- Suggestion chips (staggered) -->
                             <div class="osint-suggest-premium" id="schoolOsintSuggest">
                                 <span class="osint-suggest-premium__label" data-i18n="osint_try">Cuba:</span>
-                                <button class="osint-chip" data-suggest="johndoe" style="--i:0">
+                                <button class="osint-chip" data-suggest="johndoe" style="--i:0" type="button">
                                     <i class="fas fa-at"></i> johndoe</button>
-                                <button class="osint-chip" data-suggest="admin" style="--i:1">
+                                <button class="osint-chip" data-suggest="admin" style="--i:1" type="button">
                                     <i class="fas fa-user-shield"></i> admin</button>
-                                <button class="osint-chip" data-suggest="user@example.com" style="--i:2">
+                                <button class="osint-chip" data-suggest="user@example.com" style="--i:2" type="button">
                                     <i class="fas fa-envelope"></i> user@example.com</button>
-                                <button class="osint-chip" data-suggest="08123456789" style="--i:3">
+                                <button class="osint-chip" data-suggest="08123456789" style="--i:3" type="button">
                                     <i class="fas fa-phone"></i> 08123456789</button>
                             </div>
 
-                            <!-- Result area -->
                             <div class="osint-result-premium" id="schoolOsintResultArea"></div>
 
-                            <!-- Footer -->
                             <div class="osint-panel-premium__foot">
                                 <span class="osint-panel-premium__hint">
                                     <i class="fas fa-circle-info"></i>
@@ -760,7 +748,7 @@
                                         Hasil diambil dari sumber awam. Sahkan sebelum digunakan.
                                     </span>
                                 </span>
-                                <button class="osint-panel-premium__export" id="schoolOsintExportBtn">
+                                <button class="osint-panel-premium__export" id="schoolOsintExportBtn" type="button">
                                     <i class="fas fa-download"></i>
                                     <span data-i18n="btn_export">Export</span>
                                 </button>
@@ -768,7 +756,6 @@
                         </div>
                     </div>
 
-                    <!-- Result school -->
                     <div class="school-stats-row" id="schoolStatsRow" hidden>
                         <span id="schoolResultCount"></span>
                     </div>
@@ -793,7 +780,7 @@
                                 <option value="java">Java Edition</option>
                                 <option value="bedrock">Bedrock Edition</option>
                             </select></div>
-                        <button class="btn-primary" id="mcCheckBtn">
+                        <button class="btn-primary" id="mcCheckBtn" type="button">
                             <i class="fas fa-satellite-dish"></i>
                             <span data-i18n="btn_check">Check Status</span></button>
                     </div>
@@ -839,7 +826,7 @@
                                 <input type="text" id="telegramOwnerId" placeholder="Owner Chat ID"></div>
                         </div>
                         <div class="form-row" style="align-items:center; gap:16px;">
-                            <button class="btn-primary btn-telegram" id="telegramConnectBtn">
+                            <button class="btn-primary btn-telegram" id="telegramConnectBtn" type="button">
                                 <i class="fas fa-plug"></i>
                                 <span data-i18n="btn_connect_bot">Connect Bot</span></button>
                             <label class="toggle-switch">
@@ -901,10 +888,10 @@
                                 <span data-i18n="prefs_storage_local_desc">Stored locally.</span></div>
                         </div>
                         <div class="form-row" style="margin-top:14px;">
-                            <button class="btn-secondary" id="exportLocalHistoryBtn">
+                            <button class="btn-secondary" id="exportLocalHistoryBtn" type="button">
                                 <i class="fas fa-file-export"></i>
                                 <span data-i18n="btn_export_local">Export Local History</span></button>
-                            <button class="btn-secondary btn-danger" id="clearLocalHistoryBtn">
+                            <button class="btn-secondary btn-danger" id="clearLocalHistoryBtn" type="button">
                                 <i class="fas fa-broom"></i>
                                 <span data-i18n="btn_clear_local">Clear Local Data</span></button>
                         </div>
@@ -916,9 +903,9 @@
                         <div class="settings-option-desc" data-i18n="prefs_lang_desc">
                             Switch between English and Bahasa Malaysia.</div>
                         <div class="lang-pill-group">
-                            <button class="lang-pill" id="langPillEn" data-lang="en">
+                            <button class="lang-pill" id="langPillEn" data-lang="en" type="button">
                                 <span class="flag">🇬🇧</span> English</button>
-                            <button class="lang-pill" id="langPillMs" data-lang="ms">
+                            <button class="lang-pill" id="langPillMs" data-lang="ms" type="button">
                                 <span class="flag">🇲🇾</span> Bahasa Malaysia</button>
                         </div>
                     </div>
@@ -945,13 +932,13 @@
                                      <strong id="deviceBatteryValue">--</strong></div></div>
                         </div>
                         <div class="ui-mode-choice-grid">
-                            <button class="ui-mode-choice" data-mode="auto" id="uiModeAuto">
+                            <button class="ui-mode-choice" data-mode="auto" id="uiModeAuto" type="button">
                                 <i class="fas fa-wand-magic-sparkles"></i>
                                 <span data-i18n="prefs_ui_auto">Auto</span></button>
-                            <button class="ui-mode-choice" data-mode="mobile" id="uiModeMobile">
+                            <button class="ui-mode-choice" data-mode="mobile" id="uiModeMobile" type="button">
                                 <i class="fas fa-mobile-screen"></i>
                                 <span data-i18n="prefs_ui_mobile">Phone Layout</span></button>
-                            <button class="ui-mode-choice" data-mode="desktop" id="uiModeDesktop">
+                            <button class="ui-mode-choice" data-mode="desktop" id="uiModeDesktop" type="button">
                                 <i class="fas fa-laptop"></i>
                                 <span data-i18n="prefs_ui_desktop">Laptop Layout</span></button>
                         </div>
@@ -966,21 +953,21 @@
                             <div class="sb-option-row">
                                 <span class="sb-option-label"><i class="fas fa-palette"></i> Accent colour</span>
                                 <div class="sb-color-swatches" id="sbColorSwatches">
-                                    <button class="sb-swatch active" data-color="#3b82f6" style="background:#3b82f6;"></button>
-                                    <button class="sb-swatch" data-color="#8b5cf6" style="background:#8b5cf6;"></button>
-                                    <button class="sb-swatch" data-color="#10b981" style="background:#10b981;"></button>
-                                    <button class="sb-swatch" data-color="#f59e0b" style="background:#f59e0b;"></button>
-                                    <button class="sb-swatch" data-color="#ef4444" style="background:#ef4444;"></button>
-                                    <button class="sb-swatch" data-color="#ec4899" style="background:#ec4899;"></button>
-                                    <button class="sb-swatch" data-color="#06b6d4" style="background:#06b6d4;"></button>
+                                    <button class="sb-swatch active" data-color="#3b82f6" style="background:#3b82f6;" type="button"></button>
+                                    <button class="sb-swatch" data-color="#8b5cf6" style="background:#8b5cf6;" type="button"></button>
+                                    <button class="sb-swatch" data-color="#10b981" style="background:#10b981;" type="button"></button>
+                                    <button class="sb-swatch" data-color="#f59e0b" style="background:#f59e0b;" type="button"></button>
+                                    <button class="sb-swatch" data-color="#ef4444" style="background:#ef4444;" type="button"></button>
+                                    <button class="sb-swatch" data-color="#ec4899" style="background:#ec4899;" type="button"></button>
+                                    <button class="sb-swatch" data-color="#06b6d4" style="background:#06b6d4;" type="button"></button>
                                 </div>
                             </div>
                             <div class="sb-option-row">
                                 <span class="sb-option-label"><i class="fas fa-border-all"></i> Sidebar style</span>
                                 <div class="sb-style-btns" id="sbStyleBtns">
-                                    <button class="sb-style-btn active" data-style="solid">Solid</button>
-                                    <button class="sb-style-btn" data-style="glass">Glass</button>
-                                    <button class="sb-style-btn" data-style="minimal">Minimal</button>
+                                    <button class="sb-style-btn active" data-style="solid" type="button">Solid</button>
+                                    <button class="sb-style-btn" data-style="glass" type="button">Glass</button>
+                                    <button class="sb-style-btn" data-style="minimal" type="button">Minimal</button>
                                 </div>
                             </div>
                         </div>
@@ -1035,7 +1022,7 @@
                         <div class="input-group"><i class="fas fa-tag"></i>
                             <input type="text" id="ownerServerNameInput" placeholder="e.g. FRA-NODE-02"
                                    maxlength="60"></div>
-                        <button class="btn-primary" id="ownerServerNameSaveBtn">
+                        <button class="btn-primary" id="ownerServerNameSaveBtn" type="button">
                             <i class="fas fa-save"></i>
                             <span data-i18n="btn_save">Save</span></button>
                     </div>
@@ -1068,7 +1055,7 @@
                     <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:12px;"
                        data-i18n="api_desc">Generate and manage API keys.</p>
                     <div class="form-row">
-                        <button class="btn-primary" id="generateApiKeyBtn">
+                        <button class="btn-primary" id="generateApiKeyBtn" type="button">
                             <i class="fas fa-plus"></i>
                             <span data-i18n="btn_generate_key">Generate New Key</span></button>
                         <span id="apiKeyLimitMsg" style="font-size:0.72rem;color:var(--text-muted);
@@ -1089,7 +1076,7 @@
                         <i class="fas fa-clock-rotate-left"></i>
                         <span data-i18n="recent_keys_title">Recently Generated (This Browser)</span>
                         <button class="btn-secondary btn-danger" id="clearRecentKeysBtn"
-                                style="margin-left:auto;font-size:0.72rem;padding:7px 12px;">
+                                style="margin-left:auto;font-size:0.72rem;padding:7px 12px;" type="button">
                             <i class="fas fa-broom"></i>
                             <span data-i18n="btn_clear_recent_keys">Clear Saved Keys</span></button>
                     </div>
@@ -1106,7 +1093,7 @@
                         <i class="fas fa-server"></i>
                         <span data-i18n="pm_title">Panel Manager</span>
                         <button class="btn-secondary" id="pmRefreshBtn"
-                                style="margin-left:auto;font-size:0.72rem;padding:7px 12px;">
+                                style="margin-left:auto;font-size:0.72rem;padding:7px 12px;" type="button">
                             <i class="fas fa-rotate"></i>
                             <span data-i18n="btn_refresh">Refresh</span></button>
                     </div>
@@ -1155,7 +1142,7 @@
                             <span class="gc-dot"></span>
                             <span id="gcConnectionText" data-i18n="gc_connecting">Connecting…</span></span>
                         <button class="btn-secondary btn-danger owner-only" id="gcLockToggleBtn"
-                                style="margin-left:auto;font-size:0.72rem;padding:7px 12px;">
+                                style="margin-left:auto;font-size:0.72rem;padding:7px 12px;" type="button">
                             <i class="fas fa-lock"></i>
                             <span id="gcLockToggleText" data-i18n="gc_lock_chat">Lock Chat</span></button>
                     </div>
@@ -1181,13 +1168,13 @@
 
 <!-- MOBILE BOTTOM NAV -->
 <nav class="bottom-nav" id="bottomNav" aria-label="Primary">
-    <button class="bottom-nav-item active" data-bn-section="overview">
+    <button class="bottom-nav-item active" data-bn-section="overview" type="button">
         <i class="fas fa-house"></i><span data-i18n="bn_home">Home</span></button>
-    <button class="bottom-nav-item" data-bn-section="testing">
+    <button class="bottom-nav-item" data-bn-section="testing" type="button">
         <i class="fas fa-shield-halved"></i><span data-i18n="bn_sec">Sec</span></button>
-    <button class="bottom-nav-item" data-bn-section="preferences">
+    <button class="bottom-nav-item" data-bn-section="preferences" type="button">
         <i class="fas fa-sliders"></i><span data-i18n="bn_setting">Setting</span></button>
-    <button class="bottom-nav-item" id="bottomNavProfileBtn">
+    <button class="bottom-nav-item" id="bottomNavProfileBtn" type="button">
         <i class="fas fa-user"></i><span data-i18n="bn_profile">Profile</span></button>
 </nav>
 
@@ -1195,7 +1182,7 @@
 <div id="historyModal" class="modal-overlay" hidden>
     <div class="modal-card">
         <div class="modal-header"><span id="historyModalTitle">Case File</span>
-            <button class="icon-btn-sm" id="closeHistoryModal" aria-label="Close">
+            <button class="icon-btn-sm" id="closeHistoryModal" aria-label="Close" type="button">
                 <i class="fas fa-times"></i></button></div>
         <div class="modal-body" id="historyModalBody"></div>
     </div>
@@ -1203,7 +1190,7 @@
 <div id="userKeysModal" class="modal-overlay" hidden>
     <div class="modal-card">
         <div class="modal-header"><span id="userKeysModalTitle">API Keys</span>
-            <button class="icon-btn-sm" id="closeUserKeysModal" aria-label="Close">
+            <button class="icon-btn-sm" id="closeUserKeysModal" aria-label="Close" type="button">
                 <i class="fas fa-times"></i></button></div>
         <div class="modal-body" id="userKeysModalBody"></div>
     </div>
@@ -1212,7 +1199,7 @@
     <div class="modal-card compact">
         <div class="modal-header"><span><i class="fas fa-link"
             style="color:var(--red-400);margin-right:6px;"></i>Add Quick Link</span>
-            <button class="icon-btn-sm" id="closeAddLinkModal" aria-label="Close">
+            <button class="icon-btn-sm" id="closeAddLinkModal" aria-label="Close" type="button">
                 <i class="fas fa-times"></i></button></div>
         <div class="modal-body" style="font-family:var(--font-ui);white-space:normal;">
             <form class="add-link-form" id="addLinkForm">
@@ -1222,8 +1209,9 @@
             </form>
         </div>
         <div class="modal-footer">
-            <button class="btn-secondary" id="cancelAddLinkBtn">Cancel</button>
-            <button class="btn-primary" id="confirmAddLinkBtn"><i class="fas fa-check"></i> OK</button>
+            <button class="btn-secondary" id="cancelAddLinkBtn" type="button">Cancel</button>
+            <button class="btn-primary" id="confirmAddLinkBtn" type="button">
+                <i class="fas fa-check"></i> OK</button>
         </div>
     </div>
 </div>
@@ -1233,23 +1221,23 @@
 <!-- QUICK MENU FAB -->
 <div class="qm-fab" id="quickMenuFab">
     <div class="qm-radial" id="qmRadial">
-        <button class="qm-item" data-qm-action="scan-basic" style="--i:0" title="Basic Scan">
+        <button class="qm-item" data-qm-action="scan-basic" style="--i:0" title="Basic Scan" type="button">
             <i class="fas fa-bolt"></i></button>
-        <button class="qm-item" data-qm-action="scan-expert" style="--i:1" title="Expert Scan">
+        <button class="qm-item" data-qm-action="scan-expert" style="--i:1" title="Expert Scan" type="button">
             <i class="fas fa-shield-halved"></i></button>
-        <button class="qm-item" data-qm-action="osint" style="--i:2" title="OSINT">
+        <button class="qm-item" data-qm-action="osint" style="--i:2" title="OSINT" type="button">
             <i class="fas fa-fingerprint"></i></button>
-        <button class="qm-item" data-qm-action="history" style="--i:3" title="History">
+        <button class="qm-item" data-qm-action="history" style="--i:3" title="History" type="button">
             <i class="fas fa-clock-rotate-left"></i></button>
-        <button class="qm-item" data-qm-action="console" style="--i:4" title="Console">
+        <button class="qm-item" data-qm-action="console" style="--i:4" title="Console" type="button">
             <i class="fas fa-terminal"></i></button>
-        <button class="qm-item" data-qm-action="chat" style="--i:5" title="AI Assistant">
+        <button class="qm-item" data-qm-action="chat" style="--i:5" title="AI Assistant" type="button">
             <i class="fas fa-robot"></i></button>
-        <button class="qm-item" data-qm-action="telegram" style="--i:6" title="Telegram">
+        <button class="qm-item" data-qm-action="telegram" style="--i:6" title="Telegram" type="button">
             <i class="fab fa-telegram"></i></button>
-        <button class="qm-item qm-add-item" data-qm-action="add-link" style="--i:7" title="Add Link">+</button>
+        <button class="qm-item qm-add-item" data-qm-action="add-link" style="--i:7" title="Add Link" type="button">+</button>
     </div>
-    <button class="qm-toggle" id="qmToggle" aria-label="Quick menu" aria-expanded="false">
+    <button class="qm-toggle" id="qmToggle" aria-label="Quick menu" aria-expanded="false" type="button">
         <svg class="qm-toggle-icon" viewBox="0 0 44 44" fill="none" aria-hidden="true">
             <defs><linearGradient id="qmg" x1="10" y1="5" x2="32" y2="39">
                 <stop offset="0" stop-color="var(--red-400)"/>
@@ -1264,7 +1252,7 @@
 <!-- PROFILE POPUP -->
 <div id="profileModalOverlay" class="profile-modal-overlay" hidden>
     <div class="profile-card" role="dialog" aria-modal="true">
-        <button class="profile-card-close" id="profileModalClose" aria-label="Close">
+        <button class="profile-card-close" id="profileModalClose" aria-label="Close" type="button">
             <i class="fas fa-times"></i></button>
         <div class="profile-avatar-ring" id="profileAvatarRing">
             <svg viewBox="0 0 104 104">
@@ -1307,7 +1295,7 @@
                     <span data-i18n="profile_storage_label">Storage</span></span>
                 <span id="profileStorageValue">--</span></div>
         </div>
-        <button class="btn-secondary btn-danger profile-signout" id="profileSignoutBtn">
+        <button class="btn-secondary btn-danger profile-signout" id="profileSignoutBtn" type="button">
             <i class="fas fa-right-from-bracket"></i>
             <span data-i18n="btn_logout">Log Out</span></button>
     </div>
@@ -1317,44 +1305,44 @@
 <div id="toolsHubModal" class="modal-overlay" hidden>
     <div class="modal-card tools-hub-card">
         <div class="modal-header">
-            <button class="icon-btn-sm" id="toolsHubBackBtn" hidden aria-label="Back">
+            <button class="icon-btn-sm" id="toolsHubBackBtn" hidden aria-label="Back" type="button">
                 <i class="fas fa-arrow-left"></i></button>
             <span id="toolsHubHeaderTitle">
                 <i class="fas fa-grip" style="color:var(--red-400);margin-right:6px;"></i>
                 <span data-i18n="th_hub_title">Tools</span></span>
-            <button class="icon-btn-sm" id="closeToolsHubModal" aria-label="Close">
+            <button class="icon-btn-sm" id="closeToolsHubModal" aria-label="Close" type="button">
                 <i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body tools-hub-body" id="toolsHubBody">
             <div class="tools-grid" id="toolsGridView">
-                <button class="tool-box" data-tool="brat">
+                <button class="tool-box" data-tool="brat" type="button">
                     <div class="tool-box-icon tb-1"><i class="fas fa-font"></i></div>
                     <span data-i18n="tool_brat">Brat Generator</span></button>
-                <button class="tool-box" data-tool="reels">
+                <button class="tool-box" data-tool="reels" type="button">
                     <div class="tool-box-icon tb-2"><i class="fas fa-film"></i></div>
                     <span data-i18n="tool_reels">Reels</span></button>
-                <button class="tool-box" data-tool="osint">
+                <button class="tool-box" data-tool="osint" type="button">
                     <div class="tool-box-icon tb-3"><i class="fas fa-fingerprint"></i></div>
                     <span data-i18n="tool_osint">OSINT</span></button>
-                <button class="tool-box" data-tool="anime">
+                <button class="tool-box" data-tool="anime" type="button">
                     <div class="tool-box-icon tb-4"><i class="fas fa-clapperboard"></i></div>
                     <span data-i18n="tool_anime">Anime</span></button>
-                <button class="tool-box" data-tool="wifi">
+                <button class="tool-box" data-tool="wifi" type="button">
                     <div class="tool-box-icon tb-5"><i class="fas fa-wifi"></i></div>
                     <span data-i18n="tool_wifi">Wifi Scanner</span></button>
-                <button class="tool-box" data-tool="ipcheck">
+                <button class="tool-box" data-tool="ipcheck" type="button">
                     <div class="tool-box-icon tb-6"><i class="fas fa-location-dot"></i></div>
                     <span data-i18n="tool_ipcheck">IP Check</span></button>
-                <button class="tool-box" data-tool="quickaccess">
+                <button class="tool-box" data-tool="quickaccess" type="button">
                     <div class="tool-box-icon tb-7"><i class="fas fa-star"></i></div>
                     <span data-i18n="tool_quickaccess">Quick Access</span></button>
-                <button class="tool-box" data-tool="music">
+                <button class="tool-box" data-tool="music" type="button">
                     <div class="tool-box-icon tb-8"><i class="fas fa-music"></i></div>
                     <span data-i18n="tool_music">Music Downloader</span></button>
-                <button class="tool-box" data-tool="downloader">
+                <button class="tool-box" data-tool="downloader" type="button">
                     <div class="tool-box-icon tb-9"><i class="fas fa-download"></i></div>
                     <span data-i18n="tool_downloader">Downloader</span></button>
-                <button class="tool-box" data-tool="mctools">
+                <button class="tool-box" data-tool="mctools" type="button">
                     <div class="tool-box-icon tb-10"><i class="fas fa-cubes"></i></div>
                     <span data-i18n="tool_mctools">MCTOOLS</span></button>
             </div>
@@ -1365,13 +1353,13 @@
                     Look up public data linked to a username, email, or phone number.</p>
                 <div class="osint-method-toggle" id="osintMethodToggle" style="margin-bottom:12px;">
                     <span class="osint-method-toggle__slider" aria-hidden="true"></span>
-                    <button class="osint-method-btn active" data-method="username">
+                    <button class="osint-method-btn active" data-method="username" type="button">
                         <i class="fas fa-at"></i>
                         <span data-i18n="osint_username">Username</span></button>
-                    <button class="osint-method-btn" data-method="email">
+                    <button class="osint-method-btn" data-method="email" type="button">
                         <i class="fas fa-envelope"></i>
                         <span data-i18n="osint_email">Email</span></button>
-                    <button class="osint-method-btn" data-method="number">
+                    <button class="osint-method-btn" data-method="number" type="button">
                         <i class="fas fa-phone"></i>
                         <span data-i18n="osint_number">Number</span></button>
                 </div>
@@ -1402,7 +1390,7 @@
                     <div class="input-group" style="max-width:150px;"><i class="fas fa-fill-drip"></i>
                         <input type="color" id="bratBgColor" value="#8ace00"
                                style="padding:2px;height:38px;"></div>
-                    <button class="btn-primary" id="bratGenerateBtn">
+                    <button class="btn-primary" id="bratGenerateBtn" type="button">
                         <i class="fas fa-wand-magic-sparkles"></i>
                         <span data-i18n="btn_generate">Generate</span></button>
                 </div>
@@ -1413,7 +1401,7 @@
                 <div class="tool-search"><i class="fas fa-video"></i>
                     <input type="text" id="reelsSearchInput" placeholder="Search TikTok videos..."
                            autocomplete="off">
-                    <button class="tool-search-btn" id="reelsSearchBtn">
+                    <button class="tool-search-btn" id="reelsSearchBtn" type="button">
                         <i class="fas fa-search"></i>
                         <span data-i18n="btn_search">Search</span></button></div>
                 <div class="tool-result-area" id="reelsResultArea"></div>
@@ -1423,7 +1411,7 @@
                 <div class="tool-search"><i class="fas fa-magnifying-glass"></i>
                     <input type="text" id="animeSearchInput" placeholder="Search anime..."
                            autocomplete="off">
-                    <button class="tool-search-btn" id="animeSearchBtn">
+                    <button class="tool-search-btn" id="animeSearchBtn" type="button">
                         <i class="fas fa-search"></i>
                         <span data-i18n="btn_search">Search</span></button></div>
                 <div class="tool-result-area" id="animeResultArea"></div>
@@ -1432,7 +1420,7 @@
             <div class="tool-detail" id="toolDetail-wifi" hidden>
                 <div class="settings-callout"><i class="fas fa-circle-info"></i>
                     <span data-i18n="wifi_limit_notice">Browsers can't list nearby Wi-Fi networks.</span></div>
-                <button class="btn-primary" id="wifiRequestBtn" style="margin-top:12px;">
+                <button class="btn-primary" id="wifiRequestBtn" style="margin-top:12px;" type="button">
                     <i class="fas fa-wifi"></i>
                     <span data-i18n="wifi_request_btn">Check Network Info</span></button>
                 <div class="tool-result-area" id="wifiResultArea"></div>
@@ -1442,10 +1430,10 @@
                 <div class="tool-search"><i class="fas fa-location-dot"></i>
                     <input type="text" id="ipCheckInput" placeholder="8.8.8.8 or example.com"
                            autocomplete="off">
-                    <button class="tool-search-btn" id="ipCheckBtn">
+                    <button class="tool-search-btn" id="ipCheckBtn" type="button">
                         <i class="fas fa-search"></i>
                         <span data-i18n="btn_check">Check</span></button></div>
-                <button class="btn-secondary" id="ipCheckMineBtn" style="margin-top:10px;">
+                <button class="btn-secondary" id="ipCheckMineBtn" style="margin-top:10px;" type="button">
                     <i class="fas fa-crosshairs"></i>
                     <span data-i18n="ip_check_mine">Check My IP</span></button>
                 <div class="tool-result-area" id="ipCheckResultArea"></div>
@@ -1455,7 +1443,7 @@
                 <div class="tool-search"><i class="fas fa-music"></i>
                     <input type="text" id="musicQueryInput" placeholder="Song name or link..."
                            autocomplete="off">
-                    <button class="tool-search-btn" id="musicFetchBtn">
+                    <button class="tool-search-btn" id="musicFetchBtn" type="button">
                         <i class="fas fa-search"></i>
                         <span data-i18n="btn_search">Search</span></button></div>
                 <div class="tool-result-area" id="musicResultArea"></div>
@@ -1463,14 +1451,14 @@
 
             <div class="tool-detail" id="toolDetail-downloader" hidden>
                 <div class="segmented-control" id="dlPlatformToggle">
-                    <button class="seg-btn active" data-platform="tiktok">
+                    <button class="seg-btn active" data-platform="tiktok" type="button">
                         <i class="fab fa-tiktok"></i> TikTok</button>
-                    <button class="seg-btn" data-platform="pinterest">
+                    <button class="seg-btn" data-platform="pinterest" type="button">
                         <i class="fab fa-pinterest"></i> Pinterest Search</button></div>
                 <div class="tool-search" style="margin-top:10px;"><i class="fas fa-link"></i>
                     <input type="text" id="dlUrlInput" placeholder="https://www.tiktok.com/@user/video/…"
                            autocomplete="off">
-                    <button class="tool-search-btn" id="dlFetchBtn">
+                    <button class="tool-search-btn" id="dlFetchBtn" type="button">
                         <i class="fas fa-download"></i>
                         <span data-i18n="btn_fetch">Fetch</span></button></div>
                 <div class="tool-result-area" id="dlResultArea"></div>
@@ -1480,7 +1468,7 @@
                 <div class="tool-search"><i class="fas fa-cubes"></i>
                     <input type="text" id="mcSearchInput" placeholder="Search skins, mods, shaders..."
                            autocomplete="off">
-                    <button class="tool-search-btn" id="mcSearchBtn">
+                    <button class="tool-search-btn" id="mcSearchBtn" type="button">
                         <i class="fas fa-search"></i>
                         <span data-i18n="btn_search">Search</span></button></div>
                 <div class="tool-result-area" id="mcResultArea"></div>
@@ -1496,11 +1484,11 @@
         <div class="modal-header"><span><i class="fas fa-camera"
             style="color:var(--red-400);margin-right:6px;"></i>
             <span data-i18n="pp_title">Change Profile Photo</span></span>
-            <button class="icon-btn-sm" id="closeProfilePhotoModal" aria-label="Close">
+            <button class="icon-btn-sm" id="closeProfilePhotoModal" aria-label="Close" type="button">
                 <i class="fas fa-times"></i></button></div>
         <div class="modal-body" style="font-family:var(--font-ui);white-space:normal;">
             <button class="btn-secondary" id="ppChooseUploadBtn"
-                    style="width:100%;justify-content:center;">
+                    style="width:100%;justify-content:center;" type="button">
                 <i class="fas fa-images"></i>
                 <span data-i18n="pp_upload_gallery">Upload from gallery</span></button>
             <div style="text-align:center;font-size:0.72rem;color:var(--text-muted);margin:10px 0;"
@@ -1509,11 +1497,11 @@
                 <input type="text" id="ppLinkInput" placeholder="https://example.com/photo.jpg"
                        autocomplete="off"></div>
             <button class="btn-primary" id="ppUseLinkBtn"
-                    style="margin-top:10px;width:100%;justify-content:center;">
+                    style="margin-top:10px;width:100%;justify-content:center;" type="button">
                 <i class="fas fa-check"></i>
                 <span data-i18n="pp_use_link">Use This Link</span></button>
             <button class="btn-secondary btn-danger" id="ppRemoveBtn"
-                    style="margin-top:10px;width:100%;justify-content:center;">
+                    style="margin-top:10px;width:100%;justify-content:center;" type="button">
                 <i class="fas fa-trash"></i>
                 <span data-i18n="pp_remove">Remove Photo</span></button>
         </div>
@@ -1523,7 +1511,7 @@
 <!-- GC POPOVER -->
 <div id="gcProfilePopoverOverlay" class="profile-modal-overlay" hidden>
     <div class="profile-card gc-popover-card" role="dialog" aria-modal="true">
-        <button class="profile-card-close" id="gcPopoverClose" aria-label="Close">
+        <button class="profile-card-close" id="gcPopoverClose" aria-label="Close" type="button">
             <i class="fas fa-times"></i></button>
         <div class="profile-avatar-ring">
             <svg viewBox="0 0 104 104">
@@ -1543,10 +1531,20 @@
 
 <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SCRIPTS
+     Load order matters:
+       1. script.js    — main app logic
+       2. osint.js     — OSINT panel & school search
+       3. mhddos.js    — MHDDoS engine UI
+       4. exploit.js   — exploit suite (XSS/SQLi/Sniper/Takeover/Dirfuzz)
+       5. fixes.js     — patches Tools Hub, briefing, quick menu (load LAST)
+     ═══════════════════════════════════════════════════════════════════════ -->
 <script src="js/script.js" defer></script>
 <script src="js/osint.js" defer></script>
 <script src="js/mhddos.js" defer></script>
 <script src="js/exploit.js" defer></script>
+<script src="js/fixes.js" defer></script>
 
 </body>
 </html>
