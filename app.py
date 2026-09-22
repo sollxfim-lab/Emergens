@@ -2,7 +2,7 @@
 """
 Oxysintx / Emergens — app.py v5.0.0
 ═══════════════════════════════════════════════════════════════════════════
-Field Intelligence Console — full stack.
+Field Intelligence Console — full stack, gunicorn-ready.
 
 Integrated modules
     xss_exploiter v2.0.0    · reflected XSS + WAF bypass + SSE
@@ -28,29 +28,26 @@ import os
 import re
 import secrets
 import signal
-import string
 import sys
 import threading
 import time
 import uuid
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from importlib import import_module
 from pathlib import Path
 from queue import Empty as QueueEmpty
-from subprocess import Popen, PIPE
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+from subprocess import Popen
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import psutil
 import requests
-from bs4 import BeautifulSoup
 from flask import (
     Flask, render_template, request, jsonify, session, redirect,
-    send_from_directory, Response, g, stream_with_context, abort,
+    send_from_directory, Response, g, stream_with_context,
 )
 from werkzeug.exceptions import HTTPException
-from werkzeug.security import generate_password_hash, check_password_hash
 
 from config import Config
 from auth.user_store import (
@@ -71,12 +68,16 @@ from modules.telegram import (
 from modules.whatsapp import whatsapp_bp
 from ai_chat.chat_handler import ChatHandler
 
-# ── Optional imports ────────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════════════════
+# OPTIONAL IMPORTS
+# ═══════════════════════════════════════════════════════════════════════════
 def _try_import(name: str):
     try:
         return import_module(name), True
     except Exception:
         return None, False
+
 
 try:
     from modules.downsea import downsea_bp
@@ -174,8 +175,8 @@ MHDDOS_SCRIPT = _PROJECT_ROOT / "start.py"
 
 _VENV_WIN = _PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
 _VENV_UNIX = _PROJECT_ROOT / ".venv" / "bin" / "python"
-PYTHON_EXE = str(_VENV_WIN if _VENV_WIN.exists() else
-                 (_VENV_UNIX if _VENV_UNIX.exists() else sys.executable))
+PYTHON_EXE = str(_VENV_WIN if _VENV_WIN.exists()
+                 else (_VENV_UNIX if _VENV_UNIX.exists() else sys.executable))
 PROJECT_ROOT = str(_PROJECT_ROOT)
 
 DATA_DIR        = os.path.join(PROJECT_ROOT, "data")
@@ -185,15 +186,25 @@ WORDLIST_DIR    = _PROJECT_ROOT / "wordlist"
 MHDDOS_LOG_DIR  = _PROJECT_ROOT / "logs" / "mhddos"
 HTTP_LOGGER_DIR = _PROJECT_ROOT / "logs" / "http_logger"
 
-MAX_JSON_BODY_BYTES  = 12 * 1024 * 1024
-JOB_TTL_DEFAULT      = 1800
-HEARTBEAT_INTERVAL   = 10.0
-JOB_SWEEP_INTERVAL   = 60.0
-SERVER_START_TIME    = time.time()
+MAX_JSON_BODY_BYTES = 12 * 1024 * 1024
+JOB_TTL_DEFAULT     = 1800
+HEARTBEAT_INTERVAL  = 10.0
+JOB_SWEEP_INTERVAL  = 60.0
+SERVER_START_TIME   = time.time()
 
 CORS_ORIGINS = [o.strip() for o in
                 (os.getenv("EMERGENS_CORS_ORIGINS", "") or "").split(",")
                 if o.strip()]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# LOGGING (setup early so all imports log)
+# ═══════════════════════════════════════════════════════════════════════════
+try:
+    setup_logging(Config.SERVER_LOG_FILE)
+except Exception:
+    logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("oxysintx")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -204,17 +215,16 @@ class _Job:
                  "started_at", "finished_at", "results", "error",
                  "cancel", "options", "progress", "total", "done", "label")
 
-    def __init__(self, job_id: str, kind: str, target: str,
-                 options: Dict[str, Any]):
+    def __init__(self, job_id, kind, target, options):
         self.job_id = job_id
         self.kind = kind
         self.target = target
         self.status = "running"
         self.created = time.time()
         self.started_at = datetime.now(timezone.utc).isoformat()
-        self.finished_at: Optional[str] = None
-        self.results: Optional[Dict[str, Any]] = None
-        self.error: Optional[str] = None
+        self.finished_at = None
+        self.results = None
+        self.error = None
         self.cancel = threading.Event()
         self.options = options
         self.progress = 0
@@ -222,7 +232,7 @@ class _Job:
         self.done = 0
         self.label = "initializing"
 
-    def to_public(self, *, include_results: bool = False) -> Dict[str, Any]:
+    def to_public(self, *, include_results=False):
         out = {
             "job_id": self.job_id, "kind": self.kind, "target": self.target,
             "status": self.status, "created": self.created,
@@ -236,7 +246,7 @@ class _Job:
 
 
 class JobManager:
-    def __init__(self, ttl: float = JOB_TTL_DEFAULT, max_per_kind: int = 3):
+    def __init__(self, ttl=JOB_TTL_DEFAULT, max_per_kind=3):
         self._jobs: Dict[str, _Job] = {}
         self._lock = threading.RLock()
         self._ttl = float(ttl)
@@ -244,35 +254,35 @@ class JobManager:
         self._sweeper_started = False
 
     @property
-    def max_per_kind(self) -> int:
+    def max_per_kind(self):
         return self._max_per_kind
 
-    def new_id(self, prefix: str) -> str:
+    def new_id(self, prefix):
         return f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
 
-    def active_count(self, kind: str) -> int:
+    def active_count(self, kind):
         with self._lock:
             return sum(1 for j in self._jobs.values()
                        if j.kind == kind
                        and j.status in ("running", "cancelling"))
 
-    def can_start(self, kind: str) -> bool:
+    def can_start(self, kind):
         return self.active_count(kind) < self._max_per_kind
 
-    def register(self, job: _Job) -> None:
+    def register(self, job):
         with self._lock:
             self._jobs[job.job_id] = job
 
-    def get(self, job_id: str) -> Optional[_Job]:
+    def get(self, job_id):
         with self._lock:
             return self._jobs.get(job_id)
 
-    def list_by_kind(self, kind: Optional[str] = None) -> List[_Job]:
+    def list_by_kind(self, kind=None):
         with self._lock:
             return [j for j in self._jobs.values()
                     if kind is None or j.kind == kind]
 
-    def finish(self, job_id: str, *, results=None, error=None) -> None:
+    def finish(self, job_id, *, results=None, error=None):
         with self._lock:
             job = self._jobs.get(job_id)
             if not job:
@@ -284,7 +294,7 @@ class JobManager:
                           else ("failed" if error else "completed"))
             job.progress = 100
 
-    def cancel(self, job_id: str) -> Dict[str, Any]:
+    def cancel(self, job_id):
         with self._lock:
             job = self._jobs.get(job_id)
             if not job:
@@ -295,7 +305,7 @@ class JobManager:
             job.status = "cancelling"
             return {"success": True, "job_id": job_id}
 
-    def cancel_all(self, kind: Optional[str] = None) -> int:
+    def cancel_all(self, kind=None):
         n = 0
         with self._lock:
             for job in self._jobs.values():
@@ -307,8 +317,7 @@ class JobManager:
                     n += 1
         return n
 
-    def update_progress(self, job_id: str, done: int, total: int,
-                        label: str = "") -> None:
+    def update_progress(self, job_id, done, total, label=""):
         with self._lock:
             job = self._jobs.get(job_id)
             if not job:
@@ -318,7 +327,7 @@ class JobManager:
             job.label = label or job.label
             job.progress = int((done / total) * 100) if total else 0
 
-    def start_sweeper(self) -> None:
+    def start_sweeper(self):
         if self._sweeper_started:
             return
         self._sweeper_started = True
@@ -333,7 +342,7 @@ class JobManager:
 
         threading.Thread(target=_loop, daemon=True, name="job-sweeper").start()
 
-    def _sweep(self) -> None:
+    def _sweep(self):
         cutoff = time.time() - self._ttl
         with self._lock:
             for jid in [k for k, v in self._jobs.items() if v.created < cutoff]:
@@ -345,7 +354,7 @@ job_manager = JobManager()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# MHDDoS ENGINE
+# MHDDoS
 # ═══════════════════════════════════════════════════════════════════════════
 ALLOWED_PROXY_FILES = {"http.txt", "socks4.txt", "socks5.txt", "proxies.txt"}
 ALLOWED_REFLECTOR_FILES = {"reflectors.txt"}
@@ -432,7 +441,7 @@ def _mhddos_start_attack(attack_id, method, target, threads, duration,
         log_fh.write("$ " + " ".join(cmd) + "\n\n")
         log_fh.flush()
     except OSError as e:
-        return {"success": False, "error": f"cannot open log: {e}"}
+        return {"success": False, "error": f"cannot_open_log: {e}"}
     try:
         process = Popen(cmd, stdout=log_fh, stderr=log_fh, text=True,
                         cwd=PROJECT_ROOT)
@@ -443,7 +452,7 @@ def _mhddos_start_attack(attack_id, method, target, threads, duration,
             pass
         return {"success": False, "error": str(e)}
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     with _mhddos_lock:
         _mhddos_processes[attack_id] = {
             "process": process, "log_fh": log_fh, "log_path": str(log_path),
@@ -451,12 +460,12 @@ def _mhddos_start_attack(attack_id, method, target, threads, duration,
             "duration": duration, "proxy_type": proxy_type,
             "proxy_file": proxy_file, "rpc": rpc,
             "reflector_file": reflector_file, "debug": debug,
-            "started_at": now_iso, "status": "running",
+            "started_at": now, "status": "running",
         }
         _mhddos_history.append({
             "attack_id": attack_id, "method": method, "target": target,
             "threads": threads, "duration": duration,
-            "started_at": now_iso, "status": "running",
+            "started_at": now, "status": "running",
         })
         if len(_mhddos_history) > _MHDDOS_HISTORY_LIMIT:
             del _mhddos_history[:-_MHDDOS_HISTORY_LIMIT]
@@ -529,7 +538,7 @@ def _mhddos_stop_attack(attack_id):
     with _mhddos_lock:
         info = _mhddos_processes.get(attack_id)
         if not info:
-            return {"success": False, "error": "Attack not found"}
+            return {"success": False, "error": "not_found"}
         try:
             if os.name == "nt":
                 info["process"].kill()
@@ -595,8 +604,8 @@ def _serialise_mhddos(entry, include_runtime=False):
 def _mhddos_get_status(attack_id=None):
     with _mhddos_lock:
         if attack_id:
-            entry = _mhddos_processes.get(attack_id)
-            return _serialise_mhddos(entry, True) if entry else None
+            e = _mhddos_processes.get(attack_id)
+            return _serialise_mhddos(e, True) if e else None
         return {
             "running": [_serialise_mhddos(v, True)
                         for v in _mhddos_processes.values()
@@ -640,9 +649,6 @@ if _downsea_available:
     app.register_blueprint(downsea_bp)
 if _quick_menu_available and _quick_menu_bp is not None:
     app.register_blueprint(_quick_menu_bp)
-
-setup_logging(Config.SERVER_LOG_FILE)
-logger = logging.getLogger("oxysintx")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -693,7 +699,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 _json_locks: Dict[str, threading.Lock] = defaultdict(threading.Lock)
 
 
-def _load_json(name: str, default: Any) -> Any:
+def _load_json(name, default):
     path = os.path.join(DATA_DIR, f"{name}.json")
     with _json_locks[name]:
         if not os.path.exists(path):
@@ -713,7 +719,7 @@ def _load_json(name: str, default: Any) -> Any:
             return default
 
 
-def _save_json(name: str, data: Any) -> None:
+def _save_json(name, data):
     path = os.path.join(DATA_DIR, f"{name}.json")
     tmp = path + ".tmp"
     bak = path + ".bak"
@@ -733,15 +739,15 @@ def _save_json(name: str, data: Any) -> None:
         os.replace(tmp, path)
 
 
-def _json_lock(name: str) -> threading.Lock:
+def _json_lock(name):
     return _json_locks[name]
 
 
-def _now_iso() -> str:
+def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
-def _client_ip() -> str:
+def _client_ip():
     fwd = request.headers.get("X-Forwarded-For", "")
     if fwd:
         return fwd.split(",")[0].strip()
@@ -749,7 +755,7 @@ def _client_ip() -> str:
     return real or request.remote_addr or "unknown"
 
 
-def _json_body() -> Dict[str, Any]:
+def _json_body():
     data = request.get_json(silent=True)
     return data if isinstance(data, dict) else {}
 
@@ -779,7 +785,7 @@ def _before_mw():
 
 
 @app.after_request
-def _after_mw(response: Response) -> Response:
+def _after_mw(response):
     req_id = getattr(g, "request_id", None)
     if req_id:
         response.headers.setdefault("X-Request-ID", req_id)
@@ -787,10 +793,8 @@ def _after_mw(response: Response) -> Response:
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     if os.getenv("EMERGENS_HSTS", "0") == "1":
-        response.headers.setdefault(
-            "Strict-Transport-Security",
-            "max-age=31536000; includeSubDomains")
-
+        response.headers.setdefault("Strict-Transport-Security",
+                                     "max-age=31536000; includeSubDomains")
     origin = request.headers.get("Origin")
     if origin and (origin in CORS_ORIGINS or "*" in CORS_ORIGINS):
         response.headers["Access-Control-Allow-Origin"] = origin
@@ -800,7 +804,6 @@ def _after_mw(response: Response) -> Response:
             "Content-Type, Authorization, X-API-Key, X-Request-ID"
         response.headers["Access-Control-Allow-Methods"] = \
             "GET, POST, PUT, DELETE, OPTIONS"
-
     if 500 <= response.status_code < 600:
         elapsed = round((time.monotonic() -
                          getattr(g, "request_started", time.monotonic())) * 1000, 1)
@@ -818,7 +821,7 @@ def _handle_preflight():
         return ("", 204)
 
 
-def _inbound_stats() -> Tuple[int, int]:
+def _inbound_stats():
     with _request_log_lock:
         return _total_requests_seen, len(_request_timestamps)
 
@@ -826,12 +829,12 @@ def _inbound_stats() -> Tuple[int, int]:
 # ═══════════════════════════════════════════════════════════════════════════
 # ERROR HANDLERS
 # ═══════════════════════════════════════════════════════════════════════════
-def _wants_json() -> bool:
+def _wants_json():
     return (request.path.startswith("/api/")
             or "application/json" in request.headers.get("Accept", "").lower())
 
 
-def _err(code: int, message: str, **extra) -> Response:
+def _err(code, message, **extra):
     payload = {"error": message, "code": code}
     if hasattr(g, "request_id"):
         payload["request_id"] = g.request_id
@@ -840,56 +843,38 @@ def _err(code: int, message: str, **extra) -> Response:
 
 
 @app.errorhandler(400)
-def _e400(e):
-    return _err(400, "bad_request") if _wants_json() else e
-
+def _e400(e): return _err(400, "bad_request") if _wants_json() else e
 @app.errorhandler(401)
-def _e401(e):
-    return _err(401, "unauthorized") if _wants_json() else e
-
+def _e401(e): return _err(401, "unauthorized") if _wants_json() else e
 @app.errorhandler(403)
-def _e403(e):
-    return _err(403, "forbidden") if _wants_json() else e
-
+def _e403(e): return _err(403, "forbidden") if _wants_json() else e
 @app.errorhandler(405)
-def _e405(e):
-    return _err(405, "method_not_allowed") if _wants_json() else e
-
+def _e405(e): return _err(405, "method_not_allowed") if _wants_json() else e
 @app.errorhandler(413)
-def _e413(e):
-    logger.warning("413 from %s — size=%s",
-                   _client_ip(), request.content_length or "?")
-    return _err(413, "payload_too_large", max_bytes=MAX_JSON_BODY_BYTES)
-
+def _e413(e): return _err(413, "payload_too_large", max_bytes=MAX_JSON_BODY_BYTES)
 @app.errorhandler(429)
-def _e429(e):
-    return _err(429, "too_many_requests")
-
+def _e429(e): return _err(429, "too_many_requests")
 @app.errorhandler(500)
 def _e500(e):
     logger.exception("500 on %s %s", request.method, request.path)
     return _err(500, "internal_server_error")
-
 @app.errorhandler(502)
-def _e502(e):
-    return _err(502, "bad_gateway")
-
+def _e502(e): return _err(502, "bad_gateway")
 @app.errorhandler(503)
-def _e503(e):
-    return _err(503, "service_unavailable")
-
+def _e503(e): return _err(503, "service_unavailable")
 @app.errorhandler(504)
-def _e504(e):
-    return _err(504, "gateway_timeout")
+def _e504(e): return _err(504, "gateway_timeout")
+
 
 @app.errorhandler(HTTPException)
-def _e_http(e: HTTPException):
+def _e_http(e):
     if _wants_json():
         return _err(e.code or 500, (e.name or "error").lower().replace(" ", "_"))
     return e
 
+
 @app.errorhandler(Exception)
-def _e_uncaught(e: Exception):
+def _e_uncaught(e):
     logger.exception("Uncaught on %s %s", request.method, request.path)
     if _wants_json():
         return _err(500, "internal_server_error", detail=type(e).__name__)
@@ -897,10 +882,9 @@ def _e_uncaught(e: Exception):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SSE HELPER
+# SSE
 # ═══════════════════════════════════════════════════════════════════════════
-def sse_response(generator: Iterator[Any],
-                 heartbeat: float = HEARTBEAT_INTERVAL) -> Response:
+def sse_response(generator, heartbeat=HEARTBEAT_INTERVAL):
     def _gen():
         try:
             yield ": connected\n\n"
@@ -912,15 +896,12 @@ def sse_response(generator: Iterator[Any],
                     yield event if event.endswith("\n\n") else f"{event}\n\n"
                     last_hb = time.time()
                     continue
-
                 now = time.time()
                 if now - last_hb > heartbeat:
                     yield (f"data: {json.dumps({'type': 'heartbeat', 'elapsed': round(now - last_hb, 2)})}\n\n")
                     last_hb = now
-
                 if not isinstance(event, dict):
                     event = {"type": "message", "data": event}
-
                 yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
                 if event.get("type") in ("complete", "result", "error"):
                     yield ": flush\n\n"
@@ -949,11 +930,11 @@ def sse_response(generator: Iterator[Any],
 # ═══════════════════════════════════════════════════════════════════════════
 # API KEY HELPERS
 # ═══════════════════════════════════════════════════════════════════════════
-def _hash_api_key(raw_key: str) -> str:
+def _hash_api_key(raw_key):
     return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
 
 
-def _public_key_view(k: Dict[str, Any]) -> Dict[str, Any]:
+def _public_key_view(k):
     return {
         "prefix": k.get("prefix") or k.get("key_prefix"),
         "created": k.get("created_at") or k.get("created"),
@@ -962,7 +943,7 @@ def _public_key_view(k: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _record_server_activity(prefix: str, username: str, req) -> None:
+def _record_server_activity(prefix, username, req):
     reported = (req.headers.get("X-Server-Name")
                 or (req.get_json(silent=True) or {}).get("server_name")
                 or None)
@@ -985,7 +966,7 @@ def _record_server_activity(prefix: str, username: str, req) -> None:
         _save_json("servers", servers)
 
 
-def _find_api_key_owner(raw_key: str) -> Optional[Dict[str, Any]]:
+def _find_api_key_owner(raw_key):
     try:
         keys = user_store.get_api_keys()
     except Exception:
@@ -1002,7 +983,7 @@ def _find_api_key_owner(raw_key: str) -> Optional[Dict[str, Any]]:
 
 def _api_key_required(fn):
     @wraps(fn)
-    def wrapper(*args, **kwargs):
+    def wrapper(*a, **kw):
         raw = request.headers.get("X-API-Key", "").strip()
         if not raw:
             return jsonify({"error": "Missing X-API-Key"}), 401
@@ -1017,7 +998,7 @@ def _api_key_required(fn):
             pass
         _record_server_activity(prefix, owner, request)
         g.api_key_owner = owner
-        return fn(*args, **kwargs)
+        return fn(*a, **kw)
     return wrapper
 
 
@@ -1047,7 +1028,7 @@ def _load_plans():
     return _default_plans.copy()
 
 
-def _save_plans(plans) -> bool:
+def _save_plans(plans):
     try:
         with _payment_lock:
             with open(PAYMENT_PLANS_FILE, "w") as f:
@@ -1057,7 +1038,7 @@ def _save_plans(plans) -> bool:
         return False
 
 
-def _load_payments() -> List[Dict]:
+def _load_payments():
     if os.path.exists(PAYMENT_DATA_FILE):
         try:
             with open(PAYMENT_DATA_FILE) as f:
@@ -1067,7 +1048,7 @@ def _load_payments() -> List[Dict]:
     return []
 
 
-def _save_payments(p) -> bool:
+def _save_payments(p):
     try:
         with _payment_lock:
             with open(PAYMENT_DATA_FILE, "w") as f:
@@ -1089,7 +1070,7 @@ _failed_attempts: Dict[str, List[float]] = defaultdict(list)
 _failed_lock = threading.Lock()
 
 
-def _is_locked_out(ip: str) -> bool:
+def _is_locked_out(ip):
     now = time.time()
     with _failed_lock:
         _failed_attempts[ip] = [t for t in _failed_attempts[ip]
@@ -1097,7 +1078,7 @@ def _is_locked_out(ip: str) -> bool:
         return len(_failed_attempts[ip]) >= MAX_LOGIN_ATTEMPTS
 
 
-def _record_failed(ip: str) -> None:
+def _record_failed(ip):
     with _failed_lock:
         _failed_attempts[ip].append(time.time())
 
@@ -1105,12 +1086,12 @@ def _record_failed(ip: str) -> None:
 # ═══════════════════════════════════════════════════════════════════════════
 # AUTH
 # ═══════════════════════════════════════════════════════════════════════════
-def _extract_bearer() -> str:
+def _extract_bearer():
     a = request.headers.get("Authorization", "")
     return a[7:] if a.startswith("Bearer ") else ""
 
 
-def _authenticate_request() -> bool:
+def _authenticate_request():
     username = session.get("username")
     if username:
         role = get_role(username)
@@ -1188,7 +1169,7 @@ def owner_required(f):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# HEALTH / READY / VERSION
+# HEALTH
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/health")
 def api_health():
@@ -1259,108 +1240,73 @@ def dashboard_page():
 
 
 @app.route("/payment.html")
-def payment_page():
-    return render_template("payment.html")
-
+def payment_page(): return render_template("payment.html")
 
 @app.route("/management_payment.html")
 @role_required("owner")
-def management_payment_page():
-    return render_template("management_payment.html")
-
+def management_payment_page(): return render_template("management_payment.html")
 
 @app.route("/api_key_request_token.html")
-def api_key_request_token_page():
-    return render_template("api_key_request_token.html")
-
+def api_key_request_token_page(): return render_template("api_key_request_token.html")
 
 @app.route("/api/api_key_request_token.html")
-def api_key_request_token_api_page():
-    return render_template("api_key_request_token.html")
-
+def api_key_request_token_api_page(): return render_template("api_key_request_token.html")
 
 @app.route("/downloader_pinterest_tiktok.html")
 @login_required
-def downloader_pinterest_tiktok_page():
-    return render_template("downloader_pinterest_tiktok.html")
-
+def downloader_pinterest_tiktok_page(): return render_template("downloader_pinterest_tiktok.html")
 
 @app.route("/data_main.html")
 @login_required
-def data_main_redirect():
-    return redirect("/downloader_pinterest_tiktok.html")
-
+def data_main_redirect(): return redirect("/downloader_pinterest_tiktok.html")
 
 @app.route("/code_test.html")
-def code_test_page():
-    return render_template("code_test.html")
-
+def code_test_page(): return render_template("code_test.html")
 
 @app.route("/remote_access.html")
 @login_required
-def remote_access_page():
-    return render_template("remote_access.html")
-
+def remote_access_page(): return render_template("remote_access.html")
 
 @app.route("/emergens-control-m4ddos.html")
 @login_required
-def emergens_control_m4ddos_page():
-    return render_template("emergens-control-m4ddos.html")
-
+def emergens_control_m4ddos_page(): return render_template("emergens-control-m4ddos.html")
 
 @app.route("/MyEspT.html")
 @login_required
-def MyEspT_page():
-    return render_template("MyEspT.html")
-
+def MyEspT_page(): return render_template("MyEspT.html")
 
 @app.route("/quick_menu_setting.html")
 @login_required
-def quick_menu_setting_page():
-    return render_template("quick_menu_setting.html")
-
+def quick_menu_setting_page(): return render_template("quick_menu_setting.html")
 
 @app.route("/Emergens_osint.html")
 @login_required
-def emergens_osint_page():
-    return render_template("Emergens_osint.html")
-
+def emergens_osint_page(): return render_template("Emergens_osint.html")
 
 @app.route("/structure_folder_file.html")
 @login_required
-def structure_folder_file_page():
-    return render_template("structure_folder_file.html")
-
+def structure_folder_file_page(): return render_template("structure_folder_file.html")
 
 @app.route("/password_lock.html")
-def password_lock_page():
-    return render_template("password_lock.html")
-
+def password_lock_page(): return render_template("password_lock.html")
 
 @app.route("/Emergens_DB.html")
 @login_required
-def emergens_db_page():
-    return render_template("Emergens_DB.html")
-
+def emergens_db_page(): return render_template("Emergens_DB.html")
 
 @app.route("/docs.html")
 @login_required
-def docs_page():
-    return render_template("docs.html")
-
+def docs_page(): return render_template("docs.html")
 
 @app.route("/privacy.html")
-def privacy_page():
-    return render_template("privacy.html")
-
+def privacy_page(): return render_template("privacy.html")
 
 @app.route("/terms.html")
-def terms_page():
-    return render_template("terms.html")
+def terms_page(): return render_template("terms.html")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STATIC ASSETS
+# STATIC
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/<path:filename>")
 def serve_template_assets(filename):
@@ -1392,13 +1338,11 @@ def submit_payment():
     amount = (d.get("amount") or "").strip()
     req_user = (d.get("requested_username") or "").strip()
     if not plan or not amount or not req_user:
-        return jsonify({"error": "plan, amount, requested_username required"}), 400
-    plans = _load_plans()
-    if plan not in plans:
-        return jsonify({"error": "Invalid plan"}), 400
+        return jsonify({"error": "plan_amount_username_required"}), 400
+    if plan not in _load_plans():
+        return jsonify({"error": "invalid_plan"}), 400
     if user_store.user_exists(req_user):
-        return jsonify({"error": "Username already taken"}), 400
-
+        return jsonify({"error": "username_taken"}), 400
     pid = "PAY-" + uuid.uuid4().hex[:10].upper()
     rec = {
         "payment_id": pid, "user": session.get("username", "guest"),
@@ -1448,11 +1392,11 @@ def manage_get_plans():
 def manage_update_plans():
     np = _json_body().get("plans")
     if not isinstance(np, dict):
-        return jsonify({"error": "Invalid"}), 400
+        return jsonify({"error": "invalid"}), 400
     global payment_plans
     payment_plans = np
-    return jsonify({"success": True, "plans": payment_plans}) if _save_plans(np) \
-           else (jsonify({"error": "save failed"}), 500)
+    return (jsonify({"success": True, "plans": np}) if _save_plans(np)
+            else (jsonify({"error": "save_failed"}), 500))
 
 
 @app.route("/api/payment/manage/pending")
@@ -1475,7 +1419,7 @@ def manage_approve(payment_id):
     for r in ps:
         if r["payment_id"] == payment_id:
             if r["status"] != "pending":
-                return jsonify({"error": "already processed"}), 400
+                return jsonify({"error": "already_processed"}), 400
             pw = uuid.uuid4().hex[:12]
             try:
                 create_user(r["requested_username"], role="analyst", password=pw)
@@ -1484,9 +1428,11 @@ def manage_approve(payment_id):
                 r["status"] = "approved"
                 r["updated_at"] = _now_iso()
                 _save_payments(ps)
-                return jsonify({"success": True, "payment_id": r["payment_id"],
+                return jsonify({"success": True,
+                                "payment_id": r["payment_id"],
                                 "generated_username": r["generated_username"],
-                                "generated_password": pw, "role": "analyst"})
+                                "generated_password": pw,
+                                "role": "analyst"})
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
     return jsonify({"error": "not_found"}), 404
@@ -1499,7 +1445,7 @@ def manage_reject(payment_id):
     for r in ps:
         if r["payment_id"] == payment_id:
             if r["status"] != "pending":
-                return jsonify({"error": "already processed"}), 400
+                return jsonify({"error": "already_processed"}), 400
             r["status"] = "rejected"
             r["updated_at"] = _now_iso()
             _save_payments(ps)
@@ -1544,9 +1490,8 @@ def api_login():
     if _is_locked_out(ip):
         return jsonify({"error": "too_many_attempts"}), 429
     d = _json_body()
-    if verify_credentials((d.get("username") or "").strip(),
-                          d.get("password") or ""):
-        u = (d.get("username") or "").strip()
+    u = (d.get("username") or "").strip()
+    if verify_credentials(u, d.get("password") or ""):
         session["authenticated"] = True
         session["username"] = u
         session["role"] = get_role(u)
@@ -1590,7 +1535,7 @@ def api_me():
 # ═══════════════════════════════════════════════════════════════════════════
 # REGISTER
 # ═══════════════════════════════════════════════════════════════════════════
-def _is_valid_email(email: str) -> bool:
+def _is_valid_email(email):
     return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email)
                 or re.match(r"^[a-zA-Z0-9._-]+@emergens\.id$", email))
 
@@ -1652,7 +1597,7 @@ def api_create_account():
 @role_required("owner")
 def api_delete_user(username):
     if username == session.get("username"):
-        return jsonify({"error": "cannot delete your own account"}), 400
+        return jsonify({"error": "cannot_delete_self"}), 400
     ok, err = delete_user(username)
     if not ok:
         return jsonify({"error": err}), 400
@@ -1683,7 +1628,7 @@ def api_revoke_api_key(prefix):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# TOOLS / SCAN API
+# SCAN / TOOLS
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/tools")
 @api_login_required
@@ -1808,7 +1753,7 @@ def api_jobs_cancel_all():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# LEAKDATA / HISTORY / SYSTEM / LOGS
+# LEAKDATA / HISTORY / SYSTEM / LOGS / SOURCE
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/leakdata/search", methods=["GET", "POST"])
 @api_login_required
@@ -1920,7 +1865,7 @@ def api_fetch_source():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# AI CHAT / SCHOOL / TELEGRAM / CODE TEST
+# AI CHAT / SCHOOL / TELEGRAM
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/chat", methods=["POST"])
 @role_required("owner", "analyst")
@@ -1946,8 +1891,7 @@ def api_chat_clear():
 def api_school_search():
     try:
         from modules import scan_school
-        return jsonify(scan_school.run(
-            request.args.get("q", "").strip())["data"])
+        return jsonify(scan_school.run(request.args.get("q", "").strip())["data"])
     except ImportError:
         return jsonify({"error": "school_module_unavailable"}), 503
 
@@ -1968,8 +1912,7 @@ def api_telegram_connect():
         return jsonify({"error": "token_and_username_required"}), 400
     ok, msg = connect_bot(tok, user, (d.get("owner_id") or "").strip(),
                           d.get("public_mode", True))
-    return jsonify(get_bot_status()) if ok else \
-           (jsonify({"error": msg}), 500)
+    return jsonify(get_bot_status()) if ok else (jsonify({"error": msg}), 500)
 
 
 @app.route("/api/telegram/disconnect", methods=["POST"])
@@ -1988,19 +1931,21 @@ def api_telegram_update_settings():
         s["owner_id"] = str(d["owner_id"]).strip()
     if "public_mode" in d:
         s["public_mode"] = bool(d["public_mode"])
-    return jsonify(update_bot_settings(**s)) if s else \
-           (jsonify({"error": "no_settings"}), 400)
+    return (jsonify(update_bot_settings(**s)) if s
+            else (jsonify({"error": "no_settings"}), 400))
 
 
 @app.route("/api/telegram/broadcast", methods=["POST"])
 @role_required("owner", "analyst")
 def api_telegram_broadcast():
     msg = (_json_body().get("message") or "").strip()
-    return jsonify(broadcast_message(msg)) if msg else \
-           (jsonify({"error": "message_required"}), 400)
+    return (jsonify(broadcast_message(msg)) if msg
+            else (jsonify({"error": "message_required"}), 400))
 
 
-# ── Code test ──────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════
+# CODE TEST
+# ═══════════════════════════════════════════════════════════════════════════
 def _require_testing():
     return None if _testing_available else (jsonify({"error": "testing_unavailable"}), 503)
 
@@ -2011,8 +1956,8 @@ def api_code_test_read():
     g_ = _require_testing()
     if g_: return g_
     p = request.args.get("path", "").strip()
-    return jsonify(code_test_module.read_file(p)) if p else \
-           (jsonify({"error": "path_required"}), 400)
+    return (jsonify(code_test_module.read_file(p)) if p
+            else (jsonify({"error": "path_required"}), 400))
 
 
 @app.route("/api/code_test/write", methods=["POST"])
@@ -2022,8 +1967,8 @@ def api_code_test_write():
     if g_: return g_
     d = _json_body()
     fp = (d.get("file_path") or "").strip()
-    return jsonify(code_test_module.write_file(fp, d.get("content", ""))) if fp \
-           else (jsonify({"error": "file_path_required"}), 400)
+    return (jsonify(code_test_module.write_file(fp, d.get("content", "")))
+            if fp else (jsonify({"error": "file_path_required"}), 400))
 
 
 @app.route("/api/code_test/run", methods=["POST"])
@@ -2063,8 +2008,8 @@ def api_code_test_backup():
     g_ = _require_testing()
     if g_: return g_
     fp = _json_body().get("file_path")
-    return jsonify(code_test_module.backup_file(fp)) if fp else \
-           (jsonify({"error": "file_path_required"}), 400)
+    return (jsonify(code_test_module.backup_file(fp)) if fp
+            else (jsonify({"error": "file_path_required"}), 400))
 
 
 @app.route("/api/code_test/backup_all", methods=["POST"])
@@ -2073,20 +2018,6 @@ def api_code_test_backup_all():
     g_ = _require_testing()
     if g_: return g_
     return jsonify(code_test_module.backup_all_source_files())
-
-
-@app.route("/api/code_test/scan", methods=["POST"])
-@api_login_required
-def api_code_test_scan():
-    d = _json_body()
-    target = (d.get("target") or "").strip()
-    mode = d.get("mode", "basic")
-    if not target:
-        return jsonify({"error": "target_required"}), 400
-    if mode not in ("basic", "expert"):
-        mode = "basic"
-    return jsonify({"job_id": scan_orchestrator.start_scan(
-        target, mode, d.get("tools", []), history_store)})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2118,7 +2049,7 @@ def mhddos_start():
         proxy_type = int(d.get("proxy_type", 0))
         rpc = int(d.get("rpc", 1))
     except (TypeError, ValueError):
-        return jsonify({"error": "invalid numeric parameter"}), 400
+        return jsonify({"error": "invalid_numeric_parameter"}), 400
     if not method or not target:
         return jsonify({"error": "method_and_target_required"}), 400
     if method not in _MHDDOS_METHODS:
@@ -2129,18 +2060,15 @@ def mhddos_start():
         return jsonify({"error": "duration_out_of_range"}), 400
     if proxy_type not in VALID_PROXY_TYPES:
         return jsonify({"error": "invalid_proxy_type"}), 400
-
     proxy_file = Path((d.get("proxy_file") or "proxies.txt").strip()).name
     reflector_file = Path((d.get("reflector_file") or "").strip()).name
     debug = bool(d.get("debug", False))
-
     if method in _MHDDOS_LAYER7:
         miss = [str(p) for p in REQUIRED_L7_FILES
                 if not (Path(PROJECT_ROOT) / p).exists()]
         if miss:
             return jsonify({"error": "engine_missing_files",
                             "detail": ", ".join(miss)}), 500
-
     attack_id = "MHD-" + uuid.uuid4().hex[:8].upper()
     res = _mhddos_start_attack(attack_id, method, target, threads,
                                 duration, proxy_type, proxy_file, rpc,
@@ -2232,7 +2160,7 @@ def mhddos_preview():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# EXPLOIT SUITE — wordlists aggregator
+# WORDLISTS
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/exploit/wordlists")
 @login_required
@@ -2249,7 +2177,7 @@ def api_exploit_wordlists():
 # ═══════════════════════════════════════════════════════════════════════════
 # DIRFUZZ
 # ═══════════════════════════════════════════════════════════════════════════
-def _dirfuzz_opts(body: Dict[str, Any]) -> Dict[str, Any]:
+def _dirfuzz_opts(body):
     def _i(k, d, lo, hi):
         try: return max(lo, min(hi, int(body.get(k, d))))
         except (TypeError, ValueError): return d
@@ -2260,13 +2188,13 @@ def _dirfuzz_opts(body: Dict[str, Any]) -> Dict[str, Any]:
         v = body.get(k, d)
         return bool(v) if v is not None else d
     return {
-        "wordlist_name":    (body.get("wordlist_name") or "lottery-dirs.txt").strip(),
-        "wordlist":         body.get("wordlist") or None,
-        "max_paths":        _i("max_paths", 300, 10, 2000),
-        "concurrency":      _i("concurrency", 24, 1, 64),
-        "rate_limit":       _f("rate_limit", 40.0, 1.0, 200.0),
-        "timeout":          _f("timeout", 4.0, 1.0, 15.0),
-        "max_duration":     _f("max_duration", 90.0, 10.0, 300.0),
+        "wordlist_name": (body.get("wordlist_name") or "lottery-dirs.txt").strip(),
+        "wordlist": body.get("wordlist") or None,
+        "max_paths": _i("max_paths", 300, 10, 2000),
+        "concurrency": _i("concurrency", 24, 1, 64),
+        "rate_limit": _f("rate_limit", 40.0, 1.0, 200.0),
+        "timeout": _f("timeout", 4.0, 1.0, 15.0),
+        "max_duration": _f("max_duration", 90.0, 10.0, 300.0),
         "follow_redirects": _b("follow_redirects", False),
     }
 
@@ -2275,7 +2203,7 @@ def _dirfuzz_opts(body: Dict[str, Any]) -> Dict[str, Any]:
 @login_required
 def api_dirfuzz_start():
     if not _dirfuzz_available or dirfuzz_module is None:
-        return jsonify({"error": "dirfuzz module not available"}), 503
+        return jsonify({"error": "dirfuzz_module_not_available"}), 503
     d = _json_body()
     base = (d.get("base") or d.get("url") or "").strip()
     if not base:
@@ -2283,7 +2211,6 @@ def api_dirfuzz_start():
     if not job_manager.can_start("dirfuzz"):
         return jsonify({"error": "too_many_active_jobs",
                         "limit": job_manager.max_per_kind}), 429
-
     job_id = job_manager.new_id("DRF")
     opts = _dirfuzz_opts(d)
     job = _Job(job_id, "dirfuzz", base, opts)
@@ -2303,7 +2230,8 @@ def api_dirfuzz_start():
 
     threading.Thread(target=_worker, daemon=True,
                      name=f"drf-{job_id}").start()
-    return jsonify({"job_id": job_id, "status": "running", "options": opts}), 202
+    return jsonify({"job_id": job_id, "status": "running",
+                    "options": opts}), 202
 
 
 @app.route("/api/exploit/dirfuzz/status/<job_id>")
@@ -2328,10 +2256,10 @@ def api_dirfuzz_cancel(job_id):
 @login_required
 def api_dirfuzz_wordlists():
     if not _dirfuzz_available or dirfuzz_module is None:
-        return jsonify({"error": "dirfuzz module not available"}), 503
+        return jsonify({"error": "dirfuzz_module_not_available"}), 503
     return jsonify({
         "wordlists": dirfuzz_module.list_wordlists(),
-        "sources":   getattr(dirfuzz_module, "WORDLIST_SOURCES", {}),
+        "sources": getattr(dirfuzz_module, "WORDLIST_SOURCES", {}),
     })
 
 
@@ -2339,7 +2267,7 @@ def api_dirfuzz_wordlists():
 @login_required
 def api_dirfuzz_stream():
     if not _dirfuzz_available or dirfuzz_module is None:
-        return jsonify({"error": "dirfuzz module not available"}), 503
+        return jsonify({"error": "dirfuzz_module_not_available"}), 503
     d = _json_body()
     base = (d.get("base") or d.get("url") or "").strip()
     if not base:
@@ -2350,7 +2278,7 @@ def api_dirfuzz_stream():
 # ═══════════════════════════════════════════════════════════════════════════
 # XSS
 # ═══════════════════════════════════════════════════════════════════════════
-def _xss_opts(body: Dict[str, Any]) -> Dict[str, Any]:
+def _xss_opts(body):
     def _i(k, d, lo, hi):
         try: return max(lo, min(hi, int(body.get(k, d))))
         except (TypeError, ValueError): return d
@@ -2377,17 +2305,16 @@ def _xss_opts(body: Dict[str, Any]) -> Dict[str, Any]:
 @login_required
 def api_xss_start():
     if not _xss_available or xss_module is None:
-        return jsonify({"error": "xss_exploiter module not available"}), 503
+        return jsonify({"error": "xss_module_not_available"}), 503
     d = _json_body()
     url = (d.get("url") or "").strip()
     if not url:
-        return jsonify({"error": "URL required"}), 400
+        return jsonify({"error": "url_required"}), 400
     if not url.startswith(("http://", "https://")):
         url = "http://" + url
     if not job_manager.can_start("xss"):
         return jsonify({"error": "too_many_active_jobs",
                         "limit": job_manager.max_per_kind}), 429
-
     job_id = job_manager.new_id("XSS")
     opts = _xss_opts(d)
     job = _Job(job_id, "xss", url, opts)
@@ -2407,7 +2334,8 @@ def api_xss_start():
 
     threading.Thread(target=_worker, daemon=True,
                      name=f"xss-{job_id}").start()
-    return jsonify({"job_id": job_id, "status": "running", "options": opts}), 202
+    return jsonify({"job_id": job_id, "status": "running",
+                    "options": opts}), 202
 
 
 @app.route("/api/exploit/xss/status/<job_id>")
@@ -2431,20 +2359,21 @@ def api_xss_cancel(job_id):
 @app.route("/api/exploit/xss/jobs")
 @login_required
 def api_xss_jobs():
-    return jsonify({"jobs": [j.to_public() for j in job_manager.list_by_kind("xss")]})
+    return jsonify({"jobs": [j.to_public()
+                              for j in job_manager.list_by_kind("xss")]})
 
 
 @app.route("/api/exploit/xss/stream", methods=["POST"])
 @login_required
 def api_xss_stream():
     if not _xss_available or xss_module is None:
-        return jsonify({"error": "xss_exploiter module not available"}), 503
+        return jsonify({"error": "xss_module_not_available"}), 503
     if not hasattr(xss_module, "run_streaming"):
         return jsonify({"error": "stream_not_supported"}), 501
     d = _json_body()
     url = (d.get("url") or "").strip()
     if not url:
-        return jsonify({"error": "URL required"}), 400
+        return jsonify({"error": "url_required"}), 400
     if not url.startswith(("http://", "https://")):
         url = "http://" + url
     return sse_response(xss_module.run_streaming(url, _xss_opts(d)))
@@ -2454,11 +2383,11 @@ def api_xss_stream():
 @login_required
 def api_xss_legacy():
     if not _xss_available or xss_module is None:
-        return jsonify({"error": "xss_exploiter module not available"}), 503
+        return jsonify({"error": "xss_module_not_available"}), 503
     d = _json_body()
     url = (d.get("url") or "").strip()
     if not url:
-        return jsonify({"error": "URL required"}), 400
+        return jsonify({"error": "url_required"}), 400
     if not url.startswith(("http://", "https://")):
         url = "http://" + url
     try:
@@ -2505,9 +2434,9 @@ def api_xss_wordlist_refresh():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SQL INJECTION (native sqli_engine)
+# SQLi
 # ═══════════════════════════════════════════════════════════════════════════
-def _sqli_opts(body: Dict[str, Any]) -> Dict[str, Any]:
+def _sqli_opts(body):
     def _i(k, d, lo, hi):
         try: return max(lo, min(hi, int(body.get(k, d))))
         except (TypeError, ValueError): return d
@@ -2518,9 +2447,9 @@ def _sqli_opts(body: Dict[str, Any]) -> Dict[str, Any]:
     techs = body.get("techniques") or ["error", "boolean", "time", "union"]
     if not isinstance(techs, list):
         techs = ["error", "boolean", "time", "union"]
-    techs = [t for t in techs if t in ("error", "boolean", "time", "union")][:4] \
-            or ["error", "boolean", "time"]
-
+    techs = [t for t in techs
+             if t in ("error", "boolean", "time", "union")][:4] or \
+            ["error", "boolean", "time"]
     return {
         "techniques":   techs,
         "params":       body.get("params") or None,
@@ -2539,7 +2468,7 @@ def _sqli_opts(body: Dict[str, Any]) -> Dict[str, Any]:
 @login_required
 def api_sqli_start():
     if not _sqli_available or sqli_module is None:
-        return jsonify({"error": "sqli_engine module not available"}), 503
+        return jsonify({"error": "sqli_module_not_available"}), 503
     d = _json_body()
     url = (d.get("url") or "").strip()
     if not url:
@@ -2549,7 +2478,6 @@ def api_sqli_start():
     if not job_manager.can_start("sqli"):
         return jsonify({"error": "too_many_active_jobs",
                         "limit": job_manager.max_per_kind}), 429
-
     job_id = job_manager.new_id("SQL")
     opts = _sqli_opts(d)
     job = _Job(job_id, "sqli", url, opts)
@@ -2569,7 +2497,8 @@ def api_sqli_start():
 
     threading.Thread(target=_worker, daemon=True,
                      name=f"sqli-{job_id}").start()
-    return jsonify({"job_id": job_id, "status": "running", "options": opts}), 202
+    return jsonify({"job_id": job_id, "status": "running",
+                    "options": opts}), 202
 
 
 @app.route("/api/exploit/sqli/status/<job_id>")
@@ -2593,14 +2522,15 @@ def api_sqli_cancel(job_id):
 @app.route("/api/exploit/sqli/jobs")
 @login_required
 def api_sqli_jobs():
-    return jsonify({"jobs": [j.to_public() for j in job_manager.list_by_kind("sqli")]})
+    return jsonify({"jobs": [j.to_public()
+                              for j in job_manager.list_by_kind("sqli")]})
 
 
 @app.route("/api/exploit/sqli/stream", methods=["POST"])
 @login_required
 def api_sqli_stream():
     if not _sqli_available or sqli_module is None:
-        return jsonify({"error": "sqli_engine module not available"}), 503
+        return jsonify({"error": "sqli_module_not_available"}), 503
     if not hasattr(sqli_module, "run_streaming"):
         return jsonify({"error": "stream_not_supported"}), 501
     d = _json_body()
@@ -2616,7 +2546,7 @@ def api_sqli_stream():
 @login_required
 def api_sqli_wordlists():
     if not _sqli_available or sqli_module is None:
-        return jsonify({"error": "sqli_engine module not available"}), 503
+        return jsonify({"error": "sqli_module_not_available"}), 503
     try:
         return jsonify(sqli_module.ensure_wordlists())
     except Exception as e:
@@ -2626,35 +2556,31 @@ def api_sqli_wordlists():
 @app.route("/api/exploit/sql_inject", methods=["POST"])
 @login_required
 def api_sql_inject_legacy():
-    """Legacy path — delegates to native engine or analytic_manager."""
     d = _json_body()
     url = (d.get("url") or "").strip()
     if not url:
-        return jsonify({"error": "URL required"}), 400
+        return jsonify({"error": "url_required"}), 400
     if not url.startswith(("http://", "https://")):
         url = "http://" + url
-
     if _sqli_available and sqli_module is not None:
         try:
             return jsonify({"results": sqli_module.run(url, _sqli_opts(d))})
         except Exception as e:
             logger.exception("SQLi failed")
             return jsonify({"error": "scan_failed", "detail": str(e)}), 500
-
     if _analytic_available and AnalyticDataManager is not None:
         try:
             return jsonify({"results": AnalyticDataManager().run_sql_injection_scan(
                 url, d.get("method", "GET"), d.get("params"))})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
-
     return jsonify({"error": "no_sqli_engine"}), 503
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # SUBDOMAIN TAKEOVER
 # ═══════════════════════════════════════════════════════════════════════════
-def _takeover_opts(body: Dict[str, Any]) -> Dict[str, Any]:
+def _takeover_opts(body):
     def _i(k, d, lo, hi):
         try: return max(lo, min(hi, int(body.get(k, d))))
         except (TypeError, ValueError): return d
@@ -2682,7 +2608,7 @@ def _takeover_opts(body: Dict[str, Any]) -> Dict[str, Any]:
 @login_required
 def api_takeover_start():
     if not _takeover_available or takeover_module is None:
-        return jsonify({"error": "subdomain_takeover module not available"}), 503
+        return jsonify({"error": "takeover_module_not_available"}), 503
     d = _json_body()
     domain = (d.get("domain") or "").strip().lower()
     if not domain:
@@ -2693,7 +2619,6 @@ def api_takeover_start():
     if not job_manager.can_start("takeover"):
         return jsonify({"error": "too_many_active_jobs",
                         "limit": job_manager.max_per_kind}), 429
-
     job_id = job_manager.new_id("TKO")
     opts = _takeover_opts(d)
     job = _Job(job_id, "takeover", domain, opts)
@@ -2713,7 +2638,8 @@ def api_takeover_start():
 
     threading.Thread(target=_worker, daemon=True,
                      name=f"tk-{job_id}").start()
-    return jsonify({"job_id": job_id, "status": "running", "options": opts}), 202
+    return jsonify({"job_id": job_id, "status": "running",
+                    "options": opts}), 202
 
 
 @app.route("/api/exploit/takeover/status/<job_id>")
@@ -2737,14 +2663,15 @@ def api_takeover_cancel(job_id):
 @app.route("/api/exploit/takeover/jobs")
 @login_required
 def api_takeover_jobs():
-    return jsonify({"jobs": [j.to_public() for j in job_manager.list_by_kind("takeover")]})
+    return jsonify({"jobs": [j.to_public()
+                              for j in job_manager.list_by_kind("takeover")]})
 
 
 @app.route("/api/exploit/takeover/stream", methods=["POST"])
 @login_required
 def api_takeover_stream():
     if not _takeover_available or takeover_module is None:
-        return jsonify({"error": "subdomain_takeover module not available"}), 503
+        return jsonify({"error": "takeover_module_not_available"}), 503
     if not hasattr(takeover_module, "run_streaming"):
         return jsonify({"error": "stream_not_supported"}), 501
     d = _json_body()
@@ -2758,7 +2685,7 @@ def api_takeover_stream():
 @login_required
 def api_takeover_legacy():
     if not _takeover_available or takeover_module is None:
-        return jsonify({"error": "subdomain_takeover module not available"}), 503
+        return jsonify({"error": "takeover_module_not_available"}), 503
     d = _json_body()
     domain = (d.get("domain") or "").strip().lower()
     if not domain:
@@ -2775,7 +2702,7 @@ def api_takeover_legacy():
 # ═══════════════════════════════════════════════════════════════════════════
 # SNIPER
 # ═══════════════════════════════════════════════════════════════════════════
-def _sniper_opts(body: Dict[str, Any]) -> Dict[str, Any]:
+def _sniper_opts(body):
     def _i(k, d, lo, hi):
         try: return max(lo, min(hi, int(body.get(k, d))))
         except (TypeError, ValueError): return d
@@ -2792,11 +2719,11 @@ def _sniper_opts(body: Dict[str, Any]) -> Dict[str, Any]:
         "sqli_max_params": _i("sqli_max_params", 10, 1, 40),
         "sqli_rate_limit": _f("sqli_rate_limit", 20.0, 1.0, 100.0),
         "sqli_max_duration": _f("sqli_max_duration", 60.0, 10.0, 180.0),
-        "dirfuzz_wordlist":     (body.get("dirfuzz_wordlist") or "lottery-dirs.txt").strip(),
-        "dirfuzz_max_paths":    _i("dirfuzz_max_paths", 80, 10, 500),
-        "dirfuzz_concurrency":  _i("dirfuzz_concurrency", 24, 1, 64),
-        "dirfuzz_rate_limit":   _f("dirfuzz_rate_limit", 40.0, 1.0, 200.0),
-        "dirfuzz_timeout":      _f("dirfuzz_timeout", 4.0, 1.0, 15.0),
+        "dirfuzz_wordlist": (body.get("dirfuzz_wordlist") or "lottery-dirs.txt").strip(),
+        "dirfuzz_max_paths": _i("dirfuzz_max_paths", 80, 10, 500),
+        "dirfuzz_concurrency": _i("dirfuzz_concurrency", 24, 1, 64),
+        "dirfuzz_rate_limit": _f("dirfuzz_rate_limit", 40.0, 1.0, 200.0),
+        "dirfuzz_timeout": _f("dirfuzz_timeout", 4.0, 1.0, 15.0),
         "dirfuzz_max_duration": _f("dirfuzz_max_duration", 60.0, 10.0, 180.0),
         "xss_max_payloads": _i("xss_max_payloads", 20, 5, 120),
         "xss_max_params":   _i("xss_max_params", 8, 3, 40),
@@ -2821,7 +2748,7 @@ def _sniper_opts(body: Dict[str, Any]) -> Dict[str, Any]:
 @login_required
 def api_sniper_start():
     if not _sniper_available or sniper_module is None:
-        return jsonify({"error": "sniper module not available"}), 503
+        return jsonify({"error": "sniper_module_not_available"}), 503
     d = _json_body()
     target = (d.get("target") or "").strip()
     if not target:
@@ -2834,7 +2761,6 @@ def api_sniper_start():
     if not job_manager.can_start("sniper"):
         return jsonify({"error": "too_many_active_jobs",
                         "limit": job_manager.max_per_kind}), 429
-
     job_id = job_manager.new_id("SNP")
     opts = _sniper_opts(d)
     job = _Job(job_id, "sniper", target, opts)
@@ -2850,7 +2776,8 @@ def api_sniper_start():
 
     threading.Thread(target=_worker, daemon=True,
                      name=f"snp-{job_id}").start()
-    return jsonify({"job_id": job_id, "status": "running", "options": opts}), 202
+    return jsonify({"job_id": job_id, "status": "running",
+                    "options": opts}), 202
 
 
 @app.route("/api/exploit/sniper/status/<job_id>")
@@ -2874,14 +2801,15 @@ def api_sniper_cancel(job_id):
 @app.route("/api/exploit/sniper/jobs")
 @login_required
 def api_sniper_jobs():
-    return jsonify({"jobs": [j.to_public() for j in job_manager.list_by_kind("sniper")]})
+    return jsonify({"jobs": [j.to_public()
+                              for j in job_manager.list_by_kind("sniper")]})
 
 
 @app.route("/api/exploit/sniper/stream", methods=["POST"])
 @login_required
 def api_sniper_stream():
     if not _sniper_available or sniper_module is None:
-        return jsonify({"error": "sniper module not available"}), 503
+        return jsonify({"error": "sniper_module_not_available"}), 503
     if not hasattr(sniper_module, "run_streaming"):
         return jsonify({"error": "stream_not_supported"}), 501
     d = _json_body()
@@ -2895,7 +2823,7 @@ def api_sniper_stream():
 @login_required
 def api_sniper_legacy():
     if not _sniper_available or sniper_module is None:
-        return jsonify({"error": "sniper module not available"}), 503
+        return jsonify({"error": "sniper_module_not_available"}), 503
     d = _json_body()
     target = (d.get("target") or "").strip()
     if not target:
@@ -2911,7 +2839,8 @@ def api_sniper_legacy():
 # EXPLOIT SEARCH / STATS / BRUTE FORCE
 # ═══════════════════════════════════════════════════════════════════════════
 def _require_analytic():
-    return None if _analytic_available else (jsonify({"error": "analytic module not available"}), 503)
+    return (None if _analytic_available
+            else (jsonify({"error": "analytic_module_not_available"}), 503))
 
 
 @app.route("/api/exploit/stats")
@@ -2983,10 +2912,11 @@ def api_exploit_bruteforce_stop():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# HTTP LOGGER API
+# HTTP LOGGER
 # ═══════════════════════════════════════════════════════════════════════════
 def _require_logger():
-    return None if http_logger is not None else (jsonify({"error": "http_logger not available"}), 503)
+    return (None if http_logger is not None
+            else (jsonify({"error": "http_logger_not_available"}), 503))
 
 
 @app.route("/api/logger/requests")
@@ -3060,9 +2990,9 @@ def api_logger_export():
                             method=request.args.get("method"),
                             since_ms=request.args.get("since_ms", type=int))
     items = res.get("items") or []
-
     if fmt == "har":
-        payload = json.dumps(http_logger.to_har(items), ensure_ascii=False, indent=2)
+        payload = json.dumps(http_logger.to_har(items),
+                              ensure_ascii=False, indent=2)
         fname = f"http-logger-{int(time.time())}.har"
         mt = "application/json"
     elif fmt == "json":
@@ -3075,9 +3005,9 @@ def api_logger_export():
         mt = "application/x-ndjson"
     else:
         return jsonify({"error": f"unsupported_format: {fmt}"}), 400
-
     return Response(payload, mimetype=mt,
-                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+                    headers={"Content-Disposition":
+                             f'attachment; filename="{fname}"'})
 
 
 @app.route("/api/logger/stream")
@@ -3148,7 +3078,7 @@ def api_logger_replay(entry_id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# C2 / REMOTE
+# C2
 # ═══════════════════════════════════════════════════════════════════════════
 _lock_state = {"locked": True, "locked_by": None, "locked_at": None}
 _c2_devices: List[Dict[str, Any]] = []
@@ -3192,4 +3122,540 @@ def c2_activities():
         n = min(int(request.args.get("limit", 50)), 200)
     except (TypeError, ValueError):
         n = 50
-    return jsonify({"activities
+    return jsonify({"activities": _c2_activities[-n:]})
+
+
+@app.route("/api/c2/register_device", methods=["POST"])
+@login_required
+def c2_register_device():
+    d = _json_body()
+    device_id = (d.get("id") or "").strip()
+    if not device_id:
+        return jsonify({"error": "device_id_required"}), 400
+    device = {
+        "id": device_id,
+        "name": d.get("name", device_id),
+        "model": d.get("model", ""),
+        "serial": d.get("serial", ""),
+        "android": d.get("android", ""),
+        "status": "online",
+        "battery": d.get("battery"),
+        "location": d.get("location", ""),
+        "temperature": d.get("temperature", ""),
+        "last_seen": _now_iso(),
+    }
+    with _c2_lock:
+        for i, existing in enumerate(_c2_devices):
+            if existing["id"] == device_id:
+                _c2_devices[i] = device
+                break
+        else:
+            _c2_devices.append(device)
+    return jsonify({"success": True, "device": device})
+
+
+@app.route("/api/c2/log_activity", methods=["POST"])
+@login_required
+def c2_log_activity():
+    d = _json_body()
+    device_id = (d.get("device_id") or "").strip()
+    action = (d.get("action") or "").strip()
+    if not device_id or not action:
+        return jsonify({"error": "device_id_and_action_required"}), 400
+    device_name = next(
+        (dev["name"] for dev in _c2_devices if dev["id"] == device_id),
+        device_id,
+    )
+    with _c2_lock:
+        _c2_activities.append({
+            "device_id": device_id,
+            "device_name": device_name,
+            "action": action,
+            "timestamp": d.get("timestamp") or _now_iso(),
+        })
+    return jsonify({"success": True})
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 404 HANDLER
+# ═══════════════════════════════════════════════════════════════════════════
+@app.errorhandler(404)
+def page_not_found(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "not_found", "path": request.path}), 404
+    username = session.get("username") if session.get("authenticated") else "Guest"
+    html = """<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>404 — Lost Area</title>
+<style>
+body{margin:0;background:#000;color:#fff;font-family:system-ui,sans-serif;
+     display:flex;flex-direction:column;justify-content:center;align-items:center;
+     height:100vh;text-align:center}
+h1{font-size:clamp(1.2rem,3.5vw,2.5rem);font-weight:300;letter-spacing:.35em;
+   text-transform:uppercase;margin:0 0 20px}
+.user{font-size:.9rem;letter-spacing:.2em;color:#aaa;text-transform:uppercase;
+      margin-bottom:10px}
+.url{position:absolute;bottom:20px;font-size:.7rem;color:#888;
+     word-break:break-all;padding:0 20px}
+</style></head><body>
+<div class="user">__USERNAME__</div>
+<h1>Lost Area</h1>
+<div class="url" id="u"></div>
+<script>document.getElementById('u').textContent=location.href;</script>
+</body></html>"""
+    return html.replace("__USERNAME__", username), 404
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SERVER NAME / SERVERS / PROFILE
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/settings/server-name", methods=["GET", "POST"])
+@login_required
+def server_name():
+    if request.method == "GET":
+        return jsonify({"name": _load_json("settings", {}).get("server_name", "")})
+    u = current_user()
+    if u and u.get("role") != "owner":
+        return jsonify({"error": "Owner access required"}), 403
+    body = _json_body()
+    with _json_lock("settings"):
+        settings = _load_json("settings", {})
+        settings["server_name"] = (body.get("name") or "").strip()
+        _save_json("settings", settings)
+    logger.info("Server name set to '%s' by '%s'",
+                settings["server_name"], session.get("username"))
+    return jsonify({"name": settings["server_name"]})
+
+
+@app.route("/api/settings/servers")
+@owner_required
+def panel_manager():
+    return jsonify(_load_json("servers", []))
+
+
+ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+
+
+@app.route("/api/profile/photo", methods=["POST"])
+@login_required
+def profile_photo():
+    u = current_user()
+    if not u:
+        return jsonify({"error": "not_authenticated"}), 401
+    body = _json_body()
+    with _json_lock("profiles"):
+        profiles = _load_json("profiles", {})
+        profile = profiles.setdefault(u["username"], {})
+        if body.get("remove"):
+            profile["avatar_url"] = None
+            _save_json("profiles", profiles)
+            return jsonify({"ok": True, "avatar_url": None})
+        if body.get("url"):
+            url = (body["url"] or "").strip()
+            if not url.startswith(("http://", "https://")):
+                return jsonify({"error": "invalid_image_url"}), 400
+            profile["avatar_url"] = url
+            _save_json("profiles", profiles)
+            return jsonify({"ok": True, "avatar_url": url})
+        if body.get("image_base64"):
+            data_url = body["image_base64"]
+            try:
+                header, encoded = data_url.split(",", 1)
+                mime = header.split(";")[0].replace("data:", "")
+                if mime not in ALLOWED_IMAGE_TYPES:
+                    return jsonify({"error": "unsupported_image_type"}), 400
+                raw = base64.b64decode(encoded)
+                if len(raw) > 5 * 1024 * 1024:
+                    return jsonify({"error": "image_too_large",
+                                    "max_bytes": 5242880}), 400
+                ext = mime.split("/")[1]
+                filename = f"{u['username']}_{uuid.uuid4().hex[:8]}.{ext}"
+                with open(os.path.join(UPLOAD_DIR, filename), "wb") as f:
+                    f.write(raw)
+                profile["avatar_url"] = f"/api/profile/photo/{filename}"
+                _save_json("profiles", profiles)
+                return jsonify({"ok": True, "avatar_url": profile["avatar_url"]})
+            except (ValueError, binascii.Error):
+                return jsonify({"error": "cannot_decode_image"}), 400
+    return jsonify({"error": "provide_image_base64_url_or_remove"}), 400
+
+
+@app.route("/api/profile/photo/<path:filename>")
+def serve_profile_photo(filename):
+    return send_from_directory(UPLOAD_DIR, filename)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GLOBAL CHAT
+# ═══════════════════════════════════════════════════════════════════════════
+CHAT_HISTORY_LIMIT = 300
+_chat_cache = {"data": None, "mtime": 0.0}
+_chat_cache_lock = threading.Lock()
+
+
+def _get_chat_cached():
+    path = os.path.join(DATA_DIR, "chat.json")
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return {"messages": [], "locked": False}
+    with _chat_cache_lock:
+        if _chat_cache["data"] is not None and _chat_cache["mtime"] == mtime:
+            return _chat_cache["data"]
+    data = _load_json("chat", {"messages": [], "locked": False})
+    with _chat_cache_lock:
+        _chat_cache["data"] = data
+        _chat_cache["mtime"] = mtime
+    return data
+
+
+@app.route("/api/chat/messages")
+@login_required
+def chat_messages():
+    chat = _get_chat_cached()
+    profiles = _load_json("profiles", {})
+    users_by_name = {u["username"]: u for u in _load_json("users", [])}
+    enriched = []
+    for m in chat.get("messages", []):
+        u = users_by_name.get(m.get("username"))
+        enriched.append({
+            **m,
+            "role": u.get("role") if u else m.get("role", "--"),
+            "avatar_url": profiles.get(m.get("username"), {}).get("avatar_url"),
+        })
+    return jsonify({"messages": enriched, "locked": chat.get("locked", False)})
+
+
+@app.route("/api/chat/send", methods=["POST"])
+@login_required
+def chat_send():
+    u = current_user()
+    if not u:
+        return jsonify({"error": "not_authenticated"}), 401
+    body = _json_body()
+    text = (body.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "message_text_required"}), 400
+    text = text[:500]
+    with _json_lock("chat"):
+        chat = _load_json("chat", {"messages": [], "locked": False})
+        if chat.get("locked") and u.get("role") != "owner":
+            return jsonify({"error": "chat_locked_by_owner"}), 423
+        message = {
+            "id": uuid.uuid4().hex,
+            "username": u["username"],
+            "role": u["role"],
+            "text": text,
+            "timestamp": _now_iso(),
+        }
+        chat["messages"].append(message)
+        chat["messages"] = chat["messages"][-CHAT_HISTORY_LIMIT:]
+        _save_json("chat", chat)
+    return jsonify({"ok": True, "id": message["id"]})
+
+
+@app.route("/api/chat/lock", methods=["POST"])
+@owner_required
+def chat_lock():
+    body = _json_body()
+    with _json_lock("chat"):
+        chat = _load_json("chat", {"messages": [], "locked": False})
+        chat["locked"] = bool(body.get("locked"))
+        chat["messages"].append({
+            "id": uuid.uuid4().hex,
+            "is_system": True,
+            "text": f'{session.get("username")} '
+                    f'{"locked" if chat["locked"] else "unlocked"} Global Chat.',
+            "timestamp": _now_iso(),
+        })
+        _save_json("chat", chat)
+    return jsonify({"ok": True, "locked": chat["locked"]})
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# OSINT
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/osint/search", methods=["POST"])
+@login_required
+def osint_search():
+    body = _json_body()
+    method = body.get("method")
+    query = (body.get("query") or "").strip()
+    if method not in ("username", "email", "number") or not query:
+        return jsonify({"error": "method_and_query_required"}), 400
+    try:
+        osint_module = import_module("modules.osint")
+    except ModuleNotFoundError:
+        return jsonify({"error": "osint_module_not_found"}), 404
+    try:
+        results = osint_module.search(method, query)
+    except Exception as e:
+        logger.error("modules.osint.search raised: %s", e)
+        return jsonify({"error": f"osint_error: {e}"}), 500
+    logger.info("OSINT search (%s) by '%s': %s",
+                method, session.get("username"), query)
+    return jsonify({"sources": results})
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# API v1
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/v1/ping", methods=["POST"])
+@_api_key_required
+def v1_ping():
+    return jsonify({"ok": True, "server_time": _now_iso(),
+                    "owner": g.api_key_owner})
+
+
+@app.route("/api/v1/scan", methods=["POST"])
+@_api_key_required
+def v1_scan_start():
+    body = _json_body()
+    target = (body.get("target") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    return jsonify({"job_id": scan_orchestrator.start_scan(
+        target, body.get("mode") or "basic", body.get("tools") or [],
+        history_store)})
+
+
+@app.route("/api/v1/scan/<job_id>")
+@_api_key_required
+def v1_scan_status(job_id):
+    progress = scan_orchestrator.get_progress(job_id)
+    if progress is None:
+        return jsonify({"error": "not_found"}), 404
+    return jsonify(progress)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# STARTUP HELPERS
+# ═══════════════════════════════════════════════════════════════════════════
+def _ensure_engine_layout():
+    files_dir = Path(PROJECT_ROOT) / "files"
+    proxies_dir = files_dir / "proxies"
+    proxies_dir.mkdir(parents=True, exist_ok=True)
+    MHDDOS_LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    config_path = Path(PROJECT_ROOT) / "config.json"
+    if not config_path.exists():
+        config_path.write_text(
+            json.dumps({"proxy-providers": [],
+                        "MINECRAFT_DEFAULT_PROTOCOL": 758}, indent=2),
+            encoding="utf-8")
+
+    for name in ALLOWED_PROXY_FILES:
+        p = proxies_dir / name
+        if not p.exists():
+            p.write_text("", encoding="utf-8")
+    for name in ALLOWED_REFLECTOR_FILES:
+        p = files_dir / name
+        if not p.exists():
+            p.write_text("", encoding="utf-8")
+
+    ua_path = files_dir / "useragent.txt"
+    if not ua_path.exists() or not ua_path.read_text(
+            encoding="utf-8", errors="ignore").strip():
+        ua_path.write_text(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36\n", encoding="utf-8")
+
+    ref_path = files_dir / "referers.txt"
+    if not ref_path.exists() or not ref_path.read_text(
+            encoding="utf-8", errors="ignore").strip():
+        ref_path.write_text(
+            "https://www.google.com/\n"
+            "https://www.bing.com/\n"
+            "https://duckduckgo.com/\n", encoding="utf-8")
+
+
+def _check_route_collisions():
+    seen = {}
+    for rule in app.url_map.iter_rules():
+        for method in (rule.methods or set()) - {"HEAD", "OPTIONS"}:
+            key = (rule.rule, method)
+            if key in seen:
+                logger.warning("Route collision: %s %s (from %s and %s)",
+                               method, rule.rule, seen[key], rule.endpoint)
+            seen[key] = rule.endpoint
+
+
+def _print_startup(port=None):
+    print(BANNER, flush=True)
+    print(BANNER_TAGLINE, flush=True)
+    print(f"  {'─' * 68}", flush=True)
+    lines = []
+    if port is not None:
+        lines.append(f"  Server     : http://localhost:{port}")
+    lines.append(f"  Tools      : {len(scan_orchestrator.list_tools())} loaded")
+    lines.append(f"  Account    : {DEFAULT_USERNAME}")
+    lines.append(f"  MHDDoS     : "
+                 f"{'ready' if MHDDOS_SCRIPT.exists() else 'start.py missing'}")
+    lines.append(f"  Engine py  : {PYTHON_EXE}")
+    lines.append(f"  HTTP log   : {'ready' if http_logger else 'unavailable'}")
+    mods = []
+    if _xss_available:      mods.append("XSS")
+    if _sqli_available:     mods.append("SQLi")
+    if _sniper_available:   mods.append("Sniper")
+    if _takeover_available: mods.append("Takeover")
+    if _dirfuzz_available:  mods.append("Dirfuzz")
+    lines.append(f"  Exploit    : {', '.join(mods) or 'none'}")
+    print("\n".join(lines), flush=True)
+    print(f"  {'─' * 68}", flush=True)
+    print(f"  Started at : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+          flush=True)
+    print(flush=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GRACEFUL SHUTDOWN
+# ═══════════════════════════════════════════════════════════════════════════
+_shutdown_lock = threading.Lock()
+_shutdown_done = False
+
+
+def _graceful_shutdown(*_args):
+    global _shutdown_done
+    with _shutdown_lock:
+        if _shutdown_done:
+            return
+        _shutdown_done = True
+    logger.info("Shutdown signal received — cancelling jobs")
+    for fn in (job_manager.cancel_all,
+               scan_orchestrator.cancel_all,
+               _mhddos_stop_all):
+        try:
+            fn()
+        except Exception:
+            pass
+    try:
+        if http_logger is not None:
+            http_logger.close()
+    except Exception:
+        pass
+    time.sleep(0.5)
+
+
+atexit.register(_graceful_shutdown)
+
+
+def _signal_handler(signum, _frame):
+    _graceful_shutdown()
+    sys.exit(0)
+
+
+for _sig_name in ("SIGINT", "SIGTERM"):
+    if hasattr(signal, _sig_name):
+        try:
+            signal.signal(getattr(signal, _sig_name), _signal_handler)
+        except (ValueError, OSError):
+            pass
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MODULE-LEVEL BOOTSTRAP (runs under gunicorn too)
+# ═══════════════════════════════════════════════════════════════════════════
+_bootstrap_lock = threading.Lock()
+_bootstrap_done = False
+
+
+def _bootstrap():
+    """Run first-run setup + start background services. Idempotent."""
+    global _bootstrap_done
+    with _bootstrap_lock:
+        if _bootstrap_done:
+            return
+        _bootstrap_done = True
+
+    try:
+        ensure_default_user()
+    except Exception as e:
+        logger.warning("ensure_default_user failed: %s", e)
+
+    try:
+        auto_restart_bot()
+    except Exception as e:
+        logger.warning("auto_restart_bot failed: %s", e)
+
+    _ensure_engine_layout()
+    _check_route_collisions()
+    job_manager.start_sweeper()
+
+    def _warmup():
+        if _xss_available and xss_module is not None:
+            try:
+                n = len(xss_module.load_wordlist())
+                logger.info("XSS wordlist ready — %d payloads", n)
+            except Exception as e:
+                logger.warning("XSS wordlist warmup failed: %s", e)
+        if _dirfuzz_available and dirfuzz_module is not None:
+            try:
+                n = len(dirfuzz_module.load_wordlist("lottery-dirs.txt",
+                                                       max_lines=200))
+                logger.info("Dirfuzz wordlist ready — %d entries", n)
+            except Exception as e:
+                logger.warning("Dirfuzz wordlist warmup failed: %s", e)
+        if _sqli_available and sqli_module is not None:
+            try:
+                sqli_module.ensure_wordlists()
+                logger.info("SQLi wordlists ready")
+            except Exception as e:
+                logger.warning("SQLi wordlist warmup failed: %s", e)
+
+    threading.Thread(target=_warmup, daemon=True,
+                     name="wordlist-warmup").start()
+
+
+_bootstrap()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MAIN ENTRY POINT
+# ═══════════════════════════════════════════════════════════════════════════
+if __name__ == "__main__":
+    # reset-password subcommand
+    if len(sys.argv) > 1 and sys.argv[1] == "reset-password":
+        existing_role = get_role(DEFAULT_USERNAME) or "owner"
+        new_password = create_user(DEFAULT_USERNAME, role=existing_role)
+        print(BANNER, flush=True)
+        print(f"  Password reset for '{DEFAULT_USERNAME}' "
+              f"(role={existing_role})", flush=True)
+        print(f"  Password: {new_password}", flush=True)
+        print("  Copy it now — it will not be shown again.", flush=True)
+        sys.exit(0)
+
+    # First-run message
+    new_password = ensure_default_user()
+    if new_password:
+        print(BANNER, flush=True)
+        print("  First run — account created automatically", flush=True)
+        print(f"  Username: {DEFAULT_USERNAME}", flush=True)
+        print(f"  Password: {new_password}", flush=True)
+        print("  Role:     owner", flush=True)
+        print("  Save this password now.", flush=True)
+        print(flush=True)
+
+    default_port = int(Config.PORT) if hasattr(Config, "PORT") else 8080
+    port = default_port
+    try:
+        port_input = input(
+            f"Enter port (default {default_port}, press Enter for default): "
+        ).strip()
+        if port_input:
+            port = int(port_input)
+            if not (1 <= port <= 65535):
+                print(f"Invalid port, using default {default_port}")
+                port = default_port
+    except (ValueError, EOFError):
+        port = default_port
+
+    _print_startup(port)
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=False,
+        threaded=True,
+        use_reloader=False,
+    )
