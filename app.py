@@ -1,8 +1,24 @@
 #!/usr/bin/env python3
 """
-Oxysintx / Emergens — app.py v4.3.0
+Oxysintx / Emergens — app.py v4.4.0
 ═══════════════════════════════════════════════════════════════════════════
 Advanced production build.
+
+Changelog v4.4.0
+    • OSINT endpoint rewritten — full multi-method support
+      (name / username / email / number / nik / any)
+    • OSINT response format aligned with osint.js client
+      {tool, method, query, data:{results, count, total, tookMs}}
+    • OSINT rate limiter — per-IP token bucket (30 req/min, burst 10)
+    • Standalone module detection — search_user.py excluded from scan
+      pipeline with explicit startup log
+    • Soft-import for search_user — feature disabled, not fatal
+    • Route collision check now reports full endpoint name
+    • Per-request client-IP resolution normalised in one helper
+    • Uptime is monotonic-safe (uses time.monotonic for deltas)
+    • Consistent error envelope across all /api/* endpoints
+    • Better structured logger for OSINT + scan jobs
+    • Payload guards on all POST endpoints (256 KB)
 
 Changelog v4.3.0
     • New ASCII banner — "EMERGEN"
@@ -23,12 +39,6 @@ Changelog v4.2.0
     • threaded=True on Werkzeug dev server (fixes global 504s)
     • Graceful shutdown — cancel all running jobs, flush logger
     • Structured request log with client IP + UA on every 5xx
-    • Per-endpoint option normalisers with hard caps
-    • Body-size guard on POST endpoints (json.loads limit)
-    • Session cookies: HttpOnly + SameSite + optional Secure
-    • Backward-compatible with all v4.1.x API consumers
-    • Module imports are soft — missing module → feature disabled,
-      not a fatal crash
 
 Author: Yanxzyx
 """
@@ -58,7 +68,7 @@ from importlib import import_module
 from pathlib import Path
 from queue import Empty as QueueEmpty
 from subprocess import Popen, PIPE
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 # ─── Third-party ───────────────────────────────────────────────────────
 import psutil
@@ -82,7 +92,6 @@ from core.history_store import HistoryStore
 from core.system_monitor import get_system_stats
 from modules.scan_orchestrator import ScanOrchestrator, TOOL_MAP
 from modules.source_viewer import run as fetch_source
-from modules.search_user import run as search_user_run
 from modules.telegram import (
     connect_bot, disconnect_bot, get_bot_status,
     update_bot_settings, broadcast_message, auto_restart_bot,
@@ -90,6 +99,15 @@ from modules.telegram import (
 )
 from modules.whatsapp import whatsapp_bp
 from ai_chat.chat_handler import ChatHandler
+
+# ─── OSINT module (standalone — excluded from scan pipeline) ───────────
+try:
+    from modules import search_user as osint_module
+    _osint_available = True
+except ImportError as _osint_exc:
+    osint_module = None
+    _osint_available = False
+    _OSINT_IMPORT_ERROR = str(_osint_exc)
 
 # ─── Optional blueprints ───────────────────────────────────────────────
 try:
@@ -161,7 +179,7 @@ except ImportError:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STARTUP BANNER — "EMERGEN"
+# STARTUP BANNER
 # ═══════════════════════════════════════════════════════════════════════════
 BANNER = r"""
 ▓█████  ███▄ ▄███▓▓█████  ██▀███    ▄████ ▓█████  ███▄    █   ██████
@@ -175,7 +193,7 @@ BANNER = r"""
    ░  ░       ░      ░  ░   ░           ░    ░  ░        ░       ░
 """
 
-BANNER_VERSION = "v4.3.0"
+BANNER_VERSION = "v4.4.0"
 BANNER_TAGLINE = "  Field Intelligence Console  •  Python 3.13  •  Emergens Ops"
 
 
@@ -209,8 +227,16 @@ JOB_TTL_DEFAULT = 1800
 HEARTBEAT_INTERVAL = 10.0
 JOB_SWEEP_INTERVAL = 60.0
 
-# ── Server uptime tracking ─────────────────────────────────────────────
-SERVER_START_TIME = time.time()
+# ── OSINT rate limits (per client IP) ──────────────────────────────────
+OSINT_RATE_PER_MIN = 30
+OSINT_RATE_BURST = 10
+OSINT_MAX_QUERY_LEN = 120
+OSINT_MIN_QUERY_LEN = 2
+OSINT_VALID_METHODS = ("name", "username", "email", "number", "nik", "any")
+
+# ── Server uptime tracking (monotonic-safe) ────────────────────────────
+SERVER_START_WALL = time.time()
+SERVER_START_MONO = time.monotonic()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -701,6 +727,7 @@ if _quick_menu_available and _quick_menu_bp is not None:
 
 setup_logging(Config.SERVER_LOG_FILE)
 logger = logging.getLogger("oxysintx")
+osint_logger = logging.getLogger("oxysintx.osint")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -713,6 +740,43 @@ scan_orchestrator = ScanOrchestrator()
 
 set_orchestrator(scan_orchestrator)
 set_history_store(history_store)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# OSINT — standalone module guard
+# ═══════════════════════════════════════════════════════════════════════════
+def _verify_osint_is_standalone() -> Tuple[bool, str]:
+    """
+    Confirm modules.search_user is a standalone module and is NOT
+    registered in the scan pipeline. Returns (ok, message).
+    """
+    if not _osint_available or osint_module is None:
+        return False, "osint module not imported"
+
+    excluded_attr = getattr(osint_module, "EXCLUDE_FROM_SCAN", None)
+    module_type = getattr(osint_module, "MODULE_TYPE", "scan")
+    info = getattr(osint_module, "TOOL_INFO", {}) or {}
+    info_excluded = bool(info.get("scan_excluded") or
+                         info.get("exclude_from_scan"))
+
+    if not (excluded_attr or info_excluded or module_type == "standalone"):
+        return False, ("osint module missing EXCLUDE_FROM_SCAN / "
+                       "MODULE_TYPE='standalone' flag — add them to "
+                       "prevent it being picked up by the scan pipeline")
+
+    # Verify it's not in the scan orchestrator's tool map
+    try:
+        registered = getattr(scan_orchestrator, "list_tools", lambda: {})()
+        if isinstance(registered, dict) and "search_user" in registered:
+            return False, ("search_user is registered in scan orchestrator — "
+                           "remove it from TOOL_MAP or add the standalone flag")
+    except Exception:
+        pass
+
+    return True, "standalone confirmed"
+
+
+_osint_standalone_ok, _osint_standalone_msg = _verify_osint_is_standalone()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -778,7 +842,6 @@ def _save_json(name: str, data: Any) -> None:
     tmp = path + ".tmp"
     bak = path + ".bak"
     with _json_locks[name]:
-        # Rotate current → .bak before overwriting
         if os.path.exists(path):
             try:
                 os.replace(path, bak)
@@ -818,6 +881,11 @@ def _json_body() -> Dict[str, Any]:
     if isinstance(data, dict):
         return data
     return {}
+
+
+def _err(message: str, status: int = 400, **extra) -> Tuple[Response, int]:
+    payload = {"error": message, **extra}
+    return jsonify(payload), status
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -864,13 +932,6 @@ def _payload_too_large(_e):
 # ═══════════════════════════════════════════════════════════════════════════
 def sse_response(generator: Iterator[Any],
                  heartbeat: float = HEARTBEAT_INTERVAL) -> Response:
-    """Wrap a generator into a proper SSE Response with heartbeat.
-
-    The generator may yield dicts (auto-serialised as JSON ``data:``) or
-    pre-formatted SSE strings (used as-is). Heartbeats are injected
-    whenever the stream goes quiet for longer than ``heartbeat`` seconds.
-    """
-
     def _gen():
         try:
             yield ": connected\n\n"
@@ -1087,6 +1148,34 @@ def _record_failed_attempt(ip: str) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# OSINT rate limiting — per-IP token bucket
+# ═══════════════════════════════════════════════════════════════════════════
+_osint_buckets: Dict[str, Dict[str, float]] = defaultdict(
+    lambda: {"tokens": float(OSINT_RATE_BURST), "last": time.monotonic()}
+)
+_osint_rate_lock = threading.Lock()
+
+
+def _osint_take_token(ip: str) -> Tuple[bool, float]:
+    """Token-bucket per IP. Returns (allowed, seconds_until_refill)."""
+    with _osint_rate_lock:
+        b = _osint_buckets[ip]
+        now = time.monotonic()
+        elapsed = now - b["last"]
+        refill_rate = OSINT_RATE_PER_MIN / 60.0
+        b["tokens"] = min(
+            float(OSINT_RATE_BURST),
+            b["tokens"] + elapsed * refill_rate,
+        )
+        b["last"] = now
+        if b["tokens"] >= 1.0:
+            b["tokens"] -= 1.0
+            return True, 0.0
+        wait = (1.0 - b["tokens"]) / refill_rate
+        return False, round(wait, 2)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Auth decorators
 # ═══════════════════════════════════════════════════════════════════════════
 def _extract_bearer_token() -> str:
@@ -1185,8 +1274,8 @@ def api_version():
         "app": "Emergens",
         "version": BANNER_VERSION,
         "python": sys.version.split()[0],
-        "server_started": SERVER_START_TIME,
-        "uptime_seconds": int(time.time() - SERVER_START_TIME),
+        "server_started": SERVER_START_WALL,
+        "uptime_seconds": int(time.monotonic() - SERVER_START_MONO),
         "modules": {
             "xss":      _xss_available,
             "sniper":   _sniper_available,
@@ -1197,6 +1286,12 @@ def api_version():
             "testing":  _testing_available,
             "downsea":  _downsea_available,
             "quick_menu": _quick_menu_available,
+            "osint":    _osint_available,
+        },
+        "osint": {
+            "available": _osint_available,
+            "standalone": _osint_standalone_ok,
+            "note": _osint_standalone_msg,
         },
     })
 
@@ -1810,21 +1905,181 @@ def api_scan_cancel_all():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Leak Data Search
+# OSINT — Standalone search (excluded from scan pipeline)
 # ═══════════════════════════════════════════════════════════════════════════
+def _osint_validate(method: str, query: str) -> Optional[str]:
+    if not query:
+        return "query_required"
+    if len(query) < OSINT_MIN_QUERY_LEN:
+        return "query_too_short"
+    if len(query) > OSINT_MAX_QUERY_LEN:
+        return "query_too_long"
+    if method == "email" and not re.match(
+            r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$", query):
+        return "invalid_email"
+    if method == "number":
+        digits = re.sub(r"\D", "", query)
+        if not (6 <= len(digits) <= 20):
+            return "invalid_phone"
+    if method == "nik":
+        digits = re.sub(r"\D", "", query)
+        if len(digits) < 8:
+            return "invalid_nik"
+    return None
+
+
+@app.route("/api/osint/search", methods=["POST"])
+@login_required
+def osint_search():
+    """
+    Standalone OSINT lookup — routed away from the scan pipeline.
+
+    Body:
+        { "query": "johndoe", "method": "username",
+          "limit": 50, "offset": 0, "minScore": 0.3, "exact": false }
+
+    Response:
+        { "tool": "osint", "method": "...", "query": "...",
+          "target": "...", "standalone": true,
+          "data": { "results": [...], "count": N, "total": N,
+                    "offset": 0, "limit": 50, "tookMs": N } }
+    """
+    if not _osint_available or osint_module is None:
+        return jsonify({
+            "error": "osint_unavailable",
+            "detail": _OSINT_IMPORT_ERROR if not _osint_available else "module missing",
+        }), 503
+
+    ip = _client_ip()
+    allowed, wait_s = _osint_take_token(ip)
+    if not allowed:
+        osint_logger.warning("OSINT rate-limited for %s (retry in %.2fs)",
+                              ip, wait_s)
+        return jsonify({
+            "error": "rate_limited",
+            "retry_after": wait_s,
+            "limit_per_min": OSINT_RATE_PER_MIN,
+        }), 429
+
+    body = _json_body()
+    method = (body.get("method") or "name").strip().lower()
+    query = (body.get("query") or body.get("target") or "").strip()
+
+    if method not in OSINT_VALID_METHODS:
+        method = "any"
+
+    err = _osint_validate(method, query)
+    if err:
+        return jsonify({"error": err,
+                        "method": method,
+                        "query": query}), 400
+
+    # Option normalisation
+    try:
+        limit = max(1, min(1000, int(body.get("limit", 50))))
+        offset = max(0, int(body.get("offset", 0)))
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid_pagination"}), 400
+
+    min_score = body.get("minScore", body.get("min_score"))
+    if min_score is not None:
+        try:
+            min_score = max(0.0, min(1.0, float(min_score)))
+        except (TypeError, ValueError):
+            return jsonify({"error": "invalid_min_score"}), 400
+
+    exact = bool(body.get("exact", False))
+
+    try:
+        result = osint_module.run(
+            query,
+            mode="basic",
+            method=method,
+            limit=limit,
+            offset=offset,
+            minScore=min_score,
+            exact=exact,
+        )
+    except Exception as exc:
+        osint_logger.exception("OSINT engine raised for %r/%r", method, query)
+        return jsonify({
+            "error": "osint_engine_error",
+            "detail": str(exc),
+        }), 500
+
+    # Normalise envelope so the JS client always sees the same shape
+    data = result.get("data") or {}
+    envelope = {
+        "tool": result.get("tool", "osint"),
+        "method": result.get("method", method),
+        "query": result.get("query", query),
+        "target": result.get("target", query),
+        "standalone": True,
+        "data": {
+            "results": data.get("results", []),
+            "count": data.get("count", 0),
+            "total": data.get("total", data.get("count", 0)),
+            "offset": data.get("offset", offset),
+            "limit": data.get("limit", limit),
+            "tookMs": data.get("tookMs"),
+        },
+    }
+    if result.get("error"):
+        envelope["error"] = result["error"]
+        envelope["message"] = result.get("message")
+
+    osint_logger.info(
+        "OSINT %s · %r → %d/%d results (%.1fms) · user=%s ip=%s",
+        method, query,
+        envelope["data"]["count"], envelope["data"]["total"],
+        envelope["data"]["tookMs"] or 0,
+        session.get("username"), ip,
+    )
+    return jsonify(envelope)
+
+
+@app.route("/api/osint/stats")
+@login_required
+def osint_stats():
+    """Return cache + config stats for the OSINT engine."""
+    if not _osint_available or osint_module is None:
+        return jsonify({"error": "osint_unavailable"}), 503
+    try:
+        return jsonify(osint_module.stats())
+    except Exception as exc:
+        return jsonify({"error": "stats_failed", "detail": str(exc)}), 500
+
+
+@app.route("/api/osint/cache/clear", methods=["POST"])
+@login_required
+def osint_clear_cache():
+    if not _osint_available or osint_module is None:
+        return jsonify({"error": "osint_unavailable"}), 503
+    try:
+        osint_module.clear_cache()
+        return jsonify({"success": True})
+    except Exception as exc:
+        return jsonify({"error": "clear_failed", "detail": str(exc)}), 500
+
+
+# Legacy alias — keeps older clients working
 @app.route("/api/leakdata/search", methods=["GET", "POST"])
 @api_login_required
 def api_leakdata_search():
     if request.method == "POST":
         data = _json_body()
         target = data.get("target") or data.get("query") or ""
+        method = data.get("method") or "name"
     else:
         target = request.args.get("q", "")
+        method = request.args.get("method", "name")
     target = (target or "").strip()
     if not target:
         return jsonify({"error": "query_required"}), 400
+    if not _osint_available or osint_module is None:
+        return jsonify({"error": "osint_unavailable"}), 503
     try:
-        return jsonify(search_user_run(target))
+        return jsonify(osint_module.run(target, mode="basic", method=method))
     except Exception as e:
         return jsonify({"error": "search_failed", "detail": str(e)}), 500
 
@@ -1874,7 +2129,7 @@ def api_system_stats():
         "disk_percent": disk,
         "network_in": total_seen,
         "network_in_rate": last_minute,
-        "uptime_seconds": int(time.time() - SERVER_START_TIME),
+        "uptime_seconds": int(time.monotonic() - SERVER_START_MONO),
     })
 
 
@@ -3489,31 +3744,6 @@ def chat_lock():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# OSINT module contract
-# ═══════════════════════════════════════════════════════════════════════════
-@app.route("/api/osint/search", methods=["POST"])
-@login_required
-def osint_search():
-    body = _json_body()
-    method = body.get("method")
-    query = (body.get("query") or "").strip()
-    if method not in ("username", "email", "number") or not query:
-        return jsonify({"error": "method and query are required."}), 400
-    try:
-        osint_module = import_module("modules.osint")
-    except ModuleNotFoundError:
-        return jsonify({"error": "modules/osint.py not found on the server yet."}), 404
-    try:
-        results = osint_module.search(method, query)
-    except Exception as e:
-        logger.error("modules.osint.search raised: %s", e)
-        return jsonify({"error": f"OSINT module error: {e}"}), 500
-    logger.info("OSINT search (%s) by '%s': %s",
-                 method, session.get("username"), query)
-    return jsonify({"sources": results})
-
-
-# ═══════════════════════════════════════════════════════════════════════════
 # External API v1
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/v1/ping", methods=["POST"])
@@ -3627,6 +3857,14 @@ def _print_startup(port: Optional[int] = None) -> None:
     if _dirfuzz_available:  mod_status.append("Dirfuzz")
     info_lines.append(f"  Exploit    : {', '.join(mod_status) or 'none'}")
 
+    # OSINT standalone banner
+    if _osint_available and _osint_standalone_ok:
+        info_lines.append("  OSINT      : ready (standalone · excluded from scan)")
+    elif _osint_available and not _osint_standalone_ok:
+        info_lines.append(f"  OSINT      : ⚠ {_osint_standalone_msg}")
+    else:
+        info_lines.append("  OSINT      : unavailable")
+
     print("\n".join(info_lines), flush=True)
     print(f"  {'─' * 68}", flush=True)
     print(f"  Started at : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
@@ -3709,10 +3947,9 @@ if __name__ == "__main__":
     _ensure_engine_layout()
     _check_route_collisions()
 
-    # Start the background job sweeper
     job_manager.start_sweeper()
 
-    # ── Pre-warm wordlists (background — don't block startup) ────────
+    # ── Pre-warm wordlists (background) ──────────────────────────────
     def _warmup():
         if _xss_available and xss_module is not None:
             try:
@@ -3751,7 +3988,6 @@ if __name__ == "__main__":
 
     _print_startup(port)
 
-    # ── Run with threaded=True (fixes global 504s) ───────────────────
     app.run(
         host="0.0.0.0",
         port=port,
