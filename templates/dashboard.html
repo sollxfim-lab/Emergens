@@ -603,7 +603,7 @@
             </section>
 
             <!-- ============================================================
-                 SCHOOLS + OSINT
+                 SCHOOLS (school search only — OSINT panel removed)
                  ============================================================ -->
             <section class="content-section" id="section-schools">
                 <div class="panel">
@@ -629,131 +629,6 @@
                             <i class="fas fa-search"></i>
                             <span data-i18n="btn_search">Cari</span>
                         </button>
-                    </div>
-
-                    <div class="osint-cta-wrap">
-                        <button class="osint-cta-premium" id="schoolOsintToggleBtn"
-                                aria-expanded="false" aria-controls="schoolOsintPanel" type="button">
-                            <span class="osint-cta-premium__glow" aria-hidden="true"></span>
-                            <span class="osint-cta-premium__border" aria-hidden="true"></span>
-                            <span class="osint-cta-premium__content">
-                                <span class="osint-cta-premium__icon">
-                                    <i class="fas fa-fingerprint"></i>
-                                    <span class="osint-cta-premium__pulse" aria-hidden="true"></span>
-                                </span>
-                                <span class="osint-cta-premium__text">
-                                    <span class="osint-cta-premium__title"
-                                          data-i18n="school_osint_cta_title">
-                                        Buka OSINT Lookup
-                                    </span>
-                                    <span class="osint-cta-premium__sub"
-                                          data-i18n="school_osint_cta_sub">
-                                        Cari nama · Username · Email · Phone
-                                    </span>
-                                </span>
-                                <span class="osint-cta-premium__arrow">
-                                    <i class="fas fa-arrow-right"></i>
-                                </span>
-                            </span>
-                        </button>
-                    </div>
-
-                    <div class="osint-panel-premium" id="schoolOsintPanel" hidden>
-                        <div class="osint-panel-premium__bg" aria-hidden="true">
-                            <span class="osint-panel-premium__grid"></span>
-                            <span class="osint-panel-premium__scanline"></span>
-                        </div>
-
-                        <div class="osint-panel-premium__inner">
-                            <div class="osint-panel-premium__head">
-                                <div class="osint-panel-premium__head-icon">
-                                    <i class="fas fa-shield-halved"></i>
-                                    <span class="osint-panel-premium__head-pulse"></span>
-                                </div>
-                                <div class="osint-panel-premium__head-text">
-                                    <div class="osint-panel-premium__head-title"
-                                         data-i18n="school_osint_panel_title">
-                                        OSINT Lookup Console
-                                    </div>
-                                    <div class="osint-panel-premium__head-sub"
-                                         data-i18n="school_osint_panel_sub">
-                                        Cari maklumat awam mengikut nama, username, email atau nombor telefon.
-                                    </div>
-                                </div>
-                                <button class="osint-panel-premium__close" id="schoolOsintCloseBtn"
-                                        aria-label="Close" type="button">
-                                    <i class="fas fa-xmark"></i>
-                                </button>
-                            </div>
-
-                            <div class="osint-method-toggle" id="schoolOsintMethodToggle">
-                                <span class="osint-method-toggle__slider" aria-hidden="true"></span>
-                                <button class="osint-method-btn active" data-method="username" type="button">
-                                    <i class="fas fa-at"></i>
-                                    <span data-i18n="osint_username">Username</span>
-                                </button>
-                                <button class="osint-method-btn" data-method="email" type="button">
-                                    <i class="fas fa-envelope"></i>
-                                    <span data-i18n="osint_email">Email</span>
-                                </button>
-                                <button class="osint-method-btn" data-method="number" type="button">
-                                    <i class="fas fa-phone"></i>
-                                    <span data-i18n="osint_number">Number</span>
-                                </button>
-                            </div>
-
-                            <div class="osint-input-premium" id="schoolOsintInputWrap">
-                                <span class="osint-input-premium__scan" aria-hidden="true"></span>
-                                <span class="osint-input-premium__icon">
-                                    <i class="fas fa-magnifying-glass" id="schoolOsintInputIcon"></i>
-                                </span>
-                                <input type="text" id="schoolOsintQueryInput"
-                                       placeholder=" " autocomplete="off" spellcheck="false"
-                                       maxlength="120" aria-label="OSINT query">
-                                <label class="osint-input-premium__label" for="schoolOsintQueryInput"
-                                       data-i18n="osint_input_label">
-                                    Masukkan nama, username, email atau nombor
-                                </label>
-                                <button class="osint-input-premium__clear" id="schoolOsintClearBtn"
-                                        type="button" aria-label="Clear">
-                                    <i class="fas fa-xmark"></i>
-                                </button>
-                                <button class="osint-input-premium__submit" id="schoolOsintSearchBtn"
-                                        type="button">
-                                    <span class="osint-input-premium__submit-label"
-                                          data-i18n="btn_search">Search</span>
-                                    <i class="fas fa-arrow-right"></i>
-                                    <span class="osint-input-premium__ripple" aria-hidden="true"></span>
-                                </button>
-                            </div>
-
-                            <div class="osint-suggest-premium" id="schoolOsintSuggest">
-                                <span class="osint-suggest-premium__label" data-i18n="osint_try">Cuba:</span>
-                                <button class="osint-chip" data-suggest="johndoe" style="--i:0" type="button">
-                                    <i class="fas fa-at"></i> johndoe</button>
-                                <button class="osint-chip" data-suggest="admin" style="--i:1" type="button">
-                                    <i class="fas fa-user-shield"></i> admin</button>
-                                <button class="osint-chip" data-suggest="user@example.com" style="--i:2" type="button">
-                                    <i class="fas fa-envelope"></i> user@example.com</button>
-                                <button class="osint-chip" data-suggest="08123456789" style="--i:3" type="button">
-                                    <i class="fas fa-phone"></i> 08123456789</button>
-                            </div>
-
-                            <div class="osint-result-premium" id="schoolOsintResultArea"></div>
-
-                            <div class="osint-panel-premium__foot">
-                                <span class="osint-panel-premium__hint">
-                                    <i class="fas fa-circle-info"></i>
-                                    <span data-i18n="osint_foot_hint">
-                                        Hasil diambil dari sumber awam. Sahkan sebelum digunakan.
-                                    </span>
-                                </span>
-                                <button class="osint-panel-premium__export" id="schoolOsintExportBtn" type="button">
-                                    <i class="fas fa-download"></i>
-                                    <span data-i18n="btn_export">Export</span>
-                                </button>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="school-stats-row" id="schoolStatsRow" hidden>
@@ -1225,17 +1100,15 @@
             <i class="fas fa-bolt"></i></button>
         <button class="qm-item" data-qm-action="scan-expert" style="--i:1" title="Expert Scan" type="button">
             <i class="fas fa-shield-halved"></i></button>
-        <button class="qm-item" data-qm-action="osint" style="--i:2" title="OSINT" type="button">
-            <i class="fas fa-fingerprint"></i></button>
-        <button class="qm-item" data-qm-action="history" style="--i:3" title="History" type="button">
+        <button class="qm-item" data-qm-action="history" style="--i:2" title="History" type="button">
             <i class="fas fa-clock-rotate-left"></i></button>
-        <button class="qm-item" data-qm-action="console" style="--i:4" title="Console" type="button">
+        <button class="qm-item" data-qm-action="console" style="--i:3" title="Console" type="button">
             <i class="fas fa-terminal"></i></button>
-        <button class="qm-item" data-qm-action="chat" style="--i:5" title="AI Assistant" type="button">
+        <button class="qm-item" data-qm-action="chat" style="--i:4" title="AI Assistant" type="button">
             <i class="fas fa-robot"></i></button>
-        <button class="qm-item" data-qm-action="telegram" style="--i:6" title="Telegram" type="button">
+        <button class="qm-item" data-qm-action="telegram" style="--i:5" title="Telegram" type="button">
             <i class="fab fa-telegram"></i></button>
-        <button class="qm-item qm-add-item" data-qm-action="add-link" style="--i:7" title="Add Link" type="button">+</button>
+        <button class="qm-item qm-add-item" data-qm-action="add-link" style="--i:6" title="Add Link" type="button">+</button>
     </div>
     <button class="qm-toggle" id="qmToggle" aria-label="Quick menu" aria-expanded="false" type="button">
         <svg class="qm-toggle-icon" viewBox="0 0 44 44" fill="none" aria-hidden="true">
@@ -1347,41 +1220,29 @@
                     <span data-i18n="tool_mctools">MCTOOLS</span></button>
             </div>
 
-            <!-- OSINT detail panel -->
+            <!-- OSINT detail panel — handled by script.js -->
             <div class="tool-detail" id="toolDetail-osint" hidden>
                 <p class="tool-detail-desc" data-i18n="osint_desc">
                     Look up public data linked to a username, email, or phone number.</p>
-                <div class="osint-method-toggle" id="osintMethodToggle" style="margin-bottom:12px;">
-                    <span class="osint-method-toggle__slider" aria-hidden="true"></span>
-                    <button class="osint-method-btn active" data-method="username" type="button">
-                        <i class="fas fa-at"></i>
-                        <span data-i18n="osint_username">Username</span></button>
-                    <button class="osint-method-btn" data-method="email" type="button">
-                        <i class="fas fa-envelope"></i>
-                        <span data-i18n="osint_email">Email</span></button>
-                    <button class="osint-method-btn" data-method="number" type="button">
-                        <i class="fas fa-phone"></i>
-                        <span data-i18n="osint_number">Number</span></button>
+                <div class="segmented-control" id="osintMethodToggle" style="margin-bottom:12px;">
+                    <button class="seg-btn active" data-method="username" type="button">
+                        <i class="fas fa-at"></i> Username</button>
+                    <button class="seg-btn" data-method="email" type="button">
+                        <i class="fas fa-envelope"></i> Email</button>
+                    <button class="seg-btn" data-method="number" type="button">
+                        <i class="fas fa-phone"></i> Number</button>
                 </div>
-                <div class="osint-input-premium" id="osintInputWrap" style="margin-bottom:12px;">
-                    <span class="osint-input-premium__scan" aria-hidden="true"></span>
-                    <span class="osint-input-premium__icon"><i class="fas fa-magnifying-glass"></i></span>
-                    <input type="text" id="osintQueryInput" placeholder=" "
+                <div class="tool-search">
+                    <i class="fas fa-fingerprint"></i>
+                    <input type="text" id="osintQueryInput" placeholder="Enter a value to search..."
                            autocomplete="off" maxlength="120">
-                    <label class="osint-input-premium__label" for="osintQueryInput">
-                        Enter a username, email, or phone
-                    </label>
-                    <button class="osint-input-premium__submit" id="osintSearchBtn" type="button">
-                        <span class="osint-input-premium__submit-label"
-                              data-i18n="btn_search">Search</span>
-                        <i class="fas fa-arrow-right"></i>
-                        <span class="osint-input-premium__ripple" aria-hidden="true"></span>
-                    </button>
+                    <button class="tool-search-btn" id="osintSearchBtn" type="button">
+                        <i class="fas fa-search"></i>
+                        <span data-i18n="btn_search">Search</span></button>
                 </div>
                 <div class="tool-result-area" id="osintResultArea"></div>
             </div>
 
-            <!-- Other tool details -->
             <div class="tool-detail" id="toolDetail-brat" hidden>
                 <p class="tool-detail-desc" data-i18n="brat_desc">Type a caption.</p>
                 <textarea class="tool-textarea" id="bratTextInput" maxlength="120"
@@ -1534,17 +1395,13 @@
 <!-- ═══════════════════════════════════════════════════════════════════════
      SCRIPTS
      Load order matters:
-       1. script.js    — main app logic
-       2. osint.js     — OSINT panel & school search
-       3. mhddos.js    — MHDDoS engine UI
-       4. exploit.js   — exploit suite (XSS/SQLi/Sniper/Takeover/Dirfuzz)
-       5. fixes.js     — patches Tools Hub, briefing, quick menu (load LAST)
+       1. script.js    — main app logic (UI, chat, scans, overview)
+       2. mhddos.js    — MHDDoS engine UI
+       3. exploit.js   — exploit suite (XSS/SQLi/Sniper/Takeover/Dirfuzz)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script src="js/script.js" defer></script>
-<script src="js/osint.js" defer></script>
 <script src="js/mhddos.js" defer></script>
 <script src="js/exploit.js" defer></script>
-<script src="js/fixes.js" defer></script>
 
 </body>
 </html>
