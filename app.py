@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 """
-Oxysintx - Main Flask Application (v3.6.0)
+Oxysintx - Main Flask Application (v3.7.0)
 
 Routing and API. MHDDoS engine (start.py) integrated as external subprocess.
 Attack launches directly on user request.
 
-v3.6.0 — Full integration with:
+v3.7.0 changelog
+    • Integration with modules/git_scraper_wordlist.py
+        – /api/wordlists/{status,manifest,sync,reload,sync/stream}
+        – automatic cache reload after sync
+    • Static asset route now whitelists .js/.mjs/.css/.map/.woff/.woff2/.ttf/.svg/.png/.json
+      and returns proper Cache-Control headers (fixes the 404 spam)
+    • /api/modules/status includes wordlist_scraper
+    • Startup banner shows wordlist_scraper when available
+    • Minor hardening: constant-time compares, safer request logs,
+      consistent SSE writer, proper request-ID in log lines
+
+Full integration with:
     • http_logger          (global request capture + SSE + HAR + anomaly scan)
     • dirfuzz              (directory / file fuzzer, SSE streaming)
     • sqli_engine          (professional SQLi engine — 4 techniques)
@@ -14,6 +25,7 @@ v3.6.0 — Full integration with:
     • xss_exploiter        (professional reflected XSS exploiter, SSE)
     • xss                  (lightweight XSS scanner)
     • sniper               (auto-exploiter orchestrator, SSE)
+    • git_scraper_wordlist (GitHub wordlist sync for all of the above)
 
 Author: Yanxzyx
 """
@@ -67,7 +79,7 @@ from modules.telegram import (
 )
 from modules.whatsapp import whatsapp_bp
 
-# ── Optional: new exploit / recon modules ──────────────────────────────
+# ── Optional: exploit / recon modules ──────────────────────────────────
 try:
     from modules.dirfuzz import (
         run as dirfuzz_run,
@@ -132,6 +144,19 @@ try:
     _http_logger_available = True
 except ImportError:
     _http_logger_available = False
+
+# ── Wordlist scraper (GitHub-synced wordlists for XSS / SQLi / dirfuzz) ──
+try:
+    from modules.git_scraper_wordlist import (
+        sync           as wordlist_sync,
+        sync_streaming as wordlist_sync_stream,
+        list_wordlists as wordlist_list,
+        get_manifest   as wordlist_manifest,
+        reload_caches  as wordlist_reload_caches,
+    )
+    _wordlist_scraper_available = True
+except ImportError:
+    _wordlist_scraper_available = False
 
 try:
     from modules.downsea import downsea_bp
@@ -446,7 +471,9 @@ def github_parse_profile_from_embedded(embedded):
 def github_parse_repos_from_embedded(embedded):
     payload = embedded.get("payload", {})
     repos_data = payload.get("repositories", {})
-    nodes = repos_data.get("nodes", []) if isinstance(repos_data, dict) else (repos_data if isinstance(repos_data, list) else [])
+    nodes = repos_data.get("nodes", []) if isinstance(repos_data, dict) else (
+        repos_data if isinstance(repos_data, list) else []
+    )
     repos = []
     for repo in nodes:
         if not isinstance(repo, dict):
@@ -619,12 +646,13 @@ set_history_store(history_store)
 # ═══════════════════════════════════════════════════════════════════════════
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 for d in ["userdata", "listschool", os.path.join("static", "data"),
-          "files", os.path.join("files", "proxies")]:
+          "files", os.path.join("files", "proxies"), "wordlist"]:
     os.makedirs(os.path.join(PROJECT_ROOT, d), exist_ok=True)
 
 DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 LOG_DIR = os.path.join(PROJECT_ROOT, 'logs')
 UPLOAD_DIR = os.path.join(DATA_DIR, 'uploads')
+TEMPLATES_DIR = os.path.join(PROJECT_ROOT, 'templates')
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -773,9 +801,9 @@ def _find_api_key_owner(raw_key):
     key_hash = _hash_api_key(raw_key)
     for k in keys:
         stored_hash = k.get('key_hash') or k.get('hash')
-        if stored_hash and stored_hash == key_hash:
+        if stored_hash and secrets.compare_digest(stored_hash, key_hash):
             return k
-        if k.get('key') == raw_key:
+        if k.get('key') and secrets.compare_digest(k.get('key', ''), raw_key):
             return k
     return None
 
@@ -1137,19 +1165,44 @@ def terms_page():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Static asset shortcut
+# Static asset delivery — JS / CSS / fonts / maps / images
+#   Served from templates/ so everything lives in one place.
+#   Examples:
+#       /js/script.js          → templates/js/script.js
+#       /css/style.css         → templates/css/style.css
+#       /js/app-ex3bve.js.map  → templates/js/app-ex3bve.js.map
 # ═══════════════════════════════════════════════════════════════════════════
+_ALLOWED_ASSET_EXTS = {
+    '.js', '.mjs', '.cjs',          # JavaScript
+    '.css',                         # Stylesheets
+    '.map',                         # Source maps
+    '.woff', '.woff2', '.ttf', '.otf', '.eot',   # Fonts
+    '.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico',  # Images
+    '.json', '.txt', '.webmanifest',             # Misc
+}
+
+
 @app.route('/<path:filename>')
 def serve_template_assets(filename):
-    if not filename.endswith(('.js', '.css')):
+    """Serve JS / CSS / fonts / images from the templates directory."""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in _ALLOWED_ASSET_EXTS:
         return page_not_found(None)
-    templates_dir = os.path.join(PROJECT_ROOT, 'templates')
-    safe_path = os.path.abspath(os.path.join(templates_dir, filename))
-    if not safe_path.startswith(os.path.abspath(templates_dir)):
+
+    safe_path = os.path.abspath(os.path.join(TEMPLATES_DIR, filename))
+    if not safe_path.startswith(os.path.abspath(TEMPLATES_DIR) + os.sep):
+        logger.warning('Blocked traversal attempt: %s', filename)
         return page_not_found(None)
-    if os.path.isfile(safe_path):
-        return send_from_directory(templates_dir, filename)
-    return page_not_found(None)
+
+    if not os.path.isfile(safe_path):
+        logger.debug('Static asset missing: %s', filename)
+        return page_not_found(None)
+
+    response = send_from_directory(TEMPLATES_DIR, filename)
+    response.cache_control.public = True
+    response.cache_control.max_age = 3600 if ext in ('.js', '.css', '.map') else 86400
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1344,7 +1397,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/3.6.0"},
+            headers={"User-Agent": "Oxysintx/3.7.0"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1624,18 +1677,18 @@ def api_tools():
         for name, info in scan_orchestrator.list_tools().items()
         if "school" not in name.lower()
     }
-    # Annotate availability of the newer specialized modules
     tools.setdefault("_availability", {})
     if isinstance(tools["_availability"], dict):
         tools["_availability"].update({
-            "dirfuzz": _dirfuzz_available,
-            "sqli_engine": _sqli_engine_available,
-            "sql_map": _sql_map_available,
-            "sql_injection": _sql_injection_available,
-            "xss_exploiter": _xss_exploiter_available,
-            "xss": _xss_available,
-            "sniper": _sniper_available,
-            "http_logger": _http_logger_available,
+            "dirfuzz":           _dirfuzz_available,
+            "sqli_engine":       _sqli_engine_available,
+            "sql_map":           _sql_map_available,
+            "sql_injection":     _sql_injection_available,
+            "xss_exploiter":     _xss_exploiter_available,
+            "xss":               _xss_available,
+            "sniper":            _sniper_available,
+            "http_logger":       _http_logger_available,
+            "wordlist_scraper":  _wordlist_scraper_available,
         })
     return jsonify(tools)
 
@@ -2429,14 +2482,14 @@ def api_sqlmap_scan():
         mode = "basic"
 
     kwargs = {
-        "method":     data.get("method", "GET"),
-        "params":     data.get("params"),
-        "timeout":    float(data.get("timeout", 5.0)),
+        "method":      data.get("method", "GET"),
+        "params":      data.get("params"),
+        "timeout":     float(data.get("timeout", 5.0)),
         "max_threads": int(data.get("max_threads", 10)),
-        "verify_ssl": bool(data.get("verify_ssl", False)),
-        "headers":    data.get("headers"),
-        "cookies":    data.get("cookies"),
-        "proxies":    data.get("proxies"),
+        "verify_ssl":  bool(data.get("verify_ssl", False)),
+        "headers":     data.get("headers"),
+        "cookies":     data.get("cookies"),
+        "proxies":     data.get("proxies"),
     }
     try:
         return jsonify(sql_map_module.run(target, mode, **kwargs))
@@ -2566,11 +2619,11 @@ def api_xss_simple_scan():
     if mode not in ("basic", "expert"):
         mode = "basic"
     kwargs = {
-        "method":     data.get("method", "GET"),
-        "params":     data.get("params"),
-        "timeout":    float(data.get("timeout", 5.0)),
+        "method":      data.get("method", "GET"),
+        "params":      data.get("params"),
+        "timeout":     float(data.get("timeout", 5.0)),
         "max_threads": int(data.get("max_threads", 10)),
-        "verify_ssl": bool(data.get("verify_ssl", False)),
+        "verify_ssl":  bool(data.get("verify_ssl", False)),
     }
     try:
         return jsonify(xss_module.run(target, mode, **kwargs))
@@ -2593,13 +2646,13 @@ def api_sniper_scan():
         return jsonify({"error": "target_required"}), 400
 
     options = {
-        "module_timeout":        float(data.get("module_timeout", 90.0)),
-        "global_budget":         float(data.get("global_budget", 150.0)),
-        "dirfuzz_wordlist":      data.get("dirfuzz_wordlist", "lottery-dirs.txt"),
-        "dirfuzz_max_paths":     int(data.get("dirfuzz_max_paths", 80)),
-        "xss_max_payloads":      int(data.get("xss_max_payloads", 20)),
-        "takeover_enumerate":    bool(data.get("takeover_enumerate", True)),
-        "takeover_max_hosts":    int(data.get("takeover_max_hosts", 120)),
+        "module_timeout":     float(data.get("module_timeout", 90.0)),
+        "global_budget":      float(data.get("global_budget", 150.0)),
+        "dirfuzz_wordlist":   data.get("dirfuzz_wordlist", "lottery-dirs.txt"),
+        "dirfuzz_max_paths":  int(data.get("dirfuzz_max_paths", 80)),
+        "xss_max_payloads":   int(data.get("xss_max_payloads", 20)),
+        "takeover_enumerate": bool(data.get("takeover_enumerate", True)),
+        "takeover_max_hosts": int(data.get("takeover_max_hosts", 120)),
     }
     try:
         return jsonify(sniper_run(target, options))
@@ -2618,11 +2671,11 @@ def api_sniper_scan_stream():
         return jsonify({"error": "target_required"}), 400
 
     options = {
-        "module_timeout":    float(request.args.get("module_timeout", 90.0)),
-        "global_budget":     float(request.args.get("global_budget", 150.0)),
-        "dirfuzz_wordlist":  request.args.get("dirfuzz_wordlist", "lottery-dirs.txt"),
-        "dirfuzz_max_paths": int(request.args.get("dirfuzz_max_paths", 80)),
-        "xss_max_payloads":  int(request.args.get("xss_max_payloads", 20)),
+        "module_timeout":     float(request.args.get("module_timeout", 90.0)),
+        "global_budget":      float(request.args.get("global_budget", 150.0)),
+        "dirfuzz_wordlist":   request.args.get("dirfuzz_wordlist", "lottery-dirs.txt"),
+        "dirfuzz_max_paths":  int(request.args.get("dirfuzz_max_paths", 80)),
+        "xss_max_payloads":   int(request.args.get("xss_max_payloads", 20)),
         "takeover_enumerate": request.args.get("takeover_enumerate", "1") == "1",
         "takeover_max_hosts": int(request.args.get("takeover_max_hosts", 120)),
     }
@@ -2726,7 +2779,6 @@ def api_logger_har():
     if http_logger is None:
         return jsonify({"error": "http_logger not available"}), 503
     try:
-        # Re-use the list() filters to select the entries
         page = int(request.args.get("page", 1))
         size = min(int(request.args.get("size", 200)), 1000)
         q = request.args.get("q") or None
@@ -2758,7 +2810,6 @@ def api_logger_stream():
 
     def _gen():
         try:
-            # Initial handshake
             yield _sse_format({
                 "type": "hello",
                 "stats": http_logger.stats(),
@@ -2780,6 +2831,100 @@ def api_logger_stream():
             http_logger.unsubscribe(subscriber)
 
     return _sse_response(_gen())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Wordlist Scraper API (git_scraper_wordlist.py)
+#   GET    /api/wordlists/status        — manifest + on-disk line counts
+#   GET    /api/wordlists/manifest      — raw manifest
+#   POST   /api/wordlists/sync          — blocking sync
+#   GET    /api/wordlists/sync/stream   — SSE sync
+#   POST   /api/wordlists/reload        — force in-memory cache reload
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/wordlists/status")
+@api_login_required
+def api_wordlists_status():
+    if not _wordlist_scraper_available:
+        return jsonify({"error": "wordlist scraper not available"}), 503
+    try:
+        return jsonify(wordlist_list())
+    except Exception as e:
+        logger.error(f"wordlist status failed: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/wordlists/manifest")
+@api_login_required
+def api_wordlists_manifest():
+    if not _wordlist_scraper_available:
+        return jsonify({"error": "wordlist scraper not available"}), 503
+    try:
+        return jsonify(wordlist_manifest())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/wordlists/sync", methods=["POST"])
+@role_required("owner", "analyst")
+def api_wordlists_sync():
+    if not _wordlist_scraper_available:
+        return jsonify({"error": "wordlist scraper not available"}), 503
+    data = request.get_json(silent=True) or {}
+    modules = data.get("modules")
+    if isinstance(modules, str):
+        modules = [m.strip() for m in modules.split(",") if m.strip()]
+    force   = bool(data.get("force", False))
+    workers = int(data.get("workers", 4))
+    timeout = float(data.get("timeout", 25.0))
+    try:
+        report = wordlist_sync(modules, force=force,
+                               workers=workers, timeout=timeout)
+        return jsonify(report)
+    except Exception as e:
+        logger.error(f"wordlist sync failed: {e}", exc_info=True)
+        return jsonify({"error": "sync_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/wordlists/sync/stream")
+@role_required("owner", "analyst")
+def api_wordlists_sync_stream():
+    if not _wordlist_scraper_available:
+        return jsonify({"error": "wordlist scraper not available"}), 503
+
+    mod_arg = request.args.get("modules", "").strip()
+    modules = [m.strip() for m in mod_arg.split(",") if m.strip()] or None
+    force   = request.args.get("force", "0") == "1"
+    workers = int(request.args.get("workers", 4))
+    timeout = float(request.args.get("timeout", 25.0))
+
+    cancel_event = threading.Event()
+
+    def _gen():
+        try:
+            for ev in wordlist_sync_stream(
+                modules, force=force,
+                workers=workers, timeout=timeout,
+                cancel_event=cancel_event,
+            ):
+                yield _sse_format(ev)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"wordlist stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+
+    return _sse_response(_gen())
+
+
+@app.route("/api/wordlists/reload", methods=["POST"])
+@api_login_required
+def api_wordlists_reload():
+    if not _wordlist_scraper_available:
+        return jsonify({"error": "wordlist scraper not available"}), 503
+    try:
+        return jsonify({"success": True, "reload": wordlist_reload_caches()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -3164,19 +3309,20 @@ def v1_scan_status(job_id):
 @api_login_required
 def api_modules_status():
     return jsonify({
-        "dirfuzz":        {"available": _dirfuzz_available},
-        "sqli_engine":    {"available": _sqli_engine_available,
-                            "sources": list(SQLI_WORDLIST_SOURCES.keys()) if _sqli_engine_available else []},
-        "sql_map":        {"available": _sql_map_available},
-        "sql_injection":  {"available": _sql_injection_available},
-        "xss_exploiter":  {"available": _xss_exploiter_available},
-        "xss":            {"available": _xss_available},
-        "sniper":         {"available": _sniper_available},
-        "http_logger":    {"available": http_logger is not None},
-        "testing":        {"available": _testing_available},
-        "analytic":       {"available": _analytic_available},
-        "downsea":        {"available": _downsea_available},
-        "quick_menu":     {"available": _quick_menu_available},
+        "dirfuzz":           {"available": _dirfuzz_available},
+        "sqli_engine":       {"available": _sqli_engine_available,
+                              "sources": list(SQLI_WORDLIST_SOURCES.keys()) if _sqli_engine_available else []},
+        "sql_map":           {"available": _sql_map_available},
+        "sql_injection":     {"available": _sql_injection_available},
+        "xss_exploiter":     {"available": _xss_exploiter_available},
+        "xss":               {"available": _xss_available},
+        "sniper":            {"available": _sniper_available},
+        "http_logger":       {"available": http_logger is not None},
+        "wordlist_scraper":  {"available": _wordlist_scraper_available},
+        "testing":           {"available": _testing_available},
+        "analytic":          {"available": _analytic_available},
+        "downsea":           {"available": _downsea_available},
+        "quick_menu":        {"available": _quick_menu_available},
     })
 
 
@@ -3193,14 +3339,15 @@ def _print_startup(port=None):
     info_lines.append(f"  Account    : {DEFAULT_USERNAME}")
 
     modules = []
-    if _dirfuzz_available:      modules.append("dirfuzz")
-    if _sqli_engine_available:  modules.append("sqli_engine")
-    if _sql_map_available:      modules.append("sql_map")
-    if _sql_injection_available: modules.append("sql_injection")
-    if _xss_exploiter_available: modules.append("xss_exploiter")
-    if _xss_available:          modules.append("xss")
-    if _sniper_available:       modules.append("sniper")
-    if http_logger is not None: modules.append("http_logger")
+    if _dirfuzz_available:        modules.append("dirfuzz")
+    if _sqli_engine_available:    modules.append("sqli_engine")
+    if _sql_map_available:        modules.append("sql_map")
+    if _sql_injection_available:  modules.append("sql_injection")
+    if _xss_exploiter_available:  modules.append("xss_exploiter")
+    if _xss_available:            modules.append("xss")
+    if _sniper_available:         modules.append("sniper")
+    if http_logger is not None:   modules.append("http_logger")
+    if _wordlist_scraper_available: modules.append("wordlist_scraper")
     if modules:
         info_lines.append(f"  Modules    : {', '.join(modules)}")
     print("\n".join(info_lines), flush=True)
