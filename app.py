@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 """
-Oxysintx - Main Flask Application (v3.5.0)
+Oxysintx - Main Flask Application (v3.6.0)
 
 Routing and API. MHDDoS engine (start.py) integrated as external subprocess.
 Attack launches directly on user request.
+
+v3.6.0 — Full integration with:
+    • http_logger          (global request capture + SSE + HAR + anomaly scan)
+    • dirfuzz              (directory / file fuzzer, SSE streaming)
+    • sqli_engine          (professional SQLi engine — 4 techniques)
+    • sql_map              (multi-technique SQLi scanner w/ confidence scoring)
+    • sql_injection        (lightweight SQLi detector)
+    • xss_exploiter        (professional reflected XSS exploiter, SSE)
+    • xss                  (lightweight XSS scanner)
+    • sniper               (auto-exploiter orchestrator, SSE)
 
 Author: Yanxzyx
 """
@@ -34,7 +44,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import (
     Flask, render_template, request, jsonify, session, redirect,
-    send_from_directory, Response, g
+    send_from_directory, Response, g, stream_with_context
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -57,6 +67,72 @@ from modules.telegram import (
 )
 from modules.whatsapp import whatsapp_bp
 
+# ── Optional: new exploit / recon modules ──────────────────────────────
+try:
+    from modules.dirfuzz import (
+        run as dirfuzz_run,
+        run_streaming as dirfuzz_stream,
+        list_wordlists as dirfuzz_list_wordlists,
+        ensure_wordlist_dir as dirfuzz_ensure_dir,
+    )
+    _dirfuzz_available = True
+except ImportError:
+    _dirfuzz_available = False
+
+try:
+    from modules.sqli_engine import (
+        run as sqli_run,
+        run_streaming as sqli_stream,
+        ensure_wordlists as sqli_ensure_wordlists,
+        WORDLIST_SOURCES as SQLI_WORDLIST_SOURCES,
+    )
+    _sqli_engine_available = True
+except ImportError:
+    _sqli_engine_available = False
+
+try:
+    from modules import sql_map as sql_map_module
+    _sql_map_available = True
+except ImportError:
+    _sql_map_available = False
+
+try:
+    from modules import sql_injection as sql_injection_module
+    _sql_injection_available = True
+except ImportError:
+    _sql_injection_available = False
+
+try:
+    from modules.xss_exploiter import (
+        run as xss_exploiter_run,
+        run_streaming as xss_exploiter_stream,
+        ensure_wordlist as xss_ensure_wordlist,
+    )
+    _xss_exploiter_available = True
+except ImportError:
+    _xss_exploiter_available = False
+
+try:
+    from modules import xss as xss_module
+    _xss_available = True
+except ImportError:
+    _xss_available = False
+
+try:
+    from modules.sniper import (
+        run as sniper_run,
+        run_streaming as sniper_stream,
+    )
+    _sniper_available = True
+except ImportError:
+    _sniper_available = False
+
+try:
+    from modules.http_logger import HttpLogger
+    _http_logger_available = True
+except ImportError:
+    _http_logger_available = False
+
 try:
     from modules.downsea import downsea_bp
     _downsea_available = True
@@ -78,6 +154,7 @@ except ImportError:
     _analytic_available = False
 
 _quick_menu_bp = None
+_quick_menu_available = False
 try:
     from modules import quick_menu
     if hasattr(quick_menu, 'quick_menu_bp'):
@@ -86,10 +163,8 @@ try:
     elif hasattr(quick_menu, 'bp'):
         _quick_menu_bp = quick_menu.bp
         _quick_menu_available = True
-    else:
-        _quick_menu_available = False
 except ImportError:
-    _quick_menu_available = False
+    pass
 
 # ═══════════════════════════════════════════════════════════════════════════
 # STARTUP BANNER (single, clean)
@@ -101,7 +176,7 @@ BANNER = r"""
     ▒ ∙  ▄▄▄▄▄▄▒ ▒    ▒ ▒ · ▒ ▒ · ▒ ▒ ∙  ▄▄▄▄▄▄▒ ▒   ·▄▄▄  ▀▄ ▒ ∙  ▒ ▄   ▒ ▒ ∙  ▄▄▄▄▄▄▒ ▒    ▒ ▒ · ▒ ░▄▄▄ ▀▀▀▀▀▀▒
     ░    ░▄▄▄▄▄▄ ░   ∙░ ░   ░ ░   ░ ░    ░▄▄▄▄▄▄ ░ .  ░ ░  .░ ░    ░▄░   ░ ░    ░▄▄▄▄▄▄ ░   ∙░ ░   ░ ▄▄▄▄▄  ▒  .░
     █    .    ·█ █ ∙  █ █   █ █   █ █    .    ·█ █    █ █∙  █ █    .    ·█ █    .    ·█ █ ∙  █ █   █ ▓   ▀▀▀▀∙  █
-    █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█ █▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█ ░▄▄▄▄▄▄▄▄▄▄█
+    █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█ █▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄█ █▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄▄▄▄▄▄▄▄█ █▄▄▄█ █▄▄▄█ ░▄▄▄▄▄▄▄▄▄▄█
 """
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -587,7 +662,6 @@ def _save_json(name, data):
 
 
 def _json_lock(name):
-    """Return the lock for a JSON file so callers can do atomic read-modify-write."""
     return _json_locks[name]
 
 
@@ -596,7 +670,6 @@ def _now_iso():
 
 
 def _client_ip():
-    """Real client IP, honoring common reverse-proxy headers."""
     fwd = request.headers.get('X-Forwarded-For', '')
     if fwd:
         return fwd.split(',')[0].strip()
@@ -632,6 +705,24 @@ def _inbound_stats():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# HTTP Logger (global request capture)
+# ═══════════════════════════════════════════════════════════════════════════
+http_logger = None
+if _http_logger_available:
+    try:
+        persist_dir = Path(DATA_DIR) / "http_logs"
+        http_logger = HttpLogger(
+            max_entries=int(os.getenv("HTTP_LOG_BUFFER", "5000")),
+            max_body_bytes=int(os.getenv("HTTP_LOG_BODY_MAX", "8192")),
+            persist_dir=persist_dir,
+        )
+        http_logger.attach(app)
+    except Exception as e:
+        logger.error(f"Failed to attach HttpLogger: {e}")
+        http_logger = None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # API-key helper (single source of truth: user_store)
 # ═══════════════════════════════════════════════════════════════════════════
 def _hash_api_key(raw_key):
@@ -648,7 +739,6 @@ def _public_key_view(k):
 
 
 def _record_server_activity(key_prefix, username, req):
-    """Track server/client activity for Panel Manager."""
     reported_name = (
         req.headers.get('X-Server-Name')
         or (req.get_json(silent=True) or {}).get('server_name')
@@ -676,7 +766,6 @@ def _record_server_activity(key_prefix, username, req):
 
 
 def _find_api_key_owner(raw_key):
-    """Look up the owner of an API key via user_store (single source of truth)."""
     try:
         keys = user_store.get_api_keys()
     except Exception:
@@ -686,7 +775,6 @@ def _find_api_key_owner(raw_key):
         stored_hash = k.get('key_hash') or k.get('hash')
         if stored_hash and stored_hash == key_hash:
             return k
-        # Fallback: raw match (for stores that keep the full key)
         if k.get('key') == raw_key:
             return k
     return None
@@ -706,7 +794,6 @@ def _api_key_required(fn):
         prefix = record.get('prefix') or record.get('key_prefix') or raw_key[:20]
         owner = record.get('owner_username') or record.get('username') or 'unknown'
 
-        # Update last-used counters (best-effort; user_store may persist this)
         try:
             user_store.touch_api_key(prefix)
         except Exception:
@@ -811,7 +898,6 @@ def _extract_bearer_token():
 
 
 def _authenticate_request():
-    """Verify session or Bearer token, invalidating if the user no longer exists."""
     username = session.get("username")
     if username:
         role = get_role(username)
@@ -889,6 +975,30 @@ def owner_required(f):
             return jsonify({'error': 'Owner access required'}), 403
         return f(*args, **kwargs)
     return wrapper
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SSE helpers
+# ═══════════════════════════════════════════════════════════════════════════
+def _sse_format(event: dict) -> str:
+    """Format a dict as an SSE data frame."""
+    try:
+        payload = json.dumps(event, ensure_ascii=False, default=str)
+    except Exception:
+        payload = json.dumps({"type": "error", "message": "serialization failed"})
+    return f"data: {payload}\n\n"
+
+
+def _sse_response(generator, headers: dict = None):
+    base_headers = {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+        "Connection": "keep-alive",
+    }
+    if headers:
+        base_headers.update(headers)
+    return Response(stream_with_context(generator), headers=base_headers)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1234,7 +1344,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/3.5.0"},
+            headers={"User-Agent": "Oxysintx/3.6.0"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1514,6 +1624,19 @@ def api_tools():
         for name, info in scan_orchestrator.list_tools().items()
         if "school" not in name.lower()
     }
+    # Annotate availability of the newer specialized modules
+    tools.setdefault("_availability", {})
+    if isinstance(tools["_availability"], dict):
+        tools["_availability"].update({
+            "dirfuzz": _dirfuzz_available,
+            "sqli_engine": _sqli_engine_available,
+            "sql_map": _sql_map_available,
+            "sql_injection": _sql_injection_available,
+            "xss_exploiter": _xss_exploiter_available,
+            "xss": _xss_available,
+            "sniper": _sniper_available,
+            "http_logger": _http_logger_available,
+        })
     return jsonify(tools)
 
 
@@ -2132,6 +2255,534 @@ def api_exploit_xss():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Directory Fuzzer API (dirfuzz.py)
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/dirfuzz/wordlists")
+@api_login_required
+def api_dirfuzz_wordlists():
+    if not _dirfuzz_available:
+        return jsonify({"error": "dirfuzz module not available"}), 503
+    try:
+        return jsonify({"wordlists": dirfuzz_list_wordlists()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/dirfuzz/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_dirfuzz_scan():
+    if not _dirfuzz_available:
+        return jsonify({"error": "dirfuzz module not available"}), 503
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+
+    options = {
+        "wordlist_name":    data.get("wordlist_name", "lottery-dirs.txt"),
+        "wordlist":         data.get("wordlist"),
+        "max_paths":        int(data.get("max_paths", 300)),
+        "concurrency":      int(data.get("concurrency", 24)),
+        "rate_limit":       float(data.get("rate_limit", 40.0)),
+        "timeout":          float(data.get("timeout", 4.0)),
+        "max_duration":     float(data.get("max_duration", 90.0)),
+        "follow_redirects": bool(data.get("follow_redirects", False)),
+    }
+    try:
+        return jsonify(dirfuzz_run(target, options))
+    except Exception as e:
+        logger.error(f"dirfuzz scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/dirfuzz/scan/stream")
+@role_required("owner", "analyst")
+def api_dirfuzz_scan_stream():
+    if not _dirfuzz_available:
+        return jsonify({"error": "dirfuzz module not available"}), 503
+    target = (request.args.get("target") or request.args.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+
+    cancel_event = threading.Event()
+
+    options = {
+        "wordlist_name":    request.args.get("wordlist_name", "lottery-dirs.txt"),
+        "max_paths":        int(request.args.get("max_paths", 300)),
+        "concurrency":      int(request.args.get("concurrency", 24)),
+        "rate_limit":       float(request.args.get("rate_limit", 40.0)),
+        "timeout":          float(request.args.get("timeout", 4.0)),
+        "max_duration":     float(request.args.get("max_duration", 90.0)),
+        "follow_redirects": request.args.get("follow_redirects", "0") == "1",
+        "cancel_event":     cancel_event,
+    }
+
+    def _gen():
+        try:
+            for event in dirfuzz_stream(target, options, cancel_event=cancel_event):
+                yield _sse_format(event)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"dirfuzz stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+
+    return _sse_response(_gen())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SQLi Engine API (sqli_engine.py)
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/sqli/wordlists")
+@api_login_required
+def api_sqli_wordlists():
+    if not _sqli_engine_available:
+        return jsonify({"error": "sqli_engine module not available"}), 503
+    try:
+        return jsonify(sqli_ensure_wordlists())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/sqli/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_sqli_scan():
+    if not _sqli_engine_available:
+        return jsonify({"error": "sqli_engine module not available"}), 503
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+
+    techniques = data.get("techniques") or ["error", "boolean", "time", "union"]
+    options = {
+        "techniques":   techniques,
+        "params":       data.get("params"),
+        "max_params":   int(data.get("max_params", 10)),
+        "concurrency":  int(data.get("concurrency", 8)),
+        "rate_limit":   float(data.get("rate_limit", 20.0)),
+        "timeout":      float(data.get("timeout", 8.0)),
+        "max_duration": float(data.get("max_duration", 90.0)),
+        "method":       data.get("method", "GET"),
+        "headers":      data.get("headers"),
+        "cookies":      data.get("cookies"),
+    }
+    try:
+        return jsonify(sqli_run(target, options))
+    except Exception as e:
+        logger.error(f"sqli scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/sqli/scan/stream")
+@role_required("owner", "analyst")
+def api_sqli_scan_stream():
+    if not _sqli_engine_available:
+        return jsonify({"error": "sqli_engine module not available"}), 503
+    target = (request.args.get("target") or request.args.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+
+    tech_arg = request.args.get("techniques", "error,boolean,time,union")
+    techniques = [t.strip() for t in tech_arg.split(",") if t.strip()]
+    cancel_event = threading.Event()
+
+    options = {
+        "techniques":   techniques,
+        "max_params":   int(request.args.get("max_params", 10)),
+        "concurrency":  int(request.args.get("concurrency", 8)),
+        "rate_limit":   float(request.args.get("rate_limit", 20.0)),
+        "timeout":      float(request.args.get("timeout", 8.0)),
+        "max_duration": float(request.args.get("max_duration", 90.0)),
+        "method":       request.args.get("method", "GET"),
+        "cancel_event": cancel_event,
+    }
+
+    def _gen():
+        try:
+            for event in sqli_stream(target, options, cancel_event=cancel_event):
+                yield _sse_format(event)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"sqli stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+
+    return _sse_response(_gen())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SQLMap API (sql_map.py) — advanced multi-technique scanner
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/sqlmap/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_sqlmap_scan():
+    if not _sql_map_available:
+        return jsonify({"error": "sql_map module not available"}), 503
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+
+    mode = data.get("mode", "basic")
+    if mode not in ("basic", "expert"):
+        mode = "basic"
+
+    kwargs = {
+        "method":     data.get("method", "GET"),
+        "params":     data.get("params"),
+        "timeout":    float(data.get("timeout", 5.0)),
+        "max_threads": int(data.get("max_threads", 10)),
+        "verify_ssl": bool(data.get("verify_ssl", False)),
+        "headers":    data.get("headers"),
+        "cookies":    data.get("cookies"),
+        "proxies":    data.get("proxies"),
+    }
+    try:
+        return jsonify(sql_map_module.run(target, mode, **kwargs))
+    except Exception as e:
+        logger.error(f"sql_map scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Lightweight SQL Injection (sql_injection.py)
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/sql_injection/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_sql_injection_scan():
+    if not _sql_injection_available:
+        return jsonify({"error": "sql_injection module not available"}), 503
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    if not target.startswith(("http://", "https://")):
+        target = "http://" + target
+    try:
+        return jsonify(sql_injection_module.run_sql_injection(
+            target,
+            method=data.get("method", "GET"),
+            params=data.get("params") or {},
+        ))
+    except Exception as e:
+        logger.error(f"sql_injection scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# XSS Exploiter API (xss_exploiter.py)
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/xss/wordlist")
+@api_login_required
+def api_xss_wordlist():
+    if not _xss_exploiter_available:
+        return jsonify({"error": "xss_exploiter module not available"}), 503
+    try:
+        return jsonify(xss_ensure_wordlist())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/xss/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_xss_scan():
+    if not _xss_exploiter_available:
+        return jsonify({"error": "xss_exploiter module not available"}), 503
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    if not target.startswith(("http://", "https://")):
+        target = "http://" + target
+
+    options = {
+        "max_payloads": int(data.get("max_payloads", 30)),
+        "max_params":   int(data.get("max_params", 10)),
+        "concurrency":  int(data.get("concurrency", 8)),
+        "rate_limit":   float(data.get("rate_limit", 20.0)),
+        "timeout":      float(data.get("timeout", 8.0)),
+        "waf_bypass":   bool(data.get("waf_bypass", False)),
+        "params":       data.get("params"),
+        "method":       data.get("method", "GET"),
+        "max_duration": data.get("max_duration"),
+    }
+    try:
+        return jsonify(xss_exploiter_run(target, options))
+    except Exception as e:
+        logger.error(f"xss scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/xss/scan/stream")
+@role_required("owner", "analyst")
+def api_xss_scan_stream():
+    if not _xss_exploiter_available:
+        return jsonify({"error": "xss_exploiter module not available"}), 503
+    target = (request.args.get("target") or request.args.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    if not target.startswith(("http://", "https://")):
+        target = "http://" + target
+
+    cancel_event = threading.Event()
+    options = {
+        "max_payloads": int(request.args.get("max_payloads", 30)),
+        "max_params":   int(request.args.get("max_params", 10)),
+        "concurrency":  int(request.args.get("concurrency", 8)),
+        "rate_limit":   float(request.args.get("rate_limit", 20.0)),
+        "timeout":      float(request.args.get("timeout", 8.0)),
+        "waf_bypass":   request.args.get("waf_bypass", "0") == "1",
+        "method":       request.args.get("method", "GET"),
+        "cancel_event": cancel_event,
+    }
+
+    def _gen():
+        try:
+            for event in xss_exploiter_stream(target, options, cancel_event=cancel_event):
+                yield _sse_format(event)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"xss stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+
+    return _sse_response(_gen())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Lightweight XSS (xss.py)
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/xss_simple/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_xss_simple_scan():
+    if not _xss_available:
+        return jsonify({"error": "xss module not available"}), 503
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    mode = data.get("mode", "basic")
+    if mode not in ("basic", "expert"):
+        mode = "basic"
+    kwargs = {
+        "method":     data.get("method", "GET"),
+        "params":     data.get("params"),
+        "timeout":    float(data.get("timeout", 5.0)),
+        "max_threads": int(data.get("max_threads", 10)),
+        "verify_ssl": bool(data.get("verify_ssl", False)),
+    }
+    try:
+        return jsonify(xss_module.run(target, mode, **kwargs))
+    except Exception as e:
+        logger.error(f"xss module scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Sniper — Auto-Exploiter orchestrator
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/sniper/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_sniper_scan():
+    if not _sniper_available:
+        return jsonify({"error": "sniper module not available"}), 503
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+
+    options = {
+        "module_timeout":        float(data.get("module_timeout", 90.0)),
+        "global_budget":         float(data.get("global_budget", 150.0)),
+        "dirfuzz_wordlist":      data.get("dirfuzz_wordlist", "lottery-dirs.txt"),
+        "dirfuzz_max_paths":     int(data.get("dirfuzz_max_paths", 80)),
+        "xss_max_payloads":      int(data.get("xss_max_payloads", 20)),
+        "takeover_enumerate":    bool(data.get("takeover_enumerate", True)),
+        "takeover_max_hosts":    int(data.get("takeover_max_hosts", 120)),
+    }
+    try:
+        return jsonify(sniper_run(target, options))
+    except Exception as e:
+        logger.error(f"sniper scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/sniper/scan/stream")
+@role_required("owner", "analyst")
+def api_sniper_scan_stream():
+    if not _sniper_available:
+        return jsonify({"error": "sniper module not available"}), 503
+    target = (request.args.get("target") or request.args.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+
+    options = {
+        "module_timeout":    float(request.args.get("module_timeout", 90.0)),
+        "global_budget":     float(request.args.get("global_budget", 150.0)),
+        "dirfuzz_wordlist":  request.args.get("dirfuzz_wordlist", "lottery-dirs.txt"),
+        "dirfuzz_max_paths": int(request.args.get("dirfuzz_max_paths", 80)),
+        "xss_max_payloads":  int(request.args.get("xss_max_payloads", 20)),
+        "takeover_enumerate": request.args.get("takeover_enumerate", "1") == "1",
+        "takeover_max_hosts": int(request.args.get("takeover_max_hosts", 120)),
+    }
+
+    def _gen():
+        try:
+            for event in sniper_stream(target, options):
+                yield _sse_format(event)
+        except GeneratorExit:
+            pass
+        except Exception as e:
+            logger.error(f"sniper stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+
+    return _sse_response(_gen())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HTTP Logger API
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/logger/requests", methods=["GET"])
+@role_required("owner", "analyst")
+def api_logger_requests():
+    if http_logger is None:
+        return jsonify({"error": "http_logger not available"}), 503
+    try:
+        page = int(request.args.get("page", 1))
+        size = int(request.args.get("size", 100))
+        q = request.args.get("q") or None
+        method = request.args.get("method") or None
+        status_min = request.args.get("status_min", type=int)
+        status_max = request.args.get("status_max", type=int)
+        anomaly = request.args.get("anomaly") or None
+        tag = request.args.get("tag") or None
+        ip = request.args.get("ip") or None
+        since_ms = request.args.get("since_ms", type=int)
+
+        result = http_logger.list(
+            page=page, size=size, q=q, method=method,
+            status_min=status_min, status_max=status_max,
+            anomaly=anomaly, tag=tag, ip=ip, since_ms=since_ms,
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/logger/requests/<entry_id>", methods=["GET"])
+@role_required("owner", "analyst")
+def api_logger_request_detail(entry_id):
+    if http_logger is None:
+        return jsonify({"error": "http_logger not available"}), 503
+    entry = http_logger.get(entry_id)
+    if entry is None:
+        return jsonify({"error": "not_found"}), 404
+    return jsonify(entry)
+
+
+@app.route("/api/logger/stats", methods=["GET"])
+@role_required("owner", "analyst")
+def api_logger_stats():
+    if http_logger is None:
+        return jsonify({"error": "http_logger not available"}), 503
+    try:
+        return jsonify(http_logger.stats())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/logger/clear", methods=["POST"])
+@role_required("owner")
+def api_logger_clear():
+    if http_logger is None:
+        return jsonify({"error": "http_logger not available"}), 503
+    try:
+        n = http_logger.clear()
+        return jsonify({"success": True, "cleared": n})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/logger/requests/<entry_id>/tag", methods=["POST"])
+@role_required("owner", "analyst")
+def api_logger_tag(entry_id):
+    if http_logger is None:
+        return jsonify({"error": "http_logger not available"}), 503
+    data = request.get_json(silent=True) or {}
+    tag = (data.get("tag") or "").strip()
+    add = bool(data.get("add", True))
+    if not tag:
+        return jsonify({"error": "tag_required"}), 400
+    ok = http_logger.tag(entry_id, tag, add=add)
+    if not ok:
+        return jsonify({"error": "not_found"}), 404
+    return jsonify({"success": True})
+
+
+@app.route("/api/logger/har", methods=["GET"])
+@role_required("owner", "analyst")
+def api_logger_har():
+    if http_logger is None:
+        return jsonify({"error": "http_logger not available"}), 503
+    try:
+        # Re-use the list() filters to select the entries
+        page = int(request.args.get("page", 1))
+        size = min(int(request.args.get("size", 200)), 1000)
+        q = request.args.get("q") or None
+        method = request.args.get("method") or None
+        status_min = request.args.get("status_min", type=int)
+        status_max = request.args.get("status_max", type=int)
+        anomaly = request.args.get("anomaly") or None
+        tag = request.args.get("tag") or None
+        ip = request.args.get("ip") or None
+
+        listing = http_logger.list(
+            page=page, size=size, q=q, method=method,
+            status_min=status_min, status_max=status_max,
+            anomaly=anomaly, tag=tag, ip=ip,
+        )
+        har = http_logger.to_har(listing["items"])
+        return jsonify(har)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/logger/stream")
+@role_required("owner", "analyst")
+def api_logger_stream():
+    if http_logger is None:
+        return jsonify({"error": "http_logger not available"}), 503
+
+    subscriber = http_logger.subscribe()
+
+    def _gen():
+        try:
+            # Initial handshake
+            yield _sse_format({
+                "type": "hello",
+                "stats": http_logger.stats(),
+            })
+            last_heartbeat = time.monotonic()
+            while True:
+                try:
+                    event = subscriber.get(timeout=1.0)
+                    yield _sse_format(event)
+                except Exception:
+                    pass
+                now = time.monotonic()
+                if now - last_heartbeat >= 15.0:
+                    last_heartbeat = now
+                    yield _sse_format({"type": "heartbeat", "ts": int(now)})
+        except GeneratorExit:
+            pass
+        finally:
+            http_logger.unsubscribe(subscriber)
+
+    return _sse_response(_gen())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # 404 handler
 # ═══════════════════════════════════════════════════════════════════════════
 @app.errorhandler(404)
@@ -2507,6 +3158,29 @@ def v1_scan_status(job_id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Module status (dashboard hint panel)
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/modules/status")
+@api_login_required
+def api_modules_status():
+    return jsonify({
+        "dirfuzz":        {"available": _dirfuzz_available},
+        "sqli_engine":    {"available": _sqli_engine_available,
+                            "sources": list(SQLI_WORDLIST_SOURCES.keys()) if _sqli_engine_available else []},
+        "sql_map":        {"available": _sql_map_available},
+        "sql_injection":  {"available": _sql_injection_available},
+        "xss_exploiter":  {"available": _xss_exploiter_available},
+        "xss":            {"available": _xss_available},
+        "sniper":         {"available": _sniper_available},
+        "http_logger":    {"available": http_logger is not None},
+        "testing":        {"available": _testing_available},
+        "analytic":       {"available": _analytic_available},
+        "downsea":        {"available": _downsea_available},
+        "quick_menu":     {"available": _quick_menu_available},
+    })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Startup
 # ═══════════════════════════════════════════════════════════════════════════
 def _print_startup(port=None):
@@ -2517,6 +3191,18 @@ def _print_startup(port=None):
         info_lines.append(f"  Server     : http://localhost:{port}")
     info_lines.append(f"  Tools      : {len(scan_orchestrator.list_tools())} loaded")
     info_lines.append(f"  Account    : {DEFAULT_USERNAME}")
+
+    modules = []
+    if _dirfuzz_available:      modules.append("dirfuzz")
+    if _sqli_engine_available:  modules.append("sqli_engine")
+    if _sql_map_available:      modules.append("sql_map")
+    if _sql_injection_available: modules.append("sql_injection")
+    if _xss_exploiter_available: modules.append("xss_exploiter")
+    if _xss_available:          modules.append("xss")
+    if _sniper_available:       modules.append("sniper")
+    if http_logger is not None: modules.append("http_logger")
+    if modules:
+        info_lines.append(f"  Modules    : {', '.join(modules)}")
     print("\n".join(info_lines), flush=True)
     print(flush=True)
 
@@ -2561,4 +3247,4 @@ if __name__ == "__main__":
             print("Invalid input. Enter a valid port number.")
 
     _print_startup(port)
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
