@@ -1,6 +1,6 @@
 /* ============================================================================
  * app-ex3bve.js — Exploit Suite for Emergens
- * v2.0.0 — SHARK THEME · professional, attractive, multi-instance
+ * v2.1.0 — SHARK THEME · refined, professional, multi-instance
  *
  * Sub-tools
  *   • Dirfuzz        — /api/dirfuzz/*
@@ -12,16 +12,15 @@
  *   • Sniper         — /api/sniper/*
  *   • HTTP Logger    — /api/logger/*
  *
- * Changelog v2.0.0
- *   ✔ Shark-themed UI — fins, teeth, ocean depths, predatory red accents
- *   ✔ Animated shark fin header for each active tab
- *   ✔ MHDDoS + Exploit sidebar buttons forced to red gradient (CSS injection)
- *   ✔ Card grid layout: tabs grouped by category
- *   ✔ Live status pill, animated radar sweep, teeth-strip progress bars
- *   ✔ Multi-instance safe — every mount has its own state + DOM
- *   ✔ All SSE streams tracked per instance, closed on unmount + unload
- *   ✔ run_streaming events rendered with animated wave markers
- *   ✔ Preserves v1.0.x public API — no app.py changes needed
+ * Changelog v2.1.0
+ *   ✔ Sidebar MHDDoS + Exploit buttons: neutral by default, red only on
+ *     hover / active (no more always-on red tint, no pulsing red dots)
+ *   ✔ Much larger, detailed great-white shark illustration (fin + body +
+ *     teeth + gills + water wake)
+ *   ✔ Refined spacing, glow, focus rings, and severity accents
+ *   ✔ Animated water ripples behind the shark header
+ *   ✔ All SSE streams tracked per instance, cleaned on unmount + unload
+ *   ✔ Public API unchanged — mount / unmount / open / create
  *
  * Public API
  *   window.ExploitSuite.mount(selectorOrEl, { defaultTab })
@@ -152,139 +151,177 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-   *  SHARK THEME — CSS + SVG
+   *  SHARK THEME — CSS
    * ══════════════════════════════════════════════════════════════════ */
   const CSS = `
-  /* ─── Global styles for the Exploit Suite (shark theme) ─── */
+  /* ─── Exploit Suite root ─── */
   .ex-root {
-    --ex-shark-deep:    #020617;
-    --ex-shark-abyss:   #0a1122;
-    --ex-shark-mid:     #0f172a;
-    --ex-shark-glow:    rgba(239,68,68,.42);
-    --ex-shark-glow-2:  rgba(220,38,38,.18);
-    --ex-shark-teeth:   #f1f5f9;
-    --ex-shark-fin:     #dc2626;
-    --ex-shark-fin-2:   #b91c1c;
-    --ex-shark-blood:   #7f1d1d;
-    --ex-shark-water:   #1e3a8a;
-    --ex-shark-wave:    #3b82f6;
-    --ex-shark-white:   #f8fafc;
-    --ex-shark-muted:   #94a3b8;
-    --ex-shark-border:  rgba(220,38,38,.22);
-    --ex-shark-border2: rgba(148,163,184,.14);
-    --ex-shark-card-bg: linear-gradient(165deg, #0b1220 0%, #050a16 100%);
-    --ex-shark-card-hover: linear-gradient(165deg, #0f1a2e 0%, #0a1325 100%);
+    --ex-red:         #dc2626;
+    --ex-red-2:       #b91c1c;
+    --ex-red-3:       #7f1d1d;
+    --ex-red-soft:    rgba(220,38,38,.18);
+    --ex-red-line:    rgba(220,38,38,.32);
+    --ex-deep:        #030712;
+    --ex-deep-2:      #0a1122;
+    --ex-deep-3:      #060b16;
+    --ex-border:      rgba(148,163,184,.14);
+    --ex-border-red:  rgba(220,38,38,.25);
+    --ex-white:       #f8fafc;
+    --ex-text:        #e2e8f0;
+    --ex-muted:       #94a3b8;
+    --ex-muted-2:     #64748b;
     display: flex; flex-direction: column; gap: 16px;
     font-family: var(--font-ui, 'Inter','Space Grotesk',system-ui,sans-serif);
-    position: relative;
-    isolation: isolate;
+    color: var(--ex-text);
   }
 
-  /* Subtle shark-tooth watermark behind the whole panel */
-  .ex-root::before {
+  /* ═══ Header ═══ */
+  .ex-shark-header {
+    position: relative;
+    background:
+      radial-gradient(ellipse at 12% 100%, rgba(220,38,38,.22), transparent 55%),
+      radial-gradient(ellipse at 90% 0%,   rgba(30,58,138,.22),  transparent 55%),
+      linear-gradient(135deg, #0a1122 0%, #0b0715 55%, #150404 100%);
+    border: 1px solid var(--ex-border-red);
+    border-radius: 16px;
+    padding: 22px 26px;
+    display: flex; align-items: center; gap: 24px;
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.05),
+      0 10px 30px rgba(0,0,0,.45),
+      0 2px 8px rgba(220,38,38,.12);
+  }
+
+  /* Water ripple background inside header */
+  .ex-shark-header::before {
     content: "";
     position: absolute; inset: 0;
     background-image:
-      radial-gradient(circle at 15% 20%, rgba(220,38,38,.07), transparent 45%),
-      radial-gradient(circle at 85% 80%, rgba(30,58,138,.08), transparent 45%);
-    pointer-events: none; z-index: -1;
-  }
-
-  /* ═══ Shark header — big fin + title ═══ */
-  .ex-shark-header {
-    position: relative;
-    background: linear-gradient(135deg, #0a1122 0%, #140a1c 60%, #1f0505 100%);
-    border: 1px solid var(--ex-shark-border);
-    border-radius: 14px;
-    padding: 18px 22px 16px;
-    display: flex; align-items: center; gap: 18px;
-    overflow: hidden;
-    box-shadow:
-      inset 0 0 0 1px rgba(255,255,255,.02),
-      0 6px 24px rgba(220,38,38,.06);
-  }
-  .ex-shark-header::before {
-    /* Wave pattern */
-    content: "";
-    position: absolute; bottom: 0; left: 0; right: 0; height: 42%;
-    background-image:
-      repeating-linear-gradient(135deg, rgba(220,38,38,.06) 0 4px, transparent 4px 12px);
-    mask-image: linear-gradient(to top, black 40%, transparent);
-    -webkit-mask-image: linear-gradient(to top, black 40%, transparent);
+      repeating-radial-gradient(
+        circle at 15% 100%,
+        rgba(220,38,38,.06) 0 12px,
+        transparent 12px 40px
+      ),
+      repeating-linear-gradient(
+        115deg,
+        rgba(255,255,255,.018) 0 2px,
+        transparent 2px 12px
+      );
+    opacity: .8;
     pointer-events: none;
   }
+
+  /* Faint teeth silhouette row at the bottom edge */
   .ex-shark-header::after {
-    /* Red blood trail streak */
     content: "";
-    position: absolute; top: 0; right: 18%; width: 180px; height: 100%;
-    background: radial-gradient(ellipse at 50% 0%, rgba(220,38,38,.18), transparent 70%);
+    position: absolute; left: 0; right: 0; bottom: 0; height: 14px;
+    background-image:
+      linear-gradient(135deg, transparent 50%, rgba(220,38,38,.35) 50%),
+      linear-gradient(45deg, rgba(220,38,38,.35) 50%, transparent 50%);
+    background-size: 14px 14px;
+    background-repeat: repeat-x;
+    opacity: .28;
     pointer-events: none;
   }
 
-  .ex-shark-fin {
-    width: 78px; height: 78px; flex-shrink: 0;
-    filter: drop-shadow(0 0 12px rgba(220,38,38,.55));
-    animation: exFinSwim 6s ease-in-out infinite;
+  /* ═══ Shark illustration ═══ */
+  .ex-shark-figure {
+    position: relative;
+    width: 180px; height: 110px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 12px 22px rgba(220,38,38,.32));
+    animation: exSharkCruise 8s ease-in-out infinite;
   }
-  @keyframes exFinSwim {
-    0%, 100% { transform: translateX(0) rotate(-3deg); }
-    50%      { transform: translateX(4px) rotate(2deg); }
+  .ex-shark-figure svg { width: 100%; height: 100%; display: block; }
+  @keyframes exSharkCruise {
+    0%, 100% { transform: translateX(0)  rotate(-2deg); }
+    50%      { transform: translateX(8px) rotate(1deg);  }
   }
 
-  .ex-shark-title-block {
-    flex: 1; min-width: 0; position: relative; z-index: 1;
+  /* Bubble particles floating above the shark */
+  .ex-shark-bubbles {
+    position: absolute; inset: 0; pointer-events: none;
+    overflow: hidden;
   }
+  .ex-shark-bubbles span {
+    position: absolute;
+    bottom: 8px;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #fff, rgba(220,38,38,.65));
+    opacity: .55;
+    animation: exBubbleRise 5s linear infinite;
+  }
+  .ex-shark-bubbles span:nth-child(1) { left: 55%; animation-delay: 0s;   }
+  .ex-shark-bubbles span:nth-child(2) { left: 68%; animation-delay: 1.4s; width: 3px; height: 3px; }
+  .ex-shark-bubbles span:nth-child(3) { left: 80%; animation-delay: 2.7s; width: 5px; height: 5px; }
+  @keyframes exBubbleRise {
+    0%   { transform: translateY(0) scale(.6); opacity: 0; }
+    20%  { opacity: .7; }
+    100% { transform: translateY(-70px) scale(1.2); opacity: 0; }
+  }
+
+  /* ═══ Header text ═══ */
+  .ex-shark-copy { flex: 1; min-width: 0; position: relative; z-index: 1; }
+
+  .ex-shark-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: .64rem; letter-spacing: .18em; text-transform: uppercase;
+    font-weight: 800; color: #fca5a5;
+    margin-bottom: 6px;
+  }
+  .ex-shark-eyebrow::before {
+    content: "";
+    width: 22px; height: 2px;
+    background: linear-gradient(90deg, var(--ex-red), transparent);
+    border-radius: 2px;
+  }
+
   .ex-shark-title {
-    font-size: 1.28rem; font-weight: 800; letter-spacing: -.02em;
-    color: var(--ex-shark-white);
-    display: flex; align-items: center; gap: 10px;
-    margin: 0 0 3px;
+    font-size: 1.42rem; font-weight: 800; letter-spacing: -.02em;
+    color: var(--ex-white);
+    margin: 0 0 6px;
+    line-height: 1.15;
   }
-  .ex-shark-title .ex-predator-badge {
-    font-size: .6rem; font-weight: 800;
-    letter-spacing: .14em; text-transform: uppercase;
-    padding: 3px 8px; border-radius: 99px;
-    background: linear-gradient(135deg, #dc2626, #7f1d1d);
-    color: #fff;
-    box-shadow: 0 3px 10px rgba(220,38,38,.35);
-    animation: exPredatorPulse 2.4s ease-in-out infinite;
+  .ex-shark-title .ex-title-red {
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
-  @keyframes exPredatorPulse {
-    0%, 100% { box-shadow: 0 3px 10px rgba(220,38,38,.35); }
-    50%      { box-shadow: 0 3px 18px rgba(220,38,38,.75); }
-  }
+
   .ex-shark-subtitle {
-    color: var(--ex-shark-muted);
-    font-size: .78rem; line-height: 1.5; margin: 0;
+    color: var(--ex-muted);
+    font-size: .8rem; line-height: 1.6; margin: 0;
     max-width: 78ch;
   }
   .ex-shark-subtitle b {
-    color: var(--ex-shark-white);
-    font-family: var(--font-mono, monospace);
+    color: var(--ex-white);
+    font-family: var(--font-mono, ui-monospace, monospace);
     font-weight: 600;
   }
 
-  /* ═══ Tab strip — grouped, coloured ═══ */
+  /* ═══ Tab strip ═══ */
   .ex-tabs {
     display: flex; flex-wrap: wrap; gap: 8px;
     padding: 10px;
     background:
-      linear-gradient(180deg, rgba(220,38,38,.06), transparent 30%),
-      linear-gradient(180deg, #0a1122, #06090f);
-    border: 1px solid var(--ex-shark-border2);
-    border-radius: 12px;
+      linear-gradient(180deg, rgba(220,38,38,.05), transparent 40%),
+      linear-gradient(180deg, #0a1122, #050a14);
+    border: 1px solid var(--ex-border);
+    border-radius: 13px;
     position: relative; overflow: hidden;
   }
   .ex-tabs::before {
     content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--ex-shark-fin), transparent);
-    opacity: .7;
+    background: linear-gradient(90deg, transparent, var(--ex-red), transparent);
+    opacity: .55;
   }
   .ex-tab {
     padding: 9px 15px; border-radius: 8px;
     border: 1px solid transparent;
-    background: linear-gradient(180deg, rgba(255,255,255,.015), transparent);
-    color: var(--ex-shark-muted);
+    background: transparent;
+    color: var(--ex-muted);
     font-size: .78rem; font-weight: 700;
     letter-spacing: .02em;
     cursor: pointer;
@@ -295,41 +332,20 @@
     position: relative;
   }
   .ex-tab:hover {
-    color: var(--ex-shark-white);
-    border-color: var(--ex-shark-border);
+    color: var(--ex-white);
+    border-color: var(--ex-border-red);
     background: linear-gradient(180deg, rgba(220,38,38,.08), rgba(220,38,38,.02));
     transform: translateY(-1px);
   }
   .ex-tab.active {
-    background: linear-gradient(135deg, var(--ex-shark-fin), var(--ex-shark-blood));
+    background: linear-gradient(135deg, #dc2626, #7f1d1d);
     color: #fff;
-    border-color: rgba(255,255,255,.15);
+    border-color: rgba(255,255,255,.14);
     box-shadow:
-      0 4px 14px rgba(220,38,38,.42),
-      inset 0 1px 0 rgba(255,255,255,.15);
-  }
-  .ex-tab.active::after {
-    /* Shark-tooth edge under the active tab */
-    content: "";
-    position: absolute; left: 20%; right: 20%; bottom: -6px; height: 6px;
-    background-image:
-      linear-gradient(135deg, transparent 50%, var(--ex-shark-fin) 50%),
-      linear-gradient(45deg, var(--ex-shark-fin) 50%, transparent 50%);
-    background-size: 8px 8px;
-    background-repeat: repeat-x;
-    opacity: .9;
+      0 4px 16px rgba(220,38,38,.4),
+      inset 0 1px 0 rgba(255,255,255,.16);
   }
   .ex-tab i { font-size: .76rem; }
-  .ex-tab .ex-tab-count {
-    background: rgba(255,255,255,.10);
-    color: inherit;
-    font-size: .6rem; font-weight: 800;
-    padding: 2px 6px; border-radius: 99px;
-    margin-left: 2px;
-  }
-  .ex-tab.active .ex-tab-count {
-    background: rgba(0,0,0,.25);
-  }
 
   /* ═══ Panels ═══ */
   .ex-panel { display: none; }
@@ -344,9 +360,9 @@
 
   /* ═══ Cards ═══ */
   .ex-card {
-    background: var(--ex-shark-card-bg);
-    border: 1px solid var(--ex-shark-border2);
-    border-radius: 12px;
+    background: linear-gradient(165deg, #0b1220 0%, #050a16 100%);
+    border: 1px solid var(--ex-border);
+    border-radius: 13px;
     padding: 18px 20px;
     position: relative;
     overflow: hidden;
@@ -354,22 +370,22 @@
   }
   .ex-card::before {
     content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, var(--ex-shark-fin) 0%, transparent 60%);
+    background: linear-gradient(90deg, var(--ex-red) 0%, transparent 55%);
     opacity: .55;
   }
   .ex-card:hover {
-    border-color: var(--ex-shark-border);
-    box-shadow: 0 6px 22px rgba(0,0,0,.35);
+    border-color: var(--ex-border-red);
+    box-shadow: 0 8px 24px rgba(0,0,0,.42);
     transform: translateY(-1px);
   }
   .ex-card h4 {
     margin: 0 0 14px;
     font-size: .78rem; font-weight: 800;
     letter-spacing: .09em; text-transform: uppercase;
-    color: var(--ex-shark-white);
+    color: var(--ex-white);
     display: flex; align-items: center; gap: 10px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--ex-shark-border2);
+    border-bottom: 1px solid var(--ex-border);
     flex-wrap: wrap;
   }
   .ex-card h4 i {
@@ -377,22 +393,20 @@
     display: flex; align-items: center; justify-content: center;
     font-size: .82rem;
     border-radius: 8px;
-    background: linear-gradient(135deg, var(--ex-shark-fin), var(--ex-shark-blood));
+    background: linear-gradient(135deg, var(--ex-red), var(--ex-red-3));
     color: #fff;
-    box-shadow: 0 3px 10px rgba(220,38,38,.35);
+    box-shadow: 0 3px 12px rgba(220,38,38,.4);
     flex-shrink: 0;
   }
   .ex-card h4 .ex-card-hint {
     margin-left: auto;
-    font-size: .66rem;
-    font-weight: 600;
-    letter-spacing: 0;
-    text-transform: none;
-    color: var(--ex-shark-muted);
+    font-size: .66rem; font-weight: 600;
+    letter-spacing: 0; text-transform: none;
+    color: var(--ex-muted);
     font-family: var(--font-mono, monospace);
   }
 
-  /* ═══ Form fields ═══ */
+  /* ═══ Forms ═══ */
   .ex-row { display: flex; gap: 10px; flex-wrap: wrap; }
   .ex-row > * { flex: 1 1 150px; min-width: 0; }
   .ex-row.tight > * { flex: 0 0 auto; }
@@ -401,16 +415,16 @@
   .ex-field > label {
     font-size: .64rem; font-weight: 700;
     letter-spacing: .06em; text-transform: uppercase;
-    color: var(--ex-shark-muted);
+    color: var(--ex-muted);
   }
   .ex-field > input,
   .ex-field > select,
   .ex-field > textarea {
     background: linear-gradient(180deg, #060a15, #0a1122);
-    border: 1px solid var(--ex-shark-border2);
+    border: 1px solid var(--ex-border);
     border-radius: 8px;
     padding: 10px 12px;
-    color: var(--ex-shark-white);
+    color: var(--ex-white);
     font-size: .85rem;
     font-family: var(--font-mono, ui-monospace, monospace);
     outline: none;
@@ -421,7 +435,7 @@
   .ex-field > input:focus,
   .ex-field > select:focus,
   .ex-field > textarea:focus {
-    border-color: var(--ex-shark-fin);
+    border-color: var(--ex-red);
     box-shadow: 0 0 0 3px rgba(220,38,38,.18);
   }
   .ex-field > input::placeholder,
@@ -446,32 +460,21 @@
   .ex-btn[disabled] { opacity: .5; cursor: not-allowed; transform: none !important; }
 
   .ex-btn-primary {
-    background: linear-gradient(135deg, var(--ex-shark-fin), var(--ex-shark-blood));
+    background: linear-gradient(135deg, var(--ex-red), var(--ex-red-3));
     color: #fff;
-    box-shadow: 0 4px 14px rgba(220,38,38,.4);
+    box-shadow: 0 4px 14px rgba(220,38,38,.36);
   }
   .ex-btn-primary:hover:not([disabled]) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 26px rgba(220,38,38,.55);
+    box-shadow: 0 10px 28px rgba(220,38,38,.55);
+    filter: brightness(1.06);
   }
-  .ex-btn-primary::after {
-    /* Teeth strip animation on hover */
-    content: "";
-    position: absolute; left: 10%; right: 10%; bottom: 4px; height: 3px;
-    background-image:
-      linear-gradient(135deg, transparent 50%, rgba(255,255,255,.55) 50%),
-      linear-gradient(45deg, rgba(255,255,255,.55) 50%, transparent 50%);
-    background-size: 6px 6px;
-    background-repeat: repeat-x;
-    opacity: 0; transition: opacity .18s;
-  }
-  .ex-btn-primary:hover::after { opacity: 1; }
 
   .ex-btn-danger {
     background: linear-gradient(135deg, #7f1d1d, #450a0a);
     color: #fca5a5;
     border-color: rgba(239,68,68,.35);
-    box-shadow: 0 4px 14px rgba(239,68,68,.22);
+    box-shadow: 0 4px 14px rgba(239,68,68,.2);
   }
   .ex-btn-danger:hover:not([disabled]) {
     transform: translateY(-2px);
@@ -481,23 +484,23 @@
 
   .ex-btn-ghost {
     background: linear-gradient(180deg, #0a1122, #06090f);
-    border-color: var(--ex-shark-border2);
-    color: var(--ex-shark-muted);
+    border-color: var(--ex-border);
+    color: var(--ex-muted);
   }
   .ex-btn-ghost:hover:not([disabled]) {
-    border-color: var(--ex-shark-fin);
-    color: var(--ex-shark-white);
+    border-color: var(--ex-red);
+    color: var(--ex-white);
     background: linear-gradient(180deg, rgba(220,38,38,.08), rgba(220,38,38,.02));
   }
 
-  /* ═══ Progress bar with shark-teeth strip ═══ */
+  /* ═══ Progress ═══ */
   .ex-progress {
     margin-top: 12px;
     height: 12px; width: 100%;
     background: linear-gradient(180deg, #050912, #0a1122);
     border-radius: 99px;
     overflow: hidden;
-    border: 1px solid var(--ex-shark-border2);
+    border: 1px solid var(--ex-border);
     position: relative;
     box-shadow: inset 0 1px 3px rgba(0,0,0,.6);
   }
@@ -525,7 +528,7 @@
   }
   .ex-progress-label {
     display: flex; justify-content: space-between;
-    font-size: .7rem; color: var(--ex-shark-muted);
+    font-size: .7rem; color: var(--ex-muted);
     margin-top: 8px;
     font-family: var(--font-mono, monospace);
     gap: 12px;
@@ -535,13 +538,13 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
 
-  /* ═══ Log panel ═══ */
+  /* ═══ Log ═══ */
   .ex-log {
     max-height: 300px; overflow-y: auto;
     background: linear-gradient(180deg, #030509, #050a14);
-    border: 1px solid var(--ex-shark-border2);
+    border: 1px solid var(--ex-border);
     border-radius: 10px;
-    padding: 12px 14px;
+    padding: 12px 14px 12px 18px;
     font-family: var(--font-mono, monospace);
     font-size: .72rem;
     color: #cbd5e1;
@@ -554,7 +557,7 @@
   }
   .ex-log::before {
     content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-    background: linear-gradient(180deg, var(--ex-shark-fin), transparent);
+    background: linear-gradient(180deg, var(--ex-red), transparent);
   }
   .ex-log::-webkit-scrollbar { width: 8px; }
   .ex-log::-webkit-scrollbar-thumb {
@@ -568,7 +571,7 @@
   /* ═══ Result viewer ═══ */
   .ex-result {
     background: linear-gradient(180deg, #030509, #050a14);
-    border: 1px solid var(--ex-shark-border2);
+    border: 1px solid var(--ex-border);
     border-radius: 10px;
     padding: 14px;
     font-family: var(--font-mono, monospace);
@@ -582,7 +585,7 @@
   }
   .ex-result .dim { color: #64748b; }
 
-  /* ═══ Severity badges ═══ */
+  /* ═══ Badges ═══ */
   .ex-badge {
     display: inline-flex; align-items: center;
     padding: 3px 9px;
@@ -607,9 +610,9 @@
   .ex-chip {
     padding: 5px 11px;
     border-radius: 7px;
-    border: 1px solid var(--ex-shark-border2);
+    border: 1px solid var(--ex-border);
     background: linear-gradient(180deg, #0a1122, #06090f);
-    color: var(--ex-shark-muted);
+    color: var(--ex-muted);
     font-family: var(--font-mono, monospace);
     font-size: .7rem; font-weight: 600;
     cursor: pointer;
@@ -617,18 +620,18 @@
     -webkit-appearance: none; appearance: none;
   }
   .ex-chip:hover {
-    border-color: var(--ex-shark-fin);
-    color: var(--ex-shark-white);
+    border-color: var(--ex-red);
+    color: var(--ex-white);
     transform: translateY(-1px);
   }
   .ex-chip.active {
-    background: linear-gradient(135deg, var(--ex-shark-fin), var(--ex-shark-blood));
+    background: linear-gradient(135deg, var(--ex-red), var(--ex-red-3));
     border-color: transparent;
     color: #fff;
-    box-shadow: 0 3px 10px rgba(220,38,38,.4);
+    box-shadow: 0 3px 12px rgba(220,38,38,.4);
   }
 
-  /* ═══ Findings list ═══ */
+  /* ═══ Findings ═══ */
   .ex-findings { display: flex; flex-direction: column; gap: 8px; }
   .ex-finding {
     background: linear-gradient(180deg, rgba(10,17,34,.9), rgba(5,10,22,.9));
@@ -656,7 +659,7 @@
   .ex-finding .label {
     font-size: .62rem; text-transform: uppercase;
     letter-spacing: .07em;
-    color: var(--ex-shark-muted);
+    color: var(--ex-muted);
     font-weight: 700;
     display: flex; align-items: center; gap: 8px;
   }
@@ -664,14 +667,14 @@
     font-family: var(--font-mono, monospace);
     word-break: break-all;
     margin-top: 5px;
-    color: var(--ex-shark-white);
+    color: var(--ex-white);
     font-size: .76rem;
     line-height: 1.55;
   }
   .ex-finding .meta {
     margin-top: 8px;
     font-size: .66rem;
-    color: var(--ex-shark-muted);
+    color: var(--ex-muted);
     display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
   }
 
@@ -684,7 +687,7 @@
   }
   .ex-kpi {
     background: linear-gradient(165deg, #0b1220 0%, #050a16 100%);
-    border: 1px solid var(--ex-shark-border2);
+    border: 1px solid var(--ex-border);
     border-radius: 10px;
     padding: 14px 15px;
     display: flex; flex-direction: column; gap: 5px;
@@ -693,24 +696,24 @@
   }
   .ex-kpi::before {
     content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, var(--ex-shark-fin), transparent);
-    opacity: .5;
+    background: linear-gradient(90deg, var(--ex-red), transparent);
+    opacity: .45;
   }
   .ex-kpi:hover {
-    border-color: var(--ex-shark-border);
+    border-color: var(--ex-border-red);
     transform: translateY(-2px);
     box-shadow: 0 6px 18px rgba(0,0,0,.4);
   }
   .ex-kpi .k-label {
     font-size: .62rem; letter-spacing: .07em;
     text-transform: uppercase;
-    color: var(--ex-shark-muted);
+    color: var(--ex-muted);
     font-weight: 700;
   }
   .ex-kpi .k-val {
     font-family: var(--font-display, monospace);
     font-size: 1.35rem;
-    color: var(--ex-shark-white);
+    color: var(--ex-white);
     font-weight: 800;
     line-height: 1.1;
   }
@@ -719,11 +722,11 @@
   .ex-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
   .ex-table th, .ex-table td {
     text-align: left; padding: 9px 11px;
-    border-bottom: 1px solid var(--ex-shark-border2);
+    border-bottom: 1px solid var(--ex-border);
   }
   .ex-table th {
     font-size: .62rem; letter-spacing: .07em; text-transform: uppercase;
-    color: var(--ex-shark-muted); font-weight: 800;
+    color: var(--ex-muted); font-weight: 800;
     background: linear-gradient(180deg, rgba(220,38,38,.06), transparent);
     position: sticky; top: 0; z-index: 1;
   }
@@ -745,18 +748,15 @@
   .ex-empty {
     padding: 26px 16px;
     text-align: center;
-    color: var(--ex-shark-muted);
+    color: var(--ex-muted);
     font-size: .82rem;
     font-style: italic;
-    display: flex; flex-direction: column; gap: 8px; align-items: center;
+    display: flex; flex-direction: column; gap: 10px; align-items: center;
   }
-  .ex-empty::before {
-    content: "";
-    width: 42px; height: 42px;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M6 40 Q20 30 34 34 L52 22 L48 36 L58 44 L42 42 Q28 50 6 40 Z' fill='%23dc2626' fill-opacity='0.4'/></svg>");
-    background-size: contain; background-repeat: no-repeat;
-    background-position: center;
-    opacity: .55;
+  .ex-empty svg {
+    width: 52px; height: 40px;
+    opacity: .35;
+    filter: drop-shadow(0 4px 12px rgba(220,38,38,.35));
   }
 
   /* ═══ Live pill ═══ */
@@ -781,56 +781,37 @@
     100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
   }
 
-  /* ═══ Radar sweep animation for running scans ═══ */
-  .ex-radar {
-    width: 22px; height: 22px; border-radius: 50%;
-    border: 1.5px solid rgba(220,38,38,.35);
-    background:
-      radial-gradient(circle, rgba(220,38,38,.15) 0%, transparent 70%);
-    position: relative;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-  .ex-radar::after {
-    content: "";
-    position: absolute; inset: 0;
-    background: conic-gradient(from 0deg, transparent 0deg,
-      rgba(220,38,38,.85) 25deg, transparent 60deg);
-    animation: exRadarSpin 1.6s linear infinite;
-    box-shadow: 0 0 8px rgba(220,38,38,.5);
-  }
-  @keyframes exRadarSpin {
-    to { transform: rotate(360deg); }
-  }
-
   /* ═════════════════════════════════════════════════════════════════
-     FORCE MHDDoS + EXPLOIT SIDEBAR BUTTONS TO RED
+     SIDEBAR NAV — NEUTRAL BY DEFAULT, RED ONLY ON HOVER / ACTIVE
+     (No always-on red tint, no pulsing dots.)
      ═════════════════════════════════════════════════════════════════ */
   .nav-item[data-section="mhddos"],
   .nav-item[data-section="exploit"] {
-    background:
-      linear-gradient(90deg, rgba(220,38,38,.14), rgba(220,38,38,.03) 65%, transparent) !important;
-    border-left-color: #dc2626 !important;
-    color: #fecaca !important;
-    font-weight: 600 !important;
+    /* default — inherits the standard sidebar look */
     position: relative;
+    transition: all .18s cubic-bezier(.4,0,.2,1);
   }
   .nav-item[data-section="mhddos"] i,
   .nav-item[data-section="exploit"] i {
-    color: #ef4444 !important;
+    transition: color .18s;
   }
+
+  /* Hover — red accent */
   .nav-item[data-section="mhddos"]:hover,
   .nav-item[data-section="exploit"]:hover {
-    background:
-      linear-gradient(90deg, rgba(220,38,38,.26), rgba(220,38,38,.06) 65%, transparent) !important;
+    background: linear-gradient(90deg, rgba(220,38,38,.16), transparent 75%) !important;
+    border-left-color: #dc2626 !important;
     color: #fff !important;
-    transform: translateX(3px) !important;
-    border-left-color: #ef4444 !important;
   }
+  .nav-item[data-section="mhddos"]:hover i,
+  .nav-item[data-section="exploit"]:hover i {
+    color: #ef4444 !important;
+  }
+
+  /* Active — full red gradient */
   .nav-item[data-section="mhddos"].active,
   .nav-item[data-section="exploit"].active {
-    background:
-      linear-gradient(90deg, rgba(220,38,38,.42), rgba(220,38,38,.1) 70%, transparent) !important;
+    background: linear-gradient(90deg, rgba(220,38,38,.38), rgba(220,38,38,.08) 75%, transparent) !important;
     border-left-color: #ef4444 !important;
     color: #fff !important;
     font-weight: 700 !important;
@@ -838,48 +819,31 @@
   .nav-item[data-section="mhddos"].active i,
   .nav-item[data-section="exploit"].active i {
     color: #fff !important;
-    filter: drop-shadow(0 0 6px rgba(239,68,68,.8));
-  }
-  /* Pulsing red dot on the MHDDoS/Exploit nav items */
-  .nav-item[data-section="mhddos"]::after,
-  .nav-item[data-section="exploit"]::after {
-    content: "";
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #ef4444;
-    box-shadow: 0 0 0 0 rgba(239,68,68,.75);
-    animation: exNavPulse 2.2s ease-out infinite;
-    pointer-events: none;
-  }
-  @keyframes exNavPulse {
-    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,.75); }
-    70%  { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
-    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    filter: drop-shadow(0 0 6px rgba(239,68,68,.75));
   }
 
-  /* Make sure the section titles for MHDDoS / Exploit / HTTP Logger get the red trim */
-  #section-mhddos .panel-title i,
-  #section-exploit .panel-title i,
-  #section-httplogger .panel-title i {
+  /* Section-title red chips for MHDDoS / Exploit / HTTP Logger — only
+     when the section itself is currently the active one. */
+  .content-section.active#section-mhddos   .panel-title i,
+  .content-section.active#section-exploit  .panel-title i,
+  .content-section.active#section-httplogger .panel-title i {
     color: #ef4444 !important;
     background: linear-gradient(135deg, rgba(220,38,38,.22), rgba(127,29,29,.12)) !important;
     box-shadow: inset 0 0 0 1px rgba(220,38,38,.3);
   }
 
   /* ═════════════════════════════════════════════════════════════════
-     Responsive tweaks
+     Responsive
      ═════════════════════════════════════════════════════════════════ */
+  @media (max-width: 820px) {
+    .ex-shark-header { flex-direction: column; align-items: flex-start; padding: 18px; gap: 14px; }
+    .ex-shark-figure { width: 140px; height: 88px; }
+    .ex-shark-title  { font-size: 1.18rem; }
+  }
   @media (max-width: 720px) {
-    .ex-shark-header { flex-direction: column; align-items: flex-start; padding: 16px; }
-    .ex-shark-fin { width: 60px; height: 60px; }
-    .ex-shark-title { font-size: 1.08rem; }
     .ex-row > * { flex: 1 1 100%; }
     .ex-tabs { overflow-x: auto; flex-wrap: nowrap; }
-    .ex-tab { flex-shrink: 0; }
+    .ex-tab  { flex-shrink: 0; }
   }
   `;
 
@@ -891,43 +855,119 @@
     document.head.appendChild(s);
   }
 
-  /* ── Shark SVG (fin + body) ─────────────────────────────────────────── */
-  function sharkFinSVG() {
-    return el('svg', {
-      class: 'ex-shark-fin',
-      viewBox: '0 0 120 120',
-      xmlns: 'http://www.w3.org/2000/svg',
-      'aria-hidden': 'true',
-    }, el('svg', {
+  /* ── Shark SVG (great white, teal-navy body, red dorsal fin) ─────── */
+  function sharkFigure() {
+    const wrap = el('div', { class: 'ex-shark-figure', 'aria-hidden': 'true' });
+    const svg  = el('div', {
       html: `
-        <defs>
-          <linearGradient id="exFinGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0"   stop-color="#ef4444"/>
-            <stop offset="0.55" stop-color="#b91c1c"/>
-            <stop offset="1"   stop-color="#450a0a"/>
-          </linearGradient>
-          <linearGradient id="exBodyGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#1e293b"/>
-            <stop offset="1" stop-color="#020617"/>
-          </linearGradient>
-        </defs>
-        <!-- Body -->
-        <path d="M4 78 Q28 66 52 72 L96 46 L88 72 L118 92 L84 90 Q46 100 4 78 Z"
-              fill="url(#exBodyGrad)" stroke="#dc2626" stroke-width="1.4" stroke-opacity="0.6"/>
-        <!-- Fin -->
-        <path d="M56 40 L74 6 L82 40 Q70 34 56 40 Z"
-              fill="url(#exFinGrad)"/>
-        <!-- Tail fin -->
-        <path d="M8 74 L2 92 L20 84 L8 74 Z"
-              fill="url(#exFinGrad)" opacity="0.9"/>
-        <!-- Eye -->
-        <circle cx="30" cy="78" r="2.4" fill="#f8fafc"/>
-        <circle cx="30" cy="78" r="1" fill="#020617"/>
-        <!-- Gill slashes -->
-        <path d="M42 74 L42 84 M47 73 L47 83 M52 72 L52 82"
-              stroke="#dc2626" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>
+        <svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="exBodyGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#334155"/>
+              <stop offset="0.55" stop-color="#1e293b"/>
+              <stop offset="1" stop-color="#0f172a"/>
+            </linearGradient>
+            <linearGradient id="exBellyGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#e2e8f0"/>
+              <stop offset="1" stop-color="#94a3b8"/>
+            </linearGradient>
+            <linearGradient id="exFinGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#f87171"/>
+              <stop offset="0.55" stop-color="#dc2626"/>
+              <stop offset="1" stop-color="#7f1d1d"/>
+            </linearGradient>
+            <linearGradient id="exTailGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#dc2626"/>
+              <stop offset="1" stop-color="#7f1d1d"/>
+            </linearGradient>
+            <radialGradient id="exEyeGlow" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="#f8fafc"/>
+              <stop offset="1" stop-color="#020617"/>
+            </radialGradient>
+            <filter id="exSoftGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="3" result="b"/>
+              <feMerge>
+                <feMergeNode in="b"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+
+          <!-- Water wake -->
+          <path d="M0 118 Q60 110 120 118 T240 118"
+                fill="none" stroke="#1e40af" stroke-width="1.4"
+                stroke-opacity="0.35" stroke-linecap="round"/>
+          <path d="M12 126 Q72 120 132 126 T252 126"
+                fill="none" stroke="#1e40af" stroke-width="1"
+                stroke-opacity="0.2" stroke-linecap="round"/>
+
+          <!-- Tail fin (red) -->
+          <path d="M18 100 L2 118 L32 112 L26 100 Z"
+                fill="url(#exTailGrad)" stroke="#7f1d1d" stroke-width="1"/>
+
+          <!-- Shark body -->
+          <path d="M22 96
+                   Q60 78 110 76
+                   Q170 74 214 92
+                   L222 100
+                   Q170 118 110 112
+                   Q60 106 22 96 Z"
+                fill="url(#exBodyGrad)" stroke="#0f172a" stroke-width="1.4"/>
+
+          <!-- Belly (light) -->
+          <path d="M40 100
+                   Q90 110 150 108
+                   Q190 106 214 100
+                   L206 100
+                   Q160 108 110 108
+                   Q70 106 40 100 Z"
+                fill="url(#exBellyGrad)" opacity="0.85"/>
+
+          <!-- Dorsal fin (red, prominent) -->
+          <path d="M108 74 L138 22 L152 74 Q128 66 108 74 Z"
+                fill="url(#exFinGrad)" stroke="#7f1d1d" stroke-width="1.4"
+                filter="url(#exSoftGlow)"/>
+
+          <!-- Second small fin -->
+          <path d="M154 78 L168 62 L176 80 Q164 76 154 78 Z"
+                fill="url(#exFinGrad)" opacity="0.85"/>
+
+          <!-- Pectoral fin -->
+          <path d="M112 108 L96 132 L128 118 Z"
+                fill="url(#exFinGrad)" opacity="0.9"/>
+
+          <!-- Gills -->
+          <g stroke="#dc2626" stroke-width="1.6" stroke-linecap="round" opacity="0.85">
+            <path d="M152 84 L150 100"/>
+            <path d="M160 83 L158 100"/>
+            <path d="M168 82 L166 100"/>
+          </g>
+
+          <!-- Eye with glow -->
+          <circle cx="200" cy="90" r="3.4" fill="url(#exEyeGlow)"/>
+          <circle cx="200" cy="90" r="1.1" fill="#020617"/>
+
+          <!-- Teeth strip along the jaw -->
+          <g fill="#f8fafc" opacity="0.9">
+            <path d="M196 99 L198 104 L200 99 Z"/>
+            <path d="M201 99 L203 105 L205 99 Z"/>
+            <path d="M206 99 L208 104 L210 99 Z"/>
+            <path d="M211 99 L213 104 L215 99 Z"/>
+          </g>
+
+          <!-- Mouth line -->
+          <path d="M192 98 Q204 104 216 99"
+                fill="none" stroke="#7f1d1d" stroke-width="1.4"
+                stroke-linecap="round"/>
+        </svg>
       `,
-    }));
+    });
+    const bubbles = el('div', { class: 'ex-shark-bubbles' },
+      el('span'), el('span'), el('span'),
+    );
+    wrap.appendChild(svg);
+    wrap.appendChild(bubbles);
+    return wrap;
   }
 
   /* ══════════════════════════════════════════════════════════════════
@@ -935,11 +975,12 @@
    * ══════════════════════════════════════════════════════════════════ */
   function buildHeader() {
     return el('div', { class: 'ex-shark-header' },
-      sharkFinSVG(),
-      el('div', { class: 'ex-shark-title-block' },
+      sharkFigure(),
+      el('div', { class: 'ex-shark-copy' },
+        el('div', { class: 'ex-shark-eyebrow' }, 'Predator Mode'),
         el('h3', { class: 'ex-shark-title' },
-          el('span', null, 'Exploit Suite'),
-          el('span', { class: 'ex-predator-badge' }, 'Predator Mode'),
+          'Exploit ',
+          el('span', { class: 'ex-title-red' }, 'Suite'),
         ),
         el('p', { class: 'ex-shark-subtitle' },
           'Dirfuzz · SQLi · SQLMap · XSS · Sniper · HTTP Logger — ',
@@ -1008,6 +1049,27 @@
     return el('span', { class: 'ex-badge ex-badge-' + s }, s);
   }
 
+  function emptyState(text) {
+    const wrap = el('div', { class: 'ex-empty' });
+    wrap.innerHTML = `
+      <svg viewBox="0 0 120 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="exEmptyFin" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f87171"/>
+            <stop offset="1" stop-color="#7f1d1d"/>
+          </linearGradient>
+        </defs>
+        <path d="M14 66 Q46 54 78 58 L108 34 L100 58 L118 74 L86 72 Q46 82 14 66 Z"
+              fill="#1e293b" stroke="#dc2626" stroke-width="1" stroke-opacity="0.55"/>
+        <path d="M62 30 L78 6 L84 32 Q72 28 62 30 Z" fill="url(#exEmptyFin)"/>
+        <path d="M20 62 L12 78 L32 72 L20 62 Z" fill="url(#exEmptyFin)" opacity="0.85"/>
+        <circle cx="42" cy="64" r="1.8" fill="#f8fafc"/>
+      </svg>
+    `;
+    if (text) wrap.appendChild(el('span', null, text));
+    return wrap;
+  }
+
   /* ── Tabs definition ───────────────────────────────────────────────── */
   const TABS = [
     { id: 'dirfuzz',   label: 'Dirfuzz',       icon: 'fa-folder-tree' },
@@ -1064,7 +1126,7 @@
       function renderHits(hits) {
         findingsBox.innerHTML = '';
         if (!hits || !hits.length) {
-          findingsBox.appendChild(el('div', { class: 'ex-empty' }, 'No hits'));
+          findingsBox.appendChild(emptyState('No hits'));
           return;
         }
         hits.slice(0, 200).forEach(h => {
@@ -1490,7 +1552,7 @@
       function renderFindings(findings) {
         findingsBox.innerHTML = '';
         if (!findings || !findings.length) {
-          findingsBox.appendChild(el('div', { class: 'ex-empty' }, 'No XSS vectors found'));
+          findingsBox.appendChild(emptyState('No XSS vectors found'));
           return;
         }
         findings.forEach(f => {
@@ -1857,8 +1919,7 @@
           const data = await jget(EP.logger.list + '?' + qs.toString());
           if (!data.items || !data.items.length) {
             tableBody.appendChild(el('tr', null,
-              el('td', { colspan: '6' },
-                el('div', { class: 'ex-empty' }, 'No requests captured'))));
+              el('td', { colspan: '6' }, emptyState('No requests captured'))));
             return;
           }
           data.items.forEach(entry => {
@@ -1876,7 +1937,7 @@
         } catch (e) {
           tableBody.appendChild(el('tr', null,
             el('td', { colspan: '6' },
-              el('div', { class: 'ex-empty' }, 'Error: ' + e.message))));
+              emptyState('Error: ' + e.message))));
         }
       }
 
