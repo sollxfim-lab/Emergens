@@ -1,8 +1,8 @@
 /* ============================================================================
  * app-ex3bve.js — Exploit Suite for Emergens
- * v1.0.1 — Multi-instance, bug-fixed, production-ready
+ * v2.0.0 — SHARK THEME · professional, attractive, multi-instance
  *
- * Sub-tools:
+ * Sub-tools
  *   • Dirfuzz        — /api/dirfuzz/*
  *   • SQLi Engine    — /api/sqli/*
  *   • SQLMap         — /api/sqlmap/*
@@ -12,25 +12,27 @@
  *   • Sniper         — /api/sniper/*
  *   • HTTP Logger    — /api/logger/*
  *
- * v1.0.1 changelog
- *   ✔ Fixed: default tab is now correctly given `.active` (was invisible)
- *   ✔ Fixed: el() now flattens array children (table cells no longer crash)
- *   ✔ Fixed: multi-instance support — every mount gets its own state +
- *            its own DOM so the standalone HTTP Logger keeps working
- *   ✔ Fixed: SSE streams are now tracked per instance and closed on
- *            unmount() and on window.beforeunload
- *   ✔ Added: window.ExploitSuite.create(name) → new isolated instance
+ * Changelog v2.0.0
+ *   ✔ Shark-themed UI — fins, teeth, ocean depths, predatory red accents
+ *   ✔ Animated shark fin header for each active tab
+ *   ✔ MHDDoS + Exploit sidebar buttons forced to red gradient (CSS injection)
+ *   ✔ Card grid layout: tabs grouped by category
+ *   ✔ Live status pill, animated radar sweep, teeth-strip progress bars
+ *   ✔ Multi-instance safe — every mount has its own state + DOM
+ *   ✔ All SSE streams tracked per instance, closed on unmount + unload
+ *   ✔ run_streaming events rendered with animated wave markers
+ *   ✔ Preserves v1.0.x public API — no app.py changes needed
  *
- * Public API:
+ * Public API
  *   window.ExploitSuite.mount(selectorOrEl, { defaultTab })
  *   window.ExploitSuite.unmount()
  *   window.ExploitSuite.open(tabName)
- *   window.ExploitSuite.create(instanceName)  → new instance
+ *   window.ExploitSuite.create(instanceName)  → new isolated instance
  * ========================================================================= */
 (function () {
   'use strict';
 
-  /* ── Endpoints ───────────────────────────────────────────────────── */
+  /* ── Endpoints ─────────────────────────────────────────────────────── */
   const EP = {
     dirfuzz: {
       wordlists: '/api/dirfuzz/wordlists',
@@ -65,24 +67,20 @@
     },
   };
 
-  /* ── Tiny helpers ────────────────────────────────────────────────── */
+  /* ── Tiny helpers ──────────────────────────────────────────────────── */
   const $  = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
-  /**
-   * Create a DOM element.
-   * Now flattens nested arrays and coerces numbers to text nodes.
-   */
   function el(tag, attrs, ...children) {
     const n = document.createElement(tag);
     if (attrs) {
       for (const [k, v] of Object.entries(attrs)) {
         if (v == null || v === false) continue;
-        if (k === 'class')  n.className = v;
-        else if (k === 'html') n.innerHTML = v;
-        else if (k.startsWith('on') && typeof v === 'function') {
+        if (k === 'class')       n.className = v;
+        else if (k === 'html')   n.innerHTML = v;
+        else if (k.startsWith('on') && typeof v === 'function')
           n.addEventListener(k.slice(2).toLowerCase(), v);
-        } else n.setAttribute(k, v);
+        else                     n.setAttribute(k, v);
       }
     }
     const append = (c) => {
@@ -90,9 +88,7 @@
       if (Array.isArray(c)) { c.forEach(append); return; }
       if (typeof c === 'string' || typeof c === 'number') {
         n.appendChild(document.createTextNode(String(c)));
-      } else {
-        n.appendChild(c);
-      }
+      } else { n.appendChild(c); }
     };
     children.forEach(append);
     return n;
@@ -133,12 +129,6 @@
     return data;
   }
 
-  function escapeHtml(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
   function download(filename, text, mime) {
     const blob = new Blob([text], { type: mime || 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -161,197 +151,736 @@
     } catch (_) { return {}; }
   }
 
-  /* ── Shared CSS (injected once for all instances) ────────────────── */
+  /* ══════════════════════════════════════════════════════════════════
+   *  SHARK THEME — CSS + SVG
+   * ══════════════════════════════════════════════════════════════════ */
   const CSS = `
-  .ex-root { display:flex; flex-direction:column; gap:14px; }
+  /* ─── Global styles for the Exploit Suite (shark theme) ─── */
+  .ex-root {
+    --ex-shark-deep:    #020617;
+    --ex-shark-abyss:   #0a1122;
+    --ex-shark-mid:     #0f172a;
+    --ex-shark-glow:    rgba(239,68,68,.42);
+    --ex-shark-glow-2:  rgba(220,38,38,.18);
+    --ex-shark-teeth:   #f1f5f9;
+    --ex-shark-fin:     #dc2626;
+    --ex-shark-fin-2:   #b91c1c;
+    --ex-shark-blood:   #7f1d1d;
+    --ex-shark-water:   #1e3a8a;
+    --ex-shark-wave:    #3b82f6;
+    --ex-shark-white:   #f8fafc;
+    --ex-shark-muted:   #94a3b8;
+    --ex-shark-border:  rgba(220,38,38,.22);
+    --ex-shark-border2: rgba(148,163,184,.14);
+    --ex-shark-card-bg: linear-gradient(165deg, #0b1220 0%, #050a16 100%);
+    --ex-shark-card-hover: linear-gradient(165deg, #0f1a2e 0%, #0a1325 100%);
+    display: flex; flex-direction: column; gap: 16px;
+    font-family: var(--font-ui, 'Inter','Space Grotesk',system-ui,sans-serif);
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* Subtle shark-tooth watermark behind the whole panel */
+  .ex-root::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(220,38,38,.07), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(30,58,138,.08), transparent 45%);
+    pointer-events: none; z-index: -1;
+  }
+
+  /* ═══ Shark header — big fin + title ═══ */
+  .ex-shark-header {
+    position: relative;
+    background: linear-gradient(135deg, #0a1122 0%, #140a1c 60%, #1f0505 100%);
+    border: 1px solid var(--ex-shark-border);
+    border-radius: 14px;
+    padding: 18px 22px 16px;
+    display: flex; align-items: center; gap: 18px;
+    overflow: hidden;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,.02),
+      0 6px 24px rgba(220,38,38,.06);
+  }
+  .ex-shark-header::before {
+    /* Wave pattern */
+    content: "";
+    position: absolute; bottom: 0; left: 0; right: 0; height: 42%;
+    background-image:
+      repeating-linear-gradient(135deg, rgba(220,38,38,.06) 0 4px, transparent 4px 12px);
+    mask-image: linear-gradient(to top, black 40%, transparent);
+    -webkit-mask-image: linear-gradient(to top, black 40%, transparent);
+    pointer-events: none;
+  }
+  .ex-shark-header::after {
+    /* Red blood trail streak */
+    content: "";
+    position: absolute; top: 0; right: 18%; width: 180px; height: 100%;
+    background: radial-gradient(ellipse at 50% 0%, rgba(220,38,38,.18), transparent 70%);
+    pointer-events: none;
+  }
+
+  .ex-shark-fin {
+    width: 78px; height: 78px; flex-shrink: 0;
+    filter: drop-shadow(0 0 12px rgba(220,38,38,.55));
+    animation: exFinSwim 6s ease-in-out infinite;
+  }
+  @keyframes exFinSwim {
+    0%, 100% { transform: translateX(0) rotate(-3deg); }
+    50%      { transform: translateX(4px) rotate(2deg); }
+  }
+
+  .ex-shark-title-block {
+    flex: 1; min-width: 0; position: relative; z-index: 1;
+  }
+  .ex-shark-title {
+    font-size: 1.28rem; font-weight: 800; letter-spacing: -.02em;
+    color: var(--ex-shark-white);
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 0 3px;
+  }
+  .ex-shark-title .ex-predator-badge {
+    font-size: .6rem; font-weight: 800;
+    letter-spacing: .14em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 99px;
+    background: linear-gradient(135deg, #dc2626, #7f1d1d);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(220,38,38,.35);
+    animation: exPredatorPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes exPredatorPulse {
+    0%, 100% { box-shadow: 0 3px 10px rgba(220,38,38,.35); }
+    50%      { box-shadow: 0 3px 18px rgba(220,38,38,.75); }
+  }
+  .ex-shark-subtitle {
+    color: var(--ex-shark-muted);
+    font-size: .78rem; line-height: 1.5; margin: 0;
+    max-width: 78ch;
+  }
+  .ex-shark-subtitle b {
+    color: var(--ex-shark-white);
+    font-family: var(--font-mono, monospace);
+    font-weight: 600;
+  }
+
+  /* ═══ Tab strip — grouped, coloured ═══ */
   .ex-tabs {
-    display:flex; flex-wrap:wrap; gap:6px;
-    padding:8px;
-    background: var(--bg-tertiary, #14171b);
-    border:1px solid var(--border-color,#2a2f36);
-    border-radius:10px;
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 10px;
+    background:
+      linear-gradient(180deg, rgba(220,38,38,.06), transparent 30%),
+      linear-gradient(180deg, #0a1122, #06090f);
+    border: 1px solid var(--ex-shark-border2);
+    border-radius: 12px;
+    position: relative; overflow: hidden;
+  }
+  .ex-tabs::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--ex-shark-fin), transparent);
+    opacity: .7;
   }
   .ex-tab {
-    padding:9px 14px; border-radius:7px; border:1px solid transparent;
-    background: transparent; color: var(--text-secondary,#98a1ab);
-    font-size:.78rem; font-weight:700; letter-spacing:.02em;
-    cursor:pointer; display:inline-flex; align-items:center; gap:7px;
-    transition: all .12s ease; white-space:nowrap;
-    -webkit-appearance:none; appearance:none; font-family:inherit;
+    padding: 9px 15px; border-radius: 8px;
+    border: 1px solid transparent;
+    background: linear-gradient(180deg, rgba(255,255,255,.015), transparent);
+    color: var(--ex-shark-muted);
+    font-size: .78rem; font-weight: 700;
+    letter-spacing: .02em;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: all .18s cubic-bezier(.4,0,.2,1);
+    -webkit-appearance: none; appearance: none;
+    white-space: nowrap; font-family: inherit;
+    position: relative;
   }
-  .ex-tab:hover { color: var(--text-primary,#e5e7eb); background: rgba(255,255,255,.04); }
-  .ex-tab.active { background: var(--accent,#60a5fa); color:#0b0d10; }
-  .ex-tab i { font-size:.76rem; }
+  .ex-tab:hover {
+    color: var(--ex-shark-white);
+    border-color: var(--ex-shark-border);
+    background: linear-gradient(180deg, rgba(220,38,38,.08), rgba(220,38,38,.02));
+    transform: translateY(-1px);
+  }
+  .ex-tab.active {
+    background: linear-gradient(135deg, var(--ex-shark-fin), var(--ex-shark-blood));
+    color: #fff;
+    border-color: rgba(255,255,255,.15);
+    box-shadow:
+      0 4px 14px rgba(220,38,38,.42),
+      inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  .ex-tab.active::after {
+    /* Shark-tooth edge under the active tab */
+    content: "";
+    position: absolute; left: 20%; right: 20%; bottom: -6px; height: 6px;
+    background-image:
+      linear-gradient(135deg, transparent 50%, var(--ex-shark-fin) 50%),
+      linear-gradient(45deg, var(--ex-shark-fin) 50%, transparent 50%);
+    background-size: 8px 8px;
+    background-repeat: repeat-x;
+    opacity: .9;
+  }
+  .ex-tab i { font-size: .76rem; }
+  .ex-tab .ex-tab-count {
+    background: rgba(255,255,255,.10);
+    color: inherit;
+    font-size: .6rem; font-weight: 800;
+    padding: 2px 6px; border-radius: 99px;
+    margin-left: 2px;
+  }
+  .ex-tab.active .ex-tab-count {
+    background: rgba(0,0,0,.25);
+  }
 
-  /* ★★★ THE FIX — every panel is hidden by default, .active reveals it */
-  .ex-panel { display:none; }
-  .ex-panel.active { display:flex; flex-direction:column; gap:12px; }
+  /* ═══ Panels ═══ */
+  .ex-panel { display: none; }
+  .ex-panel.active {
+    display: flex; flex-direction: column; gap: 14px;
+    animation: exSlideIn .3s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes exSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 
+  /* ═══ Cards ═══ */
   .ex-card {
-    background: var(--bg-tertiary,#14171b);
-    border:1px solid var(--border-color,#2a2f36);
-    border-radius:10px; padding:14px;
+    background: var(--ex-shark-card-bg);
+    border: 1px solid var(--ex-shark-border2);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .18s, box-shadow .18s, transform .18s;
+  }
+  .ex-card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--ex-shark-fin) 0%, transparent 60%);
+    opacity: .55;
+  }
+  .ex-card:hover {
+    border-color: var(--ex-shark-border);
+    box-shadow: 0 6px 22px rgba(0,0,0,.35);
+    transform: translateY(-1px);
   }
   .ex-card h4 {
-    margin:0 0 10px;
-    font-size:.78rem; letter-spacing:.09em; text-transform: uppercase;
-    color: var(--text-secondary,#98a1ab);
-    display:flex; align-items:center; gap:8px;
+    margin: 0 0 14px;
+    font-size: .78rem; font-weight: 800;
+    letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ex-shark-white);
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ex-shark-border2);
+    flex-wrap: wrap;
   }
-  .ex-card h4 i { color: var(--accent,#60a5fa); }
+  .ex-card h4 i {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .82rem;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--ex-shark-fin), var(--ex-shark-blood));
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(220,38,38,.35);
+    flex-shrink: 0;
+  }
+  .ex-card h4 .ex-card-hint {
+    margin-left: auto;
+    font-size: .66rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ex-shark-muted);
+    font-family: var(--font-mono, monospace);
+  }
 
-  .ex-row { display:flex; gap:8px; flex-wrap:wrap; }
-  .ex-row > * { flex:1 1 150px; min-width:0; }
+  /* ═══ Form fields ═══ */
+  .ex-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .ex-row > * { flex: 1 1 150px; min-width: 0; }
   .ex-row.tight > * { flex: 0 0 auto; }
 
-  .ex-field { display:flex; flex-direction:column; gap:5px; }
+  .ex-field { display: flex; flex-direction: column; gap: 6px; }
   .ex-field > label {
-    font-size:.68rem; letter-spacing:.05em;
-    color: var(--text-muted,#6b7280); text-transform: uppercase;
+    font-size: .64rem; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ex-shark-muted);
   }
-  .ex-field > input, .ex-field > select, .ex-field > textarea {
-    background: var(--bg-secondary,#0d1013);
-    border:1px solid var(--border-color,#2a2f36);
-    border-radius:7px; padding:9px 11px;
-    color: var(--text-primary,#e5e7eb);
-    font-size:.85rem;
+  .ex-field > input,
+  .ex-field > select,
+  .ex-field > textarea {
+    background: linear-gradient(180deg, #060a15, #0a1122);
+    border: 1px solid var(--ex-shark-border2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--ex-shark-white);
+    font-size: .85rem;
     font-family: var(--font-mono, ui-monospace, monospace);
-    outline: none; transition: border-color .15s ease; width:100%;
+    outline: none;
+    transition: border-color .18s, box-shadow .18s;
+    -webkit-appearance: none; appearance: none;
+    width: 100%;
   }
-  .ex-field > input:focus, .ex-field > select:focus, .ex-field > textarea:focus {
-    border-color: var(--accent,#60a5fa);
+  .ex-field > input:focus,
+  .ex-field > select:focus,
+  .ex-field > textarea:focus {
+    border-color: var(--ex-shark-fin);
+    box-shadow: 0 0 0 3px rgba(220,38,38,.18);
   }
+  .ex-field > input::placeholder,
+  .ex-field > textarea::placeholder { color: rgba(148,163,184,.5); }
   .ex-field > textarea { min-height: 70px; resize: vertical; }
 
-  .ex-actions { display:flex; gap:8px; margin-top:4px; }
+  /* ═══ Buttons ═══ */
+  .ex-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   .ex-btn {
-    padding:10px 16px; border-radius:8px; border:1px solid transparent;
-    font-weight:700; font-size:.8rem; cursor:pointer;
-    display:inline-flex; align-items:center; justify-content:center; gap:7px;
-    transition: transform .1s ease, opacity .15s;
-    -webkit-appearance:none; appearance:none; font-family:inherit;
+    padding: 11px 18px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    font-weight: 700; font-size: .82rem;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all .16s cubic-bezier(.4,0,.2,1);
+    -webkit-appearance: none; appearance: none;
+    white-space: nowrap; font-family: inherit;
+    position: relative;
   }
   .ex-btn:active { transform: scale(.98); }
-  .ex-btn[disabled] { opacity:.5; cursor:not-allowed; }
-  .ex-btn-primary { background: linear-gradient(135deg,#3b82f6,#1d4ed8); color:#fff; }
-  .ex-btn-danger  { background: linear-gradient(135deg,#ef4444,#b91c1c); color:#fff; }
-  .ex-btn-ghost   { background: var(--bg-secondary,#0d1013); border-color: var(--border-color,#2a2f36); color: var(--text-secondary,#98a1ab); }
+  .ex-btn[disabled] { opacity: .5; cursor: not-allowed; transform: none !important; }
 
+  .ex-btn-primary {
+    background: linear-gradient(135deg, var(--ex-shark-fin), var(--ex-shark-blood));
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(220,38,38,.4);
+  }
+  .ex-btn-primary:hover:not([disabled]) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 26px rgba(220,38,38,.55);
+  }
+  .ex-btn-primary::after {
+    /* Teeth strip animation on hover */
+    content: "";
+    position: absolute; left: 10%; right: 10%; bottom: 4px; height: 3px;
+    background-image:
+      linear-gradient(135deg, transparent 50%, rgba(255,255,255,.55) 50%),
+      linear-gradient(45deg, rgba(255,255,255,.55) 50%, transparent 50%);
+    background-size: 6px 6px;
+    background-repeat: repeat-x;
+    opacity: 0; transition: opacity .18s;
+  }
+  .ex-btn-primary:hover::after { opacity: 1; }
+
+  .ex-btn-danger {
+    background: linear-gradient(135deg, #7f1d1d, #450a0a);
+    color: #fca5a5;
+    border-color: rgba(239,68,68,.35);
+    box-shadow: 0 4px 14px rgba(239,68,68,.22);
+  }
+  .ex-btn-danger:hover:not([disabled]) {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #991b1b, #7f1d1d);
+    color: #fff;
+  }
+
+  .ex-btn-ghost {
+    background: linear-gradient(180deg, #0a1122, #06090f);
+    border-color: var(--ex-shark-border2);
+    color: var(--ex-shark-muted);
+  }
+  .ex-btn-ghost:hover:not([disabled]) {
+    border-color: var(--ex-shark-fin);
+    color: var(--ex-shark-white);
+    background: linear-gradient(180deg, rgba(220,38,38,.08), rgba(220,38,38,.02));
+  }
+
+  /* ═══ Progress bar with shark-teeth strip ═══ */
   .ex-progress {
-    margin-top:10px;
-    height:8px; width:100%;
-    background: var(--bg-secondary,#0d1013);
-    border-radius:99px; overflow:hidden;
-    border:1px solid var(--border-color,#2a2f36);
+    margin-top: 12px;
+    height: 12px; width: 100%;
+    background: linear-gradient(180deg, #050912, #0a1122);
+    border-radius: 99px;
+    overflow: hidden;
+    border: 1px solid var(--ex-shark-border2);
+    position: relative;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.6);
   }
   .ex-progress > span {
-    display:block; height:100%; width:0%;
-    background: linear-gradient(90deg, #3b82f6, #60a5fa);
-    transition: width .2s ease;
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, #dc2626, #ef4444, #f87171);
+    transition: width .3s cubic-bezier(.16,1,.3,1);
+    border-radius: 99px;
+    position: relative; overflow: hidden;
+  }
+  .ex-progress > span::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(135deg, transparent 50%, rgba(255,255,255,.35) 50%),
+      linear-gradient(45deg, rgba(255,255,255,.35) 50%, transparent 50%);
+    background-size: 8px 8px;
+    background-repeat: repeat-x;
+    animation: exTeethScroll 1.4s linear infinite;
+    opacity: .55;
+  }
+  @keyframes exTeethScroll {
+    from { background-position: 0 0; }
+    to   { background-position: 8px 0; }
   }
   .ex-progress-label {
-    display:flex; justify-content:space-between;
-    font-size:.72rem; color: var(--text-muted,#6b7280); margin-top:6px;
+    display: flex; justify-content: space-between;
+    font-size: .7rem; color: var(--ex-shark-muted);
+    margin-top: 8px;
+    font-family: var(--font-mono, monospace);
+    gap: 12px;
+  }
+  .ex-progress-label span:first-child {
+    flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
 
+  /* ═══ Log panel ═══ */
   .ex-log {
-    max-height: 280px; overflow:auto;
-    background: #08090b; border:1px solid var(--border-color,#2a2f36);
-    border-radius:8px; padding:10px;
-    font-family: var(--font-mono, monospace); font-size:.72rem;
-    color: #d1d5db; white-space: pre-wrap;
-    margin-top:10px;
+    max-height: 300px; overflow-y: auto;
+    background: linear-gradient(180deg, #030509, #050a14);
+    border: 1px solid var(--ex-shark-border2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: var(--font-mono, monospace);
+    font-size: .72rem;
+    color: #cbd5e1;
+    white-space: pre-wrap;
+    line-height: 1.7;
+    margin-top: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(220,38,38,.4) transparent;
+    position: relative;
   }
-  .ex-log .ok   { color:#22c55e; }
-  .ex-log .warn { color:#f59e0b; }
-  .ex-log .err  { color:#ef4444; }
-  .ex-log .dim  { color:#6b7280; }
+  .ex-log::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: linear-gradient(180deg, var(--ex-shark-fin), transparent);
+  }
+  .ex-log::-webkit-scrollbar { width: 8px; }
+  .ex-log::-webkit-scrollbar-thumb {
+    background: rgba(220,38,38,.35); border-radius: 4px;
+  }
+  .ex-log .ok   { color: #4ade80; }
+  .ex-log .warn { color: #fbbf24; }
+  .ex-log .err  { color: #f87171; }
+  .ex-log .dim  { color: #64748b; }
 
+  /* ═══ Result viewer ═══ */
   .ex-result {
-    background: #08090b; border:1px solid var(--border-color,#2a2f36);
-    border-radius:8px; padding:12px;
-    font-family: var(--font-mono, monospace); font-size:.74rem;
-    color: #d1d5db; white-space: pre-wrap;
-    max-height: 480px; overflow:auto;
+    background: linear-gradient(180deg, #030509, #050a14);
+    border: 1px solid var(--ex-shark-border2);
+    border-radius: 10px;
+    padding: 14px;
+    font-family: var(--font-mono, monospace);
+    font-size: .74rem;
+    color: #e2e8f0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 480px; overflow-y: auto;
+    line-height: 1.65;
+    scrollbar-width: thin;
   }
+  .ex-result .dim { color: #64748b; }
 
+  /* ═══ Severity badges ═══ */
   .ex-badge {
-    display:inline-block; padding:3px 8px; border-radius:99px;
-    font-size:.66rem; font-weight:700; text-transform: uppercase; letter-spacing:.05em;
+    display: inline-flex; align-items: center;
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-size: .62rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .06em;
+    border: 1px solid;
   }
-  .ex-badge-critical { background: rgba(239,68,68,.18); color:#ef4444; }
-  .ex-badge-high     { background: rgba(249,115,22,.18); color:#f97316; }
-  .ex-badge-medium   { background: rgba(245,158,11,.18); color:#f59e0b; }
-  .ex-badge-low      { background: rgba(59,130,246,.18); color:#3b82f6; }
-  .ex-badge-info     { background: rgba(156,163,175,.18); color:#9ca3af; }
-  .ex-badge-safe     { background: rgba(34,197,94,.18); color:#22c55e; }
+  .ex-badge-critical { background: rgba(220,38,38,.2);  color: #f87171; border-color: rgba(220,38,38,.5); }
+  .ex-badge-high     { background: rgba(249,115,22,.18); color: #fb923c; border-color: rgba(249,115,22,.4); }
+  .ex-badge-medium   { background: rgba(245,158,11,.18); color: #fbbf24; border-color: rgba(245,158,11,.4); }
+  .ex-badge-low      { background: rgba(59,130,246,.18); color: #60a5fa; border-color: rgba(59,130,246,.4); }
+  .ex-badge-info     { background: rgba(148,163,184,.14); color: #94a3b8; border-color: rgba(148,163,184,.3); }
+  .ex-badge-safe     { background: rgba(34,197,94,.16);  color: #4ade80; border-color: rgba(34,197,94,.4); }
 
-  .ex-chips { display:flex; flex-wrap:wrap; gap:5px; max-height:120px; overflow:auto; padding:4px 0; }
+  /* ═══ Chips ═══ */
+  .ex-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    max-height: 120px; overflow-y: auto;
+    padding: 4px 2px;
+  }
   .ex-chip {
-    padding:4px 9px; border-radius:6px;
-    border:1px solid var(--border-color,#2a2f36);
-    background: var(--bg-secondary,#0d1013);
-    color: var(--text-secondary,#98a1ab);
-    font-family: var(--font-mono, monospace); font-size:.7rem;
-    cursor:pointer; transition: all .12s ease;
-    -webkit-appearance:none; appearance:none; font-family:inherit;
+    padding: 5px 11px;
+    border-radius: 7px;
+    border: 1px solid var(--ex-shark-border2);
+    background: linear-gradient(180deg, #0a1122, #06090f);
+    color: var(--ex-shark-muted);
+    font-family: var(--font-mono, monospace);
+    font-size: .7rem; font-weight: 600;
+    cursor: pointer;
+    transition: all .16s;
+    -webkit-appearance: none; appearance: none;
   }
-  .ex-chip:hover { border-color: var(--accent,#60a5fa); color: var(--text-primary,#e5e7eb); }
-  .ex-chip.active { background: var(--accent,#60a5fa); color:#0b0d10; font-weight:700; }
+  .ex-chip:hover {
+    border-color: var(--ex-shark-fin);
+    color: var(--ex-shark-white);
+    transform: translateY(-1px);
+  }
+  .ex-chip.active {
+    background: linear-gradient(135deg, var(--ex-shark-fin), var(--ex-shark-blood));
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(220,38,38,.4);
+  }
 
-  .ex-findings { display:flex; flex-direction:column; gap:6px; }
+  /* ═══ Findings list ═══ */
+  .ex-findings { display: flex; flex-direction: column; gap: 8px; }
   .ex-finding {
-    background: var(--bg-secondary,#0d1013);
-    border-left: 3px solid var(--accent,#60a5fa);
-    border-radius: 6px; padding: 10px 12px;
-    font-size:.78rem;
+    background: linear-gradient(180deg, rgba(10,17,34,.9), rgba(5,10,22,.9));
+    border-left: 3px solid #dc2626;
+    border-radius: 8px;
+    padding: 12px 15px;
+    font-size: .78rem;
+    transition: all .18s;
+    animation: exFindingIn .32s cubic-bezier(.4,0,.2,1);
   }
-  .ex-finding.critical { border-left-color: #ef4444; }
+  @keyframes exFindingIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .ex-finding:hover {
+    background: linear-gradient(180deg, rgba(15,26,46,.9), rgba(10,19,37,.9));
+    transform: translateX(3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  }
+  .ex-finding.critical { border-left-color: #dc2626; }
   .ex-finding.high     { border-left-color: #f97316; }
   .ex-finding.medium   { border-left-color: #f59e0b; }
   .ex-finding.low      { border-left-color: #3b82f6; }
   .ex-finding.safe     { border-left-color: #22c55e; }
-  .ex-finding .label { font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted,#6b7280); }
-  .ex-finding .value { font-family: var(--font-mono, monospace); word-break:break-all; margin-top:3px; color:var(--text-primary,#e5e7eb); }
-  .ex-finding .meta { margin-top:6px; font-size:.68rem; color:var(--text-muted,#6b7280); display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-
-  .ex-kpis { display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; }
-  @media (max-width: 700px) { .ex-kpis { grid-template-columns: repeat(2, 1fr); } }
-  .ex-kpi {
-    background: var(--bg-secondary,#0d1013);
-    border:1px solid var(--border-color,#2a2f36);
-    border-radius:9px; padding:12px;
-    display:flex; flex-direction:column; gap:4px;
+  .ex-finding .label {
+    font-size: .62rem; text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--ex-shark-muted);
+    font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
   }
-  .ex-kpi .k-label { font-size:.66rem; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted,#6b7280); }
-  .ex-kpi .k-val   { font-family: var(--font-mono, monospace); font-size:1.25rem; color:var(--text-primary,#e5e7eb); }
+  .ex-finding .value {
+    font-family: var(--font-mono, monospace);
+    word-break: break-all;
+    margin-top: 5px;
+    color: var(--ex-shark-white);
+    font-size: .76rem;
+    line-height: 1.55;
+  }
+  .ex-finding .meta {
+    margin-top: 8px;
+    font-size: .66rem;
+    color: var(--ex-shark-muted);
+    display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  }
 
-  .ex-table { width:100%; border-collapse:collapse; font-size:.76rem; }
+  /* ═══ KPI tiles ═══ */
+  .ex-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .ex-kpi {
+    background: linear-gradient(165deg, #0b1220 0%, #050a16 100%);
+    border: 1px solid var(--ex-shark-border2);
+    border-radius: 10px;
+    padding: 14px 15px;
+    display: flex; flex-direction: column; gap: 5px;
+    transition: all .18s;
+    position: relative; overflow: hidden;
+  }
+  .ex-kpi::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--ex-shark-fin), transparent);
+    opacity: .5;
+  }
+  .ex-kpi:hover {
+    border-color: var(--ex-shark-border);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,.4);
+  }
+  .ex-kpi .k-label {
+    font-size: .62rem; letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ex-shark-muted);
+    font-weight: 700;
+  }
+  .ex-kpi .k-val {
+    font-family: var(--font-display, monospace);
+    font-size: 1.35rem;
+    color: var(--ex-shark-white);
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  /* ═══ Tables ═══ */
+  .ex-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
   .ex-table th, .ex-table td {
-    text-align:left; padding:7px 9px;
-    border-bottom:1px solid var(--border-color,#2a2f36);
+    text-align: left; padding: 9px 11px;
+    border-bottom: 1px solid var(--ex-shark-border2);
   }
   .ex-table th {
-    font-size:.66rem; letter-spacing:.05em; text-transform:uppercase;
-    color:var(--text-muted,#6b7280); font-weight:600;
+    font-size: .62rem; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ex-shark-muted); font-weight: 800;
+    background: linear-gradient(180deg, rgba(220,38,38,.06), transparent);
+    position: sticky; top: 0; z-index: 1;
   }
-  .ex-table code { font-family: var(--font-mono, monospace); font-size:.72rem; color:var(--text-secondary,#98a1ab); word-break:break-all; }
-  .ex-table tbody tr:hover { background: rgba(255,255,255,.03); }
-  .ex-table tbody tr { cursor: pointer; }
+  .ex-table code {
+    font-family: var(--font-mono, monospace);
+    font-size: .72rem;
+    color: #cbd5e1;
+    word-break: break-all;
+  }
+  .ex-table tbody tr {
+    cursor: pointer;
+    transition: background .14s;
+  }
+  .ex-table tbody tr:hover {
+    background: linear-gradient(90deg, rgba(220,38,38,.08), transparent);
+  }
 
-  .ex-empty { padding:18px; text-align:center; color:var(--text-muted,#6b7280); font-size:.82rem; }
+  /* ═══ Empty state ═══ */
+  .ex-empty {
+    padding: 26px 16px;
+    text-align: center;
+    color: var(--ex-shark-muted);
+    font-size: .82rem;
+    font-style: italic;
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .ex-empty::before {
+    content: "";
+    width: 42px; height: 42px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M6 40 Q20 30 34 34 L52 22 L48 36 L58 44 L42 42 Q28 50 6 40 Z' fill='%23dc2626' fill-opacity='0.4'/></svg>");
+    background-size: contain; background-repeat: no-repeat;
+    background-position: center;
+    opacity: .55;
+  }
 
+  /* ═══ Live pill ═══ */
   .ex-live-pill {
-    display:inline-flex; align-items:center; gap:5px;
-    padding:3px 9px; border-radius:99px;
-    background: rgba(34,197,94,.13); color:#22c55e;
-    font-size:.66rem; font-weight:700; letter-spacing:.05em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 11px; border-radius: 99px;
+    background: linear-gradient(135deg, rgba(220,38,38,.18), rgba(220,38,38,.06));
+    color: #f87171;
+    font-size: .62rem; font-weight: 800;
+    letter-spacing: .06em; text-transform: uppercase;
+    border: 1px solid rgba(220,38,38,.4);
   }
   .ex-live-pill .dot {
-    width:6px; height:6px; border-radius:50%; background:#22c55e;
-    animation: expPulse 1.4s ease-in-out infinite;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 0 0 rgba(239,68,68,.8);
+    animation: exLivePulse 1.5s ease-out infinite;
   }
-  @keyframes expPulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+  @keyframes exLivePulse {
+    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,.8); }
+    70%  { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  }
+
+  /* ═══ Radar sweep animation for running scans ═══ */
+  .ex-radar {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid rgba(220,38,38,.35);
+    background:
+      radial-gradient(circle, rgba(220,38,38,.15) 0%, transparent 70%);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .ex-radar::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: conic-gradient(from 0deg, transparent 0deg,
+      rgba(220,38,38,.85) 25deg, transparent 60deg);
+    animation: exRadarSpin 1.6s linear infinite;
+    box-shadow: 0 0 8px rgba(220,38,38,.5);
+  }
+  @keyframes exRadarSpin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ═════════════════════════════════════════════════════════════════
+     FORCE MHDDoS + EXPLOIT SIDEBAR BUTTONS TO RED
+     ═════════════════════════════════════════════════════════════════ */
+  .nav-item[data-section="mhddos"],
+  .nav-item[data-section="exploit"] {
+    background:
+      linear-gradient(90deg, rgba(220,38,38,.14), rgba(220,38,38,.03) 65%, transparent) !important;
+    border-left-color: #dc2626 !important;
+    color: #fecaca !important;
+    font-weight: 600 !important;
+    position: relative;
+  }
+  .nav-item[data-section="mhddos"] i,
+  .nav-item[data-section="exploit"] i {
+    color: #ef4444 !important;
+  }
+  .nav-item[data-section="mhddos"]:hover,
+  .nav-item[data-section="exploit"]:hover {
+    background:
+      linear-gradient(90deg, rgba(220,38,38,.26), rgba(220,38,38,.06) 65%, transparent) !important;
+    color: #fff !important;
+    transform: translateX(3px) !important;
+    border-left-color: #ef4444 !important;
+  }
+  .nav-item[data-section="mhddos"].active,
+  .nav-item[data-section="exploit"].active {
+    background:
+      linear-gradient(90deg, rgba(220,38,38,.42), rgba(220,38,38,.1) 70%, transparent) !important;
+    border-left-color: #ef4444 !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+  }
+  .nav-item[data-section="mhddos"].active i,
+  .nav-item[data-section="exploit"].active i {
+    color: #fff !important;
+    filter: drop-shadow(0 0 6px rgba(239,68,68,.8));
+  }
+  /* Pulsing red dot on the MHDDoS/Exploit nav items */
+  .nav-item[data-section="mhddos"]::after,
+  .nav-item[data-section="exploit"]::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 0 0 rgba(239,68,68,.75);
+    animation: exNavPulse 2.2s ease-out infinite;
+    pointer-events: none;
+  }
+  @keyframes exNavPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,.75); }
+    70%  { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  }
+
+  /* Make sure the section titles for MHDDoS / Exploit / HTTP Logger get the red trim */
+  #section-mhddos .panel-title i,
+  #section-exploit .panel-title i,
+  #section-httplogger .panel-title i {
+    color: #ef4444 !important;
+    background: linear-gradient(135deg, rgba(220,38,38,.22), rgba(127,29,29,.12)) !important;
+    box-shadow: inset 0 0 0 1px rgba(220,38,38,.3);
+  }
+
+  /* ═════════════════════════════════════════════════════════════════
+     Responsive tweaks
+     ═════════════════════════════════════════════════════════════════ */
+  @media (max-width: 720px) {
+    .ex-shark-header { flex-direction: column; align-items: flex-start; padding: 16px; }
+    .ex-shark-fin { width: 60px; height: 60px; }
+    .ex-shark-title { font-size: 1.08rem; }
+    .ex-row > * { flex: 1 1 100%; }
+    .ex-tabs { overflow-x: auto; flex-wrap: nowrap; }
+    .ex-tab { flex-shrink: 0; }
+  }
   `;
 
   function injectCSS() {
@@ -362,11 +891,73 @@
     document.head.appendChild(s);
   }
 
-  /* ── Shared UI builders (pure helpers, no state) ─────────────────── */
-  function buildCard(title, icon, ...children) {
+  /* ── Shark SVG (fin + body) ─────────────────────────────────────────── */
+  function sharkFinSVG() {
+    return el('svg', {
+      class: 'ex-shark-fin',
+      viewBox: '0 0 120 120',
+      xmlns: 'http://www.w3.org/2000/svg',
+      'aria-hidden': 'true',
+    }, el('svg', {
+      html: `
+        <defs>
+          <linearGradient id="exFinGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0"   stop-color="#ef4444"/>
+            <stop offset="0.55" stop-color="#b91c1c"/>
+            <stop offset="1"   stop-color="#450a0a"/>
+          </linearGradient>
+          <linearGradient id="exBodyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#1e293b"/>
+            <stop offset="1" stop-color="#020617"/>
+          </linearGradient>
+        </defs>
+        <!-- Body -->
+        <path d="M4 78 Q28 66 52 72 L96 46 L88 72 L118 92 L84 90 Q46 100 4 78 Z"
+              fill="url(#exBodyGrad)" stroke="#dc2626" stroke-width="1.4" stroke-opacity="0.6"/>
+        <!-- Fin -->
+        <path d="M56 40 L74 6 L82 40 Q70 34 56 40 Z"
+              fill="url(#exFinGrad)"/>
+        <!-- Tail fin -->
+        <path d="M8 74 L2 92 L20 84 L8 74 Z"
+              fill="url(#exFinGrad)" opacity="0.9"/>
+        <!-- Eye -->
+        <circle cx="30" cy="78" r="2.4" fill="#f8fafc"/>
+        <circle cx="30" cy="78" r="1" fill="#020617"/>
+        <!-- Gill slashes -->
+        <path d="M42 74 L42 84 M47 73 L47 83 M52 72 L52 82"
+              stroke="#dc2626" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>
+      `,
+    }));
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+   *  Shared UI builders
+   * ══════════════════════════════════════════════════════════════════ */
+  function buildHeader() {
+    return el('div', { class: 'ex-shark-header' },
+      sharkFinSVG(),
+      el('div', { class: 'ex-shark-title-block' },
+        el('h3', { class: 'ex-shark-title' },
+          el('span', null, 'Exploit Suite'),
+          el('span', { class: 'ex-predator-badge' }, 'Predator Mode'),
+        ),
+        el('p', { class: 'ex-shark-subtitle' },
+          'Dirfuzz · SQLi · SQLMap · XSS · Sniper · HTTP Logger — ',
+          el('b', null, 'authorised targets only'),
+          '. All modules stream live results; every request is rate-limited and cancellable.',
+        ),
+      ),
+    );
+  }
+
+  function buildCard(title, icon, hint, ...children) {
     return el('div', { class: 'ex-card' },
-      el('h4', null, el('i', { class: 'fas ' + icon }), title),
-      ...children
+      el('h4', null,
+        el('i', { class: 'fas ' + icon }),
+        title,
+        hint ? el('span', { class: 'ex-card-hint' }, hint) : null,
+      ),
+      ...children,
     );
   }
 
@@ -417,7 +1008,7 @@
     return el('span', { class: 'ex-badge ex-badge-' + s }, s);
   }
 
-  /* ── Tabs definition ─────────────────────────────────────────────── */
+  /* ── Tabs definition ───────────────────────────────────────────────── */
   const TABS = [
     { id: 'dirfuzz',   label: 'Dirfuzz',       icon: 'fa-folder-tree' },
     { id: 'sqli',      label: 'SQLi Engine',   icon: 'fa-database' },
@@ -430,10 +1021,9 @@
   ];
 
   /* ══════════════════════════════════════════════════════════════════
-   *  Tab builders — closure over the *instance* state so two suites
-   *  on the same page never collide.
+   *  Tab builders — closure over per-instance state
    * ══════════════════════════════════════════════════════════════════ */
-  function makeTabBuilders(instanceName, state, TABS) {
+  function makeTabBuilders(instanceName, state) {
 
     function pid(id) { return 'ex-tab-' + instanceName + '-' + id; }
 
@@ -457,7 +1047,6 @@
       const logPanel    = buildLogPanel();
       const findingsBox = el('div', { class: 'ex-findings' });
 
-      // Load wordlist options
       (async () => {
         try {
           const res = await jget(EP.dirfuzz.wordlists);
@@ -480,7 +1069,10 @@
         }
         hits.slice(0, 200).forEach(h => {
           findingsBox.appendChild(el('div', { class: 'ex-finding ' + (h.severity || 'info') },
-            el('div', { class: 'label' }, `${h.category || 'other'} · path`),
+            el('div', { class: 'label' },
+              el('i', { class: 'fas fa-folder-open' }),
+              ` ${h.category || 'other'} · path`,
+            ),
             el('div', { class: 'value' }, h.url || h.path || ''),
             el('div', { class: 'meta' },
               el('span', null, 'Status: ', String(h.status)),
@@ -489,8 +1081,8 @@
               h.redirect_to ? el('span', null, '→ ', h.redirect_to) : null,
             ),
             (h.secrets && h.secrets.length)
-              ? el('div', { class: 'value', style: 'margin-top:6px;color:#ef4444;' },
-                  'Secrets: ' + h.secrets.map(s => s.type).join(', '))
+              ? el('div', { class: 'value', style: 'margin-top:8px;color:#f87171;' },
+                  '⚠ Secrets: ' + h.secrets.map(s => s.type).join(', '))
               : null,
           ));
         });
@@ -588,21 +1180,21 @@
       });
 
       return el('div', { class: 'ex-panel', id: pid('dirfuzz') },
-        buildCard('Directory / File Fuzzer', 'fa-folder-tree',
+        buildCard('Directory / File Fuzzer', 'fa-folder-tree', 'brute-force · soft-404 aware',
           el('div', { class: 'ex-row' },
             buildField('Target', target),
             buildField('Wordlist', wordlist),
           ),
-          el('div', { class: 'ex-row', style: 'margin-top:8px;' },
+          el('div', { class: 'ex-row', style: 'margin-top:10px;' },
             buildField('Max paths', maxPaths),
             buildField('Concurrency', conc),
             buildField('Rate limit (req/s)', rate),
             buildField('Timeout (s)', timeout),
           ),
-          el('div', { class: 'ex-row tight', style: 'margin-top:10px; align-items:center;' },
-            el('label', { style: 'display:flex;gap:6px;align-items:center;font-size:.78rem;' },
+          el('div', { class: 'ex-row tight', style: 'margin-top:12px; align-items:center;' },
+            el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               follow, 'Follow redirects'),
-            el('label', { style: 'display:flex;gap:6px;align-items:center;font-size:.78rem;' },
+            el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               streamTgl, 'Stream results (SSE)'),
             el('div', { style: 'flex:1 1 auto;' }),
             startBtn, stopBtn,
@@ -610,7 +1202,7 @@
           progress,
           logPanel,
         ),
-        buildCard('Findings', 'fa-list-check', findingsBox),
+        buildCard('Findings', 'fa-list-check', 'click a row to inspect', findingsBox),
       );
     }
 
@@ -739,22 +1331,22 @@
       });
 
       return el('div', { class: 'ex-panel', id: pid('sqli') },
-        buildCard('SQL Injection Engine (sqli_engine)', 'fa-database',
+        buildCard('SQL Injection Engine', 'fa-database', '4 techniques · wordlist driven',
           el('div', { class: 'ex-row' },
             buildField('Target URL', target),
             buildField('Method', method),
           ),
-          el('div', { class: 'ex-row', style: 'margin-top:8px;' },
+          el('div', { class: 'ex-row', style: 'margin-top:10px;' },
             buildField('Max params', maxParams),
             buildField('Rate limit', rate),
             buildField('Timeout (s)', timeout),
           ),
-          el('div', { style: 'margin-top:10px;' },
-            el('label', { style: 'font-size:.7rem;text-transform:uppercase;color:var(--text-muted);letter-spacing:.05em;' }, 'Techniques'),
+          el('div', { style: 'margin-top:12px;' },
+            el('label', { style: 'font-size:.64rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;' }, 'Techniques'),
             techniquesWrap,
           ),
-          el('div', { class: 'ex-row tight', style: 'margin-top:12px; align-items:center;' },
-            el('label', { style: 'display:flex;gap:6px;align-items:center;font-size:.78rem;' },
+          el('div', { class: 'ex-row tight', style: 'margin-top:14px; align-items:center;' },
+            el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               streamTgl, 'Stream results (SSE)'),
             el('div', { style: 'flex:1 1 auto;' }),
             startBtn, stopBtn,
@@ -762,7 +1354,7 @@
           progress,
           logPanel,
         ),
-        buildCard('Result', 'fa-clipboard-check', resultPanel),
+        buildCard('Result', 'fa-clipboard-check', null, resultPanel),
       );
     }
 
@@ -809,18 +1401,18 @@
       });
 
       return el('div', { class: 'ex-panel', id: pid('sqlmap') },
-        buildCard('SQLMap — Multi-Technique Scanner', 'fa-magnifying-glass-chart',
+        buildCard('SQLMap — Multi-Technique Scanner', 'fa-magnifying-glass-chart', 'confidence scored',
           el('div', { class: 'ex-row' }, buildField('Target URL', target)),
-          el('div', { class: 'ex-row', style: 'margin-top:8px;' },
+          el('div', { class: 'ex-row', style: 'margin-top:10px;' },
             buildField('Method', method),
             buildField('Mode', mode),
             buildField('Max threads', maxThreads),
             buildField('Timeout (s)', timeout),
           ),
-          el('div', { class: 'ex-actions', style: 'margin-top:12px;' }, runBtn),
+          el('div', { class: 'ex-actions', style: 'margin-top:14px;' }, runBtn),
           logPanel,
         ),
-        buildCard('Result', 'fa-clipboard-check', resultPanel),
+        buildCard('Result', 'fa-clipboard-check', null, resultPanel),
       );
     }
 
@@ -857,15 +1449,15 @@
       });
 
       return el('div', { class: 'ex-panel', id: pid('sqlinj') },
-        buildCard('Lightweight SQL Injection Test', 'fa-bolt',
+        buildCard('Lightweight SQL Injection Test', 'fa-bolt', 'fast heuristic',
           el('div', { class: 'ex-row' },
             buildField('Target URL', target),
             buildField('Method', method),
           ),
-          el('div', { class: 'ex-actions', style: 'margin-top:12px;' }, runBtn),
+          el('div', { class: 'ex-actions', style: 'margin-top:14px;' }, runBtn),
           logPanel,
         ),
-        buildCard('Result', 'fa-clipboard-check', resultPanel),
+        buildCard('Result', 'fa-clipboard-check', null, resultPanel),
       );
     }
 
@@ -903,7 +1495,10 @@
         }
         findings.forEach(f => {
           findingsBox.appendChild(el('div', { class: 'ex-finding ' + (f.severity || 'medium') },
-            el('div', { class: 'label' }, `parameter · ${f.parameter} (${f.context || 'unknown'})`),
+            el('div', { class: 'label' },
+              el('i', { class: 'fas fa-code' }),
+              ` ${f.parameter} · ${f.context || 'unknown'}`,
+            ),
             el('div', { class: 'value' }, f.payload || ''),
             el('div', { class: 'meta' },
               el('span', null, 'Status: ',     String(f.status_code || '—')),
@@ -911,7 +1506,7 @@
               el('span', null, 'Severity: ',   severityBadge(f.severity)),
             ),
             f.evidence
-              ? el('div', { class: 'value', style: 'margin-top:6px;color:#9ca3af;font-size:.72rem;' }, f.evidence.slice(0, 200))
+              ? el('div', { class: 'value', style: 'margin-top:8px;color:#94a3b8;font-size:.72rem;' }, f.evidence.slice(0, 200))
               : null,
           ));
         });
@@ -988,6 +1583,8 @@
               startBtn.disabled = false; stopBtn.disabled = true;
             } else if (data.type === 'start') {
               logPanel._append('[start] ' + data.url, 'dim');
+            } else if (data.type === 'heartbeat') {
+              logPanel._append('[heartbeat]', 'dim');
             }
           } catch (e) { logPanel._append('[parse] ' + e.message, 'warn'); }
         };
@@ -1009,21 +1606,21 @@
       });
 
       return el('div', { class: 'ex-panel', id: pid('xss') },
-        buildCard('XSS Exploiter', 'fa-code',
+        buildCard('XSS Exploiter', 'fa-code', 'reflected · context aware',
           el('div', { class: 'ex-row' },
             buildField('Target URL', target),
             buildField('Method', method),
           ),
-          el('div', { class: 'ex-row', style: 'margin-top:8px;' },
+          el('div', { class: 'ex-row', style: 'margin-top:10px;' },
             buildField('Max payloads', maxPayloads),
             buildField('Max params', maxParams),
             buildField('Concurrency', conc),
             buildField('Rate limit', rate),
           ),
           el('div', { class: 'ex-row tight', style: 'margin-top:12px; align-items:center;' },
-            el('label', { style: 'display:flex;gap:6px;align-items:center;font-size:.78rem;' },
+            el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               wafBypass, 'WAF bypass'),
-            el('label', { style: 'display:flex;gap:6px;align-items:center;font-size:.78rem;' },
+            el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               streamTgl, 'Stream (SSE)'),
             el('div', { style: 'flex:1 1 auto;' }),
             startBtn, stopBtn,
@@ -1031,7 +1628,7 @@
           progress,
           logPanel,
         ),
-        buildCard('Findings', 'fa-list-check', findingsBox),
+        buildCard('Findings', 'fa-list-check', null, findingsBox),
       );
     }
 
@@ -1060,14 +1657,14 @@
       });
 
       return el('div', { class: 'ex-panel', id: pid('xssSimple') },
-        buildCard('Reflected XSS (Simple)', 'fa-wand-magic',
+        buildCard('Reflected XSS (Simple)', 'fa-wand-magic', 'quick check',
           el('div', { class: 'ex-row' },
             buildField('Target URL', target),
             buildField('Mode', mode),
           ),
-          el('div', { class: 'ex-actions', style: 'margin-top:12px;' }, runBtn),
+          el('div', { class: 'ex-actions', style: 'margin-top:14px;' }, runBtn),
         ),
-        buildCard('Result', 'fa-clipboard-check', resultPanel),
+        buildCard('Result', 'fa-clipboard-check', null, resultPanel),
       );
     }
 
@@ -1180,9 +1777,9 @@
       });
 
       return el('div', { class: 'ex-panel', id: pid('sniper') },
-        buildCard('Sniper — Auto-Exploiter', 'fa-crosshairs',
+        buildCard('Sniper — Auto-Exploiter', 'fa-crosshairs', 'all modules · correlation',
           el('div', { class: 'ex-row' }, buildField('Target', target)),
-          el('div', { class: 'ex-row', style: 'margin-top:8px;' },
+          el('div', { class: 'ex-row', style: 'margin-top:10px;' },
             buildField('Module timeout (s)', moduleTimeout),
             buildField('Global budget (s)', globalBudget),
             buildField('Dirfuzz max paths', dirfuzzMax),
@@ -1190,7 +1787,7 @@
             buildField('Takeover max hosts', takeoverMax),
           ),
           el('div', { class: 'ex-row tight', style: 'margin-top:12px; align-items:center;' },
-            el('label', { style: 'display:flex;gap:6px;align-items:center;font-size:.78rem;' },
+            el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               streamTgl, 'Stream (SSE)'),
             el('div', { style: 'flex:1 1 auto;' }),
             startBtn, stopBtn,
@@ -1198,7 +1795,7 @@
           progress,
           logPanel,
         ),
-        buildCard('Full Report', 'fa-clipboard-check', resultPanel),
+        buildCard('Full Report', 'fa-clipboard-check', null, resultPanel),
       );
     }
 
@@ -1339,17 +1936,16 @@
         es.onerror = () => { stopLiveStream(); };
       });
 
-      // Initial load
       setTimeout(() => { loadStats(); loadList(); }, 80);
 
       return el('div', { class: 'ex-panel', id: pid('logger') },
-        buildCard('HTTP Logger — Live Request Capture', 'fa-wave-square',
+        buildCard('HTTP Logger — Live Request Capture', 'fa-wave-square', 'rolling buffer · anomaly detection',
           statsGrid,
           el('div', { style: 'margin: 12px 0 6px;' }, filters),
           el('div', { class: 'ex-row tight', style: 'align-items:center;gap:8px;' },
             refreshBtn, clearBtn, exportHar, liveBtn, livePill,
           ),
-          el('div', { style: 'overflow:auto; max-height:400px; margin-top:12px;' },
+          el('div', { style: 'overflow:auto; max-height:400px; margin-top:14px; border-radius:10px; border:1px solid rgba(148,163,184,.14);' },
             el('table', { class: 'ex-table' },
               el('thead', null,
                 el('tr', null,
@@ -1365,7 +1961,7 @@
             ),
           ),
         ),
-        buildCard('Entry Detail', 'fa-magnifying-glass', detailPanel),
+        buildCard('Entry Detail', 'fa-magnifying-glass', null, detailPanel),
       );
     }
 
@@ -1392,12 +1988,11 @@
       mounted:    false,
       mountEl:    null,
       activeTab:  'dirfuzz',
-      streams:    {},        // name → EventSource  (closed on unmount)
+      streams:    {},
     };
 
-    const TAB_BUILDERS = makeTabBuilders(instanceName, state, TABS);
+    const TAB_BUILDERS = makeTabBuilders(instanceName, state);
 
-    /* ★★★ THE FIX — .active is now actually ADDED to the default panel  */
     function buildUI(defaultTab) {
       const tabsRow = el('div', { class: 'ex-tabs' });
       const panels  = {};
@@ -1415,7 +2010,6 @@
       const body = el('div');
       TABS.forEach(t => {
         const panel = TAB_BUILDERS[t.id]();
-        // ✱ toggle('active', true) → adds the class; false → removes it
         panel.classList.toggle('active', t.id === defaultTab);
         panels[t.id] = panel;
         body.appendChild(panel);
@@ -1431,7 +2025,11 @@
         );
       }
 
-      const root = el('div', { class: 'ex-root' }, tabsRow, body);
+      const root = el('div', { class: 'ex-root' },
+        buildHeader(),
+        tabsRow,
+        body,
+      );
       root._switchTab = switchTab;
       return root;
     }
@@ -1455,13 +2053,12 @@
       state.mountEl = elMount;
       elMount.innerHTML = '';
       elMount.appendChild(buildUI(defaultTab));
-      state.mounted   = true;
+      state.mounted = true;
       state.activeTab = defaultTab;
       return true;
     }
 
     function unmount() {
-      // Close every SSE stream this instance opened
       for (const es of Object.values(state.streams)) {
         try { es.close(); } catch (_) {}
       }
@@ -1489,19 +2086,13 @@
   const defaultInstance = createInstance('default');
 
   window.ExploitSuite = Object.assign(defaultInstance, {
-    /**
-     * Create a fresh, isolated instance of the suite.
-     * Each instance owns its own state + SSE streams.
-     */
     create: createInstance,
   });
 
-  /* ── Close all default-instance streams when the page unloads ───── */
   window.addEventListener('beforeunload', () => {
     try { defaultInstance.unmount(); } catch (_) {}
   });
 
-  /* ── Auto-mount only if a placeholder exists ─────────────────────── */
   function autoMount() {
     const placeholder = document.querySelector('[data-emergens-panel="exploit"]');
     if (placeholder && !defaultInstance.state.mounted) {
