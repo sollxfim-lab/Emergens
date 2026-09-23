@@ -230,7 +230,7 @@
                 </div>
             </section>
 
-            <!-- ========== EXPLOIT SUITE (dirfuzz / sqli / sqlmap / xss / sniper / http logger) ========== -->
+            <!-- ========== EXPLOIT SUITE (dirfuzz / sqli / sqlmap / xss / sniper) ========== -->
             <section class="content-section" id="section-exploit">
                 <div class="panel">
                     <div class="panel-title">
@@ -898,10 +898,10 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- ========== CORE APP ========== -->
-<script src="script.js"></script>
+<script src="js/script.js"></script>
 <!-- ========== EXPLOIT / MHDDOS PANELS ========== -->
-<script src="app-mh5783.js"></script>
-<script src="app-ex3bve.js"></script>
+<script src="js/app-mh5783.js"></script>
+<script src="js/app-ex3bve.js"></script>
 <script>
 /* ---------------------------------------------------------------------------
  * Dashboard wiring for the new panels.
@@ -944,25 +944,14 @@
      * immediately switch it to the "logger" tab.                       */
     const loggerMount = document.querySelector('[data-emergens-panel="exploit-logger"]');
     if (loggerMount && window.ExploitSuite) {
-      // Mount on a fresh container so it doesn't collide with #2
       const holder = document.createElement('div');
       loggerMount.appendChild(holder);
       window.ExploitSuite.mount(holder, { defaultTab: 'logger' });
-      // The 2nd mount overwrote the singleton state; re-mount the first
-      // one so both views stay alive.
       if (exploitMount && window.ExploitSuite) {
-        // ExploitSuite is a singleton, so re-mount the primary view
-        // AFTER the logger view has been set up. To keep both alive,
-        // we instantiate the logger panel by reusing the module's DOM
-        // directly instead of fighting over the singleton.
-        // Simplest robust approach: move the logger DOM node out of
-        // the singleton and into the standalone section.
         const loggerRoot = holder.querySelector('.ex-root');
         if (loggerRoot) {
           const loggerTab = loggerRoot.querySelector('#ex-tab-logger');
           if (loggerTab) {
-            // Detach just the logger tab's inner card content
-            // (the tab bar is not needed here).
             const inner = loggerTab.cloneNode(true);
             loggerTab.remove();
             holder.innerHTML = '';
@@ -970,7 +959,6 @@
             inner.classList.add('active');
           }
         }
-        // Now re-mount the full suite at the primary location.
         window.ExploitSuite.mount(exploitMount, { defaultTab: 'dirfuzz' });
       }
     }
