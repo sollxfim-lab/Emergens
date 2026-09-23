@@ -1,29 +1,24 @@
 /* ============================================================================
  * app-ex3bve.js — Exploit Suite for Emergens
- * v3.0.0 — SHARK THEME ENCHANTED · professional, attractive, multi-instance
+ * v3.1.0 — APEX PREDATOR SHARK · professional, multi-instance
  *
  * Sub-tools
- *   • Dirfuzz        — /api/dirfuzz/*
- *   • SQLi Engine    — /api/sqli/*
- *   • SQLMap         — /api/sqlmap/*
- *   • SQL Injection  — /api/sql_injection/*   (lightweight)
- *   • XSS Exploiter  — /api/xss/*
- *   • XSS Simple     — /api/xss_simple/*
- *   • Sniper         — /api/sniper/*
- *   • HTTP Logger    — /api/logger/*
+ *   • Dirfuzz · SQLi · SQLMap · SQL-lite · XSS · XSS-lite · Sniper · HTTP Logger
  *
- * Changelog v3.0.0
- *   ✔ ENCHANTED shark: realistic great white with swimming tail, water
- *     caustics, dual-layer wake, and 7 animated rising bubbles
- *   ✔ Underwater ambience: light rays, deep-blue / blood-red gradient
- *   ✔ Glass-morphic cards with backdrop blur + inner glow
- *   ✔ Enchanted tabs: pill shape with icon-badge + soft glow on active
- *   ✔ Refined progress bars: animated teeth strip + pulse when active
- *   ✔ Better severity badges with gradient background + pulse on running
- *   ✔ Enhanced KPI tiles with mini top accent + hover bloom
- *   ✔ Refined tables: sticky header with backdrop blur + row hover glow
- *   ✔ Enhanced empty states: bigger shark silhouette
- *   ✔ Micro-interactions on buttons, inputs, chips
+ * Changelog v3.1.0
+ *   ✔ Great-white shark REDESIGNED from scratch:
+ *       – anatomical proportions · counter-shading with sharp boundary
+ *       – crescent caudal tail (animated swing) with upper + lower lobes
+ *       – five curved gill slits · lateral line · nostril · lateral keels
+ *       – tall first dorsal fin, small second dorsal, pelvic, anal fins
+ *       – long pointed pectoral fins (signature, animated sway)
+ *       – open jaw with visible upper + lower teeth rows
+ *       – predatory black eye with specular highlight
+ *       – blood drips from the jaw and pectoral fins
+ *   ✔ 9 rising bubbles with staggered animation and size variation
+ *   ✔ Enhanced water ambience: animated caustics, dual water wake,
+ *     blood-red ambient bloom behind the shark
+ *   ✔ Glide + tail swing + pectoral sway — 3 independent animation loops
  *   ✔ Public API unchanged — mount / unmount / open / create
  * ========================================================================= */
 (function () {
@@ -149,10 +144,10 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-   *  SHARK THEME ENCHANTED — CSS
+   *  APEX PREDATOR — CSS
    * ══════════════════════════════════════════════════════════════════ */
   const CSS = `
-  /* ─── Exploit Suite root — enchanted underwater theme ─── */
+  /* ─── Root ─── */
   .ex-root {
     --ex-red:         #dc2626;
     --ex-red-2:       #b91c1c;
@@ -174,7 +169,6 @@
     --ex-text:        #e2e8f0;
     --ex-muted:       #94a3b8;
     --ex-muted-2:     #64748b;
-    --ex-gold:        #fbbf24;
 
     display: flex; flex-direction: column; gap: 16px;
     font-family: var(--font-ui, 'Inter','Space Grotesk',system-ui,sans-serif);
@@ -182,8 +176,6 @@
     position: relative;
     isolation: isolate;
   }
-
-  /* Ambient underwater backdrop behind the whole suite */
   .ex-root::before {
     content: "";
     position: absolute; inset: -20px;
@@ -195,57 +187,47 @@
   }
 
   /* ═════════════════════════════════════════════════════════════════
-     HEADER — enchanted underwater hero
+     HERO HEADER
      ═════════════════════════════════════════════════════════════════ */
   .ex-shark-header {
     position: relative;
     background:
-      radial-gradient(ellipse at 12% 100%, rgba(220,38,38,.24), transparent 55%),
-      radial-gradient(ellipse at 90% 0%,   rgba(30,58,138,.28),  transparent 55%),
-      radial-gradient(ellipse at 50% 50%,  rgba(8,145,178,.08),  transparent 70%),
+      radial-gradient(ellipse at 12% 100%, rgba(220,38,38,.28), transparent 55%),
+      radial-gradient(ellipse at 90% 0%,   rgba(30,58,138,.30),  transparent 55%),
+      radial-gradient(ellipse at 50% 50%,  rgba(8,145,178,.09),  transparent 70%),
       linear-gradient(135deg, #0a1122 0%, #0b0715 55%, #150404 100%);
     border: 1px solid var(--ex-border-red);
     border-radius: 18px;
     padding: 26px 30px;
-    display: flex; align-items: center; gap: 28px;
+    display: flex; align-items: center; gap: 30px;
     overflow: hidden;
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,.06),
-      inset 0 -40px 80px -40px rgba(220,38,38,.14),
-      0 14px 40px rgba(0,0,0,.5),
-      0 2px 10px rgba(220,38,38,.16);
+      inset 0 -60px 100px -60px rgba(220,38,38,.2),
+      0 16px 44px rgba(0,0,0,.55),
+      0 3px 12px rgba(220,38,38,.18);
   }
-
-  /* Water ripple background */
   .ex-shark-header::before {
     content: "";
     position: absolute; inset: 0;
     background-image:
-      repeating-radial-gradient(
-        circle at 15% 100%,
-        rgba(220,38,38,.06) 0 12px,
-        transparent 12px 40px
-      ),
-      repeating-linear-gradient(
-        115deg,
-        rgba(255,255,255,.018) 0 2px,
-        transparent 2px 12px
-      );
-    opacity: .8;
-    pointer-events: none;
+      repeating-radial-gradient(circle at 15% 100%,
+        rgba(220,38,38,.06) 0 12px, transparent 12px 40px),
+      repeating-linear-gradient(115deg,
+        rgba(255,255,255,.018) 0 2px, transparent 2px 12px);
+    opacity: .8; pointer-events: none;
   }
-
-  /* Caustic light rays from above */
+  /* Animated caustic light rays */
   .ex-shark-header::after {
     content: "";
     position: absolute; left: 0; right: 0; top: -20%; bottom: -20%;
     background:
-      linear-gradient(105deg,
-        transparent 10%, rgba(8,145,178,.045) 22%,
-        transparent 30%, transparent 55%,
-        rgba(220,38,38,.035) 65%, transparent 75%);
+      linear-gradient(108deg,
+        transparent 10%, rgba(8,145,178,.06) 22%,
+        transparent 30%, transparent 52%,
+        rgba(220,38,38,.05) 62%, transparent 72%);
     background-size: 220% 100%;
-    animation: exCaustics 14s ease-in-out infinite;
+    animation: exCaustics 13s ease-in-out infinite;
     pointer-events: none;
     mix-blend-mode: screen;
   }
@@ -254,55 +236,98 @@
     50%      { background-position: 100% 0; }
   }
 
-  /* ═══ Shark figure ═══ */
+  /* ═══ Shark figure — bigger and more cinematic ═══ */
   .ex-shark-figure {
     position: relative;
-    width: 220px; height: 130px;
+    width: 260px; height: 150px;
     flex-shrink: 0;
-    filter: drop-shadow(0 14px 26px rgba(220,38,38,.36));
-    animation: exSharkCruise 8s ease-in-out infinite;
+    filter:
+      drop-shadow(0 16px 30px rgba(220,38,38,.42))
+      drop-shadow(0 4px 12px rgba(0,0,0,.6));
     z-index: 1;
   }
-  .ex-shark-figure svg { width: 100%; height: 100%; display: block; overflow: visible; }
-  .ex-shark-figure .ex-tail {
-    transform-origin: 30px 100px;
-    animation: exTailSway 1.6s ease-in-out infinite;
+  .ex-shark-figure svg {
+    width: 100%; height: 100%;
+    display: block; overflow: visible;
+    animation: exSharkGlide 9s ease-in-out infinite;
   }
-  @keyframes exSharkCruise {
-    0%, 100% { transform: translateX(0)  rotate(-2deg); }
-    50%      { transform: translateX(10px) rotate(1deg);  }
-  }
-  @keyframes exTailSway {
-    0%, 100% { transform: rotate(-6deg); }
-    50%      { transform: rotate(6deg); }
+  @keyframes exSharkGlide {
+    0%, 100% { transform: translateX(0) translateY(0) rotate(-1deg); }
+    25%      { transform: translateX(4px) translateY(-2px) rotate(0deg); }
+    50%      { transform: translateX(8px) translateY(0) rotate(1deg); }
+    75%      { transform: translateX(4px) translateY(2px) rotate(0deg); }
   }
 
-  /* Bubbles */
+  /* Animated body group (subtle flex) */
+  .ex-shark-figure svg .ex-shark-body {
+    transform-origin: 50% 55%;
+    animation: exBodyFlex 3.5s ease-in-out infinite;
+  }
+  @keyframes exBodyFlex {
+    0%, 100% { transform: scaleY(1) rotate(0deg); }
+    50%      { transform: scaleY(1.015) rotate(0.4deg); }
+  }
+
+  /* Tail swing — main propulsion */
+  .ex-shark-figure svg .ex-tail {
+    transform-origin: 62px 106px;
+    animation: exTailSwing 1.4s cubic-bezier(.45,0,.55,1) infinite;
+  }
+  @keyframes exTailSwing {
+    0%, 100% { transform: rotate(-9deg); }
+    50%      { transform: rotate(9deg); }
+  }
+
+  /* Pectoral fin sway */
+  .ex-shark-figure svg .ex-pect {
+    transform-origin: 158px 116px;
+    animation: exPectSway 2.6s ease-in-out infinite;
+  }
+  @keyframes exPectSway {
+    0%, 100% { transform: rotate(-3deg); }
+    50%      { transform: rotate(3deg); }
+  }
+
+  /* Blood drips */
+  .ex-shark-figure svg .ex-blood ellipse {
+    animation: exBloodDrip 2.2s ease-in infinite;
+  }
+  .ex-shark-figure svg .ex-blood ellipse:nth-child(2) { animation-delay: .6s; }
+  .ex-shark-figure svg .ex-blood ellipse:nth-child(3) { animation-delay: 1.2s; }
+  @keyframes exBloodDrip {
+    0%   { transform: translateY(-4px); opacity: 0; }
+    20%  { opacity: 1; }
+    100% { transform: translateY(14px); opacity: 0; }
+  }
+
+  /* ═══ Bubbles ═══ */
   .ex-shark-bubbles {
-    position: absolute; inset: 0; pointer-events: none;
-    overflow: visible;
+    position: absolute; inset: 0;
+    pointer-events: none; overflow: visible;
   }
   .ex-shark-bubbles span {
     position: absolute;
-    bottom: 10px;
+    bottom: 12px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, #fff, rgba(220,38,38,.55));
+    background: radial-gradient(circle at 32% 32%, #fff, rgba(220,38,38,.55));
     opacity: 0;
-    animation: exBubbleRise 6s linear infinite;
-    box-shadow: 0 0 6px rgba(255,255,255,.35);
+    animation: exBubbleRise 6.5s linear infinite;
+    box-shadow: 0 0 8px rgba(255,255,255,.4);
   }
-  .ex-shark-bubbles span:nth-child(1) { left: 52%; width: 5px; height: 5px; animation-delay: 0s;    }
-  .ex-shark-bubbles span:nth-child(2) { left: 62%; width: 3px; height: 3px; animation-delay: 0.9s;  }
-  .ex-shark-bubbles span:nth-child(3) { left: 72%; width: 6px; height: 6px; animation-delay: 1.8s;  }
-  .ex-shark-bubbles span:nth-child(4) { left: 80%; width: 4px; height: 4px; animation-delay: 2.7s;  }
-  .ex-shark-bubbles span:nth-child(5) { left: 88%; width: 3px; height: 3px; animation-delay: 3.6s;  }
-  .ex-shark-bubbles span:nth-child(6) { left: 42%; width: 4px; height: 4px; animation-delay: 4.5s;  }
-  .ex-shark-bubbles span:nth-child(7) { left: 30%; width: 3px; height: 3px; animation-delay: 5.4s;  }
+  .ex-shark-bubbles span:nth-child(1) { left: 48%; width: 6px; height: 6px; animation-delay: 0s;   }
+  .ex-shark-bubbles span:nth-child(2) { left: 57%; width: 4px; height: 4px; animation-delay: .8s;  }
+  .ex-shark-bubbles span:nth-child(3) { left: 65%; width: 7px; height: 7px; animation-delay: 1.6s; }
+  .ex-shark-bubbles span:nth-child(4) { left: 73%; width: 5px; height: 5px; animation-delay: 2.4s; }
+  .ex-shark-bubbles span:nth-child(5) { left: 81%; width: 4px; height: 4px; animation-delay: 3.2s; }
+  .ex-shark-bubbles span:nth-child(6) { left: 89%; width: 3px; height: 3px; animation-delay: 4.0s; }
+  .ex-shark-bubbles span:nth-child(7) { left: 40%; width: 5px; height: 5px; animation-delay: 4.8s; }
+  .ex-shark-bubbles span:nth-child(8) { left: 28%; width: 3px; height: 3px; animation-delay: 5.4s; }
+  .ex-shark-bubbles span:nth-child(9) { left: 17%; width: 4px; height: 4px; animation-delay: 5.9s; }
   @keyframes exBubbleRise {
     0%   { transform: translateY(0) scale(.5); opacity: 0; }
-    15%  { opacity: .85; }
-    85%  { opacity: .55; }
-    100% { transform: translateY(-90px) scale(1.3); opacity: 0; }
+    12%  { opacity: .9; }
+    88%  { opacity: .55; }
+    100% { transform: translateY(-105px) scale(1.35); opacity: 0; }
   }
 
   /* ═══ Header copy ═══ */
@@ -310,14 +335,14 @@
 
   .ex-shark-eyebrow {
     display: inline-flex; align-items: center; gap: 9px;
-    font-size: .64rem; letter-spacing: .22em; text-transform: uppercase;
+    font-size: .64rem; letter-spacing: .24em; text-transform: uppercase;
     font-weight: 800; color: #fca5a5;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     padding: 4px 12px 4px 10px;
     border-radius: 99px;
-    background: linear-gradient(135deg, rgba(220,38,38,.14), rgba(220,38,38,.02));
-    border: 1px solid rgba(220,38,38,.28);
-    box-shadow: 0 2px 8px rgba(220,38,38,.14);
+    background: linear-gradient(135deg, rgba(220,38,38,.16), rgba(220,38,38,.02));
+    border: 1px solid rgba(220,38,38,.32);
+    box-shadow: 0 2px 10px rgba(220,38,38,.18);
     width: fit-content;
   }
   .ex-shark-eyebrow::before {
@@ -334,19 +359,17 @@
   }
 
   .ex-shark-title {
-    font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em;
+    font-size: 1.65rem; font-weight: 800; letter-spacing: -.03em;
     color: var(--ex-white);
     margin: 0 0 8px; line-height: 1.1;
-    text-shadow: 0 2px 20px rgba(0,0,0,.5);
+    text-shadow: 0 2px 24px rgba(0,0,0,.55);
   }
   .ex-shark-title .ex-title-red {
-    background: linear-gradient(135deg, #f87171 0%, #dc2626 45%, #7f1d1d 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
+    background: linear-gradient(135deg, #fca5a5 0%, #dc2626 45%, #7f1d1d 100%);
+    -webkit-background-clip: text; background-clip: text;
     color: transparent;
-    filter: drop-shadow(0 2px 12px rgba(220,38,38,.5));
+    filter: drop-shadow(0 2px 16px rgba(220,38,38,.55));
   }
-
   .ex-shark-subtitle {
     color: var(--ex-muted);
     font-size: .82rem; line-height: 1.65; margin: 0;
@@ -359,12 +382,10 @@
     padding: 1px 6px;
     border-radius: 5px;
     background: rgba(220,38,38,.14);
-    border: 1px solid rgba(220,38,38,.2);
+    border: 1px solid rgba(220,38,38,.22);
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     TABS — pill shape with icon-badge
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Tabs ═══ */
   .ex-tabs {
     display: flex; flex-wrap: wrap; gap: 7px;
     padding: 12px;
@@ -382,14 +403,10 @@
     opacity: .6;
   }
   .ex-tab {
-    padding: 8px 14px 8px 10px;
-    border-radius: 99px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--ex-muted);
-    font-size: .78rem; font-weight: 700;
-    letter-spacing: .01em;
-    cursor: pointer;
+    padding: 8px 14px 8px 10px; border-radius: 99px;
+    border: 1px solid transparent; background: transparent;
+    color: var(--ex-muted); font-size: .78rem; font-weight: 700;
+    letter-spacing: .01em; cursor: pointer;
     display: inline-flex; align-items: center; gap: 8px;
     transition: all .18s cubic-bezier(.4,0,.2,1);
     -webkit-appearance: none; appearance: none;
@@ -399,11 +416,9 @@
   .ex-tab .ex-tab-ico {
     width: 22px; height: 22px;
     display: inline-flex; align-items: center; justify-content: center;
-    font-size: .72rem;
-    border-radius: 50%;
+    font-size: .72rem; border-radius: 50%;
     background: rgba(148,163,184,.10);
-    color: inherit;
-    transition: all .18s;
+    color: inherit; transition: all .18s;
     flex-shrink: 0;
   }
   .ex-tab:hover {
@@ -413,8 +428,7 @@
     transform: translateY(-1px);
   }
   .ex-tab:hover .ex-tab-ico {
-    background: rgba(220,38,38,.22);
-    color: #fca5a5;
+    background: rgba(220,38,38,.22); color: #fca5a5;
   }
   .ex-tab.active {
     background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
@@ -425,14 +439,9 @@
       0 0 0 1px rgba(255,255,255,.06) inset,
       inset 0 1px 0 rgba(255,255,255,.2);
   }
-  .ex-tab.active .ex-tab-ico {
-    background: rgba(0,0,0,.28);
-    color: #fff;
-  }
+  .ex-tab.active .ex-tab-ico { background: rgba(0,0,0,.28); color: #fff; }
 
-  /* ═════════════════════════════════════════════════════════════════
-     PANELS
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Panels ═══ */
   .ex-panel { display: none; }
   .ex-panel.active {
     display: flex; flex-direction: column; gap: 14px;
@@ -443,17 +452,14 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     CARDS — glass-morphic with inner glow
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Cards ═══ */
   .ex-card {
     background:
       linear-gradient(165deg, rgba(11,18,32,.85) 0%, rgba(5,10,22,.95) 100%);
     border: 1px solid var(--ex-border);
     border-radius: 14px;
     padding: 20px 22px;
-    position: relative;
-    overflow: hidden;
+    position: relative; overflow: hidden;
     transition: border-color .2s, box-shadow .2s, transform .2s;
     backdrop-filter: blur(8px) saturate(1.1);
     -webkit-backdrop-filter: blur(8px) saturate(1.1);
@@ -477,21 +483,18 @@
     transform: translateY(-1px);
   }
   .ex-card h4 {
-    margin: 0 0 16px;
-    font-size: .78rem; font-weight: 800;
+    margin: 0 0 16px; font-size: .78rem; font-weight: 800;
     letter-spacing: .1em; text-transform: uppercase;
     color: var(--ex-white);
     display: flex; align-items: center; gap: 11px;
     padding-bottom: 14px;
     border-bottom: 1px solid var(--ex-border-2);
-    flex-wrap: wrap;
-    position: relative;
+    flex-wrap: wrap; position: relative;
   }
   .ex-card h4 i {
     width: 30px; height: 30px;
     display: flex; align-items: center; justify-content: center;
-    font-size: .84rem;
-    border-radius: 9px;
+    font-size: .84rem; border-radius: 9px;
     background: linear-gradient(135deg, var(--ex-red-bright), var(--ex-red-3));
     color: #fff;
     box-shadow:
@@ -505,19 +508,15 @@
     letter-spacing: 0; text-transform: none;
     color: var(--ex-muted);
     font-family: var(--font-mono, monospace);
-    padding: 3px 9px;
-    border-radius: 99px;
+    padding: 3px 9px; border-radius: 99px;
     background: rgba(148,163,184,.08);
     border: 1px solid var(--ex-border);
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     FORMS
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Forms ═══ */
   .ex-row { display: flex; gap: 10px; flex-wrap: wrap; }
   .ex-row > * { flex: 1 1 150px; min-width: 0; }
   .ex-row.tight > * { flex: 0 0 auto; }
-
   .ex-field { display: flex; flex-direction: column; gap: 6px; }
   .ex-field > label {
     font-size: .64rem; font-weight: 700;
@@ -555,13 +554,10 @@
   .ex-field > textarea::placeholder { color: rgba(148,163,184,.45); }
   .ex-field > textarea { min-height: 70px; resize: vertical; }
 
-  /* ═════════════════════════════════════════════════════════════════
-     BUTTONS — enchanted with hover bloom
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Buttons ═══ */
   .ex-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   .ex-btn {
-    padding: 11px 18px;
-    border-radius: 10px;
+    padding: 11px 18px; border-radius: 10px;
     border: 1px solid transparent;
     font-weight: 700; font-size: .82rem;
     cursor: pointer;
@@ -569,20 +565,16 @@
     transition: all .18s cubic-bezier(.4,0,.2,1);
     -webkit-appearance: none; appearance: none;
     white-space: nowrap; font-family: inherit;
-    position: relative;
-    overflow: hidden;
+    position: relative; overflow: hidden;
   }
   .ex-btn::before {
     content: "";
     position: absolute; inset: 0;
     background: radial-gradient(circle at center, rgba(255,255,255,.22), transparent 60%);
-    opacity: 0;
-    transition: opacity .25s;
-    pointer-events: none;
+    opacity: 0; transition: opacity .25s; pointer-events: none;
   }
   .ex-btn:active { transform: scale(.97); }
   .ex-btn[disabled] { opacity: .5; cursor: not-allowed; transform: none !important; }
-
   .ex-btn-primary {
     background: linear-gradient(135deg, var(--ex-red-bright), var(--ex-red-3));
     color: #fff;
@@ -598,11 +590,9 @@
     filter: brightness(1.08);
   }
   .ex-btn-primary:hover:not([disabled])::before { opacity: 1; }
-
   .ex-btn-danger {
     background: linear-gradient(135deg, #7f1d1d, #450a0a);
-    color: #fca5a5;
-    border-color: rgba(239,68,68,.4);
+    color: #fca5a5; border-color: rgba(239,68,68,.4);
     box-shadow: 0 4px 14px rgba(239,68,68,.22);
   }
   .ex-btn-danger:hover:not([disabled]) {
@@ -611,33 +601,25 @@
     color: #fff;
     box-shadow: 0 10px 26px rgba(239,68,68,.4);
   }
-
   .ex-btn-ghost {
     background: linear-gradient(180deg, #0a1122, #06090f);
-    border-color: var(--ex-border);
-    color: var(--ex-muted);
+    border-color: var(--ex-border); color: var(--ex-muted);
   }
   .ex-btn-ghost:hover:not([disabled]) {
-    border-color: var(--ex-red);
-    color: var(--ex-white);
+    border-color: var(--ex-red); color: var(--ex-white);
     background: linear-gradient(180deg, rgba(220,38,38,.10), rgba(220,38,38,.02));
     box-shadow: 0 4px 14px rgba(220,38,38,.18);
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     PROGRESS — enhanced teeth strip + pulse when active
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Progress ═══ */
   .ex-progress {
     margin-top: 12px;
     height: 14px; width: 100%;
     background: linear-gradient(180deg, #050912, #0a1122);
-    border-radius: 99px;
-    overflow: hidden;
+    border-radius: 99px; overflow: hidden;
     border: 1px solid var(--ex-border);
     position: relative;
-    box-shadow:
-      inset 0 2px 4px rgba(0,0,0,.6),
-      0 1px 0 rgba(255,255,255,.03);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.03);
   }
   .ex-progress > span {
     display: block; height: 100%; width: 0%;
@@ -647,9 +629,7 @@
     transition: width .35s cubic-bezier(.16,1,.3,1);
     border-radius: 99px;
     position: relative; overflow: hidden;
-    box-shadow:
-      0 0 20px rgba(220,38,38,.5),
-      inset 0 -2px 4px rgba(0,0,0,.3);
+    box-shadow: 0 0 20px rgba(220,38,38,.5), inset 0 -2px 4px rgba(0,0,0,.3);
   }
   .ex-progress > span::before {
     content: "";
@@ -690,20 +670,15 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     LOG — terminal-style
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Log / Result ═══ */
   .ex-log {
     max-height: 300px; overflow-y: auto;
     background: linear-gradient(180deg, #030509, #050a14);
-    border: 1px solid var(--ex-border);
-    border-radius: 11px;
+    border: 1px solid var(--ex-border); border-radius: 11px;
     padding: 14px 16px 14px 22px;
     font-family: var(--font-mono, monospace);
-    font-size: .72rem;
-    color: #cbd5e1;
-    white-space: pre-wrap;
-    line-height: 1.7;
+    font-size: .72rem; color: #cbd5e1;
+    white-space: pre-wrap; line-height: 1.7;
     margin-top: 12px;
     scrollbar-width: thin;
     scrollbar-color: rgba(220,38,38,.5) transparent;
@@ -715,47 +690,33 @@
     border-radius: 2px;
   }
   .ex-log::-webkit-scrollbar { width: 8px; }
-  .ex-log::-webkit-scrollbar-track { background: transparent; }
-  .ex-log::-webkit-scrollbar-thumb {
-    background: rgba(220,38,38,.4); border-radius: 4px;
-  }
+  .ex-log::-webkit-scrollbar-thumb { background: rgba(220,38,38,.4); border-radius: 4px; }
   .ex-log::-webkit-scrollbar-thumb:hover { background: rgba(220,38,38,.6); }
   .ex-log .ok   { color: #4ade80; }
   .ex-log .warn { color: #fbbf24; }
   .ex-log .err  { color: #f87171; }
   .ex-log .dim  { color: #64748b; }
 
-  /* ═════════════════════════════════════════════════════════════════
-     RESULT VIEWER
-     ═════════════════════════════════════════════════════════════════ */
   .ex-result {
     background: linear-gradient(180deg, #030509, #050a14);
-    border: 1px solid var(--ex-border);
-    border-radius: 11px;
+    border: 1px solid var(--ex-border); border-radius: 11px;
     padding: 15px;
     font-family: var(--font-mono, monospace);
-    font-size: .74rem;
-    color: #e2e8f0;
-    white-space: pre-wrap;
-    word-break: break-word;
+    font-size: .74rem; color: #e2e8f0;
+    white-space: pre-wrap; word-break: break-word;
     max-height: 480px; overflow-y: auto;
-    line-height: 1.7;
-    scrollbar-width: thin;
+    line-height: 1.7; scrollbar-width: thin;
     box-shadow: inset 0 2px 6px rgba(0,0,0,.4);
   }
   .ex-result .dim { color: #64748b; }
 
-  /* ═════════════════════════════════════════════════════════════════
-     BADGES — gradients + running pulse
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Badges ═══ */
   .ex-badge {
     display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 10px;
-    border-radius: 99px;
+    padding: 3px 10px; border-radius: 99px;
     font-size: .62rem; font-weight: 800;
     text-transform: uppercase; letter-spacing: .07em;
-    border: 1px solid;
-    position: relative;
+    border: 1px solid; position: relative;
   }
   .ex-badge-critical {
     background: linear-gradient(135deg, rgba(220,38,38,.28), rgba(127,29,29,.18));
@@ -783,61 +744,45 @@
     color: #86efac; border-color: rgba(34,197,94,.5);
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     CHIPS
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Chips ═══ */
   .ex-chips {
     display: flex; flex-wrap: wrap; gap: 6px;
     max-height: 120px; overflow-y: auto;
     padding: 4px 2px;
   }
   .ex-chip {
-    padding: 6px 12px;
-    border-radius: 8px;
+    padding: 6px 12px; border-radius: 8px;
     border: 1px solid var(--ex-border);
     background: linear-gradient(180deg, #0a1122, #06090f);
     color: var(--ex-muted);
     font-family: var(--font-mono, monospace);
     font-size: .7rem; font-weight: 600;
-    cursor: pointer;
-    transition: all .16s;
+    cursor: pointer; transition: all .16s;
     -webkit-appearance: none; appearance: none;
   }
   .ex-chip:hover {
-    border-color: var(--ex-red);
-    color: var(--ex-white);
+    border-color: var(--ex-red); color: var(--ex-white);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(220,38,38,.2);
   }
   .ex-chip.active {
     background: linear-gradient(135deg, var(--ex-red-bright), var(--ex-red-3));
-    border-color: transparent;
-    color: #fff;
+    border-color: transparent; color: #fff;
     box-shadow:
       0 4px 14px rgba(220,38,38,.45),
       inset 0 1px 0 rgba(255,255,255,.18);
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     FINDINGS
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Findings ═══ */
   .ex-findings { display: flex; flex-direction: column; gap: 8px; }
   .ex-finding {
-    background:
-      linear-gradient(180deg, rgba(10,17,34,.9), rgba(5,10,22,.9));
+    background: linear-gradient(180deg, rgba(10,17,34,.9), rgba(5,10,22,.9));
     border-left: 4px solid #dc2626;
     border-radius: 9px;
-    padding: 13px 16px;
-    font-size: .78rem;
+    padding: 13px 16px; font-size: .78rem;
     transition: all .18s;
     animation: exFindingIn .34s cubic-bezier(.4,0,.2,1);
     position: relative;
-  }
-  .ex-finding::before {
-    content: "";
-    position: absolute; left: -4px; top: 0; bottom: 0; width: 4px;
-    border-radius: 9px 0 0 9px;
-    background: inherit;
   }
   @keyframes exFindingIn {
     from { opacity: 0; transform: translateX(-8px); }
@@ -846,9 +791,7 @@
   .ex-finding:hover {
     background: linear-gradient(180deg, rgba(15,26,46,.9), rgba(10,19,37,.9));
     transform: translateX(4px);
-    box-shadow:
-      0 6px 20px rgba(0,0,0,.45),
-      0 0 0 1px rgba(220,38,38,.1) inset;
+    box-shadow: 0 6px 20px rgba(0,0,0,.45), 0 0 0 1px rgba(220,38,38,.1) inset;
   }
   .ex-finding.critical { border-left-color: #dc2626; box-shadow: 0 0 18px -8px rgba(220,38,38,.4); }
   .ex-finding.high     { border-left-color: #f97316; }
@@ -857,40 +800,30 @@
   .ex-finding.safe     { border-left-color: #22c55e; }
   .ex-finding .label {
     font-size: .62rem; text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--ex-muted);
+    letter-spacing: .08em; color: var(--ex-muted);
     font-weight: 700;
     display: flex; align-items: center; gap: 8px;
   }
   .ex-finding .label i { color: var(--ex-red-bright); }
   .ex-finding .value {
     font-family: var(--font-mono, monospace);
-    word-break: break-all;
-    margin-top: 6px;
-    color: var(--ex-white);
-    font-size: .76rem;
-    line-height: 1.55;
+    word-break: break-all; margin-top: 6px;
+    color: var(--ex-white); font-size: .76rem; line-height: 1.55;
   }
   .ex-finding .meta {
-    margin-top: 9px;
-    font-size: .66rem;
-    color: var(--ex-muted);
+    margin-top: 9px; font-size: .66rem; color: var(--ex-muted);
     display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     KPI TILES
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ KPIs ═══ */
   .ex-kpis {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 10px; margin-bottom: 12px;
   }
   .ex-kpi {
     background: linear-gradient(165deg, #0b1220 0%, #050a16 100%);
-    border: 1px solid var(--ex-border);
-    border-radius: 11px;
+    border: 1px solid var(--ex-border); border-radius: 11px;
     padding: 15px 16px;
     display: flex; flex-direction: column; gap: 5px;
     transition: all .2s;
@@ -909,28 +842,20 @@
   .ex-kpi:hover {
     border-color: var(--ex-border-red);
     transform: translateY(-2px);
-    box-shadow:
-      0 8px 22px rgba(0,0,0,.45),
-      0 0 0 1px rgba(220,38,38,.08) inset;
+    box-shadow: 0 8px 22px rgba(0,0,0,.45), 0 0 0 1px rgba(220,38,38,.08) inset;
   }
   .ex-kpi .k-label {
     font-size: .62rem; letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--ex-muted);
-    font-weight: 700;
+    text-transform: uppercase; color: var(--ex-muted); font-weight: 700;
   }
   .ex-kpi .k-val {
     font-family: var(--font-display, monospace);
-    font-size: 1.4rem;
-    color: var(--ex-white);
-    font-weight: 800;
+    font-size: 1.4rem; color: var(--ex-white); font-weight: 800;
     line-height: 1.1;
     text-shadow: 0 2px 12px rgba(220,38,38,.15);
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     TABLES — sticky header + hover glow
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Tables ═══ */
   .ex-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
   .ex-table th, .ex-table td {
     text-align: left; padding: 10px 12px;
@@ -939,17 +864,14 @@
   .ex-table th {
     font-size: .62rem; letter-spacing: .08em; text-transform: uppercase;
     color: var(--ex-muted); font-weight: 800;
-    background:
-      linear-gradient(180deg, rgba(220,38,38,.08), rgba(220,38,38,.02));
+    background: linear-gradient(180deg, rgba(220,38,38,.08), rgba(220,38,38,.02));
     position: sticky; top: 0; z-index: 1;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
   .ex-table code {
     font-family: var(--font-mono, monospace);
-    font-size: .72rem;
-    color: #cbd5e1;
-    word-break: break-all;
+    font-size: .72rem; color: #cbd5e1; word-break: break-all;
   }
   .ex-table tbody tr {
     cursor: pointer;
@@ -960,31 +882,24 @@
     box-shadow: inset 3px 0 0 var(--ex-red);
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     EMPTY STATE — bigger shark silhouette
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Empty ═══ */
   .ex-empty {
-    padding: 32px 16px;
-    text-align: center;
-    color: var(--ex-muted);
-    font-size: .82rem;
+    padding: 32px 16px; text-align: center;
+    color: var(--ex-muted); font-size: .82rem;
     font-style: italic;
     display: flex; flex-direction: column; gap: 14px; align-items: center;
   }
   .ex-empty svg {
-    width: 90px; height: 68px;
-    opacity: .42;
+    width: 110px; height: 78px; opacity: .48;
     filter: drop-shadow(0 6px 18px rgba(220,38,38,.45));
     animation: exEmptyFloat 4s ease-in-out infinite;
   }
   @keyframes exEmptyFloat {
     0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-4px); }
+    50%      { transform: translateY(-5px); }
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     LIVE PILL
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Live pill ═══ */
   .ex-live-pill {
     display: inline-flex; align-items: center; gap: 7px;
     padding: 5px 12px; border-radius: 99px;
@@ -1007,17 +922,12 @@
     100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     SIDEBAR NAV — NEUTRAL BY DEFAULT, RED ONLY ON HOVER / ACTIVE
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ Sidebar — neutral by default ═══ */
   .nav-item[data-section="mhddos"],
   .nav-item[data-section="exploit"] {
     position: relative;
     transition: all .18s cubic-bezier(.4,0,.2,1);
   }
-  .nav-item[data-section="mhddos"] i,
-  .nav-item[data-section="exploit"] i { transition: color .18s; }
-
   .nav-item[data-section="mhddos"]:hover,
   .nav-item[data-section="exploit"]:hover {
     background: linear-gradient(90deg, rgba(220,38,38,.18), transparent 75%) !important;
@@ -1026,24 +936,18 @@
   }
   .nav-item[data-section="mhddos"]:hover i,
   .nav-item[data-section="exploit"]:hover i { color: #ef4444 !important; }
-
   .nav-item[data-section="mhddos"].active,
   .nav-item[data-section="exploit"].active {
     background: linear-gradient(90deg, rgba(220,38,38,.42), rgba(220,38,38,.10) 75%, transparent) !important;
     border-left-color: #ef4444 !important;
-    color: #fff !important;
-    font-weight: 700 !important;
-    box-shadow:
-      inset 3px 0 0 rgba(239,68,68,.85),
-      0 0 18px -6px rgba(220,38,38,.55);
+    color: #fff !important; font-weight: 700 !important;
+    box-shadow: inset 3px 0 0 rgba(239,68,68,.85), 0 0 18px -6px rgba(220,38,38,.55);
   }
   .nav-item[data-section="mhddos"].active i,
   .nav-item[data-section="exploit"].active i {
     color: #fff !important;
     filter: drop-shadow(0 0 8px rgba(239,68,68,.85));
   }
-
-  /* Section-title red chips only when active */
   .content-section.active#section-mhddos   .panel-title i,
   .content-section.active#section-exploit  .panel-title i,
   .content-section.active#section-httplogger .panel-title i {
@@ -1052,13 +956,11 @@
     box-shadow: inset 0 0 0 1px rgba(220,38,38,.35);
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     Responsive
-     ═════════════════════════════════════════════════════════════════ */
-  @media (max-width: 820px) {
-    .ex-shark-header { flex-direction: column; align-items: flex-start; padding: 20px; gap: 16px; }
-    .ex-shark-figure { width: 170px; height: 105px; }
-    .ex-shark-title  { font-size: 1.28rem; }
+  /* ═══ Responsive ═══ */
+  @media (max-width: 900px) {
+    .ex-shark-header { flex-direction: column; align-items: flex-start; padding: 22px; gap: 18px; }
+    .ex-shark-figure { width: 220px; height: 130px; }
+    .ex-shark-title  { font-size: 1.35rem; }
     .ex-shark-header::after { animation: none; }
   }
   @media (max-width: 720px) {
@@ -1067,8 +969,8 @@
     .ex-tab  { flex-shrink: 0; }
   }
   @media (max-width: 480px) {
-    .ex-shark-figure { width: 140px; height: 88px; }
-    .ex-shark-title  { font-size: 1.12rem; }
+    .ex-shark-figure { width: 180px; height: 108px; }
+    .ex-shark-title  { font-size: 1.15rem; }
   }
   `;
 
@@ -1080,45 +982,65 @@
     document.head.appendChild(s);
   }
 
-  /* ── Enchanted shark SVG (great white with tail motion) ─────────── */
+  /* ══════════════════════════════════════════════════════════════════
+   *  APEX PREDATOR — great-white shark
+   * ══════════════════════════════════════════════════════════════════ */
   function sharkFigure() {
     const wrap = el('div', { class: 'ex-shark-figure', 'aria-hidden': 'true' });
     const svg = el('div', {
       html: `
-        <svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg">
+        <svg viewBox="0 0 340 180" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <linearGradient id="exBodyGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#475569"/>
-              <stop offset="0.5" stop-color="#1e293b"/>
-              <stop offset="1" stop-color="#0a1120"/>
+            <!-- Body — top dark gradient -->
+            <linearGradient id="exTopGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0"    stop-color="#64748b"/>
+              <stop offset="0.25" stop-color="#475569"/>
+              <stop offset="0.6"  stop-color="#334155"/>
+              <stop offset="1"    stop-color="#0f172a"/>
             </linearGradient>
+            <!-- Belly — light counter-shading -->
             <linearGradient id="exBellyGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#f1f5f9"/>
-              <stop offset="0.7" stop-color="#cbd5e1"/>
-              <stop offset="1" stop-color="#64748b"/>
-            </linearGradient>
-            <linearGradient id="exFinGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#fca5a5"/>
-              <stop offset="0.35" stop-color="#ef4444"/>
-              <stop offset="0.75" stop-color="#b91c1c"/>
-              <stop offset="1" stop-color="#7f1d1d"/>
-            </linearGradient>
-            <linearGradient id="exTailGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="#b91c1c"/>
-              <stop offset="1" stop-color="#7f1d1d"/>
-            </linearGradient>
-            <radialGradient id="exEyeGlow" cx="0.5" cy="0.5" r="0.5">
               <stop offset="0" stop-color="#f8fafc"/>
-              <stop offset="1" stop-color="#020617"/>
+              <stop offset="0.55" stop-color="#e2e8f0"/>
+              <stop offset="1" stop-color="#94a3b8"/>
+            </linearGradient>
+            <!-- Fins — red predator accent -->
+            <linearGradient id="exFinGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0"    stop-color="#fca5a5"/>
+              <stop offset="0.3"  stop-color="#ef4444"/>
+              <stop offset="0.65" stop-color="#b91c1c"/>
+              <stop offset="1"    stop-color="#7f1d1d"/>
+            </linearGradient>
+            <!-- Deep fin (tail) -->
+            <linearGradient id="exFinDark" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#b91c1c"/>
+              <stop offset="1" stop-color="#450a0a"/>
+            </linearGradient>
+            <!-- Mouth interior -->
+            <linearGradient id="exMouthGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#7f1d1d"/>
+              <stop offset="1" stop-color="#450a0a"/>
+            </linearGradient>
+            <!-- Eye -->
+            <radialGradient id="exEyeGrad" cx="0.35" cy="0.35" r="0.7">
+              <stop offset="0"   stop-color="#334155"/>
+              <stop offset="0.55" stop-color="#020617"/>
+              <stop offset="1"   stop-color="#000000"/>
             </radialGradient>
-            <filter id="exSoftGlow" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="3" result="b"/>
+            <!-- Glow behind the shark -->
+            <radialGradient id="exGlowGrad" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="rgba(220,38,38,.5)"/>
+              <stop offset="1" stop-color="rgba(220,38,38,0)"/>
+            </radialGradient>
+            <!-- Filters -->
+            <filter id="exSharkGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="3.5" result="b"/>
               <feMerge>
                 <feMergeNode in="b"/>
                 <feMergeNode in="SourceGraphic"/>
               </feMerge>
             </filter>
-            <filter id="exFinShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <filter id="exFinShadow" x="-25%" y="-25%" width="150%" height="150%">
               <feGaussianBlur stdDeviation="2" result="s"/>
               <feMerge>
                 <feMergeNode in="s"/>
@@ -1127,106 +1049,170 @@
             </filter>
           </defs>
 
+          <!-- Ambient blood bloom -->
+          <ellipse cx="180" cy="98" rx="150" ry="72" fill="url(#exGlowGrad)" opacity="0.5"/>
+
           <!-- Water wake (double layer) -->
-          <path d="M4 126 Q70 118 136 126 T268 126"
-                fill="none" stroke="#0891b2" stroke-width="1.6"
-                stroke-opacity="0.4" stroke-linecap="round"/>
-          <path d="M18 134 Q84 128 148 134 T276 134"
-                fill="none" stroke="#0891b2" stroke-width="1"
-                stroke-opacity="0.22" stroke-linecap="round"/>
+          <path d="M0 150 Q85 140 170 148 T340 150"
+                stroke="#0891b2" stroke-width="1.8" fill="none"
+                stroke-opacity="0.5" stroke-linecap="round"
+                stroke-dasharray="16 10">
+            <animate attributeName="stroke-dashoffset" from="0" to="-52"
+                     dur="4s" repeatCount="indefinite"/>
+          </path>
+          <path d="M14 162 Q99 154 184 162 T354 162"
+                stroke="#0891b2" stroke-width="1" fill="none"
+                stroke-opacity="0.28" stroke-linecap="round"/>
 
-          <!-- Tail (animated) -->
+          <!-- ═══ TAIL (animated swing) ═══ -->
           <g class="ex-tail">
-            <path d="M28 106 L4 126 L40 122 L32 106 Z"
-                  fill="url(#exTailGrad)" stroke="#450a0a" stroke-width="1.2"/>
-            <path d="M30 106 L16 90 L42 102 Z"
-                  fill="url(#exTailGrad)" stroke="#450a0a" stroke-width="1"/>
+            <!-- Upper caudal lobe -->
+            <path d="M60 106 L6 60 Q22 78 44 90 L68 100 Z"
+                  fill="url(#exFinDark)" stroke="#450a0a" stroke-width="1.4"
+                  stroke-linejoin="round"/>
+            <path d="M60 106 L6 60 Q22 78 44 90 L68 100 Z"
+                  fill="url(#exFinGrad)" opacity="0.5"/>
+            <!-- Lower caudal lobe -->
+            <path d="M62 112 L14 152 Q32 136 50 124 L70 116 Z"
+                  fill="url(#exFinDark)" stroke="#450a0a" stroke-width="1.4"
+                  stroke-linejoin="round"/>
+            <path d="M62 112 L14 152 Q32 136 50 124 L70 116 Z"
+                  fill="url(#exFinGrad)" opacity="0.4"/>
+            <!-- Caudal keel -->
+            <path d="M64 108 Q60 112 64 116 Q68 112 64 108 Z" fill="#0f172a"/>
           </g>
 
-          <!-- Body — long, tapered, great-white proportions -->
-          <path d="M26 100
-                   Q66 78 118 76
-                   Q178 74 226 90
-                   L236 100
-                   Q178 120 118 114
-                   Q66 108 26 100 Z"
-                fill="url(#exBodyGrad)" stroke="#0f172a" stroke-width="1.6"/>
+          <!-- ═══ BODY (animated flex) ═══ -->
+          <g class="ex-shark-body">
+            <!-- Torpedo silhouette -->
+            <path d="M68 108
+                     Q108 80 166 78
+                     Q226 76 280 90
+                     L298 100
+                     Q280 118 224 122
+                     Q162 126 100 118
+                     Q76 114 68 108 Z"
+                  fill="url(#exTopGrad)" stroke="#0f172a" stroke-width="1.8"/>
 
-          <!-- Belly highlight -->
-          <path d="M44 102
-                   Q100 114 158 111
-                   Q202 108 232 100
-                   L222 100
-                   Q168 112 118 110
-                   Q76 108 44 102 Z"
-                fill="url(#exBellyGrad)" opacity="0.9"/>
+            <!-- Counter-shading boundary + belly -->
+            <path d="M104 116
+                     Q162 128 226 122
+                     Q266 114 292 102
+                     L280 104
+                     Q230 118 164 118
+                     Q116 116 104 116 Z"
+                  fill="url(#exBellyGrad)" opacity="0.96"/>
 
-          <!-- Dorsal fin (main) -->
-          <path d="M112 74 L148 16 L164 74 Q134 64 112 74 Z"
-                fill="url(#exFinGrad)" stroke="#450a0a" stroke-width="1.6"
-                filter="url(#exSoftGlow)"/>
+            <!-- Lateral line (subtle) -->
+            <path d="M104 106 Q166 108 250 106"
+                  stroke="#94a3b8" stroke-width="0.6" fill="none"
+                  stroke-opacity="0.4" stroke-dasharray="2 4"/>
 
-          <!-- Dorsal fin highlight -->
-          <path d="M118 72 L146 30 L154 72 Q136 66 118 72 Z"
-                fill="#fca5a5" opacity="0.28"/>
+            <!-- ═══ FINS ═══ -->
+            <!-- First dorsal fin (main, tall, swept back) -->
+            <path d="M158 82
+                     L214 4
+                     Q220 24 220 56
+                     L226 82
+                     Q192 76 158 82 Z"
+                  fill="url(#exFinGrad)" stroke="#450a0a" stroke-width="1.8"
+                  filter="url(#exSharkGlow)"/>
+            <!-- Dorsal highlight -->
+            <path d="M166 80 L214 18 L218 56 L222 80 Q194 74 166 80 Z"
+                  fill="#fca5a5" opacity="0.3"/>
+            <!-- Dorsal shadow inner -->
+            <path d="M162 82 L214 12 L220 82 Q196 78 162 82 Z"
+                  fill="none" stroke="#7f1d1d" stroke-width="0.8" opacity="0.5"/>
 
-          <!-- Second dorsal fin -->
-          <path d="M168 78 L182 58 L192 80 Q178 76 168 78 Z"
-                fill="url(#exFinGrad)" opacity="0.85"
-                filter="url(#exFinShadow)"/>
+            <!-- Second dorsal fin (small) -->
+            <path d="M258 88 L270 62 L282 90 Q268 88 258 88 Z"
+                  fill="url(#exFinGrad)" opacity="0.9"
+                  stroke="#450a0a" stroke-width="1"
+                  filter="url(#exFinShadow)"/>
 
-          <!-- Pectoral fin (long, pointed — signature of great white) -->
-          <path d="M118 112 L98 142 L134 122 Z"
-                fill="url(#exFinGrad)" opacity="0.95"
-                filter="url(#exFinShadow)"/>
+            <!-- ═══ Pectoral fin (animated sway, long & pointed) ═══ -->
+            <g class="ex-pect">
+              <path d="M162 118 L140 170 L200 134 Z"
+                    fill="url(#exFinGrad)" opacity="0.96"
+                    stroke="#450a0a" stroke-width="1.4"
+                    stroke-linejoin="round"
+                    filter="url(#exSharkGlow)"/>
+              <path d="M164 120 L146 164 L196 136 Z"
+                    fill="#fca5a5" opacity="0.18"/>
+            </g>
 
-          <!-- Anal / pelvic fins -->
-          <path d="M156 112 L162 130 L176 114 Z"
-                fill="url(#exFinGrad)" opacity="0.75"/>
+            <!-- Pelvic fin -->
+            <path d="M240 120 L250 146 L268 124 Z"
+                  fill="url(#exFinGrad)" opacity="0.78"
+                  stroke="#450a0a" stroke-width="0.8"/>
 
-          <!-- Gills (five slashes, great-white signature) -->
-          <g stroke="#dc2626" stroke-width="1.8" stroke-linecap="round" opacity="0.9">
-            <path d="M162 84 L160 102"/>
-            <path d="M171 83 L169 102"/>
-            <path d="M180 82 L178 102"/>
-            <path d="M189 82 L187 102"/>
-            <path d="M198 82 L196 102"/>
+            <!-- Anal fin -->
+            <path d="M274 118 L282 138 L298 120 Z"
+                  fill="url(#exFinGrad)" opacity="0.72"
+                  stroke="#450a0a" stroke-width="0.8"/>
+
+            <!-- ═══ GILLS — five curved slits ═══ -->
+            <g stroke="#dc2626" stroke-width="2.2" stroke-linecap="round"
+               opacity="0.92" fill="none">
+              <path d="M228 90 Q226 102 226 114"/>
+              <path d="M240 90 Q238 102 238 114"/>
+              <path d="M252 90 Q250 102 250 114"/>
+              <path d="M264 92 Q262 102 262 112"/>
+              <path d="M276 94 Q274 102 274 110"/>
+            </g>
+
+            <!-- Nostril -->
+            <ellipse cx="308" cy="102" rx="3.2" ry="2.2"
+                     fill="#0f172a" opacity="0.65"/>
+
+            <!-- ═══ MOUTH — open, showing teeth ═══ -->
+            <path d="M290 106
+                     Q300 122 318 112
+                     Q306 118 292 116
+                     Q286 112 290 106 Z"
+                  fill="url(#exMouthGrad)" stroke="#450a0a" stroke-width="1"
+                  stroke-linejoin="round"/>
+
+            <!-- Upper teeth row -->
+            <g fill="#f8fafc" opacity="0.97">
+              <path d="M292 108 L294 116 L296 108 Z"/>
+              <path d="M297 108 L299 117 L301 108 Z"/>
+              <path d="M302 108 L304 117 L306 108 Z"/>
+              <path d="M307 108 L309 116 L311 108 Z"/>
+              <path d="M312 108 L314 115 L316 108 Z"/>
+              <path d="M317 108 L319 114 L321 108 Z"/>
+            </g>
+            <!-- Lower teeth row -->
+            <g fill="#e2e8f0" opacity="0.72">
+              <path d="M294 114 L295 108 L296 114 Z"/>
+              <path d="M300 115 L301 107 L302 115 Z"/>
+              <path d="M306 115 L307 107 L308 115 Z"/>
+              <path d="M312 114 L313 108 L314 114 Z"/>
+            </g>
+
+            <!-- ═══ EYE — small, black, predatory ═══ -->
+            <circle cx="294" cy="96" r="4.8" fill="url(#exEyeGrad)"/>
+            <circle cx="292.4" cy="94.4" r="1.3" fill="#f8fafc" opacity="0.9"/>
+            <circle cx="292.4" cy="94.4" r="0.5" fill="#000" opacity="0.7"/>
+
+            <!-- ═══ BLOOD DRIPS ═══ -->
+            <g class="ex-blood" fill="#7f1d1d">
+              <ellipse cx="296" cy="124" rx="1.8" ry="3.8"/>
+              <ellipse cx="304" cy="128" rx="1.4" ry="3.2"/>
+              <ellipse cx="312" cy="126" rx="1.6" ry="3.6"/>
+            </g>
+            <!-- Fin blood accents -->
+            <g fill="#7f1d1d" opacity="0.65">
+              <ellipse cx="156" cy="156" rx="1.5" ry="3.2"/>
+              <ellipse cx="186" cy="146" rx="1.2" ry="2.8"/>
+            </g>
           </g>
-
-          <!-- Eye with glow -->
-          <circle cx="218" cy="90" r="4"   fill="url(#exEyeGlow)"/>
-          <circle cx="218" cy="90" r="1.3" fill="#020617"/>
-
-          <!-- Teeth strip (upper jaw) -->
-          <g fill="#f8fafc" opacity="0.95">
-            <path d="M212 99 L214 106 L216 99 Z"/>
-            <path d="M218 99 L220 107 L222 99 Z"/>
-            <path d="M224 99 L226 106 L228 99 Z"/>
-            <path d="M230 99 L232 105 L234 99 Z"/>
-          </g>
-
-          <!-- Teeth strip (lower jaw hint) -->
-          <g fill="#e2e8f0" opacity="0.55">
-            <path d="M215 103 L216 99 L217 103 Z"/>
-            <path d="M221 103 L222 98 L223 103 Z"/>
-            <path d="M227 103 L228 99 L229 103 Z"/>
-          </g>
-
-          <!-- Mouth line (cruel smirk) -->
-          <path d="M208 98 Q222 106 238 100"
-                fill="none" stroke="#7f1d1d" stroke-width="1.6"
-                stroke-linecap="round"/>
-
-          <!-- Nostril / snout detail -->
-          <path d="M244 96 Q250 98 252 100"
-                fill="none" stroke="#1e293b" stroke-width="1.2"
-                stroke-linecap="round" opacity="0.8"/>
         </svg>
       `,
     });
     const bubbles = el('div', { class: 'ex-shark-bubbles' },
+      el('span'), el('span'), el('span'), el('span'), el('span'),
       el('span'), el('span'), el('span'), el('span'),
-      el('span'), el('span'), el('span'),
     );
     wrap.appendChild(svg);
     wrap.appendChild(bubbles);
@@ -1315,25 +1301,37 @@
   function emptyState(text) {
     const wrap = el('div', { class: 'ex-empty' });
     wrap.innerHTML = `
-      <svg viewBox="0 0 140 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg viewBox="0 0 160 110" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
           <linearGradient id="exEmptyFin" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#f87171"/>
-            <stop offset="0.55" stop-color="#dc2626"/>
+            <stop offset="0" stop-color="#fca5a5"/>
+            <stop offset="0.5" stop-color="#dc2626"/>
             <stop offset="1" stop-color="#7f1d1d"/>
           </linearGradient>
           <linearGradient id="exEmptyBody" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#334155"/>
+            <stop offset="0" stop-color="#475569"/>
             <stop offset="1" stop-color="#0f172a"/>
           </linearGradient>
         </defs>
-        <path d="M14 72 Q46 58 82 62 L118 34 L108 64 L132 82 L92 80 Q46 90 14 72 Z"
-              fill="url(#exEmptyBody)" stroke="#dc2626" stroke-width="1.2" stroke-opacity="0.65"/>
-        <path d="M66 32 L86 4 L94 36 Q78 30 66 32 Z" fill="url(#exEmptyFin)"/>
-        <path d="M22 66 L10 86 L36 78 L22 66 Z" fill="url(#exEmptyFin)" opacity="0.85"/>
-        <circle cx="48" cy="70" r="2" fill="#f8fafc"/>
-        <path d="M112 70 L114 74 L116 70 Z" fill="#f8fafc"/>
-        <path d="M117 70 L119 75 L121 70 Z" fill="#f8fafc"/>
+        <!-- Tail -->
+        <path d="M30 70 L4 40 L28 60 L40 66 Z" fill="url(#exEmptyFin)" opacity="0.85"/>
+        <path d="M30 74 L8 100 L32 82 L42 76 Z" fill="url(#exEmptyFin)" opacity="0.7"/>
+        <!-- Body -->
+        <path d="M34 70 Q70 52 110 52 Q140 52 152 66 L156 72
+                 Q140 82 108 84 Q70 84 34 74 Z"
+              fill="url(#exEmptyBody)" stroke="#dc2626" stroke-width="1.2" stroke-opacity="0.6"/>
+        <!-- Dorsal -->
+        <path d="M84 54 L104 20 L110 54 Q96 48 84 54 Z" fill="url(#exEmptyFin)"/>
+        <!-- Pectoral -->
+        <path d="M92 78 L82 100 L112 88 Z" fill="url(#exEmptyFin)" opacity="0.85"/>
+        <!-- Eye -->
+        <circle cx="136" cy="64" r="2.2" fill="#f8fafc"/>
+        <circle cx="136" cy="64" r="0.9" fill="#020617"/>
+        <!-- Teeth -->
+        <g fill="#f8fafc">
+          <path d="M136 70 L138 75 L140 70 Z"/>
+          <path d="M142 70 L144 76 L146 70 Z"/>
+        </g>
       </svg>
     `;
     if (text) wrap.appendChild(el('span', null, text));
