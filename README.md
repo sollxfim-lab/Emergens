@@ -1,7 +1,6 @@
 # Emergens — Security Testing & Exploiter Dashboard
 
-A private dashboard for passive security testing and OSINT on domains you own or have written authorization to test.
-
+exploit tools
 ## Features
 
 - Username and password login with roles: Owner, Analyst, Viewer. No public account registration. The `Yanxzyx` account with Owner role is created automatically by `app.py` on first run. The password is shown once in the console.
