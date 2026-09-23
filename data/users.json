@@ -1,9 +1,0 @@
-[
-  {
-    "username": "owner",
-    "password_hash": "scrypt:32768:8:1$BDHE2Nauzo5X50vx$789f99bacb5501deb59bfb9b38c68be370a29f068a8d12a2de03958ff27d104a3472d3e84ac7caa3861ba4b28de4e80976d1a6a5ab9ff312f9b076be34ff22cd",
-    "role": "owner",
-    "created_at": "2026-09-09T19:08:05.016136+00:00",
-    "expires_at": null
-  }
-]
