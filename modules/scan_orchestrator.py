@@ -1,5 +1,5 @@
 """
-Oxysintx — Scan Orchestrator (v3.3.0)
+Oxysintx — Scan Orchestrator (v3.4.0)
 
 Background job manager for running security scanning tools.
 
@@ -29,6 +29,7 @@ OSINT / threat-intel modules are excluded entirely — they have their own
 dedicated endpoints (/api/osint/*) and must never appear in the scan carousel:
     • osint, osint_search, osint_tools
     • github_scraper, username_search, leak_search, leakdata
+    • search_user, search_user_run
     • youtube_stalk, twitter_stalk, instagram_stalk
 
 The following modules are **never** treated as tools:
@@ -77,7 +78,7 @@ import modules as modules_pkg
 # =============================================================================
 # Metadata
 # =============================================================================
-__version__ = "3.3.0"
+__version__ = "3.4.0"
 __author__ = "Yanxzyx"
 
 # =============================================================================
@@ -145,6 +146,8 @@ _EXCLUDED_MODULES: Set[str] = {
     "username_search",
     "leak_search",
     "leakdata",
+    "search_user",
+    "search_user_run",
     "youtube_stalk",
     "twitter_stalk",
     "instagram_stalk",
@@ -172,6 +175,8 @@ _NON_SCAN_KINDS: Set[str] = {
     "intel",
     "stalk",
     "scraper",
+    "search",
+    "lookup_user",
 }
 
 # Modules that use the options-dict calling convention: run(target, options)

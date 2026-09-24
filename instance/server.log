@@ -1,0 +1,26 @@
+2026-09-24 09:41:41,016 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 09:41:41,017 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 09:41:44,507 [INFO] User 'Yanxzyx' created/updated (role=owner)
+2026-09-24 09:43:09,228 [INFO] Scan started: job=e6489a83-64bd-44fc-b9d4-9f3171f444b1 target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'port_scan', 'scan_apikey', 'search_user', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss_exploiter']
+2026-09-24 09:46:13,925 [INFO] [xss] source payload-box/xss-payload-list (attempt 1/4)
+2026-09-24 09:46:14,054 [INFO] [xss] 867 payloads from payload-box/xss-payload-list
+2026-09-24 09:54:23,325 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 09:54:23,325 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 09:57:02,198 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 09:57:02,207 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 10:01:52,512 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 10:01:52,513 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 10:06:13,146 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 10:06:13,147 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 10:07:37,318 [INFO] Scan started: job=4af84813-7515-4c0c-915c-0948f1c65b2c target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'ssl_check']
+2026-09-24 10:07:37,774 [WARNING] ipapi.co gagal untuk 2606:4700:3030::6815:5bb1: 429 Client Error: Too Many Requests for url: https://ipapi.co/2606:4700:3030::6815:5bb1/json/
+2026-09-24 10:08:37,703 [INFO] Scan started: job=930920cb-d3a8-4c3f-8de8-8431f72f67ac target=https://tempail.com mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'ssl_check']
+2026-09-24 10:08:37,866 [ERROR] Gagal resolve https://tempail.com: [Errno -2] Name or service not known
+2026-09-24 10:09:49,526 [INFO] Scan started: job=d35d7af4-b3d6-4f29-801e-a4ad258ff0c8 target=robbymc.usga.me mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'ssl_check']
+2026-09-24 10:17:12,421 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 10:17:12,421 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 10:18:10,768 [INFO] Scan started: job=6c1a3de4-2a84-42cd-83aa-20852feb5648 target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey']
+2026-09-24 10:18:11,177 [WARNING] ipapi.co gagal untuk 2606:4700:3030::6815:5bb1: 429 Client Error: Too Many Requests for url: https://ipapi.co/2606:4700:3030::6815:5bb1/json/
+2026-09-24 10:21:33,217 [INFO] Scan started: job=8dd8f741-f055-47e6-b1e9-83ccea909a5f target=tempail.com mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey']
+2026-09-24 10:26:59,065 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 10:26:59,065 [INFO] [http_logger] attached to Flask app (buffer=5000)

