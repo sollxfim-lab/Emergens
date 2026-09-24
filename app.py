@@ -1,33 +1,26 @@
 #!/usr/bin/env python3
 """
-Oxysintx - Main Flask Application (v3.8.0)
+Oxysintx - Main Flask Application (v3.8.1)
 
 Routing and API. MHDDoS engine (start.py) integrated as external subprocess.
 Attack launches directly on user request.
 
-v3.8.0 changelog
-    • Removed deprecated / unused features:
-        – modules.whatsapp blueprint
-        – modules.quick_menu + all compatibility routes
-        – modules.testing + all /api/code_test/* endpoints
-        – /Emergens_DB.html, /code_test.html, /emergens-control-m4ddos.html routes
-        – /webps.html dangling reference (had no route; confirmed absent)
-    • Module status report now reflects the slimmer surface
+v3.8.1 changelog
+    • Fixed truncated tail (SyntaxError on line 3165)
+    • Port resolution honours $PORT env var (Render / Heroku / Railway)
     • Startup banner no longer references removed modules
+    • Module status reflects the slimmer surface
+
+Removed (v3.8.0):
+    – modules.whatsapp blueprint
+    – modules.quick_menu + all compatibility routes
+    – modules.testing + all /api/code_test/* endpoints
+    – /Emergens_DB.html, /code_test.html, /emergens-control-m4ddos.html routes
 
 Retained integrations:
-    • http_logger          (global request capture + SSE + HAR + anomaly scan)
-    • dirfuzz              (directory / file fuzzer, SSE streaming)
-    • sqli_engine          (professional SQLi engine — 4 techniques)
-    • sql_map              (multi-technique SQLi scanner w/ confidence scoring)
-    • sql_injection        (lightweight SQLi detector)
-    • xss_exploiter        (professional reflected XSS exploiter, SSE)
-    • xss                  (lightweight XSS scanner)
-    • sniper               (auto-exploiter orchestrator, SSE)
-    • git_scraper_wordlist (GitHub wordlist sync for all of the above)
-    • analytic_manager     (exploit / stats surface)
-    • downsea              (video downloader blueprint)
-    • telegram             (bot bridge)
+    • http_logger, dirfuzz, sqli_engine, sql_map, sql_injection,
+      xss_exploiter, xss, sniper, git_scraper_wordlist,
+      analytic_manager, downsea, telegram
 
 Author: Yanxzyx
 """
@@ -41,7 +34,6 @@ import os
 import re
 import secrets
 import signal
-import string
 import sys
 import threading
 import time
@@ -146,7 +138,6 @@ try:
 except ImportError:
     _http_logger_available = False
 
-# ── Wordlist scraper (GitHub-synced wordlists for XSS / SQLi / dirfuzz) ──
 try:
     from modules.git_scraper_wordlist import (
         sync           as wordlist_sync,
@@ -174,7 +165,7 @@ except ImportError:
     _analytic_available = False
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STARTUP BANNER (single, clean)
+# STARTUP BANNER
 # ═══════════════════════════════════════════════════════════════════════════
 BANNER = r"""
     ▄▀▀▀▀▀▀▀▀▀█ █▀▀▀▀▀▀▀▀▀▄▀▀▀▀▀▄   ▄▀▀▀▀▀▀▀▀▀█ █▀▀▀▀▀▀▀▀▀▄   ▄▀▀▀▀▀▀▀▀▀█  ▄▀▀▀▀▀▀▀▀▀█ █▀▀▀▀▀▀▀▀▀▄  █▀▀▀▀▀▀▀▀▀▀▓
@@ -187,7 +178,7 @@ BANNER = r"""
 """
 
 # ═══════════════════════════════════════════════════════════════════════════
-# MHDDoS engine (start.py integration)
+# MHDDoS engine
 # ═══════════════════════════════════════════════════════════════════════════
 MHDDOS_SCRIPT = Path(__file__).parent / "start.py"
 _mhddos_processes = {}
@@ -579,7 +570,7 @@ def github_scrape_repositories(username):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Firebase configuration (env-overridable)
+# Firebase configuration
 # ═══════════════════════════════════════════════════════════════════════════
 firebaseConfig = {
     "apiKey": os.getenv("FIREBASE_API_KEY", "AIzaSyBmcSWhaqkk5u13MCnw3kB6M9wP4SySZCw"),
@@ -603,7 +594,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "0") == "1",
 )
 
-# Blueprints kept: downsea only (whatsapp + quick_menu removed)
+# Only one blueprint registered (downsea).
 if _downsea_available:
     app.register_blueprint(downsea_bp)
 
@@ -688,7 +679,7 @@ def _client_ip():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Request counters (for Network Traffic panel)
+# Request counters
 # ═══════════════════════════════════════════════════════════════════════════
 _request_log_lock = threading.Lock()
 _request_timestamps = []
@@ -713,7 +704,7 @@ def _inbound_stats():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# HTTP Logger (global request capture)
+# HTTP Logger
 # ═══════════════════════════════════════════════════════════════════════════
 http_logger = None
 if _http_logger_available:
@@ -731,7 +722,7 @@ if _http_logger_available:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# API-key helper (single source of truth: user_store)
+# API-key helper
 # ═══════════════════════════════════════════════════════════════════════════
 def _hash_api_key(raw_key):
     return hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
@@ -989,7 +980,6 @@ def owner_required(f):
 # SSE helpers
 # ═══════════════════════════════════════════════════════════════════════════
 def _sse_format(event: dict) -> str:
-    """Format a dict as an SSE data frame."""
     try:
         payload = json.dumps(event, ensure_ascii=False, default=str)
     except Exception:
@@ -1122,26 +1112,20 @@ def terms_page():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Static asset delivery — JS / CSS / fonts / maps / images
-#   Served from templates/ so everything lives in one place.
-#   Examples:
-#       /js/script.js          → templates/js/script.js
-#       /css/style.css         → templates/css/style.css
-#       /js/app-ex3bve.js.map  → templates/js/app-ex3bve.js.map
+# Static asset delivery
 # ═══════════════════════════════════════════════════════════════════════════
 _ALLOWED_ASSET_EXTS = {
-    '.js', '.mjs', '.cjs',          # JavaScript
-    '.css',                         # Stylesheets
-    '.map',                         # Source maps
-    '.woff', '.woff2', '.ttf', '.otf', '.eot',   # Fonts
-    '.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico',  # Images
-    '.json', '.txt', '.webmanifest',             # Misc
+    '.js', '.mjs', '.cjs',
+    '.css',
+    '.map',
+    '.woff', '.woff2', '.ttf', '.otf', '.eot',
+    '.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico',
+    '.json', '.txt', '.webmanifest',
 }
 
 
 @app.route('/<path:filename>')
 def serve_template_assets(filename):
-    """Serve JS / CSS / fonts / images from the templates directory."""
     ext = os.path.splitext(filename)[1].lower()
     if ext not in _ALLOWED_ASSET_EXTS:
         return page_not_found(None)
@@ -1354,7 +1338,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/3.8.0"},
+            headers={"User-Agent": "Oxysintx/3.8.1"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1847,7 +1831,7 @@ def api_telegram_broadcast():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# MHDDoS Attack Panel
+# MHDDoS Attack Panel (API only)
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/mhddos/methods")
 @login_required
@@ -2130,7 +2114,7 @@ def api_exploit_xss():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Directory Fuzzer API (dirfuzz.py)
+# Directory Fuzzer API
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/dirfuzz/wordlists")
 @api_login_required
@@ -2206,7 +2190,7 @@ def api_dirfuzz_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SQLi Engine API (sqli_engine.py)
+# SQLi Engine API
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/sqli/wordlists")
 @api_login_required
@@ -2287,7 +2271,7 @@ def api_sqli_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SQLMap API (sql_map.py) — advanced multi-technique scanner
+# SQLMap API (advanced multi-technique)
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/sqlmap/scan", methods=["POST"])
 @role_required("owner", "analyst")
@@ -2321,7 +2305,7 @@ def api_sqlmap_scan():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Lightweight SQL Injection (sql_injection.py)
+# Lightweight SQL Injection
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/sql_injection/scan", methods=["POST"])
 @role_required("owner", "analyst")
@@ -2346,7 +2330,7 @@ def api_sql_injection_scan():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# XSS Exploiter API (xss_exploiter.py)
+# XSS Exploiter API
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/xss/wordlist")
 @api_login_required
@@ -2426,7 +2410,7 @@ def api_xss_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Lightweight XSS (xss.py)
+# Lightweight XSS
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/xss_simple/scan", methods=["POST"])
 @role_required("owner", "analyst")
@@ -2455,7 +2439,7 @@ def api_xss_simple_scan():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Sniper — Auto-Exploiter orchestrator
+# Sniper
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/sniper/scan", methods=["POST"])
 @role_required("owner", "analyst")
@@ -2656,7 +2640,7 @@ def api_logger_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Wordlist Scraper API (git_scraper_wordlist.py)
+# Wordlist Scraper API
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/wordlists/status")
 @api_login_required
@@ -3120,7 +3104,7 @@ def v1_scan_status(job_id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Module status (dashboard hint panel)
+# Module status
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/modules/status")
 @api_login_required
@@ -3142,24 +3126,81 @@ def api_modules_status():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Startup
+# Startup banner helper
 # ═══════════════════════════════════════════════════════════════════════════
 def _print_startup(port=None):
     """Single clean startup banner — no ==== separators, no module spam."""
     print(BANNER, flush=True)
     info_lines = []
     if port is not None:
-        info_lines.append(f"  Server     : http://emergens:{port}")
+        info_lines.append(f"  Server     : http://localhost:{port}")
     info_lines.append(f"  Tools      : {len(scan_orchestrator.list_tools())} loaded")
     info_lines.append(f"  Account    : {DEFAULT_USERNAME}")
 
     modules = []
-    if _dirfuzz_available:        modules.append("dirfuzz")
-    if _sqli_engine_available:    modules.append("sqli_engine")
-    if _sql_map_available:        modules.append("sql_map")
-    if _sql_injection_available:  modules.append("sql_injection")
-    if _xss_exploiter_available:  modules.append("xss_exploiter")
-    if _xss_available:            modules.append("xss")
-    if _sniper_available:         modules.append("sniper")
-    if http_logger is not None:   modules.append("http_logger")
-    if _wordlist_scraper_available: modules.append("wordlist
+    if _dirfuzz_available:          modules.append("dirfuzz")
+    if _sqli_engine_available:      modules.append("sqli_engine")
+    if _sql_map_available:          modules.append("sql_map")
+    if _sql_injection_available:    modules.append("sql_injection")
+    if _xss_exploiter_available:    modules.append("xss_exploiter")
+    if _xss_available:              modules.append("xss")
+    if _sniper_available:           modules.append("sniper")
+    if http_logger is not None:     modules.append("http_logger")
+    if _wordlist_scraper_available: modules.append("wordlist_scraper")
+    if _analytic_available:         modules.append("analytic_manager")
+    if _downsea_available:          modules.append("downsea")
+    if modules:
+        info_lines.append(f"  Modules    : {', '.join(modules)}")
+    print("\n".join(info_lines), flush=True)
+    print(flush=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Entrypoint
+# ═══════════════════════════════════════════════════════════════════════════
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "reset-password":
+        existing_role = get_role(DEFAULT_USERNAME) or "owner"
+        new_password = create_user(DEFAULT_USERNAME, role=existing_role)
+        print(BANNER, flush=True)
+        print(f"  Password reset for '{DEFAULT_USERNAME}' (role={existing_role})", flush=True)
+        print(f"  Password: {new_password}", flush=True)
+        print("  Copy it now — it will not be shown again.", flush=True)
+        sys.exit(0)
+
+    new_password = ensure_default_user()
+    if new_password:
+        print(BANNER, flush=True)
+        print("  First run — account created automatically", flush=True)
+        print(f"  Username: {DEFAULT_USERNAME}", flush=True)
+        print(f"  Password: {new_password}", flush=True)
+        print("  Role:     owner", flush=True)
+        print("  Save this password now — you will need it to log in.", flush=True)
+        print(flush=True)
+
+    auto_restart_bot()
+
+    # Render / Heroku / Railway provide $PORT — honour it.
+    env_port = os.getenv("PORT")
+    if env_port:
+        port = int(env_port)
+    else:
+        default_port = int(Config.PORT) if hasattr(Config, 'PORT') else 8080
+        while True:
+            try:
+                port_input = input(
+                    f"Enter port (default {default_port}, press Enter for default): "
+                ).strip()
+                if port_input == "":
+                    port = default_port
+                    break
+                port = int(port_input)
+                if port < 1 or port > 65535:
+                    print("Port must be between 1 and 65535.")
+                    continue
+                break
+            except ValueError:
+                print("Invalid input. Enter a valid port number.")
+
+    _print_startup(port)
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
