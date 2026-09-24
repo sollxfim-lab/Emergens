@@ -836,7 +836,7 @@ function renderResults(results){
 else if(toolKey==='ssl_check'||toolKey==='ssl'||data.protocol_weak!==undefined||data.cipher_suite!==undefined)html+=renderSslResult(toolResult);
 else if(data.ip&&data.isp&&data.country)html+=renderIpInfoResult(toolResult);
             else if(data.subdomains&&Array.isArray(data.subdomains))html+=renderSubdomainResult(toolResult);
-            else if(data.detected&&Array.isArray(data.detected))html+=renderTechFingerprintResult(toolResult);
+            else if(toolKey==='tech_fingerprint'||toolKey==='tech'||data.detected!==undefined||data.summary_by_category!==undefined)html+=renderTechFingerprintResult(toolResult);
             else if(data.findings!==undefined&&data.stats!==undefined)html+=renderScannerResult(toolResult);
             else if(data.error==='module_not_found')html+=`<div class="result-card"><div class="result-card-header"><strong>${escapeHtml(toolResult.tool||toolKey)}</strong><span class="badge"><i class="fas fa-plug-circle-xmark"></i> Not Installed</span></div><p style="color:var(--text-muted);font-size:0.8rem;">${escapeHtml(data.message||'This module is not installed on the server yet.')}</p></div>`;
             else if(data.error==='module_error')html+=`<div class="result-card"><div class="result-card-header"><strong>${escapeHtml(toolResult.tool||toolKey)}</strong><span class="badge" style="color:var(--red-500);"><i class="fas fa-triangle-exclamation"></i> Error</span></div><p style="color:var(--text-muted);font-size:0.8rem;">${escapeHtml(data.message||'This module raised an error.')}</p></div>`;
@@ -1168,11 +1168,133 @@ function renderEmailSecurityResult(toolResult){
 }
 
 function renderIpInfoResult(toolResult){
-    const d=toolResult.data||toolResult;
-    const city=escapeHtml(String(d.city||'Unknown')), country=escapeHtml(String(d.country||'Unknown'));
-    const ip=escapeHtml(String(d.ip||'--')), isp=escapeHtml(String(d.isp||'--'));
-    const asn=escapeHtml(String(d.as||'--')), org=escapeHtml(String(d.org||'--'));
-    return `<div class="result-card"><div class="result-card-header"><strong>IP & Geolocation</strong><span class="badge info"><i class="fas fa-map-marker-alt"></i> ${city}, ${country}</span></div><div class="port-summary-grid"><div class="port-summary-card"><div class="port-summary-value" style="color:var(--steel);font-size:1.2rem;">${ip}</div><div class="port-summary-label">IP Address</div></div><div class="port-summary-card"><div class="port-summary-value" style="color:var(--gold);font-size:1.1rem;">${isp}</div><div class="port-summary-label">ISP</div></div><div class="port-summary-card"><div class="port-summary-value" style="color:var(--green);">${city}</div><div class="port-summary-label">City</div></div><div class="port-summary-card"><div class="port-summary-value" style="color:var(--amber);">${country}</div><div class="port-summary-label">Country</div></div></div><table class="data-table"><tbody><tr><td style="font-weight:600;">ASN</td><td>${asn}</td></tr><tr><td style="font-weight:600;">Organization</td><td>${org}</td></tr></tbody></table></div>`;
+    const d = toolResult.data || toolResult;
+
+    // ── Normalize fields (handles both backend v4.0 and v4.1) ─────
+    const ip          = String(d.ip || '--');
+    const country     = String(d.country || 'Unknown');
+    const countryCode = String(d.country_code || '').toUpperCase();
+    const city        = String(d.city || '');
+    const region      = String(d.region || '');
+    const postal      = String(d.postal || '');
+    const lat         = (typeof d.latitude === 'number')  ? d.latitude  : null;
+    const lon         = (typeof d.longitude === 'number') ? d.longitude : null;
+    const tz          = String(d.timezone || '');
+    const utcOff      = String(d.utc_offset || '');
+    const isp         = String(d.isp || d.org || '--');
+    const org         = String(d.org || d.isp || '--');
+
+    // ASN — read every possible key shape so this never shows '--' when data exists
+    let asn = String(d.asn || d.as || d.asn_number || d.as_number || '').trim();
+    if(asn && !asn.toUpperCase().startsWith('AS')) asn = 'AS' + asn;
+
+    const asnName     = String(d.asn_name || d.asname || '');
+    const asnRoute    = String(d.asn_route || '');
+    const asnCountry  = String(d.asn_country || '');
+    const asnRegistry = String(d.asn_registry || '');
+    const asnDesc     = String(d.asn_description || '');
+    const domain      = String(d.domain || '');
+    const rdns        = String(d.reverse_dns || '');
+    const type        = String(d.type || '');
+    const provider    = String(d.provider || '');
+    const isProxy     = d.is_proxy   === true;
+    const isHosting   = d.is_hosting === true;
+    const isMobile    = d.is_mobile  === true;
+
+    // ── Country flag emoji from ISO code ──────────────────────────
+    const flagEmoji = (countryCode.length === 2)
+        ? String.fromCodePoint(...[...countryCode].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
+        : '';
+
+    // ── IP version badge ──────────────────────────────────────────
+    const isV6 = ip.includes(':');
+    const ipVersionBadge = (ip !== '--')
+        ? `<span class="badge ${isV6?'info':'success'}" style="font-size:0.62rem;padding:1px 6px;">IPv${isV6?6:4}</span>`
+        : '';
+
+    // ── Coords + map links ────────────────────────────────────────
+    const hasCoords = lat !== null && lon !== null;
+    const coords = hasCoords ? `${lat.toFixed(4)}, ${lon.toFixed(4)}` : '--';
+    const osmUrl = hasCoords ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=11/${lat}/${lon}` : '';
+    const gmUrl  = hasCoords ? `https://www.google.com/maps?q=${lat},${lon}` : '';
+
+    // ── ASN link (bgp.tools is professional + clean) ──────────────
+    const asnLink = asn ? `https://bgp.tools/as/${asn.replace(/^AS/i,'')}` : '';
+
+    // ── Location line ─────────────────────────────────────────────
+    const locationLine = [city, region, postal, country].filter(Boolean).join(', ') || 'Unknown location';
+
+    // ── Privacy / type badges ─────────────────────────────────────
+    const typeBadges = [];
+    if(isProxy)   typeBadges.push(`<span class="badge danger"   style="font-size:0.68rem;"><i class="fas fa-user-secret"></i> Proxy / VPN</span>`);
+    if(isHosting) typeBadges.push(`<span class="badge warning"  style="font-size:0.68rem;"><i class="fas fa-server"></i> Hosting / DC</span>`);
+    if(isMobile)  typeBadges.push(`<span class="badge info"     style="font-size:0.68rem;"><i class="fas fa-mobile-screen"></i> Mobile</span>`);
+    if(type && !isProxy && !isHosting && !isMobile)
+                  typeBadges.push(`<span class="badge"          style="font-size:0.68rem;">${escapeHtml(type)}</span>`);
+
+    // ── Build card ────────────────────────────────────────────────
+    return `<div class="result-card ip-info-card">
+        <div class="result-card-header">
+            <strong><i class="fas fa-location-dot" style="color:var(--red-400);margin-right:6px;"></i> IP &amp; Geolocation</strong>
+            <span class="badge success"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(city || country || 'Resolved')}</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 4px 14px;border-bottom:1px solid var(--border-color);margin-bottom:12px;">
+            <div style="font-size:2.2rem;line-height:1;flex-shrink:0;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35));">${flagEmoji || '<i class="fas fa-globe" style="color:var(--steel);font-size:1.6rem;"></i>'}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-family:var(--font-mono);font-size:0.95rem;font-weight:700;color:var(--text-primary);word-break:break-all;">${escapeHtml(ip)} ${ipVersionBadge}</div>
+                <div style="font-size:0.74rem;color:var(--text-secondary);margin-top:4px;"><i class="fas fa-map-pin" style="width:12px;color:var(--red-400);"></i> ${escapeHtml(locationLine)}</div>
+                ${org && org !== '--' && org !== isp ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;"><i class="fas fa-building" style="width:12px;"></i> ${escapeHtml(org)}</div>` : ''}
+            </div>
+            ${osmUrl ? `<a href="${escapeHtml(osmUrl)}" target="_blank" rel="noopener" title="Open in OpenStreetMap" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:var(--bg-tertiary);border:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;color:var(--steel);text-decoration:none;transition:all 0.15s;" onmouseover="this.style.color='var(--red-400)';this.style.borderColor='var(--red-400)';" onmouseout="this.style.color='var(--steel)';this.style.borderColor='var(--border-color)';"><i class="fas fa-map"></i></a>` : ''}
+        </div>
+
+        ${typeBadges.length ? `<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;">${typeBadges.join('')}</div>` : ''}
+
+        <div class="port-summary-grid" style="margin-bottom:12px;">
+            <div class="port-summary-card">
+                <div class="port-summary-value" style="color:var(--steel);font-size:0.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(country)}">${escapeHtml(country)}</div>
+                <div class="port-summary-label">Country</div>
+            </div>
+            <div class="port-summary-card">
+                <div class="port-summary-value" style="color:var(--gold);font-size:0.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(isp)}">${escapeHtml(isp)}</div>
+                <div class="port-summary-label">ISP</div>
+            </div>
+            <div class="port-summary-card">
+                <div class="port-summary-value" style="color:var(--green);font-size:0.88rem;">${asn ? escapeHtml(asn) : '--'}</div>
+                <div class="port-summary-label">ASN</div>
+            </div>
+            <div class="port-summary-card">
+                <div class="port-summary-value" style="color:var(--amber);font-size:0.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(tz||'--')}">${escapeHtml(tz || '--')}</div>
+                <div class="port-summary-label">Timezone</div>
+            </div>
+        </div>
+
+        <table class="data-table"><tbody>
+            ${asn ? `<tr>
+                <td style="font-weight:600;width:32%;">ASN</td>
+                <td>${asnLink
+                    ? `<a href="${escapeHtml(asnLink)}" target="_blank" rel="noopener" style="color:var(--red-400);font-family:var(--font-mono);text-decoration:none;font-weight:600;">${escapeHtml(asn)} <i class="fas fa-up-right-from-square" style="font-size:0.6rem;opacity:0.6;"></i></a>`
+                    : `<span style="font-family:var(--font-mono);font-weight:600;">${escapeHtml(asn)}</span>`}
+                    ${asnName ? ` &nbsp;·&nbsp; <span style="font-size:0.72rem;color:var(--text-muted);">${escapeHtml(asnName)}</span>` : ''}</td>
+            </tr>` : ''}
+            ${asnRoute    ? `<tr><td style="font-weight:600;">BGP Route</td><td style="font-family:var(--font-mono);font-size:0.72rem;">${escapeHtml(asnRoute)}</td></tr>` : ''}
+            ${asnRegistry ? `<tr><td style="font-weight:600;">Registry</td><td>${escapeHtml(asnRegistry)}</td></tr>` : ''}
+            ${asnCountry  ? `<tr><td style="font-weight:600;">ASN Country</td><td>${escapeHtml(asnCountry)}</td></tr>` : ''}
+            ${asnDesc     ? `<tr><td style="font-weight:600;">ASN Description</td><td style="font-size:0.74rem;color:var(--text-secondary);">${escapeHtml(asnDesc)}</td></tr>` : ''}
+            <tr><td style="font-weight:600;">ISP</td><td>${escapeHtml(isp || '--')}</td></tr>
+            ${org && org !== isp ? `<tr><td style="font-weight:600;">Organization</td><td>${escapeHtml(org)}</td></tr>` : ''}
+            ${locationLine !== 'Unknown location' ? `<tr><td style="font-weight:600;">Location</td><td>${escapeHtml(locationLine)}</td></tr>` : ''}
+            <tr><td style="font-weight:600;">Coordinates</td>
+                <td style="font-family:var(--font-mono);font-size:0.72rem;">${escapeHtml(coords)}
+                ${gmUrl ? `<a href="${escapeHtml(gmUrl)}" target="_blank" rel="noopener" style="color:var(--red-400);font-size:0.68rem;margin-left:6px;">[Google Maps]</a>` : ''}</td>
+            </tr>
+            ${tz ? `<tr><td style="font-weight:600;">Timezone</td><td>${escapeHtml(tz)}${utcOff ? ` <span style="color:var(--text-muted);font-size:0.72rem;">(${escapeHtml(utcOff)})</span>` : ''}</td></tr>` : ''}
+            ${rdns ? `<tr><td style="font-weight:600;">Reverse DNS</td><td style="font-family:var(--font-mono);font-size:0.72rem;">${escapeHtml(rdns)}</td></tr>` : ''}
+            ${domain && domain !== rdns ? `<tr><td style="font-weight:600;">Domain</td><td style="font-family:var(--font-mono);font-size:0.72rem;">${escapeHtml(domain)}</td></tr>` : ''}
+            ${provider ? `<tr><td style="font-weight:600;">Data Source</td><td><span class="badge info" style="font-size:0.62rem;">${escapeHtml(provider)}</span></td></tr>` : ''}
+        </tbody></table>
+    </div>`;
 }
 
 // ─── SSL/TLS Certificate — full renderer for scan_ssl v3.0.0 ─────────────
@@ -1478,10 +1600,207 @@ function renderSubdomainResult(toolResult){
     return `<div class="result-card"><div class="result-card-header"><strong>Subdomain Discovery</strong><span class="badge success"><i class="fas fa-search"></i> ${count} Found</span></div><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:8px;">Methods: ${methods.map(m=>`<span class="badge info">${escapeHtml(String(m))}</span>`).join(' ')}</div>${subs.length?`<div class="port-table-wrap"><table class="data-table"><thead><tr><th>#</th><th>Subdomain</th></tr></thead><tbody>${subs.map((s,i)=>`<tr><td style="color:var(--text-muted);">${i+1}</td><td style="font-family:var(--font-mono);color:var(--text-primary);">${escapeHtml(s)}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">No subdomains found.</div>`}</div>`;
 }
 
+// ─── Tech Fingerprint — full renderer for scan_tech_fingerprint v3.0.0 ────
+function _tfCategoryIcon(cat){
+    const c = String(cat||'').toLowerCase();
+    if(c.includes('cms'))                  return 'fa-cube';
+    if(c.includes('e-commerce'))           return 'fa-cart-shopping';
+    if(c.includes('website builder'))      return 'fa-wand-magic-sparkles';
+    if(c.includes('static'))               return 'fa-file-code';
+    if(c.includes('framework'))            return 'fa-layer-group';
+    if(c.includes('js library'))           return 'fa-book';
+    if(c.includes('css'))                  return 'fa-palette';
+    if(c.includes('web server'))           return 'fa-server';
+    if(c.includes('hosting'))              return 'fa-cloud';
+    if(c.includes('storage')||c.includes('cdn')) return 'fa-network-wired';
+    if(c.includes('language'))             return 'fa-code';
+    if(c.includes('security')||c.includes('waf')) return 'fa-shield-halved';
+    if(c.includes('anti-bot'))             return 'fa-robot';
+    if(c.includes('analytics'))            return 'fa-chart-line';
+    if(c.includes('tag manager'))          return 'fa-tags';
+    if(c.includes('apm')||c.includes('monitoring')) return 'fa-gauge-high';
+    if(c.includes('error'))                return 'fa-bug';
+    if(c.includes('marketing'))            return 'fa-bullhorn';
+    if(c.includes('support'))              return 'fa-headset';
+    if(c.includes('payment'))              return 'fa-credit-card';
+    if(c.includes('font')||c.includes('icon')) return 'fa-font';
+    if(c.includes('search'))               return 'fa-magnifying-glass';
+    if(c.includes('map'))                  return 'fa-map';
+    if(c.includes('media'))                return 'fa-photo-film';
+    if(c.includes('comment'))              return 'fa-comments';
+    if(c.includes('a/b'))                  return 'fa-flask';
+    if(c.includes('ci/cd'))                return 'fa-rocket';
+    return 'fa-microchip';
+}
+
+function _tfConfidenceTone(conf){
+    switch(String(conf||'').toLowerCase()){
+        case 'high':   return { color:'var(--green)', bg:'var(--green-glow)', label:'High' };
+        case 'medium': return { color:'var(--amber)', bg:'var(--amber-glow)', label:'Medium' };
+        case 'low':    return { color:'var(--steel)', bg:'var(--steel-glow)', label:'Low' };
+        default:       return { color:'var(--text-muted)', bg:'var(--bg-tertiary)', label:'Unknown' };
+    }
+}
+
+function _tfEsc(s){ return escapeHtml(String(s==null?'':s)); }
+
 function renderTechFingerprintResult(toolResult){
-    const d=toolResult.data||toolResult;const detected=d.detected||[];
-    const server=escapeHtml(String(d.server_header||d.server||'--'));const powered=escapeHtml(String(d.powered_by||'--'));
-    return `<div class="result-card"><div class="result-card-header"><strong>Technology Fingerprint</strong><span class="badge info"><i class="fas fa-microchip"></i> ${detected.length} Detected</span></div><div class="port-summary-grid"><div class="port-summary-card"><div class="port-summary-value" style="color:var(--steel);">${server}</div><div class="port-summary-label">Server</div></div><div class="port-summary-card"><div class="port-summary-value" style="color:var(--gold);">${powered}</div><div class="port-summary-label">Powered By</div></div></div>${detected.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${detected.map(t=>`<span class="badge info"><i class="fas fa-cube"></i> ${escapeHtml(t)}</span>`).join('')}</div>`:''}</div>`;
+    const d = toolResult.data || toolResult || {};
+    const detections = Array.isArray(d.detections) ? d.detections : [];
+    const total      = detections.length;
+    const confCounts = d.count_by_confidence || {
+        high:   detections.filter(x=>x.confidence==='high').length,
+        medium: detections.filter(x=>x.confidence==='medium').length,
+        low:    detections.filter(x=>x.confidence==='low').length,
+    };
+    const server  = d.server_header || '--';
+    const powered = d.powered_by   || '--';
+    const finalUrl = d.final_url || toolResult.target || '--';
+    const statusCode = d.status_code || '--';
+    const cname = Array.isArray(d.dns_cname_chain) ? d.dns_cname_chain : [];
+
+    // ── Header badge: total + confidence breakdown ─────────────────
+    const headerBadge = total > 0
+        ? `<span class="badge success"><i class="fas fa-microchip"></i> ${total} Detected</span>`
+        : `<span class="badge"><i class="fas fa-minus-circle"></i> Nothing Detected</span>`;
+
+    // ── Hero summary ───────────────────────────────────────────────
+    let html = `<div class="result-card tf-card">
+        <div class="result-card-header">
+            <strong><i class="fas fa-microchip" style="color:var(--red-400);margin-right:6px;"></i> Technology Fingerprint</strong>
+            ${headerBadge}
+        </div>
+
+        <div class="tf-target-row">
+            <i class="fas fa-crosshairs"></i>
+            <span class="tf-target-url">${_tfEsc(finalUrl)}</span>
+            <span class="tf-status-chip">${_tfEsc(statusCode)}</span>
+        </div>`;
+
+    // ── Server / Powered-by / CNAME strip ──────────────────────────
+    html += `<div class="tf-meta-strip">
+        <div class="tf-meta-item">
+            <span class="tf-meta-label">Server</span>
+            <span class="tf-meta-value">${_tfEsc(server)}</span>
+        </div>
+        <div class="tf-meta-item">
+            <span class="tf-meta-label">Powered By</span>
+            <span class="tf-meta-value">${_tfEsc(powered)}</span>
+        </div>`;
+    if(cname.length){
+        html += `<div class="tf-meta-item tf-meta-item-wide">
+            <span class="tf-meta-label">DNS CNAME</span>
+            <span class="tf-meta-value tf-mono">${cname.map(_tfEsc).join(' <i class="fas fa-arrow-right" style="font-size:0.6rem;opacity:0.5;"></i> ')}</span>
+        </div>`;
+    }
+    html += `</div>`;
+
+    // ── Confidence summary chips ──────────────────────────────────
+    if(total > 0){
+        html += `<div class="tf-conf-row">
+            <div class="tf-conf-pill tf-conf-high">
+                <span class="tf-conf-dot" style="background:var(--green);"></span>
+                <span class="tf-conf-num">${confCounts.high}</span>
+                <span class="tf-conf-label">High</span>
+            </div>
+            <div class="tf-conf-pill tf-conf-medium">
+                <span class="tf-conf-dot" style="background:var(--amber);"></span>
+                <span class="tf-conf-num">${confCounts.medium}</span>
+                <span class="tf-conf-label">Medium</span>
+            </div>
+            <div class="tf-conf-pill tf-conf-low">
+                <span class="tf-conf-dot" style="background:var(--steel);"></span>
+                <span class="tf-conf-num">${confCounts.low}</span>
+                <span class="tf-conf-label">Low</span>
+            </div>
+        </div>`;
+    }
+
+    // ── Empty state ────────────────────────────────────────────────
+    if(total === 0){
+        html += `<div class="scn-empty" style="margin-top:12px;">
+            <i class="fas fa-info-circle"></i>
+            No technologies were confidently detected. The target may be heavily
+            proxied, serve only an error page, or use technologies outside the
+            current signature database.
+        </div></div>`;
+        return html;
+    }
+
+    // ── Category grid: group detections by category ────────────────
+    const byCat = {};
+    for(const det of detections){
+        const cat = det.category || 'Other';
+        (byCat[cat] = byCat[cat] || []).push(det);
+    }
+    // Sort categories by highest-confidence detection first
+    const confRank = { high:3, medium:2, low:1 };
+    const catOrder = Object.keys(byCat).sort((a,b)=>{
+        const aMax = Math.max(...byCat[a].map(x=>confRank[x.confidence]||0));
+        const bMax = Math.max(...byCat[b].map(x=>confRank[x.confidence]||0));
+        if(aMax !== bMax) return bMax - aMax;
+        return a.localeCompare(b);
+    });
+
+    for(const cat of catOrder){
+        const items = byCat[cat];
+        const icon = _tfCategoryIcon(cat);
+        html += `<div class="tf-category-block">
+            <div class="tf-category-header">
+                <i class="fas ${icon}"></i>
+                <span>${_tfEsc(cat)}</span>
+                <span class="tf-category-count">${items.length}</span>
+            </div>
+            <div class="tf-category-grid">`;
+
+        for(const det of items){
+            const tone = _tfConfidenceTone(det.confidence);
+            const version = det.version ? `v${_tfEsc(det.version)}` : '';
+            const evidence = Array.isArray(det.evidence) ? det.evidence : [];
+
+            html += `<div class="tf-tech-card" data-tf-name="${_tfEsc(det.name)}">
+                <div class="tf-tech-head">
+                    <span class="tf-tech-name">${_tfEsc(det.name)}</span>
+                    ${version ? `<span class="tf-tech-version">${version}</span>` : ''}
+                </div>
+                <div class="tf-tech-foot">
+                    <span class="tf-tech-conf"
+                          style="color:${tone.color};background:${tone.bg};border-color:${tone.color};">
+                        ${tone.label}
+                    </span>
+                    ${evidence.length ? `
+                        <button class="tf-evidence-toggle" type="button" title="Show evidence">
+                            <i class="fas fa-search-plus"></i> ${evidence.length}
+                        </button>
+                    ` : ''}
+                </div>
+                ${evidence.length ? `
+                    <div class="tf-evidence-list" hidden>
+                        ${evidence.map(ev=>`<div class="tf-evidence-item">${_tfEsc(ev)}</div>`).join('')}
+                    </div>
+                ` : ''}
+            </div>`;
+        }
+        html += `</div></div>`;
+    }
+
+    // ── Footer: favicon + probe paths ──────────────────────────────
+    const footerBits = [];
+    if(d.favicon_sha256){
+        footerBits.push(`<span class="tf-foot-item"><i class="fas fa-image"></i> favicon SHA-256: <code>${_tfEsc(d.favicon_sha256.slice(0,16))}…</code></span>`);
+    }
+    if(Array.isArray(d.extra_paths_probed) && d.extra_paths_probed.length){
+        footerBits.push(`<span class="tf-foot-item"><i class="fas fa-sitemap"></i> probed: <code>${d.extra_paths_probed.map(_tfEsc).join(', ')}</code></span>`);
+    }
+    if(typeof d.script_src_count === 'number'){
+        footerBits.push(`<span class="tf-foot-item"><i class="fas fa-code"></i> ${d.script_src_count} script/link srcs</span>`);
+    }
+    if(footerBits.length){
+        html += `<div class="tf-footer">${footerBits.join('')}</div>`;
+    }
+
+    html += `</div>`;
+    return html;
 }
 
 // ─── HISTORY ────────────────────────────────────────────────

@@ -40,3 +40,14 @@
 2026-09-24 10:55:28,075 [INFO] [http_logger] attached to Flask app (buffer=5000)
 2026-09-24 10:56:36,308 [INFO] Scan started: job=f5eeac9a-613d-4cf7-a1ca-118e7301608c target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
 2026-09-24 10:56:36,644 [WARNING] ipapi.co gagal untuk 2606:4700:3036::ac43:b11c: 429 Client Error: Too Many Requests for url: https://ipapi.co/2606:4700:3036::ac43:b11c/json/
+2026-09-24 11:11:03,440 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 11:11:03,441 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 11:14:16,057 [INFO] Scan started: job=cdc7829f-7d96-4391-9739-cbb1053e56c3 target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-24 11:30:55,647 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 11:30:55,647 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 11:31:33,038 [INFO] Scan started: job=08552fcc-9948-4418-bc95-97bde600191b target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'port_scan', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-24 11:31:35,378 [WARNING] ipapi.co gagal untuk 2606:4700:3036::ac43:b11c: 429 Client Error: Too Many Requests for url: https://ipapi.co/2606:4700:3036::ac43:b11c/json/
+2026-09-24 11:37:03,038 [INFO] Scan started: job=56c3231f-066c-4081-82e2-dd51d8a12c2e target=tempail.com mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-24 11:44:50,627 [INFO] Scan started: job=dda0a902-ffb2-48bf-94dc-517a0654b503 target=devtools.biz.id mode=basic tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'port_scan', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-24 11:50:18,269 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 11:50:18,270 [INFO] [http_logger] attached to Flask app (buffer=5000)
