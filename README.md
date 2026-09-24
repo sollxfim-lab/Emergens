@@ -1,7 +1,6 @@
 # Emergens — Security Testing & Exploiter Dashboard
 
->If granted authorization solely for testing or for use on your own website, the creator of this tool assumes no liability for any actions taken.
-
+>Use of this tool is permitted only when you have obtained explicit authorization from the system owner and only for lawful purposes, such as authorized security testing or use on websites you own or control. The creator and contributors provide this tool “as is,” without warranties of any kind, and assume no liability for any misuse, damage, loss, service interruption, legal consequence, or other outcome arising from its use. You are solely responsible for obtaining proper authorization and complying with all applicable laws and regulations. By using this tool, you accept full responsibility for your actions.
 ## Features
 
 - Username and password login with roles: Owner, Analyst, Viewer. No public account registration. The `Yanxzyx` account with Owner role is created automatically by `app.py` on first run. The password is shown once in the console.
