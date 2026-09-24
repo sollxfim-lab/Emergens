@@ -1,61 +1,57 @@
 """
-Oxysintx — Scan Orchestrator (v3.0.0)
+Oxysintx — Scan Orchestrator (v3.1.0)
 
-Background job manager for running passive security scanning tools.
-
-================================================================================
-OVERVIEW
-================================================================================
-This module auto-discovers *scan* tools from the ``modules`` package and runs
-them safely in the background with concurrency, cancellation, timeouts, and
-history integration.
-
-A module is treated as a **scan tool** if all of the following are true:
-    1. It lives inside the ``modules`` package
-    2. Its name does not start with ``_``
-    3. Its name is not in ``_EXCLUDED_MODULES``
-    4. It exposes a callable ``run(target, mode, **kwargs)``
-    5. It does **not** declare ``IS_SCAN_TOOL = False``
-    6. Its ``TOOL_KIND`` (if present) is not in ``_NON_SCAN_KINDS``
+Background job manager for running security scanning tools.
 
 ================================================================================
-DELIBERATELY EXCLUDED — NOT SCAN TOOLS
+WHAT APPEARS IN "SECURITY TESTING"
 ================================================================================
-The following modules are **never** registered as scanners, even though some of
-them expose a ``run()`` function, because they are:
+The dashboard's Security Testing carousel is populated from `/api/tools`,
+which is built from ``ScanOrchestrator.list_tools()`` → ``TOOL_MAP``.
 
-    • Exploitation / attack tools  → sql_injection, xss_exploiter, brute_force,
-                                      subdomain_takeover, c2, exploit_repository
-    • Infrastructure               → scan_orchestrator, source_viewer, _common
-    • Bots / integrations          → telegram, whatsapp, quick_menu
-    • Code test workspace          → testing, adios
-    • Engine subprocess            → start (MHDDoS)
-    • The lightweight XSS scanner  → xss   (superseded by xss_exploiter)
-    • The lightweight SQLi scanner → sql_map / sqli_engine are used through
-                                      their dedicated routes in app.py, not
-                                      through the orchestrator.
+By design, the following modules **are visible** in Security Testing:
+    • sql_map         → "SQLMap (SQL Injection)"
+    • xss_exploiter   → "XSS Exploiter"
+    • every other module in modules/ that exposes run() and is not excluded
+      (whois_lookup, dns_lookup, ssl_check, headers_check, ip_info,
+      connectivity_check, email_security, subdomain_enum, tech_fingerprint,
+      port_scan, etc.)
 
-To add a new *scanner*, drop a file in ``modules/`` exposing ``run()`` + optional
-``TOOL_INFO``. The orchestrator picks it up on the next restart (or on a call to
-``ScanOrchestrator.reload_tools()``).
+By design, the following modules are **excluded from Security Testing** and
+are available ONLY from the Exploit Suite panel:
+    • dirfuzz         → Directory / File Fuzzer
+    • sqli_engine     → SQLi Engine (advanced, 4 techniques)
+    • sql_injection   → Lightweight SQLi scanner
+    • xss             → Lightweight XSS scanner
+    • sniper          → Auto-Exploiter orchestrator
 
-================================================================================
-Adding a new scanner — example
-================================================================================
-    # modules/my_scanner.py
-    TOOL_INFO = {
-        "name": "My Scanner",
-        "version": "1.0.0",
-        "description": "Passive recon for X, Y, Z",
-        "category": "Recon",
-        "author": "You",
-    }
-    TOOL_KIND = "scanner"          # or "recon" / "lookup"  — never "exploit"
-
-    def run(target: str, mode: str, **kwargs) -> dict:
-        return {"tool": "my_scanner", "target": target, "data": {...}, "error": None}
+The following modules are **never** treated as tools:
+    • scan_orchestrator, source_viewer, _common
+    • telegram, whatsapp, quick_menu
+    • testing, adios, c2, start (MHDDoS engine)
+    • brute_force, subdomain_takeover, exploit_repository
+    • analytic_manager, history_store
 
 ================================================================================
+CALLING CONVENTIONS
+================================================================================
+Two conventions exist in the modules/ tree:
+
+    1. mode-string style:
+           run(target: str, mode: str, **kwargs) -> dict
+       Used by: sql_map, xss, sql_injection, port_scan, dns_lookup, ...
+
+    2. options-dict style:
+           run(target: str, options: dict) -> dict
+       Used by: xss_exploiter, sqli_engine, dirfuzz, sniper
+
+The orchestrator's ``_call_tool()`` helper inspects the module name and
+dispatches to the correct convention. If a module is not listed in
+``_OPTIONS_STYLE_MODULES`` it is assumed to be mode-string style.
+
+To add a new scanner: drop a file in modules/ with the mode-string run() and
+optionally a TOOL_INFO dict. It is auto-discovered on the next restart.
+
 Author: Yanxzyx
 """
 
@@ -73,17 +69,20 @@ from typing import Any, Callable, Dict, List, Optional, Set
 import modules as modules_pkg
 
 # =============================================================================
-# Configuration
+# Metadata
 # =============================================================================
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 __author__ = "Yanxzyx"
 
-MAX_CONCURRENT_SCANS        = 3            # simultaneous jobs
-SCAN_TIMEOUT_SECONDS        = 600          # global per-job timeout (10 min)
-JOB_CLEANUP_AFTER_SECONDS   = 3600         # keep finished jobs in RAM for 1 h
-TOOL_INIT_TIMEOUT_SECONDS   = 120          # per-tool soft timeout (informational)
+# =============================================================================
+# Configuration
+# =============================================================================
+MAX_CONCURRENT_SCANS      = 3
+SCAN_TIMEOUT_SECONDS      = 600
+JOB_CLEANUP_AFTER_SECONDS = 3600
+TOOL_INIT_TIMEOUT_SECONDS = 120
 
-# Default scanner set for "basic" mode (fast passive checks)
+# Basic mode: fast passive recon
 DEFAULT_BASIC_TOOLS: List[str] = [
     "whois_lookup",
     "dns_lookup",
@@ -97,18 +96,15 @@ DEFAULT_BASIC_TOOLS: List[str] = [
     "port_scan",
 ]
 
-# "expert" mode auto-fills with every discovered tool at runtime
+# Expert mode: auto-filled with every discovered tool
 DEFAULT_EXPERT_TOOLS: Optional[List[str]] = None
 
 logger = logging.getLogger("oxysintx.scan_orchestrator")
 
 
 # =============================================================================
-# Tool discovery
+# Exclusion list
 # =============================================================================
-# Modules that must NEVER be treated as scan tools.
-# Grouped for readability — this list is the single source of truth for
-# exclusions, and is enforced on every (re)discovery.
 _EXCLUDED_MODULES: Set[str] = {
     # ── Orchestrator / infra ─────────────────────────────────────────────
     "scan_orchestrator",
@@ -120,7 +116,7 @@ _EXCLUDED_MODULES: Set[str] = {
     "whatsapp",
     "quick_menu",
 
-    # ── Code workspace / helper sub‑modules ──────────────────────────────
+    # ── Code workspace / helper sub-modules ──────────────────────────────
     "testing",
     "adios",
     "c2",
@@ -128,23 +124,24 @@ _EXCLUDED_MODULES: Set[str] = {
     # ── Engine subprocess (MHDDoS) ───────────────────────────────────────
     "start",
 
-    # ── Exploitation / attack modules (NOT scanners) ─────────────────────
-    #    These have their own dedicated API routes in app.py.
-    "sql_injection",
-    "sql_map",
+    # ── Exploit Suite ONLY (kept out of Security Testing carousel) ───────
+    "dirfuzz",
     "sqli_engine",
+    "sql_injection",
     "xss",
-    "xss_exploiter",
+    "sniper",
+
+    # ── Attack / exploit tools — never scanners ──────────────────────────
     "brute_force",
     "subdomain_takeover",
     "exploit_repository",
 
-    # ── Analytic store / aggregation layer ───────────────────────────────
+    # ── Analytic store / history ─────────────────────────────────────────
     "analytic_manager",
     "history_store",
 }
 
-# A module's declared TOOL_KIND is respected — these values mean "not a scanner"
+# Module's declared TOOL_KIND — any of these means "not a scanner"
 _NON_SCAN_KINDS: Set[str] = {
     "exploit",
     "exploitation",
@@ -155,7 +152,39 @@ _NON_SCAN_KINDS: Set[str] = {
     "utility",
 }
 
+# Modules that use the options-dict calling convention: run(target, options)
+_OPTIONS_STYLE_MODULES: Set[str] = {
+    "xss_exploiter",
+    "sqli_engine",
+    "dirfuzz",
+    "sniper",
+}
 
+# Per-mode defaults applied when an options-style module is invoked.
+# The keys are module names; values map {mode: {default_options}}.
+_OPTIONS_STYLE_MODE_DEFAULTS: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "xss_exploiter": {
+        "basic":  {"max_payloads": 20, "max_params": 8,  "concurrency": 6,  "waf_bypass": False},
+        "expert": {"max_payloads": 60, "max_params": 15, "concurrency": 12, "waf_bypass": True},
+    },
+    "sqli_engine": {
+        "basic":  {"techniques": ["error", "boolean"], "max_params": 8},
+        "expert": {"techniques": ["error", "boolean", "time", "union"], "max_params": 15},
+    },
+    "dirfuzz": {
+        "basic":  {"max_paths": 100, "concurrency": 16},
+        "expert": {"max_paths": 400, "concurrency": 32},
+    },
+    "sniper": {
+        "basic":  {"module_timeout": 60.0,  "global_budget": 90.0},
+        "expert": {"module_timeout": 120.0, "global_budget": 240.0},
+    },
+}
+
+
+# =============================================================================
+# Tool discovery
+# =============================================================================
 def discover_tools() -> Dict[str, Any]:
     """
     Walk the ``modules`` package and return ``{name: module}`` for every
@@ -164,18 +193,16 @@ def discover_tools() -> Dict[str, Any]:
     A module qualifies if all of these hold:
         • its name is not in ``_EXCLUDED_MODULES``
         • its name does not start with ``_``
+        • it is a single-file module (not a nested package)
         • it exposes a callable ``run``
         • it does not set ``IS_SCAN_TOOL = False``
-        • its ``TOOL_KIND`` is not in ``_NON_SCAN_KINDS``
+        • its ``TOOL_KIND`` (if present) is not in ``_NON_SCAN_KINDS``
     """
     tools: Dict[str, Any] = {}
 
     for _, name, is_pkg in pkgutil.iter_modules(modules_pkg.__path__):
-        # Skip private sub-packages and anything explicitly excluded
         if name.startswith("_") or name in _EXCLUDED_MODULES:
             continue
-
-        # Skip nested packages — tools are single-file modules
         if is_pkg:
             continue
 
@@ -185,18 +212,15 @@ def discover_tools() -> Dict[str, Any]:
             logger.warning("Failed to import modules.%s: %s", name, exc, exc_info=True)
             continue
 
-        # Must expose run()
         run_fn = getattr(mod, "run", None)
         if not callable(run_fn):
             logger.debug("modules.%s skipped — no callable run()", name)
             continue
 
-        # Explicit opt-out
         if getattr(mod, "IS_SCAN_TOOL", True) is False:
             logger.info("modules.%s skipped — IS_SCAN_TOOL=False", name)
             continue
 
-        # Respect declared kind
         kind = str(getattr(mod, "TOOL_KIND", "") or "").strip().lower()
         if kind in _NON_SCAN_KINDS:
             logger.info("modules.%s skipped — TOOL_KIND=%s", name, kind)
@@ -209,22 +233,55 @@ def discover_tools() -> Dict[str, Any]:
     return tools
 
 
-# Initial discovery at import time
+# Initial discovery
 TOOL_MAP: Dict[str, Any] = discover_tools()
 DEFAULT_EXPERT_TOOLS = sorted(TOOL_MAP.keys())
 logger.info("Discovered %d scan tool(s): %s", len(TOOL_MAP), sorted(TOOL_MAP))
 
 
 def _parse_tools(requested: List[str]) -> List[str]:
-    """
-    Filter ``requested`` to only those names that are known scan tools.
-    Falls back to the basic set if nothing matches.
-    """
+    """Filter ``requested`` to known tools. Falls back to the basic set."""
     valid = [t for t in requested if t in TOOL_MAP]
     if not valid:
         logger.warning("No valid tools requested; falling back to basic set")
         valid = [t for t in DEFAULT_BASIC_TOOLS if t in TOOL_MAP]
     return valid
+
+
+# =============================================================================
+# Universal tool invoker — handles both calling conventions
+# =============================================================================
+def _call_tool(
+    module_name: str,
+    module: Any,
+    target: str,
+    mode: str,
+    tool_options: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Invoke a module's ``run()`` respecting its calling convention.
+
+    • Options-style modules (``run(target, options)``):
+        Build an options dict from the module's per-mode defaults, merged
+        with any caller overrides, then call ``run(target, options)``.
+
+    • Mode-string modules (``run(target, mode, **kwargs)``):
+        Call directly with positional ``mode`` and unpacked kwargs.
+    """
+    tool_options = tool_options or {}
+    run_fn: Callable = module.run
+
+    if module_name in _OPTIONS_STYLE_MODULES:
+        opts: Dict[str, Any] = {}
+        defaults = _OPTIONS_STYLE_MODE_DEFAULTS.get(module_name, {}).get(mode, {})
+        opts.update(defaults)
+        opts.update(tool_options)
+        # Preserve the mode as a hint for modules that accept it
+        opts.setdefault("mode", mode)
+        return run_fn(target, opts)
+
+    # Default: mode-string convention
+    return run_fn(target, mode, **tool_options)
 
 
 # =============================================================================
@@ -241,7 +298,7 @@ class ScanJob:
     cancel_event:  threading.Event
 
     tool_options:  Dict[str, Any] = field(default_factory=dict)
-    status:        str = "pending"          # pending|running|completed|cancelled|timeout|error
+    status:        str = "pending"
     percent:       int = 0
     current_tool:  Optional[str] = None
     results:       Dict[str, Any] = field(default_factory=dict)
@@ -250,7 +307,6 @@ class ScanJob:
     finished_at:   Optional[float] = None
     _thread:       Optional[threading.Thread] = None
 
-    # ── Public view ──────────────────────────────────────────────────────
     def to_dict(self) -> Dict[str, Any]:
         """Return a JSON-safe snapshot of this job."""
         return {
@@ -278,9 +334,9 @@ class ScanOrchestrator:
     """
     Thread-safe manager for background scan jobs.
 
-    The orchestrator uses a bounded semaphore to cap concurrent work,
-    propagates cancellation via ``threading.Event``, enforces a global
-    per-job timeout, and writes every job's outcome into the history store.
+    Uses a bounded semaphore to cap concurrent work, propagates cancellation
+    via ``threading.Event``, enforces a global per-job timeout, and writes
+    each job's outcome into the history store.
     """
 
     def __init__(
@@ -289,12 +345,12 @@ class ScanOrchestrator:
         timeout:        int = SCAN_TIMEOUT_SECONDS,
         cleanup_after:  int = JOB_CLEANUP_AFTER_SECONDS,
     ):
-        self._jobs:        Dict[str, ScanJob] = {}
-        self._lock:        threading.Lock     = threading.Lock()
-        self._semaphore:   threading.BoundedSemaphore = threading.BoundedSemaphore(
+        self._jobs:          Dict[str, ScanJob] = {}
+        self._lock:          threading.Lock = threading.Lock()
+        self._semaphore:     threading.BoundedSemaphore = threading.BoundedSemaphore(
             max(1, int(max_concurrent))
         )
-        self._timeout:     int = int(timeout)
+        self._timeout:       int = int(timeout)
         self._cleanup_after: int = int(cleanup_after)
 
     # ------------------------------------------------------------------
@@ -321,7 +377,7 @@ class ScanOrchestrator:
         return tool_name in TOOL_MAP
 
     # ------------------------------------------------------------------
-    # Direct (synchronous) invocation — bypasses the job queue
+    # Direct (synchronous) invocation — respects calling conventions
     # ------------------------------------------------------------------
     def run_tool_sync(
         self,
@@ -331,15 +387,15 @@ class ScanOrchestrator:
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
-        Run a single tool and return its result. Useful for one-shot API
-        calls (e.g. ``POST /api/scan/<tool_name>``).
+        Run a single tool and return its result. Handles both mode-string
+        and options-dict conventions.
         """
         if tool_name not in TOOL_MAP:
             raise ValueError(f"Unknown tool: {tool_name}")
 
         module = TOOL_MAP[tool_name]
         try:
-            return module.run(target, mode, **kwargs)
+            return _call_tool(tool_name, module, target, mode, kwargs)
         except Exception as exc:  # noqa: BLE001
             logger.error("Direct tool %s failed: %s", tool_name, exc, exc_info=True)
             return {
@@ -370,13 +426,13 @@ class ScanOrchestrator:
         mode : str
             ``"basic"`` or ``"expert"``.
         tools : list[str]
-            Requested tool names. Empty list → default set for ``mode``.
+            Requested tool names. Empty → default set for ``mode``.
         history_store : HistoryStore
             Store used to persist the scan entry and results.
         tool_options : dict, optional
-            Extra ``kwargs`` forwarded to every tool's ``run()`` call.
+            Extra kwargs forwarded to every tool's ``run()``.
         """
-        # Resolve the effective tool list
+        # Resolve effective tool list
         if not tools:
             tools = (
                 list(DEFAULT_EXPERT_TOOLS or [])
@@ -427,16 +483,13 @@ class ScanOrchestrator:
         return job_id
 
     def get_progress(self, job_id: str) -> Optional[Dict[str, Any]]:
-        """Return the current state of a job, or ``None`` if unknown."""
+        """Return current state of a job, or ``None`` if unknown."""
         with self._lock:
             job = self._jobs.get(job_id)
         return job.to_dict() if job else None
 
     def cancel_scan(self, job_id: str) -> bool:
-        """
-        Signal a running job to stop. Returns True if the job was found
-        and is still in a cancellable state.
-        """
+        """Signal a running job to stop. Returns True if found and running."""
         with self._lock:
             job = self._jobs.get(job_id)
             if job and job.status in ("pending", "running"):
@@ -489,7 +542,7 @@ class ScanOrchestrator:
                 job.current_tool = tool_name
                 job.percent      = int((idx / total_tools) * 100)
 
-                # ── Run the tool ──────────────────────────────────────
+                # ── Run the tool (respects calling convention) ────────
                 tool_module = TOOL_MAP.get(tool_name)
                 if tool_module is None:
                     job.results[tool_name] = {
@@ -501,10 +554,12 @@ class ScanOrchestrator:
                     continue
 
                 try:
-                    result = tool_module.run(
+                    result = _call_tool(
+                        tool_name,
+                        tool_module,
                         job.target,
                         job.mode,
-                        **job.tool_options,
+                        job.tool_options,
                     )
                 except Exception as exc:  # noqa: BLE001
                     logger.error(
@@ -562,7 +617,7 @@ class ScanOrchestrator:
     # Housekeeping
     # ------------------------------------------------------------------
     def _cleanup_old_jobs(self) -> None:
-        """Drop finished jobs that are older than the retention window."""
+        """Drop finished jobs older than the retention window."""
         now = time.time()
         with self._lock:
             stale = [
@@ -575,10 +630,7 @@ class ScanOrchestrator:
                 logger.debug("Job %s removed from memory (cleanup)", jid)
 
     def reload_tools(self) -> None:
-        """
-        Re-run module discovery and rebuild the tool registry. Useful when
-        new scanner modules are added while the server is running.
-        """
+        """Re-run module discovery and rebuild the tool registry."""
         global TOOL_MAP, DEFAULT_EXPERT_TOOLS
         TOOL_MAP = discover_tools()
         DEFAULT_EXPERT_TOOLS = sorted(TOOL_MAP.keys())
@@ -591,15 +643,33 @@ class ScanOrchestrator:
 # =============================================================================
 def get_registry_snapshot() -> Dict[str, Any]:
     """
-    Return a lightweight summary of the current registry. Handy for
-    diagnostics and the /api/modules/status endpoint.
+    Return a lightweight summary of the current registry. Useful for
+    diagnostics and the ``/api/modules/status`` endpoint.
     """
     return {
-        "version":        __version__,
-        "tool_count":     len(TOOL_MAP),
-        "tools":          sorted(TOOL_MAP.keys()),
-        "basic_tools":    [t for t in DEFAULT_BASIC_TOOLS if t in TOOL_MAP],
-        "expert_tools":   list(DEFAULT_EXPERT_TOOLS or []),
-        "excluded":       sorted(_EXCLUDED_MODULES),
-        "non_scan_kinds": sorted(_NON_SCAN_KINDS),
+        "version":          __version__,
+        "tool_count":       len(TOOL_MAP),
+        "tools":            sorted(TOOL_MAP.keys()),
+        "basic_tools":      [t for t in DEFAULT_BASIC_TOOLS if t in TOOL_MAP],
+        "expert_tools":     list(DEFAULT_EXPERT_TOOLS or []),
+        "excluded":         sorted(_EXCLUDED_MODULES),
+        "non_scan_kinds":   sorted(_NON_SCAN_KINDS),
+        "options_style":    sorted(_OPTIONS_STYLE_MODULES),
     }
+
+
+def call_tool(
+    tool_name: str,
+    target: str,
+    mode: str = "basic",
+    **kwargs: Any,
+) -> Dict[str, Any]:
+    """
+    Module-level convenience wrapper around the universal invoker.
+    Handy for external callers (e.g. app.py) that want the same dispatch
+    logic without instantiating an orchestrator.
+    """
+    module = TOOL_MAP.get(tool_name)
+    if module is None:
+        raise ValueError(f"Unknown tool: {tool_name}")
+    return _call_tool(tool_name, module, target, mode, kwargs)
