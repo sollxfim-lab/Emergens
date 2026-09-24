@@ -1,19 +1,28 @@
 #!/usr/bin/env python3
 """
-Oxysintx - Main Flask Application (v3.9.0)
+Oxysintx — Main Flask Application (v4.0.0)
 
 Routing and API. MHDDoS engine (start.py) integrated as external subprocess.
 Attack launches directly on user request.
 
-v3.9.0 changelog
-    • /api/tools now returns { tools, availability, count } — a clean,
-      namespaced shape so the frontend never renders phantom cards from
-      internal metadata keys (fixes the "_availability" leak).
-    • Defensive filtering: any key starting with "_" or equal to
-      "availability" / "count" / "error" / "raw" is dropped server-side.
-    • Availability report is returned as a sibling field, not mixed with
-      the tool map.
-    • All remaining behaviour identical to v3.8.1.
+v4.0.0 changelog
+    • Integrated scan_apikey v6.1.1 (Cloudflare bypass + strict FP filter)
+    • New endpoints:
+        – GET  /api/apikey/status
+        – GET  /api/apikey/cf-status
+        – GET  /api/apikey/wordlists
+        – POST /api/apikey/wordlists/sync
+        – GET  /api/apikey/proxies
+        – POST /api/apikey/proxies/sync
+        – POST /api/apikey/scan          (with --min-key-length / --min-entropy)
+    • /api/tools availability map now reports `apikey` capabilities.
+    • /api/modules/status reports apikey module + CF strategy list.
+    • Startup banner shows apikey scanner status.
+    • Fixed: scan_apikey import failure no longer aborts boot.
+
+Preserved from v3.9.0:
+    • /api/tools returns { tools, availability, count } — namespaced shape.
+    • Defensive filtering: internal metadata keys dropped server-side.
 
 Removed in earlier releases:
     – modules.whatsapp blueprint
@@ -162,6 +171,27 @@ try:
     _analytic_available = True
 except ImportError:
     _analytic_available = False
+
+# ── scan_apikey v6.1.1 integration ─────────────────────────────────────
+try:
+    from modules import scan_apikey as apikey_module
+    from modules.scan_apikey import (
+        APIScanner               as apikey_scanner_cls,
+        load_wordlist            as apikey_load_wordlist,
+        ensure_wordlists         as apikey_ensure_wordlists,
+        ensure_proxies           as apikey_ensure_proxies,
+        get_proxy_manager        as apikey_get_proxy_manager,
+        _HAS_CURL_CFFI           as apikey_has_curl_cffi,
+        _HAS_CLOUDSCRAPER        as apikey_has_cloudscraper,
+        FLARESOLVERR_URL         as apikey_flaresolverr_url,
+        __version__              as apikey_version,
+    )
+    _apikey_available = True
+except ImportError as _apikey_import_err:
+    apikey_module = None
+    _apikey_available = False
+    _apikey_import_err_msg = str(_apikey_import_err)
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # STARTUP BANNER
@@ -1285,7 +1315,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/3.9.0"},
+            headers={"User-Agent": "Oxysintx/4.0.0"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1519,20 +1549,15 @@ _INTERNAL_TOOL_KEYS = {"_availability", "__availability__", "availability",
 @api_login_required
 def api_tools():
     """
-    Return the discovered scan tools plus a sibling availability report.
+    Return discovered scan tools + a sibling availability report.
 
-    Response shape (v3.9.0+):
-
+    Response shape (v4.0.0):
         {
-          "tools":        { "<tool_id>": { ...TOOL_INFO... }, ... },
+          "tools":        { "<tool_id>": {...}, ... },
           "availability": { "<feature>": true|false, ... },
           "count":        <int>
         }
-
-    Note: no key starting with "_" or matching an internal marker is ever
-    emitted inside ``tools`` — the frontend can trust every key it sees.
     """
-    # ── 1. Collect tools, dropping any accidental metadata keys ────────
     try:
         raw_tools = scan_orchestrator.list_tools() or {}
     except Exception as exc:  # noqa: BLE001
@@ -1551,7 +1576,6 @@ def api_tools():
             continue
         tools[name] = info
 
-    # ── 2. Availability report — sent as a sibling, never mixed in ─────
     availability = {
         "dirfuzz":          _dirfuzz_available,
         "sqli_engine":      _sqli_engine_available,
@@ -1564,6 +1588,7 @@ def api_tools():
         "wordlist_scraper": _wordlist_scraper_available,
         "analytic":         _analytic_available,
         "downsea":          _downsea_available,
+        "apikey":           _apikey_available,
     }
 
     return jsonify({
@@ -1613,6 +1638,179 @@ def api_scan_tool_direct(tool_name):
         return jsonify(TOOL_MAP[tool_name].run(target, mode))
     except Exception as e:
         return jsonify({"error": "tool_execution_failed", "detail": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# API Key Scanner endpoints (scan_apikey v6.1.1)
+# ═══════════════════════════════════════════════════════════════════════════
+def _apikey_unavailable_response():
+    return jsonify({
+        "error": "apikey module not available",
+        "detail": _apikey_import_err_msg if not _apikey_available else "",
+    }), 503
+
+
+@app.route("/api/apikey/status")
+@api_login_required
+def api_apikey_status():
+    if not _apikey_available:
+        return _apikey_unavailable_response()
+    try:
+        proxy_mgr = apikey_get_proxy_manager(auto_sync=False)
+        proxy_stats = proxy_mgr.stats() if proxy_mgr else None
+    except Exception:
+        proxy_stats = None
+    return jsonify({
+        "available":    True,
+        "version":      apikey_version,
+        "cf_bypass": {
+            "enabled":         True,
+            "curl_cffi":       apikey_has_curl_cffi,
+            "cloudscraper":    apikey_has_cloudscraper,
+            "flaresolverr":    bool(apikey_flaresolverr_url),
+        },
+        "proxy": proxy_stats,
+        "filter_config": {
+            "min_key_length": getattr(apikey_module, "MIN_EXTRACTED_LENGTH", 10),
+            "min_entropy":    getattr(apikey_module, "MIN_SECRET_ENTROPY", 2.8),
+            "keyword_min_len": getattr(apikey_module, "KEYWORD_MIN_LENGTH", 8),
+        },
+    })
+
+
+@app.route("/api/apikey/cf-status")
+@api_login_required
+def api_apikey_cf_status():
+    if not _apikey_available:
+        return _apikey_unavailable_response()
+    strategies = []
+    if apikey_has_curl_cffi:
+        strategies.append("curl_cffi (TLS impersonate Chrome)")
+    if apikey_has_cloudscraper:
+        strategies.append("cloudscraper (JS solver)")
+    if apikey_flaresolverr_url:
+        strategies.append("flaresolverr (external)")
+    strategies.append("manual (headers + UA + cookies)")
+    return jsonify({
+        "curl_cffi_available":    apikey_has_curl_cffi,
+        "cloudscraper_available": apikey_has_cloudscraper,
+        "flaresolverr_url":       apikey_flaresolverr_url or "(not set)",
+        "strategies":             strategies,
+        "version":                apikey_version,
+    })
+
+
+@app.route("/api/apikey/wordlists")
+@api_login_required
+def api_apikey_wordlists():
+    if not _apikey_available:
+        return _apikey_unavailable_response()
+    try:
+        return jsonify(apikey_ensure_wordlists(force=False))
+    except Exception as e:
+        logger.error(f"apikey wordlists status failed: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/apikey/wordlists/sync", methods=["POST"])
+@role_required("owner", "analyst")
+def api_apikey_wordlists_sync():
+    if not _apikey_available:
+        return _apikey_unavailable_response()
+    try:
+        return jsonify(apikey_ensure_wordlists(force=True))
+    except Exception as e:
+        logger.error(f"apikey wordlists sync failed: {e}", exc_info=True)
+        return jsonify({"error": "sync_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/apikey/proxies")
+@api_login_required
+def api_apikey_proxies():
+    if not _apikey_available:
+        return _apikey_unavailable_response()
+    try:
+        proxy_mgr = apikey_get_proxy_manager(auto_sync=False)
+        return jsonify({
+            "directory": str(proxy_mgr.proxy_dir) if proxy_mgr else "",
+            "all_file":  str(proxy_mgr.all_path) if proxy_mgr else "",
+            "meta_file": str(proxy_mgr.meta_path) if proxy_mgr else "",
+            "stats":     proxy_mgr.stats() if proxy_mgr else None,
+        })
+    except Exception as e:
+        logger.error(f"apikey proxy status failed: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/apikey/proxies/sync", methods=["POST"])
+@role_required("owner", "analyst")
+def api_apikey_proxies_sync():
+    if not _apikey_available:
+        return _apikey_unavailable_response()
+    try:
+        return jsonify(apikey_ensure_proxies(force=True))
+    except Exception as e:
+        logger.error(f"apikey proxies sync failed: {e}", exc_info=True)
+        return jsonify({"error": "sync_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/apikey/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_apikey_scan():
+    """
+    Direct apikey scan with tuning options.
+
+    Body:
+        {
+          "target":         "https://example.com",   # or file/dir path
+          "mode":           "basic" | "expert",
+          "min_key_length": 10,                       # optional (int)
+          "min_entropy":    2.8,                      # optional (float)
+          "entropy_threshold": 4.5,                   # expert-mode entropy floor
+          "no_proxy":       false,
+          "no_cf_bypass":   false,
+          "max_proxy_attempts": 4
+        }
+    """
+    if not _apikey_available:
+        return _apikey_unavailable_response()
+
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+
+    mode = data.get("mode", "basic")
+    if mode not in ("basic", "expert"):
+        mode = "basic"
+
+    # Apply per-request tuning (module-level globals, thread-safe enough
+    # for low-frequency admin scans; if you need true isolation spin
+    # APIScanner with class-level overrides instead).
+    try:
+        if "min_key_length" in data:
+            apikey_module.MIN_EXTRACTED_LENGTH = max(4, int(data["min_key_length"]))
+        if "min_entropy" in data:
+            apikey_module.MIN_SECRET_ENTROPY = max(0.0, float(data["min_entropy"]))
+    except (ValueError, TypeError):
+        pass
+
+    try:
+        scanner = apikey_scanner_cls(
+            mode=mode,
+            entropy_threshold=float(data.get("entropy_threshold", 4.5)),
+            deduplicate=True,
+            follow_symlinks=False,
+            include_external=True,
+            use_proxy=not bool(data.get("no_proxy", False)),
+            max_proxy_attempts=int(data.get("max_proxy_attempts", 4)),
+            use_cloudflare_bypass=not bool(data.get("no_cf_bypass", False)),
+        )
+        result = scanner.run(target)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"apikey scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2974,12 +3172,50 @@ def v1_scan_status(job_id):
     return jsonify(progress)
 
 
+@app.route('/api/v1/apikey/scan', methods=['POST'])
+@_api_key_required
+def v1_apikey_scan():
+    """External API-key-authenticated apikey scanner entry point."""
+    if not _apikey_available:
+        return jsonify({'error': 'apikey module not available'}), 503
+    body = request.get_json(silent=True) or {}
+    target = (body.get('target') or body.get('url') or '').strip()
+    if not target:
+        return jsonify({'error': 'target_required'}), 400
+    mode = body.get('mode', 'basic')
+    if mode not in ('basic', 'expert'):
+        mode = 'basic'
+    try:
+        scanner = apikey_scanner_cls(
+            mode=mode,
+            entropy_threshold=float(body.get('entropy_threshold', 4.5)),
+            deduplicate=True,
+            use_proxy=not bool(body.get('no_proxy', False)),
+            max_proxy_attempts=int(body.get('max_proxy_attempts', 4)),
+            use_cloudflare_bypass=not bool(body.get('no_cf_bypass', False)),
+        )
+        return jsonify(scanner.run(target))
+    except Exception as e:
+        logger.error(f"v1 apikey scan failed: {e}", exc_info=True)
+        return jsonify({'error': 'scan_failed', 'detail': str(e)}), 500
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Module status
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/modules/status")
 @api_login_required
 def api_modules_status():
+    apikey_status: Dict[str, Any] = {"available": _apikey_available}
+    if _apikey_available:
+        apikey_status.update({
+            "version":         apikey_version,
+            "curl_cffi":       apikey_has_curl_cffi,
+            "cloudscraper":    apikey_has_cloudscraper,
+            "flaresolverr":    bool(apikey_flaresolverr_url),
+            "cf_bypass":       True,
+        })
+
     return jsonify({
         "dirfuzz":          {"available": _dirfuzz_available},
         "sqli_engine":      {"available": _sqli_engine_available,
@@ -2993,6 +3229,7 @@ def api_modules_status():
         "wordlist_scraper": {"available": _wordlist_scraper_available},
         "analytic":         {"available": _analytic_available},
         "downsea":          {"available": _downsea_available},
+        "apikey":           apikey_status,
     })
 
 
@@ -3021,6 +3258,23 @@ def _print_startup(port=None):
     if _downsea_available:          modules.append("downsea")
     if modules:
         info_lines.append(f"  Modules    : {', '.join(modules)}")
+
+    if _apikey_available:
+        cf_flags = []
+        if apikey_has_curl_cffi:    cf_flags.append("curl_cffi")
+        if apikey_has_cloudscraper: cf_flags.append("cloudscraper")
+        if apikey_flaresolverr_url: cf_flags.append("flaresolverr")
+        cf_flags.append("manual")
+        info_lines.append(
+            f"  API Scanner: v{apikey_version} "
+            f"(CF bypass: {'+'.join(cf_flags)})"
+        )
+    else:
+        info_lines.append(
+            "  API Scanner: NOT LOADED — install curl_cffi / cloudscraper "
+            "for full functionality"
+        )
+
     print("\n".join(info_lines), flush=True)
     print(flush=True)
 

@@ -24,3 +24,19 @@
 2026-09-24 10:21:33,217 [INFO] Scan started: job=8dd8f741-f055-47e6-b1e9-83ccea909a5f target=tempail.com mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey']
 2026-09-24 10:26:59,065 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
 2026-09-24 10:26:59,065 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 10:29:57,073 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 10:29:57,073 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 10:31:24,098 [INFO] Scan started: job=dafda56f-7f85-4cf2-8caf-b0c44e6971ac target=devtools.biz.id mode=expert tools=['connectivity_check', 'email_security', 'headers_check', 'scan_apikey']
+2026-09-24 10:32:15,884 [INFO] Scan started: job=03160f1d-4fdd-4e00-8db5-747fa6911ab3 target=cloudflare.cp, mode=expert tools=['connectivity_check', 'email_security', 'headers_check', 'scan_apikey']
+2026-09-24 10:33:01,210 [INFO] Scan started: job=41a7f16e-cbbc-4d60-b569-89d141391277 target=cloudflare.com mode=expert tools=['connectivity_check', 'email_security', 'headers_check', 'scan_apikey']
+2026-09-24 10:40:01,728 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 10:40:01,728 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 10:43:33,027 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 10:43:33,027 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 10:44:27,468 [INFO] Scan started: job=e3608741-dc15-43b3-acc6-c1b8f23f0348 target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'scan_apikey']
+2026-09-24 10:45:44,574 [INFO] Scan started: job=d32a7318-a81f-47ef-819d-a8adae676165 target=cloudflare.com mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-24 10:48:25,301 [INFO] Scan started: job=32a3755c-cc01-48e8-aab7-69f079f0a4aa target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-24 10:55:28,074 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-24 10:55:28,075 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-24 10:56:36,308 [INFO] Scan started: job=f5eeac9a-613d-4cf7-a1ca-118e7301608c target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-24 10:56:36,644 [WARNING] ipapi.co gagal untuk 2606:4700:3036::ac43:b11c: 429 Client Error: Too Many Requests for url: https://ipapi.co/2606:4700:3036::ac43:b11c/json/

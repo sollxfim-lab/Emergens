@@ -831,8 +831,10 @@ function renderResults(results){
             else if(data.attempts!==undefined&&data.avg_ms!==undefined)html+=renderConnectivityResult(toolResult);
             else if(data.A!==undefined||data.MX!==undefined||data.NS!==undefined)html+=renderDnsResult(toolResult);
             else if(data.spf!==undefined||data.dmarc!==undefined||data.dkim_selectors_found!==undefined)html+=renderEmailSecurityResult(toolResult);
-            else if(data.ip&&data.isp&&data.country)html+=renderIpInfoResult(toolResult);
-            else if(toolKey==='ssl_check'||toolKey==='ssl')html+=renderSslResult(toolResult);
+            // SSL checked early — matches by tool key AND by unique field combo so a
+// future module that happens to add an `ip` field can't shadow it.
+else if(toolKey==='ssl_check'||toolKey==='ssl'||data.protocol_weak!==undefined||data.cipher_suite!==undefined)html+=renderSslResult(toolResult);
+else if(data.ip&&data.isp&&data.country)html+=renderIpInfoResult(toolResult);
             else if(data.subdomains&&Array.isArray(data.subdomains))html+=renderSubdomainResult(toolResult);
             else if(data.detected&&Array.isArray(data.detected))html+=renderTechFingerprintResult(toolResult);
             else if(data.findings!==undefined&&data.stats!==undefined)html+=renderScannerResult(toolResult);
@@ -1173,12 +1175,303 @@ function renderIpInfoResult(toolResult){
     return `<div class="result-card"><div class="result-card-header"><strong>IP & Geolocation</strong><span class="badge info"><i class="fas fa-map-marker-alt"></i> ${city}, ${country}</span></div><div class="port-summary-grid"><div class="port-summary-card"><div class="port-summary-value" style="color:var(--steel);font-size:1.2rem;">${ip}</div><div class="port-summary-label">IP Address</div></div><div class="port-summary-card"><div class="port-summary-value" style="color:var(--gold);font-size:1.1rem;">${isp}</div><div class="port-summary-label">ISP</div></div><div class="port-summary-card"><div class="port-summary-value" style="color:var(--green);">${city}</div><div class="port-summary-label">City</div></div><div class="port-summary-card"><div class="port-summary-value" style="color:var(--amber);">${country}</div><div class="port-summary-label">Country</div></div></div><table class="data-table"><tbody><tr><td style="font-weight:600;">ASN</td><td>${asn}</td></tr><tr><td style="font-weight:600;">Organization</td><td>${org}</td></tr></tbody></table></div>`;
 }
 
-function renderSslResult(toolResult){
-    const d=toolResult.data||toolResult;const issuer=d.issuer||d.certificate?.issuer||'--';
-    const expires=d.expires||d.certificate?.expires||'--';const valid=d.valid!==undefined?d.valid:true;
-    return `<div class="result-card"><div class="result-card-header"><strong>SSL/TLS Certificate</strong><span class="badge ${valid?'success':'danger'}"><i class="fas fa-${valid?'lock':'unlock'}"></i> ${valid?'Valid':'Invalid'}</span></div><table class="data-table"><tbody><tr><td style="font-weight:600;">Issuer</td><td>${escapeHtml(String(issuer))}</td></tr><tr><td style="font-weight:600;">Expires</td><td>${escapeHtml(String(expires))}</td></tr></tbody></table></div>`;
+// ─── SSL/TLS Certificate — full renderer for scan_ssl v3.0.0 ─────────────
+// Formats a decoded X.509 name ({commonName, organizationName, ...}) OR a
+// plain string into a single readable line. Falls back gracefully if the
+// value is missing, null, or an unexpected shape.
+function fmtCertName(name){
+    if(name===undefined||name===null||name==='')return '--';
+    if(typeof name==='string')return escapeHtml(name);
+    if(typeof name!=='object')return escapeHtml(String(name));
+    const order=['commonName','organizationName','organizationalUnitName',
+                 'countryName','stateOrProvinceName','localityName',
+                 'emailAddress','serialNumber'];
+    const labels={commonName:'CN',organizationName:'O',
+                  organizationalUnitName:'OU',countryName:'C',
+                  stateOrProvinceName:'ST',localityName:'L',
+                  emailAddress:'E',serialNumber:'SN'};
+    const parts=[];
+    order.forEach(k=>{ if(name[k]) parts.push(`${labels[k]||k}=${name[k]}`); });
+    Object.keys(name).forEach(k=>{
+        if(!order.includes(k) && name[k]) parts.push(`${k}=${name[k]}`);
+    });
+    return parts.length ? escapeHtml(parts.join(' · ')) : '--';
 }
 
+function renderSslResult(toolResult){
+    const d = toolResult.data || toolResult;
+
+    // ── Validity classification ────────────────────────────────────
+    const isExpired    = d.is_expired === true;
+    const expiringSoon = d.expiring_soon === true;
+    const selfSigned   = d.self_signed === true;
+    const daysLeft     = (typeof d.days_until_expiry === 'number') ? d.days_until_expiry : null;
+
+    let validBadge, cardBorder;
+    if(isExpired){
+        validBadge = `<span class="badge danger"><i class="fas fa-triangle-exclamation"></i> Expired</span>`;
+        cardBorder = 'var(--red-500)';
+    }else if(expiringSoon){
+        validBadge = `<span class="badge warning"><i class="fas fa-hourglass-half"></i> Expiring Soon</span>`;
+        cardBorder = 'var(--amber)';
+    }else if(selfSigned){
+        validBadge = `<span class="badge warning"><i class="fas fa-user-lock"></i> Self-Signed</span>`;
+        cardBorder = 'var(--amber)';
+    }else{
+        validBadge = `<span class="badge success"><i class="fas fa-lock"></i> Valid</span>`;
+        cardBorder = 'var(--green)';
+    }
+
+    const protocolWeak = d.protocol_weak === true;
+    const cipherWeak   = d.cipher_weak === true;
+    const protocolColor = protocolWeak ? 'var(--amber)' : 'var(--green)';
+    const cipherColor   = cipherWeak   ? 'var(--amber)' : 'var(--green)';
+
+    const daysText = daysLeft !== null
+        ? (daysLeft < 0 ? `${Math.abs(daysLeft)}d ago` : `${daysLeft}d`)
+        : '--';
+    const daysColor = daysLeft === null ? 'var(--text-muted)'
+                    : daysLeft < 0       ? 'var(--red-500)'
+                    : daysLeft <= 30     ? 'var(--amber)'
+                    :                      'var(--green)';
+
+    // ── Base card ──────────────────────────────────────────────────
+    let html = `<div class="result-card" style="border-left:3px solid ${cardBorder};">
+        <div class="result-card-header">
+            <strong><i class="fas fa-lock" style="color:${cardBorder};margin-right:6px;"></i> SSL/TLS Certificate</strong>
+            ${validBadge}
+        </div>`;
+
+    // ── Subject / Issuer (now correctly handles object shape) ──────
+    html += `<table class="data-table" style="margin-bottom:10px;"><tbody>
+        <tr><td style="font-weight:600;width:28%;">Subject</td><td style="font-family:var(--font-mono);font-size:0.72rem;">${fmtCertName(d.subject)}</td></tr>
+        <tr><td style="font-weight:600;">Issuer</td><td style="font-family:var(--font-mono);font-size:0.72rem;">${fmtCertName(d.issuer)}</td></tr>
+    </tbody></table>`;
+
+    // ── KPI grid ───────────────────────────────────────────────────
+    html += `<div class="port-summary-grid" style="margin-bottom:10px;">
+        <div class="port-summary-card">
+            <div class="port-summary-value" style="color:${daysColor};font-size:1.1rem;">${daysText}</div>
+            <div class="port-summary-label">${daysLeft !== null && daysLeft < 0 ? 'Expired' : 'Days Left'}</div>
+        </div>
+        <div class="port-summary-card">
+            <div class="port-summary-value" style="color:${protocolColor};font-size:1rem;">${escapeHtml(String(d.protocol||'--'))}</div>
+            <div class="port-summary-label">Protocol${protocolWeak?' ⚠':''}</div>
+        </div>
+        <div class="port-summary-card">
+            <div class="port-summary-value" style="color:var(--steel);font-size:0.9rem;">${escapeHtml(String(d.cipher_bits||'--'))}-bit</div>
+            <div class="port-summary-label">Cipher Strength</div>
+        </div>
+        <div class="port-summary-card">
+            <div class="port-summary-value" style="color:var(--gold);">${escapeHtml(String(d.chain_length||1))}</div>
+            <div class="port-summary-label">Chain Certs</div>
+        </div>
+    </div>`;
+
+    // ── Cipher + validity details ─────────────────────────────────
+    html += `<table class="data-table"><tbody>
+        <tr><td style="font-weight:600;width:28%;">Cipher Suite</td><td style="font-family:var(--font-mono);font-size:0.72rem;color:${cipherColor};">${escapeHtml(String(d.cipher_suite||'--'))}</td></tr>
+        ${d.cipher_protocol?`<tr><td style="font-weight:600;">Cipher Protocol</td><td style="font-family:var(--font-mono);font-size:0.72rem;">${escapeHtml(String(d.cipher_protocol))}</td></tr>`:''}
+        ${d.cipher_note?`<tr><td style="font-weight:600;">Cipher Note</td><td style="font-size:0.72rem;color:${cipherColor};">${escapeHtml(String(d.cipher_note))}</td></tr>`:''}
+        ${d.protocol_note?`<tr><td style="font-weight:600;">Protocol Note</td><td style="font-size:0.72rem;color:${protocolColor};">${escapeHtml(String(d.protocol_note))}</td></tr>`:''}
+        ${d.serial_number?`<tr><td style="font-weight:600;">Serial</td><td style="font-family:var(--font-mono);font-size:0.68rem;word-break:break-all;">${escapeHtml(String(d.serial_number))}</td></tr>`:''}
+        ${d.valid_from?`<tr><td style="font-weight:600;">Valid From</td><td style="font-family:var(--font-mono);font-size:0.72rem;">${escapeHtml(String(d.valid_from))}</td></tr>`:''}
+        ${d.valid_until?`<tr><td style="font-weight:600;">Valid Until</td><td style="font-family:var(--font-mono);font-size:0.72rem;color:${daysColor};">${escapeHtml(String(d.valid_until))}</td></tr>`:''}
+        ${d.self_signed!==undefined?`<tr><td style="font-weight:600;">Self-Signed</td><td>${d.self_signed?'<span style="color:var(--amber);">Yes</span>':'<span style="color:var(--green);">No</span>'}</td></tr>`:''}
+        ${d.publicly_trusted!==undefined?`<tr><td style="font-weight:600;">Publicly Trusted</td><td>${d.publicly_trusted===true?'<span style="color:var(--green);">Yes</span>':d.publicly_trusted===false?'<span style="color:var(--amber);">No</span>':'<span style="color:var(--text-muted);">Unknown</span>'}</td></tr>`:''}
+    </tbody></table>`;
+
+    // ── Public key ────────────────────────────────────────────────
+    if(d.public_key && typeof d.public_key === 'object' && d.public_key.algorithm){
+        const pk = d.public_key;
+        html += `<div class="accordion-item" style="margin-top:12px;">
+            <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                <span><i class="fas fa-key"></i> Public Key</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="accordion-body">
+                <table class="data-table"><tbody>
+                    <tr><td style="font-weight:600;">Algorithm</td><td>${escapeHtml(String(pk.algorithm))}</td></tr>
+                    ${pk.size_bits?`<tr><td style="font-weight:600;">Key Size</td><td>${escapeHtml(String(pk.size_bits))} bits</td></tr>`:''}
+                    ${pk.curve?`<tr><td style="font-weight:600;">Curve</td><td>${escapeHtml(String(pk.curve))}</td></tr>`:''}
+                    ${pk.exponent?`<tr><td style="font-weight:600;">Exponent</td><td>${escapeHtml(String(pk.exponent))}</td></tr>`:''}
+                    ${pk.hint?`<tr><td style="font-weight:600;">Note</td><td style="font-size:0.72rem;color:var(--text-muted);">${escapeHtml(String(pk.hint))}</td></tr>`:''}
+                </tbody></table>
+            </div>
+        </div>`;
+    }
+
+    // ── Signature algorithm + basic constraints ───────────────────
+    if(d.signature_algorithm){
+        html += `<table class="data-table" style="margin-top:10px;"><tbody>
+            <tr><td style="font-weight:600;width:28%;">Signature Algorithm</td><td style="font-family:var(--font-mono);font-size:0.72rem;">${escapeHtml(String(d.signature_algorithm))}</td></tr>
+            ${d.is_ca!==undefined&&d.is_ca!==null?`<tr><td style="font-weight:600;">CA Certificate</td><td>${d.is_ca?'Yes':'No'}</td></tr>`:''}
+            ${d.path_length!==null&&d.path_length!==undefined?`<tr><td style="font-weight:600;">Path Length</td><td>${escapeHtml(String(d.path_length))}</td></tr>`:''}
+        </tbody></table>`;
+    }
+
+    // ── Subject Alternative Names ─────────────────────────────────
+    if(Array.isArray(d.subject_alt_names) && d.subject_alt_names.length){
+        html += `<div class="accordion-item" style="margin-top:10px;">
+            <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                <span><i class="fas fa-globe"></i> Subject Alternative Names (${d.subject_alt_names.length})</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="accordion-body">
+                <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                    ${d.subject_alt_names.map(san=>{
+                        const t = san && san.type ? String(san.type) : '?';
+                        const v = san && san.value !== undefined ? String(san.value) : '';
+                        const tone = t==='DNS'?'var(--steel)'
+                                   : t==='IP'?'var(--gold)'
+                                   : t==='email'?'var(--amber)'
+                                   : 'var(--red-400)';
+                        return `<span class="record-chip"><span class="rc-type" style="color:${tone};">${escapeHtml(t)}</span><span class="rc-value">${escapeHtml(v)}</span></span>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ── Key usage / extended key usage ────────────────────────────
+    const kuList  = Array.isArray(d.key_usage) ? d.key_usage : [];
+    const ekuList = Array.isArray(d.extended_key_usage) ? d.extended_key_usage : [];
+    if(kuList.length || ekuList.length){
+        html += `<div class="accordion-item" style="margin-top:10px;">
+            <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                <span><i class="fas fa-tasks"></i> Key Usage</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="accordion-body">
+                ${kuList.length?`<div style="margin-bottom:8px;"><strong style="font-size:0.72rem;color:var(--steel);text-transform:uppercase;">Key Usage</strong><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">${kuList.map(k=>`<span class="badge info" style="font-size:0.68rem;">${escapeHtml(String(k))}</span>`).join('')}</div></div>`:''}
+                ${ekuList.length?`<div><strong style="font-size:0.72rem;color:var(--steel);text-transform:uppercase;">Extended Key Usage</strong><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">${ekuList.map(k=>`<span class="badge info" style="font-size:0.68rem;">${escapeHtml(String(k))}</span>`).join('')}</div></div>`:''}
+            </div>
+        </div>`;
+    }
+
+    // ── Certificate policies ──────────────────────────────────────
+    if(Array.isArray(d.certificate_policies) && d.certificate_policies.length){
+        html += `<div class="accordion-item" style="margin-top:10px;">
+            <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                <span><i class="fas fa-scroll"></i> Certificate Policies (${d.certificate_policies.length})</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="accordion-body">
+                <div style="font-family:var(--font-mono);font-size:0.68rem;word-break:break-all;">
+                    ${d.certificate_policies.map(p=>`<div>${escapeHtml(String(p))}</div>`).join('')}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ── Full chain fingerprints ───────────────────────────────────
+    if(Array.isArray(d.chain_fingerprints) && d.chain_fingerprints.length){
+        html += `<div class="accordion-item" style="margin-top:10px;">
+            <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                <span><i class="fas fa-link"></i> Certificate Chain (${d.chain_fingerprints.length})</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="accordion-body" style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead><tr><th>#</th><th>Role</th><th>Subject CN</th><th>SHA-256</th></tr></thead>
+                    <tbody>
+                        ${d.chain_fingerprints.map(c=>`<tr>
+                            <td>${escapeHtml(String(c.index ?? '--'))}</td>
+                            <td><span class="badge" style="font-size:0.68rem;">${escapeHtml(String(c.role||'--'))}</span></td>
+                            <td style="font-size:0.72rem;">${escapeHtml(String(c.subject_cn||'--'))}</td>
+                            <td style="font-family:var(--font-mono);font-size:0.62rem;word-break:break-all;max-width:170px;">${escapeHtml(String(c.fingerprint_sha256||'--').slice(0,28))}…</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    // ── Chain validation summary ──────────────────────────────────
+    const cv = d.chain_validation;
+    if(cv && typeof cv === 'object'){
+        const linked       = cv.linked === true;
+        const hasRoot      = cv.has_root === true;
+        const expiredCount = Array.isArray(cv.expired_certs) ? cv.expired_certs.length : 0;
+        const nonCaCount   = Array.isArray(cv.non_ca_in_chain) ? cv.non_ca_in_chain.length : 0;
+        const issues = [];
+        if(!linked)     issues.push('Chain is not fully linked');
+        if(!hasRoot)    issues.push('Root CA not present in chain');
+        if(expiredCount)issues.push(`${expiredCount} expired cert(s) in chain`);
+        if(nonCaCount)  issues.push(`${nonCaCount} non-CA cert(s) in intermediate positions`);
+
+        const cvBadge = issues.length
+            ? `<span class="badge warning" style="font-size:0.62rem;margin-left:6px;">${issues.length} issue${issues.length===1?'':'s'}</span>`
+            : `<span class="badge success" style="font-size:0.62rem;margin-left:6px;">OK</span>`;
+
+        html += `<div class="accordion-item" style="margin-top:10px;">
+            <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                <span><i class="fas fa-shield-halved"></i> Chain Validation ${cvBadge}</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="accordion-body">
+                <table class="data-table"><tbody>
+                    <tr><td style="font-weight:600;">Chain Length</td><td>${escapeHtml(String(cv.length ?? '--'))}</td></tr>
+                    <tr><td style="font-weight:600;">Fully Linked</td><td>${linked?'<span style="color:var(--green);">Yes</span>':'<span style="color:var(--amber);">No</span>'}</td></tr>
+                    <tr><td style="font-weight:600;">Has Root</td><td>${hasRoot?'<span style="color:var(--green);">Yes</span>':'<span style="color:var(--amber);">No</span>'}</td></tr>
+                    ${cv.broken_at!==null&&cv.broken_at!==undefined?`<tr><td style="font-weight:600;">Broken At</td><td style="color:var(--red-500);">Index ${escapeHtml(String(cv.broken_at))}</td></tr>`:''}
+                    <tr><td style="font-weight:600;">Expired Certs</td><td>${expiredCount}</td></tr>
+                </tbody></table>
+                ${issues.length?`<div style="margin-top:8px;font-size:0.72rem;color:var(--amber);"><i class="fas fa-triangle-exclamation"></i> ${issues.map(escapeHtml).join('<br>')}</div>`:''}
+            </div>
+        </div>`;
+    }
+
+    // ── Leaf fingerprints ─────────────────────────────────────────
+    if(d.fingerprint_sha256 || d.fingerprint_sha1 || d.fingerprint_sha512){
+        html += `<div class="accordion-item" style="margin-top:10px;">
+            <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                <span><i class="fas fa-fingerprint"></i> Leaf Fingerprints</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="accordion-body">
+                ${d.fingerprint_sha256?`<div style="margin-bottom:6px;"><strong style="font-size:0.68rem;color:var(--steel);">SHA-256</strong><div style="font-family:var(--font-mono);font-size:0.68rem;word-break:break-all;">${escapeHtml(String(d.fingerprint_sha256))}</div></div>`:''}
+                ${d.fingerprint_sha1?`<div style="margin-bottom:6px;"><strong style="font-size:0.68rem;color:var(--steel);">SHA-1</strong><div style="font-family:var(--font-mono);font-size:0.68rem;word-break:break-all;">${escapeHtml(String(d.fingerprint_sha1))}</div></div>`:''}
+                ${d.fingerprint_sha512?`<div style="margin-bottom:6px;"><strong style="font-size:0.68rem;color:var(--steel);">SHA-512</strong><div style="font-family:var(--font-mono);font-size:0.68rem;word-break:break-all;">${escapeHtml(String(d.fingerprint_sha512))}</div></div>`:''}
+                ${d.cert_size_bytes?`<div style="font-size:0.68rem;color:var(--text-muted);margin-top:6px;">Certificate size: ${escapeHtml(String(d.cert_size_bytes))} bytes</div>`:''}
+            </div>
+        </div>`;
+    }
+
+    // ── OCSP / AIA / CRL ──────────────────────────────────────────
+    const ocspUrls  = Array.isArray(d.ocsp_urls)      ? d.ocsp_urls      : [];
+    const caIssuers = Array.isArray(d.ca_issuers_urls)? d.ca_issuers_urls: [];
+    const crlUrls   = Array.isArray(d.crl_urls)       ? d.crl_urls       : [];
+    const hasRevocation = ocspUrls.length || caIssuers.length || crlUrls.length
+                       || (d.ocsp_stapled !== undefined && d.ocsp_stapled !== null);
+    if(hasRevocation){
+        const stapled = d.ocsp_stapled;
+        html += `<div class="accordion-item" style="margin-top:10px;">
+            <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                <span><i class="fas fa-clipboard-check"></i> Revocation &amp; Status</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="accordion-body">
+                ${stapled!==undefined && stapled!==null
+                    ? `<div style="margin-bottom:8px;"><strong style="font-size:0.68rem;color:var(--steel);">OCSP Stapling</strong><div style="font-size:0.72rem;">${stapled
+                        ? '<span style="color:var(--green);"><i class="fas fa-check"></i> Supported &amp; stapled</span>'
+                        : '<span style="color:var(--amber);"><i class="fas fa-times"></i> Not stapled</span>'}</div></div>`
+                    : ''}
+                ${ocspUrls.length?`<div style="margin-bottom:8px;"><strong style="font-size:0.68rem;color:var(--steel);">OCSP Responder(s)</strong>${ocspUrls.map(u=>`<div style="font-family:var(--font-mono);font-size:0.68rem;word-break:break-all;margin-top:2px;">${escapeHtml(String(u))}</div>`).join('')}</div>`:''}
+                ${caIssuers.length?`<div style="margin-bottom:8px;"><strong style="font-size:0.68rem;color:var(--steel);">CA Issuers</strong>${caIssuers.map(u=>`<div style="font-family:var(--font-mono);font-size:0.68rem;word-break:break-all;margin-top:2px;">${escapeHtml(String(u))}</div>`).join('')}</div>`:''}
+                ${crlUrls.length?`<div><strong style="font-size:0.68rem;color:var(--steel);">CRL Distribution</strong>${crlUrls.map(u=>`<div style="font-family:var(--font-mono);font-size:0.68rem;word-break:break-all;margin-top:2px;">${escapeHtml(String(u))}</div>`).join('')}</div>`:''}
+            </div>
+        </div>`;
+    }
+
+    // ── Top-level error (from orchestrator) ───────────────────────
+    if(toolResult.error){
+        html += `<div class="tr-error" style="margin-top:10px;"><i class="fas fa-circle-exclamation"></i> ${escapeHtml(String(toolResult.error))}</div>`;
+    }
+
+    html += `</div>`;
+    return html;
+}
 function renderSubdomainResult(toolResult){
     const d=toolResult.data||toolResult;const subs=d.subdomains||[];
     const count=d.count||subs.length;const methods=d.methods_used||[];
