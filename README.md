@@ -1,6 +1,6 @@
 # Emergens — Security Testing & Exploiter Dashboard
 
->!authorized use only!<
+>If granted authorization solely for testing or for use on your own website, the creator of this tool assumes no liability for any actions taken.
 
 ## Features
 
