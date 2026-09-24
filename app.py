@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """
-Oxysintx - Main Flask Application (v3.7.0)
+Oxysintx - Main Flask Application (v3.8.0)
 
 Routing and API. MHDDoS engine (start.py) integrated as external subprocess.
 Attack launches directly on user request.
 
-v3.7.0 changelog
-    • Integration with modules/git_scraper_wordlist.py
-        – /api/wordlists/{status,manifest,sync,reload,sync/stream}
-        – automatic cache reload after sync
-    • Static asset route now whitelists .js/.mjs/.css/.map/.woff/.woff2/.ttf/.svg/.png/.json
-      and returns proper Cache-Control headers (fixes the 404 spam)
-    • /api/modules/status includes wordlist_scraper
-    • Startup banner shows wordlist_scraper when available
-    • Minor hardening: constant-time compares, safer request logs,
-      consistent SSE writer, proper request-ID in log lines
+v3.8.0 changelog
+    • Removed deprecated / unused features:
+        – modules.whatsapp blueprint
+        – modules.quick_menu + all compatibility routes
+        – modules.testing + all /api/code_test/* endpoints
+        – /Emergens_DB.html, /code_test.html, /emergens-control-m4ddos.html routes
+        – /webps.html dangling reference (had no route; confirmed absent)
+    • Module status report now reflects the slimmer surface
+    • Startup banner no longer references removed modules
 
-Full integration with:
+Retained integrations:
     • http_logger          (global request capture + SSE + HAR + anomaly scan)
     • dirfuzz              (directory / file fuzzer, SSE streaming)
     • sqli_engine          (professional SQLi engine — 4 techniques)
@@ -26,6 +25,9 @@ Full integration with:
     • xss                  (lightweight XSS scanner)
     • sniper               (auto-exploiter orchestrator, SSE)
     • git_scraper_wordlist (GitHub wordlist sync for all of the above)
+    • analytic_manager     (exploit / stats surface)
+    • downsea              (video downloader blueprint)
+    • telegram             (bot bridge)
 
 Author: Yanxzyx
 """
@@ -77,7 +79,6 @@ from modules.telegram import (
     update_bot_settings, broadcast_message, auto_restart_bot,
     set_orchestrator, set_history_store,
 )
-from modules.whatsapp import whatsapp_bp
 
 # ── Optional: exploit / recon modules ──────────────────────────────────
 try:
@@ -167,29 +168,10 @@ except ImportError:
 from ai_chat.chat_handler import ChatHandler
 
 try:
-    from modules import testing as code_test_module
-    _testing_available = True
-except ImportError:
-    _testing_available = False
-
-try:
     from modules.analytic_manager import AnalyticDataManager
     _analytic_available = True
 except ImportError:
     _analytic_available = False
-
-_quick_menu_bp = None
-_quick_menu_available = False
-try:
-    from modules import quick_menu
-    if hasattr(quick_menu, 'quick_menu_bp'):
-        _quick_menu_bp = quick_menu.quick_menu_bp
-        _quick_menu_available = True
-    elif hasattr(quick_menu, 'bp'):
-        _quick_menu_bp = quick_menu.bp
-        _quick_menu_available = True
-except ImportError:
-    pass
 
 # ═══════════════════════════════════════════════════════════════════════════
 # STARTUP BANNER (single, clean)
@@ -621,11 +603,9 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "0") == "1",
 )
 
-app.register_blueprint(whatsapp_bp)
+# Blueprints kept: downsea only (whatsapp + quick_menu removed)
 if _downsea_available:
     app.register_blueprint(downsea_bp)
-if _quick_menu_available and _quick_menu_bp is not None:
-    app.register_blueprint(_quick_menu_bp)
 
 setup_logging(Config.SERVER_LOG_FILE)
 logger = logging.getLogger("oxysintx")
@@ -1096,33 +1076,16 @@ def data_main_redirect():
     return redirect("/downloader_pinterest_tiktok.html")
 
 
-@app.route("/code_test.html")
-def code_test_page():
-    return render_template("code_test.html")
-
-
 @app.route("/remote_access.html")
 @login_required
 def remote_access_page():
     return render_template("remote_access.html")
 
 
-@app.route("/emergens-control-m4ddos.html")
-@login_required
-def emergens_control_m4ddos_page():
-    return render_template("emergens-control-m4ddos.html")
-
-
 @app.route("/MyEspT.html")
 @login_required
 def MyEspT_page():
     return render_template("MyEspT.html")
-
-
-@app.route("/quick_menu_setting.html")
-@login_required
-def quick_menu_setting_page():
-    return render_template("quick_menu_setting.html")
 
 
 @app.route("/Emergens_osint.html")
@@ -1140,12 +1103,6 @@ def structure_folder_file_page():
 @app.route("/password_lock.html")
 def password_lock_page():
     return render_template("password_lock.html")
-
-
-@app.route("/Emergens_DB.html")
-@login_required
-def emergens_db_page():
-    return render_template("Emergens_DB.html")
 
 
 @app.route("/docs.html")
@@ -1397,7 +1354,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/3.7.0"},
+            headers={"User-Agent": "Oxysintx/3.8.0"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1428,47 +1385,6 @@ def api_osint_twitter():
 @api_login_required
 def api_stalk_twitter():
     return api_osint_twitter()
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Quick Menu compatibility
-# ═══════════════════════════════════════════════════════════════════════════
-if _quick_menu_available:
-    @app.route("/status")
-    def qm_status_compat():
-        quick_menu.STATE.touch()
-        return jsonify({
-            "status": "online",
-            "service": "quick_menu",
-            "version": getattr(quick_menu, "VERSION", "2.0.0"),
-            "uptime_seconds": quick_menu.STATE.uptime_seconds(),
-            "requests_served": quick_menu.STATE.request_count,
-        })
-
-    @app.route("/menu")
-    def qm_menu_compat():
-        quick_menu.STATE.touch()
-        return jsonify({"items": quick_menu.STATE.get_menu()})
-
-    @app.route("/actions")
-    def qm_actions_compat():
-        quick_menu.STATE.touch()
-        return jsonify({"actions": quick_menu.STATE.recent_actions()})
-
-    @app.route("/action", methods=["POST"])
-    def qm_action_compat():
-        quick_menu.STATE.touch()
-        data = request.get_json(silent=True) or {}
-        action = (data.get("action") or "").strip()
-        if action not in quick_menu.STATE.valid_action_ids:
-            return jsonify({
-                "error": "unknown_action",
-                "received": action,
-                "valid_actions": sorted(quick_menu.STATE.valid_action_ids),
-            }), 400
-        source = (data.get("source") or "web").strip()
-        entry = quick_menu.STATE.record_action(action, source, session.get("username", "anonymous"))
-        return jsonify({"ok": True, "recorded": entry})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1689,6 +1605,8 @@ def api_tools():
             "sniper":            _sniper_available,
             "http_logger":       _http_logger_available,
             "wordlist_scraper":  _wordlist_scraper_available,
+            "analytic":          _analytic_available,
+            "downsea":           _downsea_available,
         })
     return jsonify(tools)
 
@@ -1926,102 +1844,6 @@ def api_telegram_broadcast():
     if not message:
         return jsonify({"error": "message_required"}), 400
     return jsonify(broadcast_message(message))
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Code Test workspace
-# ═══════════════════════════════════════════════════════════════════════════
-@app.route("/api/code_test/read")
-@api_login_required
-def api_read_file():
-    if not _testing_available:
-        return jsonify({"error": "Testing module not available"}), 503
-    file_path = request.args.get("path", "").strip()
-    if not file_path:
-        return jsonify({"error": "path required"}), 400
-    return jsonify(code_test_module.read_file(file_path))
-
-
-@app.route("/api/code_test/write", methods=["POST"])
-@api_login_required
-def api_write_file():
-    if not _testing_available:
-        return jsonify({"error": "Testing module not available"}), 503
-    data = request.get_json(silent=True) or {}
-    file_path = data.get("file_path", "").strip()
-    content = data.get("content", "")
-    if not file_path:
-        return jsonify({"error": "file_path required"}), 400
-    return jsonify(code_test_module.write_file(file_path, content))
-
-
-@app.route("/api/code_test/run", methods=["POST"])
-@api_login_required
-def api_run_code_test():
-    if not _testing_available:
-        return jsonify({"error": "Testing module is not installed"}), 503
-    data = request.get_json(silent=True) or {}
-    code = data.get("code", "")
-    if not code:
-        return jsonify({"error": "No code provided"}), 400
-    try:
-        results = code_test_module.run_tests(code, data.get("test_cases", []))
-        return jsonify({"results": results})
-    except Exception as e:
-        return jsonify({"error": f"Execution error: {str(e)}"}), 500
-
-
-@app.route("/api/code_test/files")
-@api_login_required
-def api_list_code_test_files():
-    if not _testing_available:
-        return jsonify({"error": "Testing module not available"}), 503
-    try:
-        return jsonify({"files": code_test_module.list_project_files()})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/code_test/backup", methods=["POST"])
-@api_login_required
-def api_backup_file():
-    if not _testing_available:
-        return jsonify({"error": "Testing module not available"}), 503
-    data = request.get_json(silent=True) or {}
-    file_path = data.get("file_path")
-    if not file_path:
-        return jsonify({"error": "file_path required"}), 400
-    return jsonify(code_test_module.backup_file(file_path))
-
-
-@app.route("/api/code_test/backup_all", methods=["POST"])
-@api_login_required
-def api_backup_all():
-    if not _testing_available:
-        return jsonify({"error": "Testing module not available"}), 503
-    return jsonify(code_test_module.backup_all_source_files())
-
-
-@app.route("/api/code_test/workspace_info")
-@api_login_required
-def api_workspace_info():
-    if not _testing_available:
-        return jsonify({"error": "Testing module not available"}), 503
-    return jsonify(code_test_module.get_workspace_info())
-
-
-@app.route("/api/code_test/scan", methods=["POST"])
-@api_login_required
-def api_code_test_scan():
-    data = request.get_json(silent=True) or {}
-    target = (data.get("target") or "").strip()
-    mode = data.get("mode", "basic")
-    tools = data.get("tools", [])
-    if not target:
-        return jsonify({"error": "target_required"}), 400
-    if mode not in ("basic", "expert"):
-        mode = "basic"
-    return jsonify({"job_id": scan_orchestrator.start_scan(target, mode, tools, history_store)})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2835,11 +2657,6 @@ def api_logger_stream():
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Wordlist Scraper API (git_scraper_wordlist.py)
-#   GET    /api/wordlists/status        — manifest + on-disk line counts
-#   GET    /api/wordlists/manifest      — raw manifest
-#   POST   /api/wordlists/sync          — blocking sync
-#   GET    /api/wordlists/sync/stream   — SSE sync
-#   POST   /api/wordlists/reload        — force in-memory cache reload
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/wordlists/status")
 @api_login_required
@@ -3319,10 +3136,8 @@ def api_modules_status():
         "sniper":            {"available": _sniper_available},
         "http_logger":       {"available": http_logger is not None},
         "wordlist_scraper":  {"available": _wordlist_scraper_available},
-        "testing":           {"available": _testing_available},
         "analytic":          {"available": _analytic_available},
         "downsea":           {"available": _downsea_available},
-        "quick_menu":        {"available": _quick_menu_available},
     })
 
 
@@ -3334,7 +3149,7 @@ def _print_startup(port=None):
     print(BANNER, flush=True)
     info_lines = []
     if port is not None:
-        info_lines.append(f"  Server     : http://localhost:{port}")
+        info_lines.append(f"  Server     : http://emergens:{port}")
     info_lines.append(f"  Tools      : {len(scan_orchestrator.list_tools())} loaded")
     info_lines.append(f"  Account    : {DEFAULT_USERNAME}")
 
@@ -3347,51 +3162,4 @@ def _print_startup(port=None):
     if _xss_available:            modules.append("xss")
     if _sniper_available:         modules.append("sniper")
     if http_logger is not None:   modules.append("http_logger")
-    if _wordlist_scraper_available: modules.append("wordlist_scraper")
-    if modules:
-        info_lines.append(f"  Modules    : {', '.join(modules)}")
-    print("\n".join(info_lines), flush=True)
-    print(flush=True)
-
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "reset-password":
-        existing_role = get_role(DEFAULT_USERNAME) or "owner"
-        new_password = create_user(DEFAULT_USERNAME, role=existing_role)
-        print(BANNER, flush=True)
-        print(f"  Password reset for '{DEFAULT_USERNAME}' (role={existing_role})", flush=True)
-        print(f"  Password: {new_password}", flush=True)
-        print("  Copy it now — it will not be shown again.", flush=True)
-        sys.exit(0)
-
-    new_password = ensure_default_user()
-    if new_password:
-        print(BANNER, flush=True)
-        print("  First run — account created automatically", flush=True)
-        print(f"  Username: {DEFAULT_USERNAME}", flush=True)
-        print(f"  Password: {new_password}", flush=True)
-        print("  Role:     owner", flush=True)
-        print("  Save this password now — you will need it to log in.", flush=True)
-        print(flush=True)
-
-    auto_restart_bot()
-
-    default_port = int(Config.PORT) if hasattr(Config, 'PORT') else 8080
-    while True:
-        try:
-            port_input = input(
-                f"Enter port (default {default_port}, press Enter for default): "
-            ).strip()
-            if port_input == "":
-                port = default_port
-                break
-            port = int(port_input)
-            if port < 1 or port > 65535:
-                print("Port must be between 1 and 65535.")
-                continue
-            break
-        except ValueError:
-            print("Invalid input. Enter a valid port number.")
-
-    _print_startup(port)
-    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+    if _wordlist_scraper_available: modules.append("wordlist
