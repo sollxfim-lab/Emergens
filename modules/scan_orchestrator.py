@@ -1,5 +1,5 @@
 """
-Oxysintx — Scan Orchestrator (v3.1.0)
+Oxysintx — Scan Orchestrator (v3.3.0)
 
 Background job manager for running security scanning tools.
 
@@ -10,8 +10,8 @@ The dashboard's Security Testing carousel is populated from `/api/tools`,
 which is built from ``ScanOrchestrator.list_tools()`` → ``TOOL_MAP``.
 
 By design, the following modules **are visible** in Security Testing:
+    • xss             → "XSS Scanner" (lightweight reflected-XSS detector)
     • sql_map         → "SQLMap (SQL Injection)"
-    • xss_exploiter   → "XSS Exploiter"
     • every other module in modules/ that exposes run() and is not excluded
       (whois_lookup, dns_lookup, ssl_check, headers_check, ip_info,
       connectivity_check, email_security, subdomain_enum, tech_fingerprint,
@@ -22,8 +22,14 @@ are available ONLY from the Exploit Suite panel:
     • dirfuzz         → Directory / File Fuzzer
     • sqli_engine     → SQLi Engine (advanced, 4 techniques)
     • sql_injection   → Lightweight SQLi scanner
-    • xss             → Lightweight XSS scanner
+    • xss_exploiter   → Professional XSS Exploiter
     • sniper          → Auto-Exploiter orchestrator
+
+OSINT / threat-intel modules are excluded entirely — they have their own
+dedicated endpoints (/api/osint/*) and must never appear in the scan carousel:
+    • osint, osint_search, osint_tools
+    • github_scraper, username_search, leak_search, leakdata
+    • youtube_stalk, twitter_stalk, instagram_stalk
 
 The following modules are **never** treated as tools:
     • scan_orchestrator, source_viewer, _common
@@ -39,7 +45,7 @@ Two conventions exist in the modules/ tree:
 
     1. mode-string style:
            run(target: str, mode: str, **kwargs) -> dict
-       Used by: sql_map, xss, sql_injection, port_scan, dns_lookup, ...
+       Used by: xss, sql_map, sql_injection, port_scan, dns_lookup, ...
 
     2. options-dict style:
            run(target: str, options: dict) -> dict
@@ -71,7 +77,7 @@ import modules as modules_pkg
 # =============================================================================
 # Metadata
 # =============================================================================
-__version__ = "3.1.0"
+__version__ = "3.3.0"
 __author__ = "Yanxzyx"
 
 # =============================================================================
@@ -128,8 +134,20 @@ _EXCLUDED_MODULES: Set[str] = {
     "dirfuzz",
     "sqli_engine",
     "sql_injection",
-    "xss",
+    "xss_exploiter",
     "sniper",
+
+    # ── OSINT / threat-intel — dedicated endpoints only ──────────────────
+    "osint",
+    "osint_search",
+    "osint_tools",
+    "github_scraper",
+    "username_search",
+    "leak_search",
+    "leakdata",
+    "youtube_stalk",
+    "twitter_stalk",
+    "instagram_stalk",
 
     # ── Attack / exploit tools — never scanners ──────────────────────────
     "brute_force",
@@ -150,11 +168,14 @@ _NON_SCAN_KINDS: Set[str] = {
     "wordlist",
     "helper",
     "utility",
+    "osint",
+    "intel",
+    "stalk",
+    "scraper",
 }
 
 # Modules that use the options-dict calling convention: run(target, options)
 _OPTIONS_STYLE_MODULES: Set[str] = {
-    "xss_exploiter",
     "sqli_engine",
     "dirfuzz",
     "sniper",
@@ -163,10 +184,6 @@ _OPTIONS_STYLE_MODULES: Set[str] = {
 # Per-mode defaults applied when an options-style module is invoked.
 # The keys are module names; values map {mode: {default_options}}.
 _OPTIONS_STYLE_MODE_DEFAULTS: Dict[str, Dict[str, Dict[str, Any]]] = {
-    "xss_exploiter": {
-        "basic":  {"max_payloads": 20, "max_params": 8,  "concurrency": 6,  "waf_bypass": False},
-        "expert": {"max_payloads": 60, "max_params": 15, "concurrency": 12, "waf_bypass": True},
-    },
     "sqli_engine": {
         "basic":  {"techniques": ["error", "boolean"], "max_params": 8},
         "expert": {"techniques": ["error", "boolean", "time", "union"], "max_params": 15},
