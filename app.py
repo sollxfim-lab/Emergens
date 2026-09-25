@@ -21,6 +21,12 @@ v4.2.0-clean changelog
   • Better exception logging across all scan endpoints
   • Preserved: v4.1.0 endpoints, MHDDoS panel, payment, chat, etc.
 
+v4.2.1 changelog
+  • Added bootstrap() / bootstrap_once() — safe for terminal.py integration
+  • Entrypoint now uses bootstrap_once() so first-run + telegram restart
+    still run when the module is imported instead of executed.
+  • Backward compatible: `python3 app.py` still works exactly the same.
+
 Author: Yanxzyx
 """
 
@@ -3770,35 +3776,110 @@ def _print_startup(port=None):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Bootstrap — shared by `python3 app.py` and terminal.py
+# ═══════════════════════════════════════════════════════════════════════════
+def bootstrap(verbose: bool = True) -> dict:
+    """
+    Run first-run setup tasks that must happen once the module is
+    imported (either directly via `python3 app.py` or via terminal.py).
+
+    Steps:
+      1. ensure_default_user()  — creates the default owner account on first boot
+      2. auto_restart_bot()     — restarts Telegram bot if a token is stored
+
+    Idempotent: safe to call multiple times. Returns a summary dict so the
+    caller (terminal.py) can display the outcome if it wants to.
+    """
+    outcome = {
+        "default_username": DEFAULT_USERNAME,
+        "first_run":        False,
+        "created_password": None,
+        "bot_restarted":    False,
+        "errors":           [],
+    }
+
+    # ── 1) Ensure the default user exists ──────────────────────────────
+    try:
+        new_password = ensure_default_user()
+        if new_password:
+            outcome["first_run"] = True
+            outcome["created_password"] = new_password
+            if verbose:
+                print(BANNER, flush=True)
+                print("  First run — account created automatically", flush=True)
+                print(f"  Username: {DEFAULT_USERNAME}", flush=True)
+                print(f"  Password: {new_password}", flush=True)
+                print("  Role:     owner", flush=True)
+                print("  Save this password now — you will need it to log in.",
+                      flush=True)
+                print(flush=True)
+        logger.info(
+            "bootstrap: default user check complete (username=%s, first_run=%s)",
+            DEFAULT_USERNAME, outcome["first_run"],
+        )
+    except Exception as exc:
+        outcome["errors"].append(f"ensure_default_user: {exc}")
+        logger.error("bootstrap: ensure_default_user failed: %s", exc, exc_info=True)
+
+    # ── 2) Auto-restart Telegram bot if configured ─────────────────────
+    try:
+        auto_restart_bot()
+        outcome["bot_restarted"] = True
+        logger.info("bootstrap: telegram bot auto-restart invoked")
+    except Exception as exc:
+        outcome["errors"].append(f"auto_restart_bot: {exc}")
+        logger.error("bootstrap: auto_restart_bot failed: %s", exc, exc_info=True)
+
+    return outcome
+
+
+# ── Run-once guard so `python3 app.py` and terminal.py never double-run it.
+_bootstrap_lock = threading.Lock()
+_bootstrap_done = False
+_bootstrap_result = None
+
+
+def bootstrap_once(verbose: bool = True) -> dict:
+    """
+    Thread-safe, run-once wrapper around bootstrap(). Use this from
+    terminal.py so the setup runs a single time even if the module is
+    imported more than once.
+    """
+    global _bootstrap_done, _bootstrap_result
+    with _bootstrap_lock:
+        if _bootstrap_done and _bootstrap_result is not None:
+            return _bootstrap_result
+        _bootstrap_result = bootstrap(verbose=verbose)
+        _bootstrap_done = True
+        return _bootstrap_result
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Entrypoint
 # ═══════════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
+    # ── CLI: password reset ────────────────────────────────────────────
     if len(sys.argv) > 1 and sys.argv[1] == "reset-password":
         existing_role = get_role(DEFAULT_USERNAME) or "owner"
         new_password = create_user(DEFAULT_USERNAME, role=existing_role)
         print(BANNER, flush=True)
-        print(f"  Password reset for '{DEFAULT_USERNAME}' (role={existing_role})", flush=True)
+        print(f"  Password reset for '{DEFAULT_USERNAME}' (role={existing_role})",
+              flush=True)
         print(f"  Password: {new_password}", flush=True)
         print("  Copy it now — it will not be shown again.", flush=True)
         sys.exit(0)
 
-    new_password = ensure_default_user()
-    if new_password:
-        print(BANNER, flush=True)
-        print("  First run — account created automatically", flush=True)
-        print(f"  Username: {DEFAULT_USERNAME}", flush=True)
-        print(f"  Password: {new_password}", flush=True)
-        print("  Role:     owner", flush=True)
-        print("  Save this password now — you will need it to log in.", flush=True)
-        print(flush=True)
+    # ── First-run setup + telegram auto-restart ───────────────────────
+    # Uses bootstrap_once() so terminal.py can safely call it too
+    # without duplicating work.
+    bootstrap_once(verbose=True)
 
-    auto_restart_bot()
-
+    # ── Port resolution ────────────────────────────────────────────────
     env_port = os.getenv("PORT")
     if env_port:
         port = int(env_port)
     else:
-        default_port = int(Config.PORT) if hasattr(Config, 'PORT') else 8080
+        default_port = int(Config.PORT) if hasattr(Config, "PORT") else 8080
         while True:
             try:
                 port_input = input(

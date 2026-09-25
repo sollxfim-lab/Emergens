@@ -1,63 +1,48 @@
 """
-Oxysintx — Scan Orchestrator (v3.4.0)
+Oxysintx — Scan Orchestrator (v3.5.0)
 
-Background job manager for running security scanning tools.
+Background job manager for the Oxysintx Flask stack.
 
 ================================================================================
-WHAT APPEARS IN "SECURITY TESTING"
+INTEGRATION WITH app.py
 ================================================================================
-The dashboard's Security Testing carousel is populated from `/api/tools`,
-which is built from ``ScanOrchestrator.list_tools()`` → ``TOOL_MAP``.
+Public API consumed by app.py:
+    • `ScanOrchestrator()`                          — instantiate
+    • `ScanOrchestrator.list_tools()` → dict        — Security Testing carousel
+    • `ScanOrchestrator.get_tool_info(name)`        — per-tool metadata
+    • `ScanOrchestrator.start_scan(target, mode, tools, history_store)`
+    • `ScanOrchestrator.get_progress(job_id)`       — poll from /api/scan/<id>/status
+    • `ScanOrchestrator.cancel_scan(job_id)`        — cancel running job
+    • `TOOL_MAP` (module-level dict)                — direct tool dispatch
+    • `call_tool(name, target, mode, **kw)`         — one-shot sync call
 
-By design, the following modules **are visible** in Security Testing:
-    • xss             → "XSS Scanner" (lightweight reflected-XSS detector)
-    • sql_map         → "SQLMap (SQL Injection)"
-    • every other module in modules/ that exposes run() and is not excluded
-      (whois_lookup, dns_lookup, ssl_check, headers_check, ip_info,
-      connectivity_check, email_security, subdomain_enum, tech_fingerprint,
-      port_scan, etc.)
-
-By design, the following modules are **excluded from Security Testing** and
-are available ONLY from the Exploit Suite panel:
-    • dirfuzz         → Directory / File Fuzzer
-    • sqli_engine     → SQLi Engine (advanced, 4 techniques)
-    • sql_injection   → Lightweight SQLi scanner
-    • xss_exploiter   → Professional XSS Exploiter
-    • sniper          → Auto-Exploiter orchestrator
-
-OSINT / threat-intel modules are excluded entirely — they have their own
-dedicated endpoints (/api/osint/*) and must never appear in the scan carousel:
-    • osint, osint_search, osint_tools
-    • github_scraper, username_search, leak_search, leakdata
-    • search_user, search_user_run
-    • youtube_stalk, twitter_stalk, instagram_stalk
-
-The following modules are **never** treated as tools:
-    • scan_orchestrator, source_viewer, _common
-    • telegram, whatsapp, quick_menu
-    • testing, adios, c2, start (MHDDoS engine)
-    • brute_force, subdomain_takeover, exploit_repository
-    • analytic_manager, history_store
+Alias modules (scan_ssl.py, scan_headers.py, etc.) are intentionally
+skipped via `IS_SCAN_TOOL = False`. The canonical implementations
+(ssl_check.py, headers_check.py, ...) remain in the registry.
 
 ================================================================================
 CALLING CONVENTIONS
 ================================================================================
 Two conventions exist in the modules/ tree:
 
-    1. mode-string style:
-           run(target: str, mode: str, **kwargs) -> dict
+    1. mode-string style:  run(target: str, mode: str, **kwargs) -> dict
        Used by: xss, sql_map, sql_injection, port_scan, dns_lookup, ...
 
-    2. options-dict style:
-           run(target: str, options: dict) -> dict
+    2. options-dict style: run(target: str, options: dict) -> dict
        Used by: xss_exploiter, sqli_engine, dirfuzz, sniper
 
-The orchestrator's ``_call_tool()`` helper inspects the module name and
-dispatches to the correct convention. If a module is not listed in
-``_OPTIONS_STYLE_MODULES`` it is assumed to be mode-string style.
+`_call_tool()` dispatches to the correct convention automatically.
 
-To add a new scanner: drop a file in modules/ with the mode-string run() and
-optionally a TOOL_INFO dict. It is auto-discovered on the next restart.
+================================================================================
+MODULE DISCOVERY
+================================================================================
+Auto-discovery walks `modules/` at import time and registers every
+single-file module that:
+    • is not in _EXCLUDED_MODULES
+    • does not start with "_"
+    • exposes a callable `run`
+    • does not declare `IS_SCAN_TOOL = False`
+    • does not set `TOOL_KIND` to a non-scan kind
 
 Author: Yanxzyx
 """
@@ -78,8 +63,8 @@ import modules as modules_pkg
 # =============================================================================
 # Metadata
 # =============================================================================
-__version__ = "3.4.0"
-__author__ = "Yanxzyx"
+__version__ = "3.5.0"
+__author__  = "Yanxzyx"
 
 # =============================================================================
 # Configuration
@@ -87,9 +72,8 @@ __author__ = "Yanxzyx"
 MAX_CONCURRENT_SCANS      = 3
 SCAN_TIMEOUT_SECONDS      = 600
 JOB_CLEANUP_AFTER_SECONDS = 3600
-TOOL_INIT_TIMEOUT_SECONDS = 120
 
-# Basic mode: fast passive recon
+# Basic mode: fast passive recon — the tools the dashboard shows by default
 DEFAULT_BASIC_TOOLS: List[str] = [
     "whois_lookup",
     "dns_lookup",
@@ -103,8 +87,7 @@ DEFAULT_BASIC_TOOLS: List[str] = [
     "port_scan",
 ]
 
-# Expert mode: auto-filled with every discovered tool
-DEFAULT_EXPERT_TOOLS: Optional[List[str]] = None
+DEFAULT_EXPERT_TOOLS: Optional[List[str]] = None  # auto-filled
 
 logger = logging.getLogger("oxysintx.scan_orchestrator")
 
@@ -113,32 +96,30 @@ logger = logging.getLogger("oxysintx.scan_orchestrator")
 # Exclusion list
 # =============================================================================
 _EXCLUDED_MODULES: Set[str] = {
-    # ── Orchestrator / infra ─────────────────────────────────────────────
+    # ── Orchestrator / infra ─────────────────────────────────────────
     "scan_orchestrator",
     "source_viewer",
     "_common",
 
-    # ── Bots & integrations ──────────────────────────────────────────────
+    # ── Bots & integrations ──────────────────────────────────────────
     "telegram",
     "whatsapp",
     "quick_menu",
 
-    # ── Code workspace / helper sub-modules ──────────────────────────────
+    # ── Helper / workspace sub-modules ───────────────────────────────
     "testing",
     "adios",
     "c2",
+    "start",       # MHDDoS engine subprocess
 
-    # ── Engine subprocess (MHDDoS) ───────────────────────────────────────
-    "start",
-
-    # ── Exploit Suite ONLY (kept out of Security Testing carousel) ───────
+    # ── Exploit Suite only — kept out of Security Testing carousel ───
     "dirfuzz",
     "sqli_engine",
     "sql_injection",
     "xss_exploiter",
     "sniper",
 
-    # ── OSINT / threat-intel — dedicated endpoints only ──────────────────
+    # ── OSINT — dedicated /api/osint/* endpoints ─────────────────────
     "osint",
     "osint_search",
     "osint_tools",
@@ -152,31 +133,21 @@ _EXCLUDED_MODULES: Set[str] = {
     "twitter_stalk",
     "instagram_stalk",
 
-    # ── Attack / exploit tools — never scanners ──────────────────────────
+    # ── Attack tools — never scanners ────────────────────────────────
     "brute_force",
     "subdomain_takeover",
     "exploit_repository",
 
-    # ── Analytic store / history ─────────────────────────────────────────
+    # ── Analytic store / history ─────────────────────────────────────
     "analytic_manager",
     "history_store",
 }
 
-# Module's declared TOOL_KIND — any of these means "not a scanner"
+# `TOOL_KIND` values that disqualify a module as a scanner
 _NON_SCAN_KINDS: Set[str] = {
-    "exploit",
-    "exploitation",
-    "attack",
-    "payload",
-    "wordlist",
-    "helper",
-    "utility",
-    "osint",
-    "intel",
-    "stalk",
-    "scraper",
-    "search",
-    "lookup_user",
+    "exploit", "exploitation", "attack", "payload",
+    "wordlist", "helper", "utility",
+    "osint", "intel", "stalk", "scraper", "search", "lookup_user",
 }
 
 # Modules that use the options-dict calling convention: run(target, options)
@@ -186,12 +157,12 @@ _OPTIONS_STYLE_MODULES: Set[str] = {
     "sniper",
 }
 
-# Per-mode defaults applied when an options-style module is invoked.
-# The keys are module names; values map {mode: {default_options}}.
+# Per-mode default options for options-style modules
 _OPTIONS_STYLE_MODE_DEFAULTS: Dict[str, Dict[str, Dict[str, Any]]] = {
     "sqli_engine": {
         "basic":  {"techniques": ["error", "boolean"], "max_params": 8},
-        "expert": {"techniques": ["error", "boolean", "time", "union"], "max_params": 15},
+        "expert": {"techniques": ["error", "boolean", "time", "union"],
+                    "max_params": 15},
     },
     "dirfuzz": {
         "basic":  {"max_paths": 100, "concurrency": 16},
@@ -205,20 +176,29 @@ _OPTIONS_STYLE_MODE_DEFAULTS: Dict[str, Dict[str, Dict[str, Any]]] = {
 
 
 # =============================================================================
+# Helpers
+# =============================================================================
+def _extract_version(mod: Any) -> str:
+    """Best-effort version string for a module."""
+    for attr in ("__version__", "VERSION"):
+        v = getattr(mod, attr, None)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    info = getattr(mod, "TOOL_INFO", None)
+    if isinstance(info, dict):
+        v = info.get("version")
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return ""
+
+
+# =============================================================================
 # Tool discovery
 # =============================================================================
 def discover_tools() -> Dict[str, Any]:
     """
     Walk the ``modules`` package and return ``{name: module}`` for every
     module that qualifies as a scan tool.
-
-    A module qualifies if all of these hold:
-        • its name is not in ``_EXCLUDED_MODULES``
-        • its name does not start with ``_``
-        • it is a single-file module (not a nested package)
-        • it exposes a callable ``run``
-        • it does not set ``IS_SCAN_TOOL = False``
-        • its ``TOOL_KIND`` (if present) is not in ``_NON_SCAN_KINDS``
     """
     tools: Dict[str, Any] = {}
 
@@ -231,11 +211,11 @@ def discover_tools() -> Dict[str, Any]:
         try:
             mod = importlib.import_module(f"modules.{name}")
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to import modules.%s: %s", name, exc, exc_info=True)
+            logger.warning("Failed to import modules.%s: %s", name, exc,
+                            exc_info=True)
             continue
 
-        run_fn = getattr(mod, "run", None)
-        if not callable(run_fn):
+        if not callable(getattr(mod, "run", None)):
             logger.debug("modules.%s skipped — no callable run()", name)
             continue
 
@@ -258,7 +238,8 @@ def discover_tools() -> Dict[str, Any]:
 # Initial discovery
 TOOL_MAP: Dict[str, Any] = discover_tools()
 DEFAULT_EXPERT_TOOLS = sorted(TOOL_MAP.keys())
-logger.info("Discovered %d scan tool(s): %s", len(TOOL_MAP), sorted(TOOL_MAP))
+logger.info("Discovered %d scan tool(s): %s",
+            len(TOOL_MAP), sorted(TOOL_MAP))
 
 
 def _parse_tools(requested: List[str]) -> List[str]:
@@ -271,7 +252,7 @@ def _parse_tools(requested: List[str]) -> List[str]:
 
 
 # =============================================================================
-# Universal tool invoker — handles both calling conventions
+# Universal tool invoker
 # =============================================================================
 def _call_tool(
     module_name: str,
@@ -282,13 +263,6 @@ def _call_tool(
 ) -> Dict[str, Any]:
     """
     Invoke a module's ``run()`` respecting its calling convention.
-
-    • Options-style modules (``run(target, options)``):
-        Build an options dict from the module's per-mode defaults, merged
-        with any caller overrides, then call ``run(target, options)``.
-
-    • Mode-string modules (``run(target, mode, **kwargs)``):
-        Call directly with positional ``mode`` and unpacked kwargs.
     """
     tool_options = tool_options or {}
     run_fn: Callable = module.run
@@ -298,7 +272,6 @@ def _call_tool(
         defaults = _OPTIONS_STYLE_MODE_DEFAULTS.get(module_name, {}).get(mode, {})
         opts.update(defaults)
         opts.update(tool_options)
-        # Preserve the mode as a hint for modules that accept it
         opts.setdefault("mode", mode)
         return run_fn(target, opts)
 
@@ -307,7 +280,7 @@ def _call_tool(
 
 
 # =============================================================================
-# ScanJob — per-scan state container
+# ScanJob
 # =============================================================================
 @dataclass
 class ScanJob:
@@ -355,10 +328,9 @@ class ScanJob:
 class ScanOrchestrator:
     """
     Thread-safe manager for background scan jobs.
-
-    Uses a bounded semaphore to cap concurrent work, propagates cancellation
-    via ``threading.Event``, enforces a global per-job timeout, and writes
-    each job's outcome into the history store.
+    Uses a bounded semaphore to cap concurrent work, propagates
+    cancellation via ``threading.Event``, enforces a global per-job
+    timeout, and writes each job's outcome into the history store.
     """
 
     def __init__(
@@ -369,9 +341,8 @@ class ScanOrchestrator:
     ):
         self._jobs:          Dict[str, ScanJob] = {}
         self._lock:          threading.Lock = threading.Lock()
-        self._semaphore:     threading.BoundedSemaphore = threading.BoundedSemaphore(
-            max(1, int(max_concurrent))
-        )
+        self._semaphore:     threading.BoundedSemaphore = \
+            threading.BoundedSemaphore(max(1, int(max_concurrent)))
         self._timeout:       int = int(timeout)
         self._cleanup_after: int = int(cleanup_after)
 
@@ -380,26 +351,39 @@ class ScanOrchestrator:
     # ------------------------------------------------------------------
     def list_tools(self) -> Dict[str, Dict[str, Any]]:
         """Return ``{tool_name: TOOL_INFO}`` for every discovered scanner."""
-        return {
-            name: dict(getattr(mod, "TOOL_INFO",
-                                {"name": name, "description": ""}))
-            for name, mod in TOOL_MAP.items()
-        }
+        out: Dict[str, Dict[str, Any]] = {}
+        for name, mod in TOOL_MAP.items():
+            info = getattr(mod, "TOOL_INFO", None)
+            if isinstance(info, dict):
+                out[name] = dict(info)
+            else:
+                out[name] = {
+                    "name": name,
+                    "description": "",
+                    "version": _extract_version(mod),
+                }
+        return out
 
     def get_tool_info(self, tool_name: str) -> Optional[Dict[str, Any]]:
         """Return ``TOOL_INFO`` for a single tool, or ``None`` if unknown."""
         mod = TOOL_MAP.get(tool_name)
         if mod is None:
             return None
-        return dict(getattr(mod, "TOOL_INFO",
-                            {"name": tool_name, "description": ""}))
+        info = getattr(mod, "TOOL_INFO", None)
+        if isinstance(info, dict):
+            return dict(info)
+        return {
+            "name": tool_name,
+            "description": "",
+            "version": _extract_version(mod),
+        }
 
     def is_tool(self, tool_name: str) -> bool:
         """Return True if ``tool_name`` is a registered scan tool."""
         return tool_name in TOOL_MAP
 
     # ------------------------------------------------------------------
-    # Direct (synchronous) invocation — respects calling conventions
+    # Direct synchronous invocation
     # ------------------------------------------------------------------
     def run_tool_sync(
         self,
@@ -409,8 +393,7 @@ class ScanOrchestrator:
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
-        Run a single tool and return its result. Handles both mode-string
-        and options-dict conventions.
+        Run a single tool synchronously and return its result.
         """
         if tool_name not in TOOL_MAP:
             raise ValueError(f"Unknown tool: {tool_name}")
@@ -419,7 +402,8 @@ class ScanOrchestrator:
         try:
             return _call_tool(tool_name, module, target, mode, kwargs)
         except Exception as exc:  # noqa: BLE001
-            logger.error("Direct tool %s failed: %s", tool_name, exc, exc_info=True)
+            logger.error("Direct tool %s failed: %s",
+                         tool_name, exc, exc_info=True)
             return {
                 "tool":   tool_name,
                 "target": target,
@@ -440,19 +424,6 @@ class ScanOrchestrator:
     ) -> str:
         """
         Launch a background scan and return its ``job_id``.
-
-        Parameters
-        ----------
-        target : str
-            Domain, hostname, or IP address to scan.
-        mode : str
-            ``"basic"`` or ``"expert"``.
-        tools : list[str]
-            Requested tool names. Empty → default set for ``mode``.
-        history_store : HistoryStore
-            Store used to persist the scan entry and results.
-        tool_options : dict, optional
-            Extra kwargs forwarded to every tool's ``run()``.
         """
         # Resolve effective tool list
         if not tools:
@@ -465,9 +436,11 @@ class ScanOrchestrator:
         if not tools:
             raise RuntimeError("No usable scan tools available for this mode")
 
-        # Create the history entry (status=running)
+        # Create the history entry
         try:
-            entry_id = history_store.add_entry(target, mode, tools, status="running")
+            entry_id = history_store.add_entry(
+                target, mode, tools, status="running"
+            )
         except Exception as exc:  # noqa: BLE001
             logger.error("Failed to create history entry: %s", exc)
             entry_id = -1
@@ -487,7 +460,6 @@ class ScanOrchestrator:
         with self._lock:
             self._jobs[job_id] = job
 
-        # Acquire concurrency slot before spawning the thread
         self._semaphore.acquire()
         thread = threading.Thread(
             target=self._execute,
@@ -498,10 +470,8 @@ class ScanOrchestrator:
         job._thread = thread
         thread.start()
 
-        logger.info(
-            "Scan started: job=%s target=%s mode=%s tools=%s",
-            job_id, target, mode, tools,
-        )
+        logger.info("Scan started: job=%s target=%s mode=%s tools=%s",
+                    job_id, target, mode, tools)
         return job_id
 
     def get_progress(self, job_id: str) -> Optional[Dict[str, Any]]:
@@ -521,7 +491,7 @@ class ScanOrchestrator:
         return False
 
     def cancel_all(self) -> None:
-        """Signal every active job to stop (used during graceful shutdown)."""
+        """Signal every active job to stop (graceful shutdown)."""
         with self._lock:
             for job in self._jobs.values():
                 if job.status in ("pending", "running"):
@@ -548,23 +518,23 @@ class ScanOrchestrator:
             job.results = {}
 
             for idx, tool_name in enumerate(job.tools):
-                # ── Cancellation check ────────────────────────────────
+                # Cancellation check
                 if job.cancel_event.is_set():
                     job.status = "cancelled"
                     job.error  = "Cancelled by user"
                     break
 
-                # ── Global timeout check ──────────────────────────────
+                # Global timeout check
                 if time.time() - start_time > self._timeout:
                     job.status = "timeout"
                     job.error  = f"Scan exceeded {self._timeout}s limit"
                     break
 
-                # ── Progress bookkeeping ──────────────────────────────
+                # Progress bookkeeping
                 job.current_tool = tool_name
                 job.percent      = int((idx / total_tools) * 100)
 
-                # ── Run the tool (respects calling convention) ────────
+                # Run the tool
                 tool_module = TOOL_MAP.get(tool_name)
                 if tool_module is None:
                     job.results[tool_name] = {
@@ -597,7 +567,7 @@ class ScanOrchestrator:
 
                 job.results[tool_name] = result
 
-            # ── Mark finished cleanly if no terminal flag was set ─────
+            # Clean completion
             if job.status == "running":
                 job.status       = "completed"
                 job.percent      = 100
@@ -609,7 +579,6 @@ class ScanOrchestrator:
             job.error  = f"Unexpected error: {exc}"
 
         finally:
-            # Always release the concurrency slot
             try:
                 self._semaphore.release()
             except Exception:
@@ -617,7 +586,6 @@ class ScanOrchestrator:
 
             job.finished_at = time.time()
 
-            # Persist outcome to history
             if job.entry_id and job.entry_id != -1:
                 try:
                     history_store.update_entry(
@@ -632,7 +600,6 @@ class ScanOrchestrator:
                         job.job_id, exc,
                     )
 
-            # Best-effort memory cleanup of old jobs
             self._cleanup_old_jobs()
 
     # ------------------------------------------------------------------
@@ -664,10 +631,7 @@ class ScanOrchestrator:
 # Public helpers
 # =============================================================================
 def get_registry_snapshot() -> Dict[str, Any]:
-    """
-    Return a lightweight summary of the current registry. Useful for
-    diagnostics and the ``/api/modules/status`` endpoint.
-    """
+    """Lightweight summary of the current registry."""
     return {
         "version":          __version__,
         "tool_count":       len(TOOL_MAP),
@@ -686,11 +650,7 @@ def call_tool(
     mode: str = "basic",
     **kwargs: Any,
 ) -> Dict[str, Any]:
-    """
-    Module-level convenience wrapper around the universal invoker.
-    Handy for external callers (e.g. app.py) that want the same dispatch
-    logic without instantiating an orchestrator.
-    """
+    """Module-level convenience wrapper around the universal invoker."""
     module = TOOL_MAP.get(tool_name)
     if module is None:
         raise ValueError(f"Unknown tool: {tool_name}")

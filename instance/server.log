@@ -74,3 +74,34 @@
 2026-09-25 07:30:40,065 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
 2026-09-25 07:30:40,065 [INFO] [http_logger] attached to Flask app (buffer=5000)
 2026-09-25 07:34:11,279 [INFO] Scan started: job=6997c725-6634-4ccb-9bd0-9ce15a832296 target=tempail.com mode=basic tools=['email_security', 'port_scan']
+2026-09-25 11:39:39,923 [INFO] Scan started: job=cbb8f0f0-ca2e-4f5e-b51c-cdb9a01af477 target=https://www.malaysia.gov.my/ mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-25 12:13:06,431 [INFO] [xss] loaded 867 payloads from xss_exploit.txt
+2026-09-25 12:13:06,504 [WARNING] [sniper] SQLi module failed: No module named 'modules.engine'
+2026-09-25 12:13:10,543 [INFO] [takeover] tempmail.com — 120 host(s)
+2026-09-25 12:13:10,681 [INFO] [takeover] wildcard DNS detected: 103.224.182.246
+2026-09-25 13:29:09,581 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 13:29:10,113 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 13:44:41,288 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 13:44:41,845 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 13:49:27,678 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 13:49:27,679 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 14:06:30,541 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 14:06:31,040 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 14:10:25,177 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 14:10:25,177 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 14:16:38,498 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 14:16:38,498 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 14:17:20,149 [WARNING] Upstream timeout: https://api.siputzx.my.id/api/s/pinterest params={'query': 'meme'}
+2026-09-25 14:21:55,149 [INFO] [xss] loaded 867 payloads from xss_exploit.txt
+2026-09-25 14:21:56,319 [INFO] [takeover] tempmail.com — 120 host(s)
+2026-09-25 14:21:57,272 [INFO] [takeover] wildcard DNS detected: 103.224.182.246
+2026-09-25 14:21:57,332 [WARNING] [sniper] SQLi module failed: No module named 'modules.engine'
+2026-09-25 14:29:30,718 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 14:29:31,208 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 14:34:37,084 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 14:34:37,085 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 14:51:01,428 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 14:51:01,907 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 14:51:48,998 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 14:51:48,999 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 14:54:32,741 [INFO] [xss] loaded 867 payloads from xss_exploit.txt
