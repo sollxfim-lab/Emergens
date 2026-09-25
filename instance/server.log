@@ -51,3 +51,26 @@
 2026-09-24 11:44:50,627 [INFO] Scan started: job=dda0a902-ffb2-48bf-94dc-517a0654b503 target=devtools.biz.id mode=basic tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'port_scan', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
 2026-09-24 11:50:18,269 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
 2026-09-24 11:50:18,270 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-25 04:48:29,960 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-25 04:48:29,961 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-25 04:51:19,121 [INFO] Scan started: job=259a0d22-e152-4665-be3b-5e8ace8c16d1 target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-25 04:51:21,600 [WARNING] ipapi.co gagal untuk 2606:4700:3030::6815:5bb1: 429 Client Error: Too Many Requests for url: https://ipapi.co/2606:4700:3030::6815:5bb1/json/
+2026-09-25 04:59:20,497 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-25 04:59:20,498 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-25 05:00:05,441 [INFO] Scan started: job=d52f0792-4c69-42d2-bae0-89464074f735 target=tempail.com mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-25 05:00:08,906 [WARNING] ipapi.co gagal untuk 2606:4700:3034::6815:3c4c: 429 Client Error: Too Many Requests for url: https://ipapi.co/2606:4700:3034::6815:3c4c/json/
+2026-09-25 05:11:29,138 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-25 05:11:29,138 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-25 05:14:18,310 [INFO] Scan started: job=97924e8f-8ee9-44a2-a892-2e360d81f882 target=https://reach-wa-nexus.vercel.app mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'scan_apikey', 'sql_map', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-25 05:14:18,530 [ERROR] Gagal resolve https://reach-wa-nexus.vercel.app: [Errno -2] Name or service not known
+2026-09-25 05:19:34,928 [INFO] Scan started: job=70590d6d-d4b0-40d8-ba41-ccbbc41f185b target=devtools.biz.id mode=expert tools=['connectivity_check', 'headers_check', 'ip_info', 'scan_apikey', 'sql_map', 'ssl_check', 'tech_fingerprint', 'whois_lookup', 'xss']
+2026-09-25 05:19:35,275 [WARNING] ipapi.co gagal untuk 2606:4700:3030::6815:5bb1: 429 Client Error: Too Many Requests for url: https://ipapi.co/2606:4700:3030::6815:5bb1/json/
+2026-09-25 05:31:45,182 [INFO] Scan started: job=ea4fb97f-0ff2-4b35-839f-fc799cba042a target=https://www.invicti.com/ mode=expert tools=['connectivity_check', 'headers_check', 'ip_info', 'scan_apikey', 'ssl_check', 'tech_fingerprint', 'xss']
+2026-09-25 05:31:45,288 [ERROR] Gagal resolve https://www.invicti.com/: [Errno -2] Name or service not known
+2026-09-25 07:04:56,803 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-25 07:04:56,803 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-25 07:12:33,880 [INFO] Scan started: job=62bb5428-64a6-49d7-800d-f69e9d45e4b3 target=devtools.biz.id mode=basic tools=['dns_lookup', 'email_security', 'port_scan']
+2026-09-25 07:15:42,265 [INFO] Scan started: job=61995abc-44f9-4b6e-ad96-c3dfdd0a833a target=devtools.biz.id mode=expert tools=['dns_lookup', 'email_security', 'port_scan']
+2026-09-25 07:30:40,065 [INFO] [http_logger] persisting to /datasets/_deepnote_work/Emergens/data/http_logs/requests.jsonl
+2026-09-25 07:30:40,065 [INFO] [http_logger] attached to Flask app (buffer=5000)
+2026-09-25 07:34:11,279 [INFO] Scan started: job=6997c725-6634-4ccb-9bd0-9ce15a832296 target=tempail.com mode=basic tools=['email_security', 'port_scan']

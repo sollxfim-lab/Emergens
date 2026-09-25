@@ -1,65 +1,35 @@
 /* ============================================================================
  * app-ex3bve.js — Exploit Suite for Emergens
- * v3.1.0 — APEX PREDATOR SHARK · professional, multi-instance
+ * v3.3.0 — APEX PREDATOR · professional, multi-instance, logger-free
  *
  * Sub-tools
- *   • Dirfuzz · SQLi · SQLMap · SQL-lite · XSS · XSS-lite · Sniper · HTTP Logger
+ *   • Dirfuzz · SQLi · SQLMap · SQL-lite · XSS · XSS-lite · Sniper
  *
- * Changelog v3.1.0
- *   ✔ Great-white shark REDESIGNED from scratch:
- *       – anatomical proportions · counter-shading with sharp boundary
- *       – crescent caudal tail (animated swing) with upper + lower lobes
- *       – five curved gill slits · lateral line · nostril · lateral keels
- *       – tall first dorsal fin, small second dorsal, pelvic, anal fins
- *       – long pointed pectoral fins (signature, animated sway)
- *       – open jaw with visible upper + lower teeth rows
- *       – predatory black eye with specular highlight
- *       – blood drips from the jaw and pectoral fins
- *   ✔ 9 rising bubbles with staggered animation and size variation
- *   ✔ Enhanced water ambience: animated caustics, dual water wake,
- *     blood-red ambient bloom behind the shark
- *   ✔ Glide + tail swing + pectoral sway — 3 independent animation loops
+ * Changelog v3.3.0
+ *   ✔ HTTP Logger fully removed (endpoints, tab, UI, sidebar, CSS)
+ *   ✔ Shark UI from v3.2.0 retained (real anatomy, clean animation)
+ *   ✔ SSE close-race fixed · XSS-safe rendering · keyboard nav
  *   ✔ Public API unchanged — mount / unmount / open / create
  * ========================================================================= */
 (function () {
   'use strict';
 
-  /* ── Endpoints ─────────────────────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════════════
+   *  Endpoints
+   * ══════════════════════════════════════════════════════════════════ */
   const EP = {
-    dirfuzz: {
-      wordlists: '/api/dirfuzz/wordlists',
-      scan:      '/api/dirfuzz/scan',
-      stream:    '/api/dirfuzz/scan/stream',
-    },
-    sqli: {
-      wordlists: '/api/sqli/wordlists',
-      scan:      '/api/sqli/scan',
-      stream:    '/api/sqli/scan/stream',
-    },
+    dirfuzz:   { wordlists: '/api/dirfuzz/wordlists', scan: '/api/dirfuzz/scan', stream: '/api/dirfuzz/scan/stream' },
+    sqli:      { wordlists: '/api/sqli/wordlists',    scan: '/api/sqli/scan',    stream: '/api/sqli/scan/stream' },
     sqlmap:    { scan: '/api/sqlmap/scan' },
     sqlinj:    { scan: '/api/sql_injection/scan' },
-    xss: {
-      wordlist:  '/api/xss/wordlist',
-      scan:      '/api/xss/scan',
-      stream:    '/api/xss/scan/stream',
-    },
+    xss:       { wordlist: '/api/xss/wordlist', scan: '/api/xss/scan', stream: '/api/xss/scan/stream' },
     xssSimple: { scan: '/api/xss_simple/scan' },
-    sniper: {
-      scan:   '/api/sniper/scan',
-      stream: '/api/sniper/scan/stream',
-    },
-    logger: {
-      list:   '/api/logger/requests',
-      detail: '/api/logger/requests',
-      stats:  '/api/logger/stats',
-      clear:  '/api/logger/clear',
-      tag:    '/api/logger/requests',
-      har:    '/api/logger/har',
-      stream: '/api/logger/stream',
-    },
+    sniper:    { scan: '/api/sniper/scan', stream: '/api/sniper/scan/stream' },
   };
 
-  /* ── Tiny helpers ──────────────────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════════════
+   *  Helpers
+   * ══════════════════════════════════════════════════════════════════ */
   const $  = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
@@ -68,11 +38,14 @@
     if (attrs) {
       for (const [k, v] of Object.entries(attrs)) {
         if (v == null || v === false) continue;
-        if (k === 'class')       n.className = v;
-        else if (k === 'html')   n.innerHTML = v;
+        if (k === 'class')                    n.className = v;
+        else if (k === 'html')                n.innerHTML = v; // trusted only
+        else if (k === 'text')                n.textContent = v;
+        else if (k === 'style')               n.style.cssText = v;
         else if (k.startsWith('on') && typeof v === 'function')
-          n.addEventListener(k.slice(2).toLowerCase(), v);
-        else                     n.setAttribute(k, v);
+                                              n.addEventListener(k.slice(2).toLowerCase(), v);
+        else if (v === true)                  n.setAttribute(k, '');
+        else                                  n.setAttribute(k, v);
       }
     }
     const append = (c) => {
@@ -80,7 +53,9 @@
       if (Array.isArray(c)) { c.forEach(append); return; }
       if (typeof c === 'string' || typeof c === 'number') {
         n.appendChild(document.createTextNode(String(c)));
-      } else { n.appendChild(c); }
+      } else if (c instanceof Node) {
+        n.appendChild(c);
+      }
     };
     children.forEach(append);
     return n;
@@ -96,43 +71,29 @@
     c.appendChild(n);
     setTimeout(() => {
       n.style.opacity = '0';
+      n.style.transform = 'translateX(20px)';
       setTimeout(() => n.remove(), 300);
     }, ms);
   }
 
-  async function jget(url) {
-    const r = await fetch(url, { credentials: 'same-origin' });
+  async function _fetchJSON(url, opts) {
+    const r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
     const txt = await r.text();
-    let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+    let data;
+    try { data = txt ? JSON.parse(txt) : {}; }
+    catch (_) { data = { raw: txt }; }
     if (!r.ok) throw new Error((data && data.error) || ('HTTP ' + r.status));
     return data;
   }
 
-  async function jpost(url, body) {
-    const r = await fetch(url, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body || {}),
-    });
-    const txt = await r.text();
-    let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
-    if (!r.ok) throw new Error((data && data.error) || ('HTTP ' + r.status));
-    return data;
-  }
+  const jget  = (url)       => _fetchJSON(url);
+  const jpost = (url, body) => _fetchJSON(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
 
-  function download(filename, text, mime) {
-    const blob = new Blob([text], { type: mime || 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = el('a', { href: url, download: filename });
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  }
-
-  function pretty(obj) {
-    try { return JSON.stringify(obj, null, 2); }
-    catch (_) { return String(obj); }
-  }
+  const pretty = (obj) => { try { return JSON.stringify(obj, null, 2); } catch (_) { return String(obj); } };
 
   function parseQS(url) {
     try {
@@ -144,57 +105,44 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-   *  APEX PREDATOR — CSS
+   *  CSS
    * ══════════════════════════════════════════════════════════════════ */
   const CSS = `
   /* ─── Root ─── */
   .ex-root {
-    --ex-red:         #dc2626;
-    --ex-red-2:       #b91c1c;
-    --ex-red-3:       #7f1d1d;
-    --ex-red-bright:  #ef4444;
-    --ex-red-glow:    rgba(220,38,38,.45);
-    --ex-red-soft:    rgba(220,38,38,.18);
-    --ex-red-line:    rgba(220,38,38,.32);
-    --ex-ocean-1:     #020617;
-    --ex-ocean-2:     #060e1e;
-    --ex-ocean-3:     #0a1122;
-    --ex-ocean-4:     #0f1a2e;
-    --ex-teal:        #0891b2;
-    --ex-teal-glow:   rgba(8,145,178,.35);
-    --ex-border:      rgba(148,163,184,.14);
-    --ex-border-2:    rgba(148,163,184,.08);
-    --ex-border-red:  rgba(220,38,38,.28);
-    --ex-white:       #f8fafc;
-    --ex-text:        #e2e8f0;
-    --ex-muted:       #94a3b8;
-    --ex-muted-2:     #64748b;
+    --ex-red:        #dc2626;
+    --ex-red-2:      #b91c1c;
+    --ex-red-3:      #7f1d1d;
+    --ex-red-bright: #ef4444;
+    --ex-teal:       #0891b2;
+    --ex-border:     rgba(148,163,184,.14);
+    --ex-border-2:   rgba(148,163,184,.08);
+    --ex-border-red: rgba(220,38,38,.28);
+    --ex-white:      #f8fafc;
+    --ex-text:       #e2e8f0;
+    --ex-muted:      #94a3b8;
+    --ex-muted-2:    #64748b;
 
     display: flex; flex-direction: column; gap: 16px;
-    font-family: var(--font-ui, 'Inter','Space Grotesk',system-ui,sans-serif);
+    font-family: var(--font-ui,'Inter','Space Grotesk',system-ui,sans-serif);
     color: var(--ex-text);
-    position: relative;
-    isolation: isolate;
+    position: relative; isolation: isolate;
   }
   .ex-root::before {
-    content: "";
-    position: absolute; inset: -20px;
+    content: ""; position: absolute; inset: -20px;
     background:
       radial-gradient(ellipse at 20% 0%,  rgba(8,145,178,.08), transparent 55%),
       radial-gradient(ellipse at 85% 100%, rgba(220,38,38,.06), transparent 55%);
-    pointer-events: none;
-    z-index: -1;
+    pointer-events: none; z-index: -1;
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     HERO HEADER
-     ═════════════════════════════════════════════════════════════════ */
+  /* ═══ HERO HEADER ═══ */
   .ex-shark-header {
     position: relative;
     background:
       radial-gradient(ellipse at 12% 100%, rgba(220,38,38,.28), transparent 55%),
-      radial-gradient(ellipse at 90% 0%,   rgba(30,58,138,.30),  transparent 55%),
-      radial-gradient(ellipse at 50% 50%,  rgba(8,145,178,.09),  transparent 70%),
+      radial-gradient(ellipse at 90% 0%,   rgba(30,58,138,.30), transparent 55%),
+      radial-gradient(ellipse at 50% 50%,  rgba(8,145,178,.09), transparent 70%),
       linear-gradient(135deg, #0a1122 0%, #0b0715 55%, #150404 100%);
     border: 1px solid var(--ex-border-red);
     border-radius: 18px;
@@ -208,8 +156,7 @@
       0 3px 12px rgba(220,38,38,.18);
   }
   .ex-shark-header::before {
-    content: "";
-    position: absolute; inset: 0;
+    content: ""; position: absolute; inset: 0;
     background-image:
       repeating-radial-gradient(circle at 15% 100%,
         rgba(220,38,38,.06) 0 12px, transparent 12px 40px),
@@ -217,29 +164,25 @@
         rgba(255,255,255,.018) 0 2px, transparent 2px 12px);
     opacity: .8; pointer-events: none;
   }
-  /* Animated caustic light rays */
   .ex-shark-header::after {
-    content: "";
-    position: absolute; left: 0; right: 0; top: -20%; bottom: -20%;
-    background:
-      linear-gradient(108deg,
-        transparent 10%, rgba(8,145,178,.06) 22%,
-        transparent 30%, transparent 52%,
-        rgba(220,38,38,.05) 62%, transparent 72%);
+    content: ""; position: absolute; left: 0; right: 0; top: -20%; bottom: -20%;
+    background: linear-gradient(108deg,
+      transparent 10%, rgba(8,145,178,.06) 22%,
+      transparent 30%, transparent 52%,
+      rgba(220,38,38,.05) 62%, transparent 72%);
     background-size: 220% 100%;
     animation: exCaustics 13s ease-in-out infinite;
-    pointer-events: none;
-    mix-blend-mode: screen;
+    pointer-events: none; mix-blend-mode: screen;
   }
   @keyframes exCaustics {
-    0%, 100% { background-position: 0% 0; }
-    50%      { background-position: 100% 0; }
+    0%,100% { background-position: 0% 0; }
+    50%     { background-position: 100% 0; }
   }
 
-  /* ═══ Shark figure — bigger and more cinematic ═══ */
+  /* ═══ Shark figure ═══ */
   .ex-shark-figure {
     position: relative;
-    width: 260px; height: 150px;
+    width: 280px; height: 160px;
     flex-shrink: 0;
     filter:
       drop-shadow(0 16px 30px rgba(220,38,38,.42))
@@ -252,67 +195,61 @@
     animation: exSharkGlide 9s ease-in-out infinite;
   }
   @keyframes exSharkGlide {
-    0%, 100% { transform: translateX(0) translateY(0) rotate(-1deg); }
-    25%      { transform: translateX(4px) translateY(-2px) rotate(0deg); }
-    50%      { transform: translateX(8px) translateY(0) rotate(1deg); }
-    75%      { transform: translateX(4px) translateY(2px) rotate(0deg); }
+    0%,100% { transform: translateX(0) translateY(0) rotate(-1deg); }
+    25%     { transform: translateX(4px) translateY(-2px) rotate(0deg); }
+    50%     { transform: translateX(8px) translateY(0) rotate(1deg); }
+    75%     { transform: translateX(4px) translateY(2px) rotate(0deg); }
   }
 
-  /* Animated body group (subtle flex) */
-  .ex-shark-figure svg .ex-shark-body {
-    transform-origin: 50% 55%;
+  .ex-shark-figure svg .ex-body-group {
+    transform-origin: 55% 58%;
     animation: exBodyFlex 3.5s ease-in-out infinite;
   }
   @keyframes exBodyFlex {
-    0%, 100% { transform: scaleY(1) rotate(0deg); }
-    50%      { transform: scaleY(1.015) rotate(0.4deg); }
+    0%,100% { transform: scaleY(1) rotate(0deg); }
+    50%     { transform: scaleY(1.012) rotate(0.35deg); }
   }
 
-  /* Tail swing — main propulsion */
   .ex-shark-figure svg .ex-tail {
-    transform-origin: 62px 106px;
+    transform-origin: 74px 100px;
     animation: exTailSwing 1.4s cubic-bezier(.45,0,.55,1) infinite;
   }
   @keyframes exTailSwing {
-    0%, 100% { transform: rotate(-9deg); }
-    50%      { transform: rotate(9deg); }
+    0%,100% { transform: rotate(-8deg); }
+    50%     { transform: rotate(8deg); }
   }
 
-  /* Pectoral fin sway */
   .ex-shark-figure svg .ex-pect {
-    transform-origin: 158px 116px;
+    transform-origin: 172px 118px;
     animation: exPectSway 2.6s ease-in-out infinite;
   }
   @keyframes exPectSway {
-    0%, 100% { transform: rotate(-3deg); }
-    50%      { transform: rotate(3deg); }
+    0%,100% { transform: rotate(-4deg); }
+    50%     { transform: rotate(4deg); }
   }
 
-  /* Blood drips */
-  .ex-shark-figure svg .ex-blood ellipse {
-    animation: exBloodDrip 2.2s ease-in infinite;
+  .ex-shark-figure svg .ex-blood-drop {
+    animation: exBloodDrip 2.4s ease-in infinite;
   }
-  .ex-shark-figure svg .ex-blood ellipse:nth-child(2) { animation-delay: .6s; }
-  .ex-shark-figure svg .ex-blood ellipse:nth-child(3) { animation-delay: 1.2s; }
+  .ex-shark-figure svg .ex-blood-drop:nth-of-type(2) { animation-delay: .7s; }
+  .ex-shark-figure svg .ex-blood-drop:nth-of-type(3) { animation-delay: 1.4s; }
   @keyframes exBloodDrip {
-    0%   { transform: translateY(-4px); opacity: 0; }
+    0%   { transform: translateY(-3px); opacity: 0; }
     20%  { opacity: 1; }
     100% { transform: translateY(14px); opacity: 0; }
   }
 
   /* ═══ Bubbles ═══ */
   .ex-shark-bubbles {
-    position: absolute; inset: 0;
-    pointer-events: none; overflow: visible;
+    position: absolute; inset: 0; pointer-events: none; overflow: visible;
   }
   .ex-shark-bubbles span {
-    position: absolute;
-    bottom: 12px;
-    border-radius: 50%;
+    position: absolute; bottom: 14px; border-radius: 50%;
     background: radial-gradient(circle at 32% 32%, #fff, rgba(220,38,38,.55));
     opacity: 0;
     animation: exBubbleRise 6.5s linear infinite;
     box-shadow: 0 0 8px rgba(255,255,255,.4);
+    will-change: transform, opacity;
   }
   .ex-shark-bubbles span:nth-child(1) { left: 48%; width: 6px; height: 6px; animation-delay: 0s;   }
   .ex-shark-bubbles span:nth-child(2) { left: 57%; width: 4px; height: 4px; animation-delay: .8s;  }
@@ -324,7 +261,7 @@
   .ex-shark-bubbles span:nth-child(8) { left: 28%; width: 3px; height: 3px; animation-delay: 5.4s; }
   .ex-shark-bubbles span:nth-child(9) { left: 17%; width: 4px; height: 4px; animation-delay: 5.9s; }
   @keyframes exBubbleRise {
-    0%   { transform: translateY(0) scale(.5); opacity: 0; }
+    0%   { transform: translateY(0) scale(.5);     opacity: 0; }
     12%  { opacity: .9; }
     88%  { opacity: .55; }
     100% { transform: translateY(-105px) scale(1.35); opacity: 0; }
@@ -336,20 +273,16 @@
   .ex-shark-eyebrow {
     display: inline-flex; align-items: center; gap: 9px;
     font-size: .64rem; letter-spacing: .24em; text-transform: uppercase;
-    font-weight: 800; color: #fca5a5;
-    margin-bottom: 10px;
-    padding: 4px 12px 4px 10px;
-    border-radius: 99px;
+    font-weight: 800; color: #fca5a5; margin-bottom: 10px;
+    padding: 4px 12px 4px 10px; border-radius: 99px;
     background: linear-gradient(135deg, rgba(220,38,38,.16), rgba(220,38,38,.02));
     border: 1px solid rgba(220,38,38,.32);
     box-shadow: 0 2px 10px rgba(220,38,38,.18);
     width: fit-content;
   }
   .ex-shark-eyebrow::before {
-    content: "";
-    width: 6px; height: 6px; border-radius: 50%;
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
     background: var(--ex-red-bright);
-    box-shadow: 0 0 0 0 rgba(239,68,68,.85);
     animation: exEyeDot 2s ease-out infinite;
   }
   @keyframes exEyeDot {
@@ -360,8 +293,7 @@
 
   .ex-shark-title {
     font-size: 1.65rem; font-weight: 800; letter-spacing: -.03em;
-    color: var(--ex-white);
-    margin: 0 0 8px; line-height: 1.1;
+    color: var(--ex-white); margin: 0 0 8px; line-height: 1.1;
     text-shadow: 0 2px 24px rgba(0,0,0,.55);
   }
   .ex-shark-title .ex-title-red {
@@ -371,24 +303,20 @@
     filter: drop-shadow(0 2px 16px rgba(220,38,38,.55));
   }
   .ex-shark-subtitle {
-    color: var(--ex-muted);
-    font-size: .82rem; line-height: 1.65; margin: 0;
-    max-width: 78ch;
+    color: var(--ex-muted); font-size: .82rem; line-height: 1.65;
+    margin: 0; max-width: 78ch;
   }
   .ex-shark-subtitle b {
     color: var(--ex-white);
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-weight: 600;
-    padding: 1px 6px;
-    border-radius: 5px;
+    font-weight: 600; padding: 1px 6px; border-radius: 5px;
     background: rgba(220,38,38,.14);
     border: 1px solid rgba(220,38,38,.22);
   }
 
   /* ═══ Tabs ═══ */
   .ex-tabs {
-    display: flex; flex-wrap: wrap; gap: 7px;
-    padding: 12px;
+    display: flex; flex-wrap: wrap; gap: 7px; padding: 12px;
     background:
       linear-gradient(180deg, rgba(220,38,38,.05), transparent 40%),
       linear-gradient(180deg, #0a1122, #050a14);
@@ -410,16 +338,14 @@
     display: inline-flex; align-items: center; gap: 8px;
     transition: all .18s cubic-bezier(.4,0,.2,1);
     -webkit-appearance: none; appearance: none;
-    white-space: nowrap; font-family: inherit;
-    position: relative;
+    white-space: nowrap; font-family: inherit; position: relative;
   }
   .ex-tab .ex-tab-ico {
     width: 22px; height: 22px;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: .72rem; border-radius: 50%;
     background: rgba(148,163,184,.10);
-    color: inherit; transition: all .18s;
-    flex-shrink: 0;
+    color: inherit; transition: all .18s; flex-shrink: 0;
   }
   .ex-tab:hover {
     color: var(--ex-white);
@@ -427,9 +353,7 @@
     background: linear-gradient(180deg, rgba(220,38,38,.10), rgba(220,38,38,.02));
     transform: translateY(-1px);
   }
-  .ex-tab:hover .ex-tab-ico {
-    background: rgba(220,38,38,.22); color: #fca5a5;
-  }
+  .ex-tab:hover .ex-tab-ico { background: rgba(220,38,38,.22); color: #fca5a5; }
   .ex-tab.active {
     background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
     color: #fff;
@@ -440,6 +364,10 @@
       inset 0 1px 0 rgba(255,255,255,.2);
   }
   .ex-tab.active .ex-tab-ico { background: rgba(0,0,0,.28); color: #fff; }
+  .ex-tab:focus-visible {
+    outline: 2px solid var(--ex-red-bright);
+    outline-offset: 2px;
+  }
 
   /* ═══ Panels ═══ */
   .ex-panel { display: none; }
@@ -454,8 +382,7 @@
 
   /* ═══ Cards ═══ */
   .ex-card {
-    background:
-      linear-gradient(165deg, rgba(11,18,32,.85) 0%, rgba(5,10,22,.95) 100%);
+    background: linear-gradient(165deg, rgba(11,18,32,.85) 0%, rgba(5,10,22,.95) 100%);
     border: 1px solid var(--ex-border);
     border-radius: 14px;
     padding: 20px 22px;
@@ -468,11 +395,6 @@
     content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
     background: linear-gradient(90deg, var(--ex-red) 0%, transparent 55%);
     opacity: .6;
-  }
-  .ex-card::after {
-    content: ""; position: absolute; inset: 0;
-    background: radial-gradient(ellipse at 0% 0%, rgba(220,38,38,.04), transparent 40%);
-    pointer-events: none;
   }
   .ex-card:hover {
     border-color: var(--ex-border-red);
@@ -489,7 +411,7 @@
     display: flex; align-items: center; gap: 11px;
     padding-bottom: 14px;
     border-bottom: 1px solid var(--ex-border-2);
-    flex-wrap: wrap; position: relative;
+    flex-wrap: wrap;
   }
   .ex-card h4 i {
     width: 30px; height: 30px;
@@ -497,9 +419,7 @@
     font-size: .84rem; border-radius: 9px;
     background: linear-gradient(135deg, var(--ex-red-bright), var(--ex-red-3));
     color: #fff;
-    box-shadow:
-      0 4px 14px rgba(220,38,38,.45),
-      inset 0 1px 0 rgba(255,255,255,.2);
+    box-shadow: 0 4px 14px rgba(220,38,38,.45), inset 0 1px 0 rgba(255,255,255,.2);
     flex-shrink: 0;
   }
   .ex-card h4 .ex-card-hint {
@@ -545,9 +465,7 @@
   .ex-field > select:focus,
   .ex-field > textarea:focus {
     border-color: var(--ex-red);
-    box-shadow:
-      0 0 0 3px rgba(220,38,38,.18),
-      0 0 20px -4px rgba(220,38,38,.35);
+    box-shadow: 0 0 0 3px rgba(220,38,38,.18), 0 0 20px -4px rgba(220,38,38,.35);
     background: linear-gradient(180deg, #060b17, #0b1226);
   }
   .ex-field > input::placeholder,
@@ -567,29 +485,18 @@
     white-space: nowrap; font-family: inherit;
     position: relative; overflow: hidden;
   }
-  .ex-btn::before {
-    content: "";
-    position: absolute; inset: 0;
-    background: radial-gradient(circle at center, rgba(255,255,255,.22), transparent 60%);
-    opacity: 0; transition: opacity .25s; pointer-events: none;
-  }
   .ex-btn:active { transform: scale(.97); }
   .ex-btn[disabled] { opacity: .5; cursor: not-allowed; transform: none !important; }
   .ex-btn-primary {
     background: linear-gradient(135deg, var(--ex-red-bright), var(--ex-red-3));
     color: #fff;
-    box-shadow:
-      0 4px 14px rgba(220,38,38,.4),
-      inset 0 1px 0 rgba(255,255,255,.18);
+    box-shadow: 0 4px 14px rgba(220,38,38,.4), inset 0 1px 0 rgba(255,255,255,.18);
   }
   .ex-btn-primary:hover:not([disabled]) {
     transform: translateY(-2px);
-    box-shadow:
-      0 12px 32px rgba(220,38,38,.6),
-      inset 0 1px 0 rgba(255,255,255,.22);
+    box-shadow: 0 12px 32px rgba(220,38,38,.6), inset 0 1px 0 rgba(255,255,255,.22);
     filter: brightness(1.08);
   }
-  .ex-btn-primary:hover:not([disabled])::before { opacity: 1; }
   .ex-btn-danger {
     background: linear-gradient(135deg, #7f1d1d, #450a0a);
     color: #fca5a5; border-color: rgba(239,68,68,.4);
@@ -627,36 +534,19 @@
       linear-gradient(180deg, rgba(255,255,255,.18), transparent 40%),
       linear-gradient(90deg, #991b1b, #dc2626, #ef4444, #f87171);
     transition: width .35s cubic-bezier(.16,1,.3,1);
-    border-radius: 99px;
-    position: relative; overflow: hidden;
+    border-radius: 99px; position: relative; overflow: hidden;
     box-shadow: 0 0 20px rgba(220,38,38,.5), inset 0 -2px 4px rgba(0,0,0,.3);
   }
-  .ex-progress > span::before {
-    content: "";
-    position: absolute; inset: 0;
-    background-image:
-      linear-gradient(135deg, transparent 50%, rgba(255,255,255,.4) 50%),
-      linear-gradient(45deg, rgba(255,255,255,.4) 50%, transparent 50%);
-    background-size: 9px 9px;
-    background-repeat: repeat-x;
-    animation: exTeethScroll 1.2s linear infinite;
-    opacity: .6;
-  }
   .ex-progress > span::after {
-    content: "";
-    position: absolute; inset: 0;
+    content: ""; position: absolute; inset: 0;
     background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
     background-size: 200% 100%;
     animation: exShimmer 2.2s linear infinite;
     opacity: .55;
   }
-  @keyframes exTeethScroll {
-    from { background-position: 0 0; }
-    to   { background-position: 9px 0; }
-  }
   @keyframes exShimmer {
     0%   { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    100% { background-position:  200% 0; }
   }
   .ex-progress-label {
     display: flex; justify-content: space-between;
@@ -718,31 +608,12 @@
     text-transform: uppercase; letter-spacing: .07em;
     border: 1px solid; position: relative;
   }
-  .ex-badge-critical {
-    background: linear-gradient(135deg, rgba(220,38,38,.28), rgba(127,29,29,.18));
-    color: #fca5a5; border-color: rgba(220,38,38,.55);
-    box-shadow: 0 0 12px -2px rgba(220,38,38,.35);
-  }
-  .ex-badge-high {
-    background: linear-gradient(135deg, rgba(249,115,22,.24), rgba(154,52,18,.15));
-    color: #fdba74; border-color: rgba(249,115,22,.5);
-  }
-  .ex-badge-medium {
-    background: linear-gradient(135deg, rgba(245,158,11,.24), rgba(120,53,15,.15));
-    color: #fcd34d; border-color: rgba(245,158,11,.5);
-  }
-  .ex-badge-low {
-    background: linear-gradient(135deg, rgba(59,130,246,.22), rgba(30,58,138,.15));
-    color: #93c5fd; border-color: rgba(59,130,246,.5);
-  }
-  .ex-badge-info {
-    background: linear-gradient(135deg, rgba(148,163,184,.18), rgba(71,85,105,.1));
-    color: #cbd5e1; border-color: rgba(148,163,184,.35);
-  }
-  .ex-badge-safe {
-    background: linear-gradient(135deg, rgba(34,197,94,.22), rgba(20,83,45,.15));
-    color: #86efac; border-color: rgba(34,197,94,.5);
-  }
+  .ex-badge-critical { background: linear-gradient(135deg, rgba(220,38,38,.28), rgba(127,29,29,.18)); color: #fca5a5; border-color: rgba(220,38,38,.55); box-shadow: 0 0 12px -2px rgba(220,38,38,.35); }
+  .ex-badge-high     { background: linear-gradient(135deg, rgba(249,115,22,.24), rgba(154,52,18,.15)); color: #fdba74; border-color: rgba(249,115,22,.5); }
+  .ex-badge-medium   { background: linear-gradient(135deg, rgba(245,158,11,.24), rgba(120,53,15,.15)); color: #fcd34d; border-color: rgba(245,158,11,.5); }
+  .ex-badge-low      { background: linear-gradient(135deg, rgba(59,130,246,.22), rgba(30,58,138,.15)); color: #93c5fd; border-color: rgba(59,130,246,.5); }
+  .ex-badge-info     { background: linear-gradient(135deg, rgba(148,163,184,.18), rgba(71,85,105,.1)); color: #cbd5e1; border-color: rgba(148,163,184,.35); }
+  .ex-badge-safe     { background: linear-gradient(135deg, rgba(34,197,94,.22), rgba(20,83,45,.15)); color: #86efac; border-color: rgba(34,197,94,.5); }
 
   /* ═══ Chips ═══ */
   .ex-chips {
@@ -768,9 +639,7 @@
   .ex-chip.active {
     background: linear-gradient(135deg, var(--ex-red-bright), var(--ex-red-3));
     border-color: transparent; color: #fff;
-    box-shadow:
-      0 4px 14px rgba(220,38,38,.45),
-      inset 0 1px 0 rgba(255,255,255,.18);
+    box-shadow: 0 4px 14px rgba(220,38,38,.45), inset 0 1px 0 rgba(255,255,255,.18);
   }
 
   /* ═══ Findings ═══ */
@@ -834,11 +703,6 @@
     background: linear-gradient(90deg, var(--ex-red), transparent);
     opacity: .5;
   }
-  .ex-kpi::after {
-    content: ""; position: absolute; inset: 0;
-    background: radial-gradient(circle at 0% 0%, rgba(220,38,38,.05), transparent 50%);
-    pointer-events: none;
-  }
   .ex-kpi:hover {
     border-color: var(--ex-border-red);
     transform: translateY(-2px);
@@ -885,18 +749,17 @@
   /* ═══ Empty ═══ */
   .ex-empty {
     padding: 32px 16px; text-align: center;
-    color: var(--ex-muted); font-size: .82rem;
-    font-style: italic;
+    color: var(--ex-muted); font-size: .82rem; font-style: italic;
     display: flex; flex-direction: column; gap: 14px; align-items: center;
   }
   .ex-empty svg {
-    width: 110px; height: 78px; opacity: .48;
+    width: 130px; height: 90px; opacity: .6;
     filter: drop-shadow(0 6px 18px rgba(220,38,38,.45));
     animation: exEmptyFloat 4s ease-in-out infinite;
   }
   @keyframes exEmptyFloat {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-5px); }
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-5px); }
   }
 
   /* ═══ Live pill ═══ */
@@ -913,7 +776,6 @@
   .ex-live-pill .dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: #ef4444;
-    box-shadow: 0 0 0 0 rgba(239,68,68,.8);
     animation: exLivePulse 1.5s ease-out infinite;
   }
   @keyframes exLivePulse {
@@ -922,7 +784,7 @@
     100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
   }
 
-  /* ═══ Sidebar — neutral by default ═══ */
+  /* ═══ Sidebar — exploit + mhddos only (no httplogger) ═══ */
   .nav-item[data-section="mhddos"],
   .nav-item[data-section="exploit"] {
     position: relative;
@@ -948,9 +810,8 @@
     color: #fff !important;
     filter: drop-shadow(0 0 8px rgba(239,68,68,.85));
   }
-  .content-section.active#section-mhddos   .panel-title i,
-  .content-section.active#section-exploit  .panel-title i,
-  .content-section.active#section-httplogger .panel-title i {
+  .content-section.active#section-mhddos  .panel-title i,
+  .content-section.active#section-exploit .panel-title i {
     color: #ef4444 !important;
     background: linear-gradient(135deg, rgba(220,38,38,.26), rgba(127,29,29,.14)) !important;
     box-shadow: inset 0 0 0 1px rgba(220,38,38,.35);
@@ -959,7 +820,7 @@
   /* ═══ Responsive ═══ */
   @media (max-width: 900px) {
     .ex-shark-header { flex-direction: column; align-items: flex-start; padding: 22px; gap: 18px; }
-    .ex-shark-figure { width: 220px; height: 130px; }
+    .ex-shark-figure { width: 240px; height: 138px; }
     .ex-shark-title  { font-size: 1.35rem; }
     .ex-shark-header::after { animation: none; }
   }
@@ -969,8 +830,18 @@
     .ex-tab  { flex-shrink: 0; }
   }
   @media (max-width: 480px) {
-    .ex-shark-figure { width: 180px; height: 108px; }
+    .ex-shark-figure { width: 190px; height: 112px; }
     .ex-shark-title  { font-size: 1.15rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ex-shark-figure svg,
+    .ex-shark-figure svg .ex-body-group,
+    .ex-shark-figure svg .ex-tail,
+    .ex-shark-figure svg .ex-pect,
+    .ex-shark-figure svg .ex-blood-drop,
+    .ex-shark-bubbles span,
+    .ex-empty svg { animation: none !important; }
   }
   `;
 
@@ -983,237 +854,192 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-   *  APEX PREDATOR — great-white shark
+   *  Shark figure — anatomically corrected
    * ══════════════════════════════════════════════════════════════════ */
   function sharkFigure() {
     const wrap = el('div', { class: 'ex-shark-figure', 'aria-hidden': 'true' });
-    const svg = el('div', {
+    const svg  = el('div', {
       html: `
-        <svg viewBox="0 0 340 180" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <!-- Body — top dark gradient -->
-            <linearGradient id="exTopGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0"    stop-color="#64748b"/>
-              <stop offset="0.25" stop-color="#475569"/>
-              <stop offset="0.6"  stop-color="#334155"/>
-              <stop offset="1"    stop-color="#0f172a"/>
-            </linearGradient>
-            <!-- Belly — light counter-shading -->
-            <linearGradient id="exBellyGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#f8fafc"/>
-              <stop offset="0.55" stop-color="#e2e8f0"/>
-              <stop offset="1" stop-color="#94a3b8"/>
-            </linearGradient>
-            <!-- Fins — red predator accent -->
-            <linearGradient id="exFinGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0"    stop-color="#fca5a5"/>
-              <stop offset="0.3"  stop-color="#ef4444"/>
-              <stop offset="0.65" stop-color="#b91c1c"/>
-              <stop offset="1"    stop-color="#7f1d1d"/>
-            </linearGradient>
-            <!-- Deep fin (tail) -->
-            <linearGradient id="exFinDark" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#b91c1c"/>
-              <stop offset="1" stop-color="#450a0a"/>
-            </linearGradient>
-            <!-- Mouth interior -->
-            <linearGradient id="exMouthGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#7f1d1d"/>
-              <stop offset="1" stop-color="#450a0a"/>
-            </linearGradient>
-            <!-- Eye -->
-            <radialGradient id="exEyeGrad" cx="0.35" cy="0.35" r="0.7">
-              <stop offset="0"   stop-color="#334155"/>
-              <stop offset="0.55" stop-color="#020617"/>
-              <stop offset="1"   stop-color="#000000"/>
-            </radialGradient>
-            <!-- Glow behind the shark -->
-            <radialGradient id="exGlowGrad" cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stop-color="rgba(220,38,38,.5)"/>
-              <stop offset="1" stop-color="rgba(220,38,38,0)"/>
-            </radialGradient>
-            <!-- Filters -->
-            <filter id="exSharkGlow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="3.5" result="b"/>
-              <feMerge>
-                <feMergeNode in="b"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-            <filter id="exFinShadow" x="-25%" y="-25%" width="150%" height="150%">
-              <feGaussianBlur stdDeviation="2" result="s"/>
-              <feMerge>
-                <feMergeNode in="s"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
+      <svg viewBox="0 0 340 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="exBodyTop" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0"    stop-color="#6b7a8c"/>
+            <stop offset="0.35" stop-color="#475569"/>
+            <stop offset="0.75" stop-color="#1e293b"/>
+            <stop offset="1"    stop-color="#0f172a"/>
+          </linearGradient>
+          <linearGradient id="exBodyBelly" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0"    stop-color="#f1f5f9"/>
+            <stop offset="0.55" stop-color="#cbd5e1"/>
+            <stop offset="1"    stop-color="#64748b"/>
+          </linearGradient>
+          <linearGradient id="exFinMain" x1="0" y1="1" x2="0.4" y2="0">
+            <stop offset="0"    stop-color="#7f1d1d"/>
+            <stop offset="0.45" stop-color="#b91c1c"/>
+            <stop offset="0.85" stop-color="#ef4444"/>
+            <stop offset="1"    stop-color="#fca5a5"/>
+          </linearGradient>
+          <linearGradient id="exFinTail" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#dc2626"/>
+            <stop offset="0.5" stop-color="#991b1b"/>
+            <stop offset="1" stop-color="#450a0a"/>
+          </linearGradient>
+          <linearGradient id="exMouth" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#450a0a"/>
+            <stop offset="1" stop-color="#1c0505"/>
+          </linearGradient>
+          <radialGradient id="exEye" cx="0.35" cy="0.35" r="0.75">
+            <stop offset="0"    stop-color="#1e293b"/>
+            <stop offset="0.55" stop-color="#020617"/>
+            <stop offset="1"    stop-color="#000000"/>
+          </radialGradient>
+          <radialGradient id="exGlow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0"   stop-color="rgba(220,38,38,.42)"/>
+            <stop offset="1"   stop-color="rgba(220,38,38,0)"/>
+          </radialGradient>
+          <filter id="exGlowFilter" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3.2" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="exSoftShadow" x="-25%" y="-25%" width="150%" height="150%">
+            <feGaussianBlur stdDeviation="1.8" result="s"/>
+            <feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
 
-          <!-- Ambient blood bloom -->
-          <ellipse cx="180" cy="98" rx="150" ry="72" fill="url(#exGlowGrad)" opacity="0.5"/>
+        <ellipse cx="180" cy="100" rx="155" ry="78" fill="url(#exGlow)" opacity="0.55"/>
 
-          <!-- Water wake (double layer) -->
-          <path d="M0 150 Q85 140 170 148 T340 150"
-                stroke="#0891b2" stroke-width="1.8" fill="none"
-                stroke-opacity="0.5" stroke-linecap="round"
-                stroke-dasharray="16 10">
-            <animate attributeName="stroke-dashoffset" from="0" to="-52"
-                     dur="4s" repeatCount="indefinite"/>
-          </path>
-          <path d="M14 162 Q99 154 184 162 T354 162"
-                stroke="#0891b2" stroke-width="1" fill="none"
-                stroke-opacity="0.28" stroke-linecap="round"/>
+        <path d="M0 152 Q85 142 170 150 T340 152"
+              stroke="#0891b2" stroke-width="1.8" fill="none"
+              stroke-opacity="0.5" stroke-linecap="round" stroke-dasharray="16 10">
+          <animate attributeName="stroke-dashoffset" from="0" to="-52" dur="4s" repeatCount="indefinite"/>
+        </path>
+        <path d="M14 164 Q99 156 184 164 T354 164"
+              stroke="#0891b2" stroke-width="1" fill="none"
+              stroke-opacity="0.28" stroke-linecap="round"/>
 
-          <!-- ═══ TAIL (animated swing) ═══ -->
-          <g class="ex-tail">
-            <!-- Upper caudal lobe -->
-            <path d="M60 106 L6 60 Q22 78 44 90 L68 100 Z"
-                  fill="url(#exFinDark)" stroke="#450a0a" stroke-width="1.4"
-                  stroke-linejoin="round"/>
-            <path d="M60 106 L6 60 Q22 78 44 90 L68 100 Z"
-                  fill="url(#exFinGrad)" opacity="0.5"/>
-            <!-- Lower caudal lobe -->
-            <path d="M62 112 L14 152 Q32 136 50 124 L70 116 Z"
-                  fill="url(#exFinDark)" stroke="#450a0a" stroke-width="1.4"
-                  stroke-linejoin="round"/>
-            <path d="M62 112 L14 152 Q32 136 50 124 L70 116 Z"
-                  fill="url(#exFinGrad)" opacity="0.4"/>
-            <!-- Caudal keel -->
-            <path d="M64 108 Q60 112 64 116 Q68 112 64 108 Z" fill="#0f172a"/>
+        <g class="ex-tail">
+          <path d="M70 100 L60 98 L70 104 Z" fill="#1e293b"/>
+          <path d="M70 100 L60 102 L70 106 Z" fill="#1e293b"/>
+          <path d="M72 100
+                   C 58 92, 34 66, 6 44
+                   C 22 62, 44 82, 60 94
+                   L 72 100 Z"
+                fill="url(#exFinTail)" stroke="#450a0a" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M68 96 C 56 88, 36 66, 14 50 L 26 66 L 62 94 Z"
+                fill="#fca5a5" opacity="0.25"/>
+          <path d="M72 108
+                   C 60 114, 40 132, 20 152
+                   C 36 138, 54 122, 68 112
+                   L 72 108 Z"
+                fill="url(#exFinTail)" stroke="#450a0a" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M68 112 C 58 118, 42 132, 28 146 L 44 132 L 64 114 Z"
+                fill="#fca5a5" opacity="0.2"/>
+        </g>
+
+        <g class="ex-body-group">
+          <path d="M74 104
+                   C 92 88, 128 76, 176 74
+                   C 226 72, 268 80, 292 92
+                   L 304 100
+                   L 304 104
+                   C 296 116, 270 124, 236 128
+                   C 190 132, 132 128, 96 118
+                   C 82 114, 76 108, 74 104 Z"
+                fill="url(#exBodyTop)" stroke="#0f172a" stroke-width="1.6"/>
+
+          <path d="M96 118
+                   C 132 128, 190 132, 236 128
+                   C 266 124, 288 116, 302 104
+                   L 296 108
+                   C 274 120, 236 126, 194 126
+                   C 148 124, 112 118, 96 118 Z"
+                fill="url(#exBodyBelly)" opacity="0.98"/>
+
+          <path d="M104 106 C 150 110, 210 110, 264 104"
+                stroke="#94a3b8" stroke-width="0.55" fill="none"
+                stroke-opacity="0.45" stroke-dasharray="2 4"/>
+
+          <path d="M172 76
+                   C 196 32, 214 12, 224 8
+                   L 222 44
+                   C 222 58, 224 68, 228 78
+                   C 210 74, 190 74, 172 76 Z"
+                fill="url(#exFinMain)" stroke="#450a0a" stroke-width="1.6"
+                stroke-linejoin="round" filter="url(#exGlowFilter)"/>
+          <path d="M180 74 C 200 38, 212 20, 220 16 L 218 46 L 222 74 C 208 72, 194 72, 180 74 Z"
+                fill="#fca5a5" opacity="0.28"/>
+
+          <path d="M262 88 L274 66 L286 88 Q274 86 262 88 Z"
+                fill="url(#exFinMain)" opacity="0.92"
+                stroke="#450a0a" stroke-width="0.9" filter="url(#exSoftShadow)"/>
+
+          <g class="ex-pect">
+            <path d="M170 120 L144 172 L204 134 Z"
+                  fill="url(#exFinMain)" opacity="0.96"
+                  stroke="#450a0a" stroke-width="1.3"
+                  stroke-linejoin="round" filter="url(#exGlowFilter)"/>
+            <path d="M172 122 L150 164 L198 134 Z"
+                  fill="#fca5a5" opacity="0.22"/>
           </g>
 
-          <!-- ═══ BODY (animated flex) ═══ -->
-          <g class="ex-shark-body">
-            <!-- Torpedo silhouette -->
-            <path d="M68 108
-                     Q108 80 166 78
-                     Q226 76 280 90
-                     L298 100
-                     Q280 118 224 122
-                     Q162 126 100 118
-                     Q76 114 68 108 Z"
-                  fill="url(#exTopGrad)" stroke="#0f172a" stroke-width="1.8"/>
+          <path d="M244 124 L252 148 L272 126 Z"
+                fill="url(#exFinMain)" opacity="0.78" stroke="#450a0a" stroke-width="0.85"/>
 
-            <!-- Counter-shading boundary + belly -->
-            <path d="M104 116
-                     Q162 128 226 122
-                     Q266 114 292 102
-                     L280 104
-                     Q230 118 164 118
-                     Q116 116 104 116 Z"
-                  fill="url(#exBellyGrad)" opacity="0.96"/>
+          <path d="M276 120 L284 140 L298 122 Z"
+                fill="url(#exFinMain)" opacity="0.72" stroke="#450a0a" stroke-width="0.85"/>
 
-            <!-- Lateral line (subtle) -->
-            <path d="M104 106 Q166 108 250 106"
-                  stroke="#94a3b8" stroke-width="0.6" fill="none"
-                  stroke-opacity="0.4" stroke-dasharray="2 4"/>
-
-            <!-- ═══ FINS ═══ -->
-            <!-- First dorsal fin (main, tall, swept back) -->
-            <path d="M158 82
-                     L214 4
-                     Q220 24 220 56
-                     L226 82
-                     Q192 76 158 82 Z"
-                  fill="url(#exFinGrad)" stroke="#450a0a" stroke-width="1.8"
-                  filter="url(#exSharkGlow)"/>
-            <!-- Dorsal highlight -->
-            <path d="M166 80 L214 18 L218 56 L222 80 Q194 74 166 80 Z"
-                  fill="#fca5a5" opacity="0.3"/>
-            <!-- Dorsal shadow inner -->
-            <path d="M162 82 L214 12 L220 82 Q196 78 162 82 Z"
-                  fill="none" stroke="#7f1d1d" stroke-width="0.8" opacity="0.5"/>
-
-            <!-- Second dorsal fin (small) -->
-            <path d="M258 88 L270 62 L282 90 Q268 88 258 88 Z"
-                  fill="url(#exFinGrad)" opacity="0.9"
-                  stroke="#450a0a" stroke-width="1"
-                  filter="url(#exFinShadow)"/>
-
-            <!-- ═══ Pectoral fin (animated sway, long & pointed) ═══ -->
-            <g class="ex-pect">
-              <path d="M162 118 L140 170 L200 134 Z"
-                    fill="url(#exFinGrad)" opacity="0.96"
-                    stroke="#450a0a" stroke-width="1.4"
-                    stroke-linejoin="round"
-                    filter="url(#exSharkGlow)"/>
-              <path d="M164 120 L146 164 L196 136 Z"
-                    fill="#fca5a5" opacity="0.18"/>
-            </g>
-
-            <!-- Pelvic fin -->
-            <path d="M240 120 L250 146 L268 124 Z"
-                  fill="url(#exFinGrad)" opacity="0.78"
-                  stroke="#450a0a" stroke-width="0.8"/>
-
-            <!-- Anal fin -->
-            <path d="M274 118 L282 138 L298 120 Z"
-                  fill="url(#exFinGrad)" opacity="0.72"
-                  stroke="#450a0a" stroke-width="0.8"/>
-
-            <!-- ═══ GILLS — five curved slits ═══ -->
-            <g stroke="#dc2626" stroke-width="2.2" stroke-linecap="round"
-               opacity="0.92" fill="none">
-              <path d="M228 90 Q226 102 226 114"/>
-              <path d="M240 90 Q238 102 238 114"/>
-              <path d="M252 90 Q250 102 250 114"/>
-              <path d="M264 92 Q262 102 262 112"/>
-              <path d="M276 94 Q274 102 274 110"/>
-            </g>
-
-            <!-- Nostril -->
-            <ellipse cx="308" cy="102" rx="3.2" ry="2.2"
-                     fill="#0f172a" opacity="0.65"/>
-
-            <!-- ═══ MOUTH — open, showing teeth ═══ -->
-            <path d="M290 106
-                     Q300 122 318 112
-                     Q306 118 292 116
-                     Q286 112 290 106 Z"
-                  fill="url(#exMouthGrad)" stroke="#450a0a" stroke-width="1"
-                  stroke-linejoin="round"/>
-
-            <!-- Upper teeth row -->
-            <g fill="#f8fafc" opacity="0.97">
-              <path d="M292 108 L294 116 L296 108 Z"/>
-              <path d="M297 108 L299 117 L301 108 Z"/>
-              <path d="M302 108 L304 117 L306 108 Z"/>
-              <path d="M307 108 L309 116 L311 108 Z"/>
-              <path d="M312 108 L314 115 L316 108 Z"/>
-              <path d="M317 108 L319 114 L321 108 Z"/>
-            </g>
-            <!-- Lower teeth row -->
-            <g fill="#e2e8f0" opacity="0.72">
-              <path d="M294 114 L295 108 L296 114 Z"/>
-              <path d="M300 115 L301 107 L302 115 Z"/>
-              <path d="M306 115 L307 107 L308 115 Z"/>
-              <path d="M312 114 L313 108 L314 114 Z"/>
-            </g>
-
-            <!-- ═══ EYE — small, black, predatory ═══ -->
-            <circle cx="294" cy="96" r="4.8" fill="url(#exEyeGrad)"/>
-            <circle cx="292.4" cy="94.4" r="1.3" fill="#f8fafc" opacity="0.9"/>
-            <circle cx="292.4" cy="94.4" r="0.5" fill="#000" opacity="0.7"/>
-
-            <!-- ═══ BLOOD DRIPS ═══ -->
-            <g class="ex-blood" fill="#7f1d1d">
-              <ellipse cx="296" cy="124" rx="1.8" ry="3.8"/>
-              <ellipse cx="304" cy="128" rx="1.4" ry="3.2"/>
-              <ellipse cx="312" cy="126" rx="1.6" ry="3.6"/>
-            </g>
-            <!-- Fin blood accents -->
-            <g fill="#7f1d1d" opacity="0.65">
-              <ellipse cx="156" cy="156" rx="1.5" ry="3.2"/>
-              <ellipse cx="186" cy="146" rx="1.2" ry="2.8"/>
-            </g>
+          <g stroke="#7f1d1d" stroke-width="2.2" stroke-linecap="round" opacity="0.95" fill="none">
+            <path d="M226 88 Q224 100 224 112"/>
+            <path d="M238 88 Q236 100 236 112"/>
+            <path d="M250 88 Q248 100 248 112"/>
+            <path d="M262 90 Q260 100 260 110"/>
+            <path d="M274 92 Q272 100 272 108"/>
           </g>
-        </svg>
+
+          <ellipse cx="282" cy="92" rx="1.4" ry="1" fill="#1e293b" opacity="0.6"/>
+          <ellipse cx="306" cy="100" rx="2.8" ry="1.8" fill="#0f172a" opacity="0.55"/>
+
+          <path d="M298 104
+                   C 306 116, 318 122, 326 116
+                   C 318 120, 306 118, 298 110
+                   Z"
+                fill="url(#exMouth)" stroke="#450a0a" stroke-width="1" stroke-linejoin="round"/>
+
+          <g fill="#f8fafc" opacity="0.97">
+            <path d="M300 106 L302 114 L304 106 Z"/>
+            <path d="M305 106 L307 115 L309 106 Z"/>
+            <path d="M310 106 L312 115 L314 106 Z"/>
+            <path d="M315 106 L317 114 L319 106 Z"/>
+            <path d="M320 107 L322 113 L324 107 Z"/>
+          </g>
+          <g fill="#e2e8f0" opacity="0.7">
+            <path d="M302 112 L303 106 L304 112 Z"/>
+            <path d="M307 113 L308 105 L309 113 Z"/>
+            <path d="M312 113 L313 105 L314 113 Z"/>
+            <path d="M317 112 L318 106 L319 112 Z"/>
+          </g>
+
+          <circle cx="292" cy="94" r="4.6" fill="url(#exEye)"/>
+          <circle cx="290.4" cy="92.4" r="1.25" fill="#f8fafc" opacity="0.92"/>
+          <circle cx="290.4" cy="92.4" r="0.5" fill="#000" opacity="0.7"/>
+
+          <g fill="#7f1d1d">
+            <ellipse class="ex-blood-drop" cx="302" cy="124" rx="1.8" ry="3.8"/>
+            <ellipse class="ex-blood-drop" cx="310" cy="128" rx="1.4" ry="3.2"/>
+            <ellipse class="ex-blood-drop" cx="316" cy="126" rx="1.6" ry="3.6"/>
+          </g>
+          <g fill="#7f1d1d" opacity="0.68">
+            <ellipse cx="158" cy="156" rx="1.5" ry="3.2"/>
+            <ellipse cx="188" cy="148" rx="1.2" ry="2.8"/>
+          </g>
+        </g>
+      </svg>
       `,
     });
     const bubbles = el('div', { class: 'ex-shark-bubbles' },
       el('span'), el('span'), el('span'), el('span'), el('span'),
-      el('span'), el('span'), el('span'), el('span'),
-    );
+      el('span'), el('span'), el('span'), el('span'));
     wrap.appendChild(svg);
     wrap.appendChild(bubbles);
     return wrap;
@@ -1229,13 +1055,11 @@
         el('div', { class: 'ex-shark-eyebrow' }, 'Predator Mode'),
         el('h3', { class: 'ex-shark-title' },
           'Exploit ',
-          el('span', { class: 'ex-title-red' }, 'Suite'),
-        ),
+          el('span', { class: 'ex-title-red' }, 'Suite')),
         el('p', { class: 'ex-shark-subtitle' },
-          'Dirfuzz · SQLi · SQLMap · XSS · Sniper · HTTP Logger — ',
+          'Dirfuzz · SQLi · SQLMap · XSS · Sniper — ',
           el('b', null, 'authorised targets only'),
-          '. All modules stream live results; every request is rate-limited and cancellable.',
-        ),
+          '. All modules stream live results; every request is rate-limited and cancellable.'),
       ),
     );
   }
@@ -1245,10 +1069,8 @@
       el('h4', null,
         el('i', { class: 'fas ' + icon }),
         title,
-        hint ? el('span', { class: 'ex-card-hint' }, hint) : null,
-      ),
-      ...children,
-    );
+        hint ? el('span', { class: 'ex-card-hint' }, hint) : null),
+      ...children);
   }
 
   function buildField(label, input) {
@@ -1256,13 +1078,13 @@
   }
 
   function buildProgress() {
-    const bar     = el('span', { style: 'width:0%;' });
-    const wrapper = el('div', { class: 'ex-progress' }, bar);
-    const labelL  = el('span', null, 'Idle');
-    const labelR  = el('span', null, '0%');
-    const row     = el('div', { class: 'ex-progress-label' }, labelL, labelR);
-    const root    = el('div', null, wrapper, row);
-    root._set = (pct, msg) => {
+    const bar    = el('span', { style: 'width:0%;' });
+    const wrap   = el('div', { class: 'ex-progress' }, bar);
+    const labelL = el('span', null, 'Idle');
+    const labelR = el('span', null, '0%');
+    const row    = el('div', { class: 'ex-progress-label' }, labelL, labelR);
+    const root   = el('div', null, wrap, row);
+    root._set   = (pct, msg) => {
       bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
       labelR.textContent = Math.round(pct) + '%';
       if (msg) labelL.textContent = msg;
@@ -1274,22 +1096,22 @@
   function buildLogPanel() {
     const root = el('div', { class: 'ex-log' });
     root._append = (line, cls) => {
-      const node = el('div', { class: cls || '' }, line);
-      root.appendChild(node);
+      root.appendChild(el('div', { class: cls || '' }, line));
       root.scrollTop = root.scrollHeight;
       if (root.childNodes.length > 800) root.removeChild(root.firstChild);
     };
-    root._clear = () => { root.innerHTML = ''; };
+    root._clear = () => { root.textContent = ''; };
     return root;
   }
 
   function buildResultPanel() {
-    const root = el('div', { class: 'ex-result', html: '<span class="dim">No results yet.</span>' });
+    const root = el('div', { class: 'ex-result' });
+    root.textContent = 'No results yet.';
     root._set = (data) => {
       root.textContent = (typeof data === 'string') ? data : pretty(data);
       root.scrollTop = 0;
     };
-    root._clear = () => { root.innerHTML = '<span class="dim">No results yet.</span>'; };
+    root._clear = () => { root.textContent = 'No results yet.'; };
     return root;
   }
 
@@ -1301,44 +1123,47 @@
   function emptyState(text) {
     const wrap = el('div', { class: 'ex-empty' });
     wrap.innerHTML = `
-      <svg viewBox="0 0 160 110" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg viewBox="0 0 180 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
-          <linearGradient id="exEmptyFin" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#fca5a5"/>
+          <linearGradient id="exEmptyFin" x1="0" y1="1" x2="0.4" y2="0">
+            <stop offset="0" stop-color="#7f1d1d"/>
             <stop offset="0.5" stop-color="#dc2626"/>
-            <stop offset="1" stop-color="#7f1d1d"/>
+            <stop offset="1" stop-color="#fca5a5"/>
           </linearGradient>
           <linearGradient id="exEmptyBody" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#475569"/>
             <stop offset="1" stop-color="#0f172a"/>
           </linearGradient>
         </defs>
-        <!-- Tail -->
-        <path d="M30 70 L4 40 L28 60 L40 66 Z" fill="url(#exEmptyFin)" opacity="0.85"/>
-        <path d="M30 74 L8 100 L32 82 L42 76 Z" fill="url(#exEmptyFin)" opacity="0.7"/>
-        <!-- Body -->
-        <path d="M34 70 Q70 52 110 52 Q140 52 152 66 L156 72
-                 Q140 82 108 84 Q70 84 34 74 Z"
-              fill="url(#exEmptyBody)" stroke="#dc2626" stroke-width="1.2" stroke-opacity="0.6"/>
-        <!-- Dorsal -->
-        <path d="M84 54 L104 20 L110 54 Q96 48 84 54 Z" fill="url(#exEmptyFin)"/>
-        <!-- Pectoral -->
-        <path d="M92 78 L82 100 L112 88 Z" fill="url(#exEmptyFin)" opacity="0.85"/>
-        <!-- Eye -->
-        <circle cx="136" cy="64" r="2.2" fill="#f8fafc"/>
-        <circle cx="136" cy="64" r="0.9" fill="#020617"/>
-        <!-- Teeth -->
-        <g fill="#f8fafc">
-          <path d="M136 70 L138 75 L140 70 Z"/>
-          <path d="M142 70 L144 76 L146 70 Z"/>
+        <path d="M38 76 C 28 70, 14 54, 6 40 C 16 52, 30 66, 40 72 Z"
+              fill="url(#exEmptyFin)" opacity="0.9"/>
+        <path d="M38 82 C 28 88, 18 100, 10 112 C 22 100, 32 90, 42 84 Z"
+              fill="url(#exEmptyFin)" opacity="0.75"/>
+        <path d="M42 78 C 60 62, 92 54, 120 54 C 144 54, 158 62, 166 72
+                 C 160 82, 144 88, 120 90 C 92 90, 60 84, 42 78 Z"
+              fill="url(#exEmptyBody)" stroke="#dc2626" stroke-width="1.2" stroke-opacity="0.55"/>
+        <path d="M60 84 C 92 90, 144 88, 164 74 L 158 80 C 140 88, 100 88, 66 84 Z"
+              fill="#cbd5e1" opacity="0.75"/>
+        <path d="M92 56 C 104 32, 114 20, 120 18 L 118 42 C 118 48, 120 52, 122 56
+                 C 112 54, 100 54, 92 56 Z"
+              fill="url(#exEmptyFin)" stroke="#7f1d1d" stroke-width="0.8"/>
+        <path d="M96 82 L 82 106 L 112 88 Z"
+              fill="url(#exEmptyFin)" opacity="0.88"/>
+        <g stroke="#7f1d1d" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.85">
+          <path d="M126 66 Q125 74 125 82"/>
+          <path d="M134 66 Q133 74 133 82"/>
+          <path d="M142 66 Q141 74 141 82"/>
         </g>
-      </svg>
-    `;
+        <circle cx="152" cy="70" r="2.6" fill="#020617"/>
+        <circle cx="151.2" cy="69.2" r="0.8" fill="#f8fafc" opacity="0.9"/>
+        <path d="M156 76 C 160 82, 166 84, 170 82 C 164 84, 160 82, 156 78 Z"
+              fill="#450a0a"/>
+      </svg>`;
     if (text) wrap.appendChild(el('span', null, text));
     return wrap;
   }
 
-  /* ── Tabs definition ───────────────────────────────────────────────── */
+  /* ── Tab definitions (no logger) ──────────────────────────────────── */
   const TABS = [
     { id: 'dirfuzz',   label: 'Dirfuzz',       icon: 'fa-folder-tree' },
     { id: 'sqli',      label: 'SQLi Engine',   icon: 'fa-database' },
@@ -1347,17 +1172,58 @@
     { id: 'xss',       label: 'XSS Exploiter', icon: 'fa-code' },
     { id: 'xssSimple', label: 'XSS (simple)',  icon: 'fa-wand-magic' },
     { id: 'sniper',    label: 'Sniper',        icon: 'fa-crosshairs' },
-    { id: 'logger',    label: 'HTTP Logger',   icon: 'fa-wave-square' },
   ];
 
   /* ══════════════════════════════════════════════════════════════════
-   *  Tab builders — closure over per-instance state
+   *  Per-instance tab builders
    * ══════════════════════════════════════════════════════════════════ */
   function makeTabBuilders(instanceName, state) {
+    const pid = (id) => 'ex-tab-' + instanceName + '-' + id;
 
-    function pid(id) { return 'ex-tab-' + instanceName + '-' + id; }
+    function openSSE(key, url, handlers) {
+      closeSSE(key);
+      const es = new EventSource(url);
+      let closed = false;
+      const close = () => {
+        if (closed) return;
+        closed = true;
+        try { es.close(); } catch (_) {}
+        if (state.streams[key] === es) delete state.streams[key];
+      };
+      es.addEventListener('message', (ev) => {
+        if (closed) return;
+        let data;
+        try { data = JSON.parse(ev.data); }
+        catch (_) { return; }
+        try { handlers.message(data); }
+        catch (err) { handlers.parse && handlers.parse(err); }
+        if (data && (data.type === 'result' || data.type === 'complete' || data.type === 'error')) {
+          if (handlers.shouldAutoClose === false) return;
+          close();
+          handlers.onEnd && handlers.onEnd(data);
+        }
+      });
+      es.addEventListener('error', () => {
+        if (closed) return;
+        if (es.readyState === EventSource.CLOSED) {
+          close();
+          handlers.onEnd && handlers.onEnd({ type: 'closed' });
+        } else {
+          handlers.onError && handlers.onError();
+        }
+      });
+      state.streams[key] = es;
+      return { close, es };
+    }
 
-    /* ── 1. Dirfuzz ─────────────────────────────────────────────────── */
+    function closeSSE(key) {
+      const es = state.streams[key];
+      if (!es) return;
+      try { es.close(); } catch (_) {}
+      delete state.streams[key];
+    }
+
+    /* ── 1. Dirfuzz ────────────────────────────────────────────────── */
     function buildDirfuzzTab() {
       const target    = el('input', { type: 'text', placeholder: 'https://example.com', autocomplete: 'off' });
       const wordlist  = el('select');
@@ -1368,9 +1234,9 @@
       const follow    = el('input', { type: 'checkbox' });
       const streamTgl = el('input', { type: 'checkbox', checked: true });
 
-      const startBtn = el('button', { class: 'ex-btn ex-btn-primary' },
+      const startBtn = el('button', { class: 'ex-btn ex-btn-primary', type: 'button' },
         el('i', { class: 'fas fa-play' }), 'Start Scan');
-      const stopBtn  = el('button', { class: 'ex-btn ex-btn-ghost', disabled: true },
+      const stopBtn  = el('button', { class: 'ex-btn ex-btn-ghost', type: 'button', disabled: true },
         el('i', { class: 'fas fa-stop' }), 'Stop');
 
       const progress    = buildProgress();
@@ -1381,46 +1247,48 @@
         try {
           const res = await jget(EP.dirfuzz.wordlists);
           (res.wordlists || []).forEach(w => {
-            wordlist.appendChild(el('option', { value: w.name }, `${w.name} (${w.count})`));
+            wordlist.appendChild(el('option', { value: w.name }, `${w.name} (${w.count || 0})`));
           });
-          if (!wordlist.options.length) {
-            wordlist.appendChild(el('option', { value: 'lottery-dirs.txt' }, 'lottery-dirs.txt'));
-          }
-        } catch (_) {
+        } catch (_) { /* fall through */ }
+        if (!wordlist.options.length) {
           wordlist.appendChild(el('option', { value: 'lottery-dirs.txt' }, 'lottery-dirs.txt'));
         }
       })();
 
       function renderHits(hits) {
-        findingsBox.innerHTML = '';
+        findingsBox.textContent = '';
         if (!hits || !hits.length) {
           findingsBox.appendChild(emptyState('No hits'));
           return;
         }
         hits.slice(0, 200).forEach(h => {
+          const secrets = Array.isArray(h.secrets)
+            ? h.secrets.map(s => (s && s.type) ? s.type : String(s)).join(', ')
+            : '';
           findingsBox.appendChild(el('div', { class: 'ex-finding ' + (h.severity || 'info') },
             el('div', { class: 'label' },
               el('i', { class: 'fas fa-folder-open' }),
-              ` ${h.category || 'other'} · path`,
-            ),
+              ` ${h.category || 'other'} · path`),
             el('div', { class: 'value' }, h.url || h.path || ''),
             el('div', { class: 'meta' },
-              el('span', null, 'Status: ', String(h.status)),
-              el('span', null, 'Size: ',   String(h.size || 0)),
+              el('span', null, 'Status: ',   String(h.status)),
+              el('span', null, 'Size: ',     String(h.size || 0)),
               el('span', null, 'Severity: ', severityBadge(h.severity)),
-              h.redirect_to ? el('span', null, '→ ', h.redirect_to) : null,
-            ),
-            (h.secrets && h.secrets.length)
+              h.redirect_to ? el('span', null, '→ ', h.redirect_to) : null),
+            secrets
               ? el('div', { class: 'value', style: 'margin-top:8px;color:#f87171;' },
-                  '⚠ Secrets: ' + h.secrets.map(s => s.type).join(', '))
-              : null,
-          ));
+                  '⚠ Secrets: ' + secrets)
+              : null));
         });
       }
 
-      function closeStream() {
-        const es = state.streams.dirfuzz;
-        if (es) { try { es.close(); } catch (_) {} delete state.streams.dirfuzz; }
+      const resetButtons = () => { startBtn.disabled = false; stopBtn.disabled = true; };
+
+      function applyResult(data) {
+        progress._set(100, 'Complete');
+        logPanel._append(`[done] tried=${data.tried} hits=${data.hits_count} elapsed=${data.elapsed}s`, 'ok');
+        renderHits(data.hits || []);
+        resetButtons();
       }
 
       async function startBlocking() {
@@ -1438,27 +1306,25 @@
             timeout:          parseFloat(timeout.value)    || 4,
             follow_redirects: !!follow.checked,
           };
-          if (!body.target) { toast('Target required', 'warn'); return; }
-          const res = await jpost(EP.dirfuzz.scan, body);
-          progress._set(100, 'Complete');
-          logPanel._append(`[done] tried=${res.tried} hits=${res.hits_count} elapsed=${res.elapsed}s`, 'ok');
-          renderHits(res.hits || []);
+          if (!body.target) { toast('Target required', 'warn'); resetButtons(); return; }
+          applyResult(await jpost(EP.dirfuzz.scan, body));
         } catch (e) {
           logPanel._append('[error] ' + e.message, 'err');
           toast('Dirfuzz failed: ' + e.message, 'err');
-        } finally {
-          startBtn.disabled = false; stopBtn.disabled = true;
+          resetButtons();
         }
       }
 
       function startStreaming() {
+        const t = target.value.trim();
+        if (!t) { toast('Target required', 'warn'); return; }
         startBtn.disabled = true; stopBtn.disabled = false;
         progress._reset(); progress._set(0, 'Connecting…');
         logPanel._clear();
         logPanel._append('[stream] connecting…', 'dim');
 
         const qs = new URLSearchParams({
-          target:           target.value.trim(),
+          target:           t,
           wordlist_name:    wordlist.value,
           max_paths:        maxPaths.value,
           concurrency:      conc.value,
@@ -1467,35 +1333,22 @@
           follow_redirects: follow.checked ? '1' : '0',
         });
 
-        closeStream();
-        const es = new EventSource(EP.dirfuzz.stream + '?' + qs.toString());
-        state.streams.dirfuzz = es;
-
-        es.onmessage = (ev) => {
-          try {
-            const data = JSON.parse(ev.data);
+        openSSE('dirfuzz', EP.dirfuzz.stream + '?' + qs.toString(), {
+          message: (data) => {
             if (data.type === 'progress') {
               progress._set(data.percent || 0, `${data.label || ''} (${data.done}/${data.total})`);
             } else if (data.type === 'result') {
-              progress._set(100, 'Complete');
-              logPanel._append(`[done] tried=${data.data.tried} hits=${data.data.hits_count}`, 'ok');
-              renderHits(data.data.hits || []);
-              closeStream();
-              startBtn.disabled = false; stopBtn.disabled = true;
+              applyResult(data.data || {});
             } else if (data.type === 'error') {
               logPanel._append('[error] ' + data.message, 'err');
-              closeStream();
-              startBtn.disabled = false; stopBtn.disabled = true;
             } else if (data.type === 'start') {
-              logPanel._append('[start] ' + data.base, 'dim');
+              logPanel._append('[start] ' + (data.base || ''), 'dim');
             }
-          } catch (e) { logPanel._append('[parse] ' + e.message, 'warn'); }
-        };
-        es.onerror = () => {
-          logPanel._append('[sse] connection error', 'warn');
-          closeStream();
-          startBtn.disabled = false; stopBtn.disabled = true;
-        };
+          },
+          onError: () => { logPanel._append('[sse] connection error', 'warn'); resetButtons(); },
+          onEnd:   (data) => { if (data && data.type === 'error') resetButtons(); },
+          parse:   (e) => logPanel._append('[parse] ' + e.message, 'warn'),
+        });
       }
 
       startBtn.addEventListener('click', () => {
@@ -1503,9 +1356,9 @@
         if (streamTgl.checked) startStreaming(); else startBlocking();
       });
       stopBtn.addEventListener('click', () => {
-        closeStream();
+        closeSSE('dirfuzz');
         logPanel._append('[stopped]', 'warn');
-        startBtn.disabled = false; stopBtn.disabled = true;
+        resetButtons();
         progress._set(0, 'Stopped');
       });
 
@@ -1513,39 +1366,32 @@
         buildCard('Directory / File Fuzzer', 'fa-folder-tree', 'brute-force · soft-404 aware',
           el('div', { class: 'ex-row' },
             buildField('Target', target),
-            buildField('Wordlist', wordlist),
-          ),
+            buildField('Wordlist', wordlist)),
           el('div', { class: 'ex-row', style: 'margin-top:10px;' },
             buildField('Max paths', maxPaths),
             buildField('Concurrency', conc),
             buildField('Rate limit (req/s)', rate),
-            buildField('Timeout (s)', timeout),
-          ),
+            buildField('Timeout (s)', timeout)),
           el('div', { class: 'ex-row tight', style: 'margin-top:12px; align-items:center;' },
             el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               follow, 'Follow redirects'),
             el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               streamTgl, 'Stream results (SSE)'),
             el('div', { style: 'flex:1 1 auto;' }),
-            startBtn, stopBtn,
-          ),
-          progress,
-          logPanel,
-        ),
-        buildCard('Findings', 'fa-list-check', 'click a row to inspect', findingsBox),
-      );
+            startBtn, stopBtn),
+          progress, logPanel),
+        buildCard('Findings', 'fa-list-check', 'top 200 shown', findingsBox));
     }
 
-    /* ── 2. SQLi Engine ─────────────────────────────────────────────── */
+    /* ── 2. SQLi Engine ───────────────────────────────────────────── */
     function buildSqliTab() {
       const target    = el('input', { type: 'text', placeholder: 'https://example.com/page?id=1', autocomplete: 'off' });
       const method    = el('select', null,
-        el('option', { value: 'GET' }, 'GET'),
-        el('option', { value: 'POST' }, 'POST'),
-      );
+        el('option', { value: 'GET' },  'GET'),
+        el('option', { value: 'POST' }, 'POST'));
       const maxParams = el('input', { type: 'number', value: '10' });
       const rate      = el('input', { type: 'number', value: '20', step: '0.5' });
-      const timeout   = el('input', { type: 'number', value: '8',  step: '0.5' });
+      const timeout   = el('input', { type: 'number', value: '8', step: '0.5' });
 
       const techniquesWrap = el('div', { class: 'ex-chips' });
       const activeTech = new Set(['error', 'boolean', 'time', 'union']);
@@ -1558,17 +1404,25 @@
         techniquesWrap.appendChild(chip);
       });
 
-      const startBtn    = el('button', { class: 'ex-btn ex-btn-primary' }, el('i', { class: 'fas fa-play' }), 'Start');
-      const stopBtn     = el('button', { class: 'ex-btn ex-btn-ghost', disabled: true }, el('i', { class: 'fas fa-stop' }), 'Stop');
+      const startBtn    = el('button', { class: 'ex-btn ex-btn-primary', type: 'button' },
+        el('i', { class: 'fas fa-play' }), 'Start');
+      const stopBtn     = el('button', { class: 'ex-btn ex-btn-ghost', type: 'button', disabled: true },
+        el('i', { class: 'fas fa-stop' }), 'Stop');
       const streamTgl   = el('input', { type: 'checkbox', checked: true });
 
       const progress    = buildProgress();
       const logPanel    = buildLogPanel();
       const resultPanel = buildResultPanel();
 
-      function closeStream() {
-        const es = state.streams.sqli;
-        if (es) { try { es.close(); } catch (_) {} delete state.streams.sqli; }
+      const resetButtons = () => { startBtn.disabled = false; stopBtn.disabled = true; };
+
+      function applyResult(data) {
+        progress._set(100, 'Complete');
+        logPanel._append(
+          `[done] vulnerable=${data.vulnerable} findings=${(data.findings || []).length} elapsed=${data.elapsed}s`,
+          data.vulnerable ? 'err' : 'ok');
+        resultPanel._set(data);
+        resetButtons();
       }
 
       async function runBlocking() {
@@ -1585,30 +1439,25 @@
             timeout:    parseFloat(timeout.value)     || 8,
             techniques: Array.from(activeTech),
           };
-          if (!body.target) { toast('Target required', 'warn'); return; }
-          const res = await jpost(EP.sqli.scan, body);
-          progress._set(100, 'Complete');
-          logPanel._append(
-            `[done] vulnerable=${res.vulnerable} findings=${(res.findings || []).length} elapsed=${res.elapsed}s`,
-            res.vulnerable ? 'err' : 'ok'
-          );
-          resultPanel._set(res);
+          if (!body.target) { toast('Target required', 'warn'); resetButtons(); return; }
+          applyResult(await jpost(EP.sqli.scan, body));
         } catch (e) {
           logPanel._append('[error] ' + e.message, 'err');
           toast('SQLi scan failed: ' + e.message, 'err');
-        } finally {
-          startBtn.disabled = false; stopBtn.disabled = true;
+          resetButtons();
         }
       }
 
       function runStreaming() {
+        const t = target.value.trim();
+        if (!t) { toast('Target required', 'warn'); return; }
         startBtn.disabled = true; stopBtn.disabled = false;
         progress._reset(); progress._set(0, 'Connecting…');
         logPanel._clear();
         logPanel._append('[stream] connecting…', 'dim');
 
         const qs = new URLSearchParams({
-          target:     target.value.trim(),
+          target:     t,
           method:     method.value,
           max_params: maxParams.value,
           rate_limit: rate.value,
@@ -1616,38 +1465,22 @@
           techniques: Array.from(activeTech).join(','),
         });
 
-        closeStream();
-        const es = new EventSource(EP.sqli.stream + '?' + qs.toString());
-        state.streams.sqli = es;
-
-        es.onmessage = (ev) => {
-          try {
-            const data = JSON.parse(ev.data);
+        openSSE('sqli', EP.sqli.stream + '?' + qs.toString(), {
+          message: (data) => {
             if (data.type === 'progress') {
               progress._set(data.percent || 0, `${data.label || ''} (${data.done}/${data.total})`);
             } else if (data.type === 'result') {
-              progress._set(100, 'Complete');
-              logPanel._append(
-                `[done] vulnerable=${data.data.vulnerable} findings=${(data.data.findings || []).length}`,
-                data.data.vulnerable ? 'err' : 'ok'
-              );
-              resultPanel._set(data.data);
-              closeStream();
-              startBtn.disabled = false; stopBtn.disabled = true;
+              applyResult(data.data || {});
             } else if (data.type === 'error') {
               logPanel._append('[error] ' + data.message, 'err');
-              closeStream();
-              startBtn.disabled = false; stopBtn.disabled = true;
             } else if (data.type === 'start') {
-              logPanel._append('[start] ' + data.url, 'dim');
+              logPanel._append('[start] ' + (data.url || ''), 'dim');
             }
-          } catch (e) { logPanel._append('[parse] ' + e.message, 'warn'); }
-        };
-        es.onerror = () => {
-          logPanel._append('[sse] connection error', 'warn');
-          closeStream();
-          startBtn.disabled = false; stopBtn.disabled = true;
-        };
+          },
+          onError: () => { logPanel._append('[sse] connection error', 'warn'); resetButtons(); },
+          onEnd:   (data) => { if (data && data.type === 'error') resetButtons(); },
+          parse:   (e) => logPanel._append('[parse] ' + e.message, 'warn'),
+        });
       }
 
       startBtn.addEventListener('click', () => {
@@ -1655,54 +1488,47 @@
         if (streamTgl.checked) runStreaming(); else runBlocking();
       });
       stopBtn.addEventListener('click', () => {
-        closeStream();
+        closeSSE('sqli');
         logPanel._append('[stopped]', 'warn');
-        startBtn.disabled = false; stopBtn.disabled = true;
+        resetButtons();
       });
 
       return el('div', { class: 'ex-panel', id: pid('sqli') },
         buildCard('SQL Injection Engine', 'fa-database', '4 techniques · wordlist driven',
           el('div', { class: 'ex-row' },
             buildField('Target URL', target),
-            buildField('Method', method),
-          ),
+            buildField('Method', method)),
           el('div', { class: 'ex-row', style: 'margin-top:10px;' },
             buildField('Max params', maxParams),
-            buildField('Rate limit', rate),
-            buildField('Timeout (s)', timeout),
-          ),
+            buildField('Rate limit',  rate),
+            buildField('Timeout (s)', timeout)),
           el('div', { style: 'margin-top:12px;' },
-            el('label', { style: 'font-size:.64rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#94a3b8;' }, 'Techniques'),
-            techniquesWrap,
-          ),
+            el('label', { style: 'font-size:.64rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#94a3b8;' },
+              'Techniques'),
+            techniquesWrap),
           el('div', { class: 'ex-row tight', style: 'margin-top:14px; align-items:center;' },
             el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               streamTgl, 'Stream results (SSE)'),
             el('div', { style: 'flex:1 1 auto;' }),
-            startBtn, stopBtn,
-          ),
-          progress,
-          logPanel,
-        ),
-        buildCard('Result', 'fa-clipboard-check', null, resultPanel),
-      );
+            startBtn, stopBtn),
+          progress, logPanel),
+        buildCard('Result', 'fa-clipboard-check', null, resultPanel));
     }
 
-    /* ── 3. SQLMap ──────────────────────────────────────────────────── */
+    /* ── 3. SQLMap ─────────────────────────────────────────────────── */
     function buildSqlmapTab() {
       const target     = el('input', { type: 'text', placeholder: 'https://example.com/page?id=1', autocomplete: 'off' });
       const method     = el('select', null,
-        el('option', { value: 'GET' }, 'GET'),
-        el('option', { value: 'POST' }, 'POST'),
-      );
+        el('option', { value: 'GET' },  'GET'),
+        el('option', { value: 'POST' }, 'POST'));
       const mode       = el('select', null,
-        el('option', { value: 'basic' }, 'Basic'),
-        el('option', { value: 'expert' }, 'Expert'),
-      );
+        el('option', { value: 'basic' },  'Basic'),
+        el('option', { value: 'expert' }, 'Expert'));
       const maxThreads = el('input', { type: 'number', value: '10' });
       const timeout    = el('input', { type: 'number', value: '5', step: '0.5' });
 
-      const runBtn      = el('button', { class: 'ex-btn ex-btn-primary' }, el('i', { class: 'fas fa-play' }), 'Run SQLMap');
+      const runBtn      = el('button', { class: 'ex-btn ex-btn-primary', type: 'button' },
+        el('i', { class: 'fas fa-play' }), 'Run SQLMap');
       const resultPanel = buildResultPanel();
       const logPanel    = buildLogPanel();
 
@@ -1712,14 +1538,13 @@
         runBtn.disabled = true;
         logPanel._append('[run] sqlmap ' + mode.value + ' …', 'dim');
         try {
-          const body = {
+          const res = await jpost(EP.sqlmap.scan, {
             target:      t,
             mode:        mode.value,
             method:      method.value,
             max_threads: parseInt(maxThreads.value, 10) || 10,
             timeout:     parseFloat(timeout.value)      || 5,
-          };
-          const res = await jpost(EP.sqlmap.scan, body);
+          });
           logPanel._append('[done] scan_type=' + ((res.data && res.data.scan_type) || 'sqli'), 'ok');
           resultPanel._set(res);
         } catch (e) {
@@ -1737,23 +1562,20 @@
             buildField('Method', method),
             buildField('Mode', mode),
             buildField('Max threads', maxThreads),
-            buildField('Timeout (s)', timeout),
-          ),
+            buildField('Timeout (s)', timeout)),
           el('div', { class: 'ex-actions', style: 'margin-top:14px;' }, runBtn),
-          logPanel,
-        ),
-        buildCard('Result', 'fa-clipboard-check', null, resultPanel),
-      );
+          logPanel),
+        buildCard('Result', 'fa-clipboard-check', null, resultPanel));
     }
 
-    /* ── 4. SQL Injection (lightweight) ─────────────────────────────── */
+    /* ── 4. SQL Injection (lightweight) ───────────────────────────── */
     function buildSqlinjTab() {
       const target = el('input', { type: 'text', placeholder: 'https://example.com/search?q=1', autocomplete: 'off' });
       const method = el('select', null,
-        el('option', { value: 'GET' }, 'GET'),
-        el('option', { value: 'POST' }, 'POST'),
-      );
-      const runBtn      = el('button', { class: 'ex-btn ex-btn-primary' }, el('i', { class: 'fas fa-bolt' }), 'Run');
+        el('option', { value: 'GET' },  'GET'),
+        el('option', { value: 'POST' }, 'POST'));
+      const runBtn      = el('button', { class: 'ex-btn ex-btn-primary', type: 'button' },
+        el('i', { class: 'fas fa-bolt' }), 'Run');
       const resultPanel = buildResultPanel();
       const logPanel    = buildLogPanel();
 
@@ -1763,12 +1585,14 @@
         runBtn.disabled = true;
         logPanel._append('[run] lightweight SQLi …', 'dim');
         try {
-          const body = { target: t, method: method.value, params: parseQS(t) };
-          const res  = await jpost(EP.sqlinj.scan, body);
+          const res = await jpost(EP.sqlinj.scan, {
+            target: t,
+            method: method.value,
+            params: parseQS(t),
+          });
           logPanel._append(
             `[done] vulnerable=${res.vulnerable} findings=${(res.findings || []).length}`,
-            res.vulnerable ? 'err' : 'ok'
-          );
+            res.vulnerable ? 'err' : 'ok');
           resultPanel._set(res);
         } catch (e) {
           logPanel._append('[error] ' + e.message, 'err');
@@ -1782,22 +1606,18 @@
         buildCard('Lightweight SQL Injection Test', 'fa-bolt', 'fast heuristic',
           el('div', { class: 'ex-row' },
             buildField('Target URL', target),
-            buildField('Method', method),
-          ),
+            buildField('Method', method)),
           el('div', { class: 'ex-actions', style: 'margin-top:14px;' }, runBtn),
-          logPanel,
-        ),
-        buildCard('Result', 'fa-clipboard-check', null, resultPanel),
-      );
+          logPanel),
+        buildCard('Result', 'fa-clipboard-check', null, resultPanel));
     }
 
-    /* ── 5. XSS Exploiter ───────────────────────────────────────────── */
+    /* ── 5. XSS Exploiter ─────────────────────────────────────────── */
     function buildXssTab() {
       const target      = el('input', { type: 'text', placeholder: 'https://example.com/search?q=test', autocomplete: 'off' });
       const method      = el('select', null,
-        el('option', { value: 'GET' }, 'GET'),
-        el('option', { value: 'POST' }, 'POST'),
-      );
+        el('option', { value: 'GET' },  'GET'),
+        el('option', { value: 'POST' }, 'POST'));
       const maxPayloads = el('input', { type: 'number', value: '30' });
       const maxParams   = el('input', { type: 'number', value: '10' });
       const conc        = el('input', { type: 'number', value: '8' });
@@ -1805,20 +1625,19 @@
       const wafBypass   = el('input', { type: 'checkbox' });
       const streamTgl   = el('input', { type: 'checkbox', checked: true });
 
-      const startBtn    = el('button', { class: 'ex-btn ex-btn-primary' }, el('i', { class: 'fas fa-play' }), 'Start');
-      const stopBtn     = el('button', { class: 'ex-btn ex-btn-ghost', disabled: true }, el('i', { class: 'fas fa-stop' }), 'Stop');
+      const startBtn    = el('button', { class: 'ex-btn ex-btn-primary', type: 'button' },
+        el('i', { class: 'fas fa-play' }), 'Start');
+      const stopBtn     = el('button', { class: 'ex-btn ex-btn-ghost', type: 'button', disabled: true },
+        el('i', { class: 'fas fa-stop' }), 'Stop');
 
       const progress    = buildProgress();
       const logPanel    = buildLogPanel();
       const findingsBox = el('div', { class: 'ex-findings' });
 
-      function closeStream() {
-        const es = state.streams.xss;
-        if (es) { try { es.close(); } catch (_) {} delete state.streams.xss; }
-      }
+      const resetButtons = () => { startBtn.disabled = false; stopBtn.disabled = true; };
 
       function renderFindings(findings) {
-        findingsBox.innerHTML = '';
+        findingsBox.textContent = '';
         if (!findings || !findings.length) {
           findingsBox.appendChild(emptyState('No XSS vectors found'));
           return;
@@ -1827,19 +1646,26 @@
           findingsBox.appendChild(el('div', { class: 'ex-finding ' + (f.severity || 'medium') },
             el('div', { class: 'label' },
               el('i', { class: 'fas fa-code' }),
-              ` ${f.parameter} · ${f.context || 'unknown'}`,
-            ),
+              ` ${f.parameter} · ${f.context || 'unknown'}`),
             el('div', { class: 'value' }, f.payload || ''),
             el('div', { class: 'meta' },
               el('span', null, 'Status: ',     String(f.status_code || '—')),
               el('span', null, 'Confidence: ', String(f.confidence  || '—')),
-              el('span', null, 'Severity: ',   severityBadge(f.severity)),
-            ),
+              el('span', null, 'Severity: ',   severityBadge(f.severity))),
             f.evidence
-              ? el('div', { class: 'value', style: 'margin-top:8px;color:#94a3b8;font-size:.72rem;' }, f.evidence.slice(0, 200))
-              : null,
-          ));
+              ? el('div', { class: 'value', style: 'margin-top:8px;color:#94a3b8;font-size:.72rem;' },
+                  String(f.evidence).slice(0, 200))
+              : null));
         });
+      }
+
+      function applyResult(data) {
+        progress._set(100, 'Complete');
+        logPanel._append(
+          `[done] vulnerable=${data.vulnerable} findings=${(data.findings || []).length}`,
+          data.vulnerable ? 'err' : 'ok');
+        renderFindings(data.findings || []);
+        resetButtons();
       }
 
       async function startBlocking() {
@@ -1857,30 +1683,25 @@
             rate_limit:   parseFloat(rate.value)          || 20,
             waf_bypass:   !!wafBypass.checked,
           };
-          if (!body.target) { toast('Target required', 'warn'); return; }
-          const res = await jpost(EP.xss.scan, body);
-          progress._set(100, 'Complete');
-          logPanel._append(
-            `[done] vulnerable=${res.vulnerable} findings=${(res.findings || []).length}`,
-            res.vulnerable ? 'err' : 'ok'
-          );
-          renderFindings(res.findings || []);
+          if (!body.target) { toast('Target required', 'warn'); resetButtons(); return; }
+          applyResult(await jpost(EP.xss.scan, body));
         } catch (e) {
           logPanel._append('[error] ' + e.message, 'err');
           toast('XSS scan failed: ' + e.message, 'err');
-        } finally {
-          startBtn.disabled = false; stopBtn.disabled = true;
+          resetButtons();
         }
       }
 
       function startStreaming() {
+        const t = target.value.trim();
+        if (!t) { toast('Target required', 'warn'); return; }
         startBtn.disabled = true; stopBtn.disabled = false;
         progress._reset(); progress._set(0, 'Connecting…');
         logPanel._clear();
         logPanel._append('[stream] connecting…', 'dim');
 
         const qs = new URLSearchParams({
-          target:       target.value.trim(),
+          target:       t,
           method:       method.value,
           max_payloads: maxPayloads.value,
           max_params:   maxParams.value,
@@ -1889,40 +1710,24 @@
           waf_bypass:   wafBypass.checked ? '1' : '0',
         });
 
-        closeStream();
-        const es = new EventSource(EP.xss.stream + '?' + qs.toString());
-        state.streams.xss = es;
-
-        es.onmessage = (ev) => {
-          try {
-            const data = JSON.parse(ev.data);
+        openSSE('xss', EP.xss.stream + '?' + qs.toString(), {
+          message: (data) => {
             if (data.type === 'progress') {
               progress._set(data.percent || 0, `${data.label || ''} (${data.done}/${data.total})`);
             } else if (data.type === 'result') {
-              progress._set(100, 'Complete');
-              logPanel._append(
-                `[done] vulnerable=${data.data.vulnerable} findings=${(data.data.findings || []).length}`,
-                data.data.vulnerable ? 'err' : 'ok'
-              );
-              renderFindings(data.data.findings || []);
-              closeStream();
-              startBtn.disabled = false; stopBtn.disabled = true;
+              applyResult(data.data || {});
             } else if (data.type === 'error') {
               logPanel._append('[error] ' + data.message, 'err');
-              closeStream();
-              startBtn.disabled = false; stopBtn.disabled = true;
             } else if (data.type === 'start') {
-              logPanel._append('[start] ' + data.url, 'dim');
+              logPanel._append('[start] ' + (data.url || ''), 'dim');
             } else if (data.type === 'heartbeat') {
-              logPanel._append('[heartbeat]', 'dim');
+              /* quiet */
             }
-          } catch (e) { logPanel._append('[parse] ' + e.message, 'warn'); }
-        };
-        es.onerror = () => {
-          logPanel._append('[sse] connection error', 'warn');
-          closeStream();
-          startBtn.disabled = false; stopBtn.disabled = true;
-        };
+          },
+          onError: () => { logPanel._append('[sse] connection error', 'warn'); resetButtons(); },
+          onEnd:   (data) => { if (data && data.type === 'error') resetButtons(); },
+          parse:   (e) => logPanel._append('[parse] ' + e.message, 'warn'),
+        });
       }
 
       startBtn.addEventListener('click', () => {
@@ -1930,46 +1735,40 @@
         if (streamTgl.checked) startStreaming(); else startBlocking();
       });
       stopBtn.addEventListener('click', () => {
-        closeStream();
+        closeSSE('xss');
         logPanel._append('[stopped]', 'warn');
-        startBtn.disabled = false; stopBtn.disabled = true;
+        resetButtons();
       });
 
       return el('div', { class: 'ex-panel', id: pid('xss') },
         buildCard('XSS Exploiter', 'fa-code', 'reflected · context aware',
           el('div', { class: 'ex-row' },
             buildField('Target URL', target),
-            buildField('Method', method),
-          ),
+            buildField('Method', method)),
           el('div', { class: 'ex-row', style: 'margin-top:10px;' },
             buildField('Max payloads', maxPayloads),
-            buildField('Max params', maxParams),
-            buildField('Concurrency', conc),
-            buildField('Rate limit', rate),
-          ),
+            buildField('Max params',   maxParams),
+            buildField('Concurrency',  conc),
+            buildField('Rate limit',   rate)),
           el('div', { class: 'ex-row tight', style: 'margin-top:12px; align-items:center;' },
             el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               wafBypass, 'WAF bypass'),
             el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               streamTgl, 'Stream (SSE)'),
             el('div', { style: 'flex:1 1 auto;' }),
-            startBtn, stopBtn,
-          ),
-          progress,
-          logPanel,
-        ),
-        buildCard('Findings', 'fa-list-check', null, findingsBox),
-      );
+            startBtn, stopBtn),
+          progress, logPanel),
+        buildCard('Findings', 'fa-list-check', null, findingsBox));
     }
 
-    /* ── 6. XSS Simple ──────────────────────────────────────────────── */
+    /* ── 6. XSS Simple ────────────────────────────────────────────── */
     function buildXssSimpleTab() {
       const target = el('input', { type: 'text', placeholder: 'https://example.com/?q=test', autocomplete: 'off' });
       const mode   = el('select', null,
-        el('option', { value: 'basic' }, 'Basic'),
-        el('option', { value: 'expert' }, 'Expert'),
-      );
-      const runBtn      = el('button', { class: 'ex-btn ex-btn-primary' }, el('i', { class: 'fas fa-wand-magic' }), 'Run');
+        el('option', { value: 'basic' },  'Basic'),
+        el('option', { value: 'expert' }, 'Expert'));
+      const runBtn      = el('button', { class: 'ex-btn ex-btn-primary', type: 'button' },
+        el('i', { class: 'fas fa-wand-magic' }), 'Run');
       const resultPanel = buildResultPanel();
 
       runBtn.addEventListener('click', async () => {
@@ -1977,8 +1776,7 @@
         if (!t) { toast('Target required', 'warn'); return; }
         runBtn.disabled = true;
         try {
-          const res = await jpost(EP.xssSimple.scan, { target: t, mode: mode.value });
-          resultPanel._set(res);
+          resultPanel._set(await jpost(EP.xssSimple.scan, { target: t, mode: mode.value }));
         } catch (e) {
           toast('XSS scan failed: ' + e.message, 'err');
         } finally {
@@ -1990,15 +1788,12 @@
         buildCard('Reflected XSS (Simple)', 'fa-wand-magic', 'quick check',
           el('div', { class: 'ex-row' },
             buildField('Target URL', target),
-            buildField('Mode', mode),
-          ),
-          el('div', { class: 'ex-actions', style: 'margin-top:14px;' }, runBtn),
-        ),
-        buildCard('Result', 'fa-clipboard-check', null, resultPanel),
-      );
+            buildField('Mode', mode)),
+          el('div', { class: 'ex-actions', style: 'margin-top:14px;' }, runBtn)),
+        buildCard('Result', 'fa-clipboard-check', null, resultPanel));
     }
 
-    /* ── 7. Sniper ──────────────────────────────────────────────────── */
+    /* ── 7. Sniper ─────────────────────────────────────────────────── */
     function buildSniperTab() {
       const target        = el('input', { type: 'text', placeholder: 'https://example.com', autocomplete: 'off' });
       const moduleTimeout = el('input', { type: 'number', value: '90' });
@@ -2008,17 +1803,16 @@
       const takeoverMax   = el('input', { type: 'number', value: '120' });
       const streamTgl     = el('input', { type: 'checkbox', checked: true });
 
-      const startBtn    = el('button', { class: 'ex-btn ex-btn-primary' }, el('i', { class: 'fas fa-crosshairs' }), 'Run Sniper');
-      const stopBtn     = el('button', { class: 'ex-btn ex-btn-ghost', disabled: true }, el('i', { class: 'fas fa-stop' }), 'Stop');
+      const startBtn    = el('button', { class: 'ex-btn ex-btn-primary', type: 'button' },
+        el('i', { class: 'fas fa-crosshairs' }), 'Run Sniper');
+      const stopBtn     = el('button', { class: 'ex-btn ex-btn-ghost', type: 'button', disabled: true },
+        el('i', { class: 'fas fa-stop' }), 'Stop');
 
       const progress    = buildProgress();
       const logPanel    = buildLogPanel();
       const resultPanel = buildResultPanel();
 
-      function closeStream() {
-        const es = state.streams.sniper;
-        if (es) { try { es.close(); } catch (_) {} delete state.streams.sniper; }
-      }
+      const resetButtons = () => { startBtn.disabled = false; stopBtn.disabled = true; };
 
       async function runBlocking() {
         startBtn.disabled = true; stopBtn.disabled = false;
@@ -2040,17 +1834,19 @@
           logPanel._append('[error] ' + e.message, 'err');
           toast('Sniper failed: ' + e.message, 'err');
         } finally {
-          startBtn.disabled = false; stopBtn.disabled = true;
+          resetButtons();
         }
       }
 
       function runStreaming() {
+        const t = target.value.trim();
+        if (!t) { toast('Target required', 'warn'); return; }
         startBtn.disabled = true; stopBtn.disabled = false;
         progress._reset(); progress._set(0, 'Connecting…');
         logPanel._clear();
 
         const qs = new URLSearchParams({
-          target:             target.value.trim(),
+          target:             t,
           module_timeout:     moduleTimeout.value,
           global_budget:      globalBudget.value,
           dirfuzz_max_paths:  dirfuzzMax.value,
@@ -2058,15 +1854,10 @@
           takeover_max_hosts: takeoverMax.value,
         });
 
-        closeStream();
-        const es = new EventSource(EP.sniper.stream + '?' + qs.toString());
-        state.streams.sniper = es;
-
-        es.onmessage = (ev) => {
-          try {
-            const data = JSON.parse(ev.data);
+        openSSE('sniper', EP.sniper.stream + '?' + qs.toString(), {
+          message: (data) => {
             if (data.type === 'start') {
-              logPanel._append(`[start] ${data.target} · ${data.modules.join(', ')}`, 'dim');
+              logPanel._append(`[start] ${data.target} · ${(data.modules || []).join(', ')}`, 'dim');
             } else if (data.type === 'module_start') {
               logPanel._append(`[▶] ${data.module}`, 'dim');
             } else if (data.type === 'progress') {
@@ -2074,26 +1865,22 @@
             } else if (data.type === 'module_done') {
               logPanel._append(
                 `[◀] ${data.module} — ${data.findings} finding(s) in ${data.elapsed}s`,
-                data.ok ? 'ok' : 'warn'
-              );
+                data.ok ? 'ok' : 'warn');
             } else if (data.type === 'heartbeat') {
               logPanel._append(`[heartbeat] elapsed=${data.elapsed}s done=${data.modules_done}/${data.modules_total}`, 'dim');
             } else if (data.type === 'complete') {
               progress._set(100, 'Complete');
-              logPanel._append(`[done] risk=${data.report.risk_score}/100 (${data.report.risk_level})`, 'ok');
-              resultPanel._set(data.report);
-              closeStream();
-              startBtn.disabled = false; stopBtn.disabled = true;
+              const rep = data.report || {};
+              logPanel._append(`[done] risk=${rep.risk_score}/100 (${rep.risk_level})`, 'ok');
+              resultPanel._set(rep);
             } else if (data.type === 'error') {
               logPanel._append('[error] ' + data.message, 'err');
             }
-          } catch (e) { logPanel._append('[parse] ' + e.message, 'warn'); }
-        };
-        es.onerror = () => {
-          logPanel._append('[sse] connection error', 'warn');
-          closeStream();
-          startBtn.disabled = false; stopBtn.disabled = true;
-        };
+          },
+          onError: () => { logPanel._append('[sse] connection error', 'warn'); resetButtons(); },
+          onEnd:   (data) => { if (data && data.type === 'error') resetButtons(); },
+          parse:   (e) => logPanel._append('[parse] ' + e.message, 'warn'),
+        });
       }
 
       startBtn.addEventListener('click', () => {
@@ -2101,9 +1888,9 @@
         if (streamTgl.checked) runStreaming(); else runBlocking();
       });
       stopBtn.addEventListener('click', () => {
-        closeStream();
+        closeSSE('sniper');
         logPanel._append('[stopped]', 'warn');
-        startBtn.disabled = false; stopBtn.disabled = true;
+        resetButtons();
       });
 
       return el('div', { class: 'ex-panel', id: pid('sniper') },
@@ -2111,187 +1898,17 @@
           el('div', { class: 'ex-row' }, buildField('Target', target)),
           el('div', { class: 'ex-row', style: 'margin-top:10px;' },
             buildField('Module timeout (s)', moduleTimeout),
-            buildField('Global budget (s)', globalBudget),
-            buildField('Dirfuzz max paths', dirfuzzMax),
-            buildField('XSS max payloads', xssMax),
-            buildField('Takeover max hosts', takeoverMax),
-          ),
+            buildField('Global budget (s)',  globalBudget),
+            buildField('Dirfuzz max paths',  dirfuzzMax),
+            buildField('XSS max payloads',   xssMax),
+            buildField('Takeover max hosts', takeoverMax)),
           el('div', { class: 'ex-row tight', style: 'margin-top:12px; align-items:center;' },
             el('label', { style: 'display:flex;gap:7px;align-items:center;font-size:.78rem;color:#94a3b8;' },
               streamTgl, 'Stream (SSE)'),
             el('div', { style: 'flex:1 1 auto;' }),
-            startBtn, stopBtn,
-          ),
-          progress,
-          logPanel,
-        ),
-        buildCard('Full Report', 'fa-clipboard-check', null, resultPanel),
-      );
-    }
-
-    /* ── 8. HTTP Logger ─────────────────────────────────────────────── */
-    function buildLoggerTab() {
-      const statsGrid   = el('div', { class: 'ex-kpis' });
-      const filters     = el('div', { class: 'ex-row', style: 'margin-bottom:10px;' });
-      const searchIn    = el('input', { type: 'text', placeholder: 'Search path/query/body…', autocomplete: 'off' });
-      const methodSel   = el('select', null,
-        el('option', { value: '' }, 'Any method'),
-        el('option', { value: 'GET' }, 'GET'),
-        el('option', { value: 'POST' }, 'POST'),
-        el('option', { value: 'PUT' }, 'PUT'),
-        el('option', { value: 'DELETE' }, 'DELETE'),
-      );
-      const anomalySel  = el('input', { type: 'text', placeholder: 'Anomaly category (sqli, xss, …)' });
-      const refreshBtn  = el('button', { class: 'ex-btn ex-btn-primary' }, el('i', { class: 'fas fa-rotate' }), 'Refresh');
-      const clearBtn    = el('button', { class: 'ex-btn ex-btn-danger'  }, el('i', { class: 'fas fa-broom' }), 'Clear Log');
-      const exportHar   = el('button', { class: 'ex-btn ex-btn-ghost'   }, el('i', { class: 'fas fa-file-export' }), 'Export HAR');
-      const liveBtn     = el('button', { class: 'ex-btn ex-btn-ghost'   }, el('i', { class: 'fas fa-satellite-dish' }), 'Live Stream');
-      const livePill    = el('span', { class: 'ex-live-pill', style: 'display:none;' },
-        el('span', { class: 'dot' }), 'Live');
-
-      const tableBody   = el('tbody');
-      const detailPanel = buildResultPanel();
-      detailPanel._clear();
-
-      filters.append(
-        el('div', { style: 'flex: 2 1 240px;' }, searchIn),
-        el('div', { style: 'flex: 0 0 140px;' }, methodSel),
-        el('div', { style: 'flex: 1 1 180px;' }, anomalySel),
-      );
-
-      async function loadStats() {
-        try {
-          const s = await jget(EP.logger.stats);
-          statsGrid.innerHTML = '';
-          [
-            { label: 'Total Seen',  val: s.total_seen },
-            { label: 'Buffer Size', val: `${s.buffer_size}/${s.buffer_capacity}` },
-            { label: 'Subscribers', val: s.subscribers },
-            { label: 'Dropped',     val: s.total_dropped },
-          ].forEach(e => {
-            statsGrid.appendChild(el('div', { class: 'ex-kpi' },
-              el('div', { class: 'k-label' }, e.label),
-              el('div', { class: 'k-val' }, String(e.val)),
-            ));
-          });
-        } catch (_) { /* ignore */ }
-      }
-
-      async function loadList() {
-        tableBody.innerHTML = '';
-        try {
-          const qs = new URLSearchParams({ size: '100' });
-          if (searchIn.value.trim())   qs.set('q',       searchIn.value.trim());
-          if (methodSel.value)         qs.set('method',  methodSel.value);
-          if (anomalySel.value.trim()) qs.set('anomaly', anomalySel.value.trim());
-          const data = await jget(EP.logger.list + '?' + qs.toString());
-          if (!data.items || !data.items.length) {
-            tableBody.appendChild(el('tr', null,
-              el('td', { colspan: '6' }, emptyState('No requests captured'))));
-            return;
-          }
-          data.items.forEach(entry => {
-            const tr = el('tr', { 'data-id': entry.id },
-              el('td', null, el('code', null, entry.method || '—')),
-              el('td', null, el('code', null, entry.path   || '—')),
-              el('td', null, String(entry.status || 0)),
-              el('td', null, el('code', null, entry.ip     || '—')),
-              el('td', null, String(entry.elapsed_ms || 0) + 'ms'),
-              el('td', null, (entry.anomalies || []).map(a => severityBadge(a.severity)).slice(0, 3)),
-            );
-            tr.addEventListener('click', () => showDetail(entry.id));
-            tableBody.appendChild(tr);
-          });
-        } catch (e) {
-          tableBody.appendChild(el('tr', null,
-            el('td', { colspan: '6' },
-              emptyState('Error: ' + e.message))));
-        }
-      }
-
-      async function showDetail(id) {
-        try {
-          const entry = await jget(EP.logger.detail + '/' + encodeURIComponent(id));
-          detailPanel._set(entry);
-        } catch (e) {
-          detailPanel._set({ error: e.message });
-        }
-      }
-
-      refreshBtn.addEventListener('click', () => { loadStats(); loadList(); });
-      clearBtn.addEventListener('click', async () => {
-        if (!confirm('Clear the HTTP log buffer?')) return;
-        try { await jpost(EP.logger.clear, {}); toast('Log cleared', 'ok'); refreshBtn.click(); }
-        catch (e) { toast('Clear failed: ' + e.message, 'err'); }
-      });
-      exportHar.addEventListener('click', async () => {
-        try {
-          const data = await jget(EP.logger.har + '?size=500');
-          download('emergens-http-log.har', JSON.stringify(data, null, 2), 'application/json');
-          toast('HAR exported', 'ok');
-        } catch (e) { toast('Export failed: ' + e.message, 'err'); }
-      });
-
-      function stopLiveStream() {
-        const es = state.streams.logger;
-        if (es) { try { es.close(); } catch (_) {} delete state.streams.logger; }
-        livePill.style.display = 'none';
-        liveBtn.innerHTML = '<i class="fas fa-satellite-dish"></i> Live Stream';
-      }
-
-      liveBtn.addEventListener('click', () => {
-        if (state.streams.logger) { stopLiveStream(); return; }
-        livePill.style.display = '';
-        liveBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Stream';
-        const es = new EventSource(EP.logger.stream);
-        state.streams.logger = es;
-        es.onmessage = (ev) => {
-          try {
-            const data = JSON.parse(ev.data);
-            if (data.type === 'request') {
-              const tr = el('tr', null,
-                el('td', null, el('code', null, data.method || '—')),
-                el('td', null, el('code', null, data.path   || '—')),
-                el('td', null, String(data.status || 0)),
-                el('td', null, el('code', null, data.ip     || '—')),
-                el('td', null, String(data.elapsed_ms || 0) + 'ms'),
-                el('td', null, (data.anomalies || []).map(a => severityBadge(a.severity)).slice(0, 3)),
-              );
-              tableBody.insertBefore(tr, tableBody.firstChild);
-              if (tableBody.childNodes.length > 200) tableBody.removeChild(tableBody.lastChild);
-            }
-          } catch (_) { /* ignore */ }
-        };
-        es.onerror = () => { stopLiveStream(); };
-      });
-
-      setTimeout(() => { loadStats(); loadList(); }, 80);
-
-      return el('div', { class: 'ex-panel', id: pid('logger') },
-        buildCard('HTTP Logger — Live Request Capture', 'fa-wave-square', 'rolling buffer · anomaly detection',
-          statsGrid,
-          el('div', { style: 'margin: 12px 0 6px;' }, filters),
-          el('div', { class: 'ex-row tight', style: 'align-items:center;gap:8px;' },
-            refreshBtn, clearBtn, exportHar, liveBtn, livePill,
-          ),
-          el('div', { style: 'overflow:auto; max-height:400px; margin-top:14px; border-radius:11px; border:1px solid rgba(148,163,184,.14);' },
-            el('table', { class: 'ex-table' },
-              el('thead', null,
-                el('tr', null,
-                  el('th', null, 'Method'),
-                  el('th', null, 'Path'),
-                  el('th', null, 'Status'),
-                  el('th', null, 'IP'),
-                  el('th', null, 'Latency'),
-                  el('th', null, 'Anomalies'),
-                ),
-              ),
-              tableBody,
-            ),
-          ),
-        ),
-        buildCard('Entry Detail', 'fa-magnifying-glass', null, detailPanel),
-      );
+            startBtn, stopBtn),
+          progress, logPanel),
+        buildCard('Full Report', 'fa-clipboard-check', null, resultPanel));
     }
 
     return {
@@ -2302,7 +1919,6 @@
       xss:       buildXssTab,
       xssSimple: buildXssSimpleTab,
       sniper:    buildSniperTab,
-      logger:    buildLoggerTab,
     };
   }
 
@@ -2314,28 +1930,41 @@
 
     const state = {
       instanceName,
-      mounted:    false,
-      mountEl:    null,
-      activeTab:  'dirfuzz',
-      streams:    {},
+      mounted:   false,
+      mountEl:   null,
+      activeTab: 'dirfuzz',
+      streams:   Object.create(null),
     };
 
     const TAB_BUILDERS = makeTabBuilders(instanceName, state);
 
     function buildUI(defaultTab) {
-      const tabsRow = el('div', { class: 'ex-tabs' });
+      const tabsRow = el('div', { class: 'ex-tabs', role: 'tablist', 'aria-label': 'Exploit Suite' });
       const panels  = {};
+      const buttons = {};
 
       TABS.forEach(t => {
         const btn = el('button', {
           class: 'ex-tab' + (t.id === defaultTab ? ' active' : ''),
           type: 'button',
+          role: 'tab',
+          'aria-selected': t.id === defaultTab ? 'true' : 'false',
+          'aria-controls': 'ex-tab-' + instanceName + '-' + t.id,
           'data-tab': t.id,
+          tabindex: t.id === defaultTab ? '0' : '-1',
         },
-          el('span', { class: 'ex-tab-ico' }, el('i', { class: 'fas ' + t.icon })),
-          t.label,
-        );
+          el('span', { class: 'ex-tab-ico', 'aria-hidden': 'true' }, el('i', { class: 'fas ' + t.icon })),
+          t.label);
         btn.addEventListener('click', () => switchTab(t.id));
+        btn.addEventListener('keydown', (ev) => {
+          const order = TABS.map(x => x.id);
+          const i = order.indexOf(t.id);
+          if (ev.key === 'ArrowRight') { ev.preventDefault(); buttons[order[(i + 1) % order.length]].focus(); }
+          if (ev.key === 'ArrowLeft')  { ev.preventDefault(); buttons[order[(i - 1 + order.length) % order.length]].focus(); }
+          if (ev.key === 'Home')       { ev.preventDefault(); buttons[order[0]].focus(); }
+          if (ev.key === 'End')        { ev.preventDefault(); buttons[order[order.length - 1]].focus(); }
+        });
+        buttons[t.id] = btn;
         tabsRow.appendChild(btn);
       });
 
@@ -2343,25 +1972,29 @@
       TABS.forEach(t => {
         const panel = TAB_BUILDERS[t.id]();
         panel.classList.toggle('active', t.id === defaultTab);
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', 'ex-tab-btn-' + instanceName + '-' + t.id);
         panels[t.id] = panel;
         body.appendChild(panel);
       });
 
       function switchTab(id) {
+        if (!TABS.some(t => t.id === id)) return false;
         state.activeTab = id;
-        $$('.ex-tab', tabsRow).forEach(b =>
-          b.classList.toggle('active', b.dataset.tab === id)
-        );
-        Object.entries(panels).forEach(([k, p]) =>
-          p.classList.toggle('active', k === id)
-        );
+        TABS.forEach(t => {
+          const active = t.id === id;
+          buttons[t.id].classList.toggle('active', active);
+          buttons[t.id].setAttribute('aria-selected', active ? 'true' : 'false');
+          buttons[t.id].tabIndex = active ? 0 : -1;
+          panels[t.id].classList.toggle('active', active);
+        });
+        return true;
       }
 
       const root = el('div', { class: 'ex-root' },
         buildHeader(),
         tabsRow,
-        body,
-      );
+        body);
       root._switchTab = switchTab;
       return root;
     }
@@ -2373,9 +2006,9 @@
       const defaultTab = opts.defaultTab || 'dirfuzz';
 
       let elMount = null;
-      if (typeof target === 'string') elMount = document.querySelector(target);
-      else if (target instanceof Element) elMount = target;
-      else elMount = document.querySelector('[data-emergens-panel="exploit"]');
+      if (typeof target === 'string')                 elMount = document.querySelector(target);
+      else if (target instanceof Element)             elMount = target;
+      else                                            elMount = document.querySelector('[data-emergens-panel="exploit"]');
 
       if (!elMount) {
         console.warn('[ExploitSuite:' + instanceName + '] no mount point found');
@@ -2383,7 +2016,7 @@
       }
 
       state.mountEl = elMount;
-      elMount.innerHTML = '';
+      elMount.textContent = '';
       elMount.appendChild(buildUI(defaultTab));
       state.mounted = true;
       state.activeTab = defaultTab;
@@ -2391,10 +2024,11 @@
     }
 
     function unmount() {
-      for (const es of Object.values(state.streams)) {
-        try { es.close(); } catch (_) {}
+      for (const key of Object.keys(state.streams)) {
+        try { state.streams[key].close(); } catch (_) {}
       }
-      state.streams = {};
+      state.streams = Object.create(null);
+      if (state.mountEl) state.mountEl.textContent = '';
       state.mounted = false;
       state.mountEl = null;
     }
@@ -2402,24 +2036,22 @@
     function open(tabName) {
       if (!state.mounted || !state.mountEl) return false;
       const root = state.mountEl.querySelector('.ex-root');
-      if (root && root._switchTab) { root._switchTab(tabName); return true; }
+      if (root && root._switchTab) return root._switchTab(tabName);
       return false;
     }
 
     return {
       mount, unmount, open,
-      get state() { return { ...state }; },
+      get state() { return Object.assign({}, state, { streams: Object.keys(state.streams) }); },
     };
   }
 
   /* ══════════════════════════════════════════════════════════════════
-   *  Public API — singleton + factory
+   *  Public API
    * ══════════════════════════════════════════════════════════════════ */
   const defaultInstance = createInstance('default');
 
-  window.ExploitSuite = Object.assign(defaultInstance, {
-    create: createInstance,
-  });
+  window.ExploitSuite = Object.assign(defaultInstance, { create: createInstance });
 
   window.addEventListener('beforeunload', () => {
     try { defaultInstance.unmount(); } catch (_) {}

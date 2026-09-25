@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """
-Oxysintx — API Key / Secret Scanner Module (v6.1.1)
+Oxysintx — API Key / Secret Scanner Module (v6.1.2)
 ====================================================
 
-Fixes vs v6.1.0:
-  • FIXED: `global MIN_EXTRACTED_LENGTH, MIN_SECRET_ENTROPY` moved to top of main()
-  • FIXED: `looks_like_secret()` / `_char_diversity_ok()` resolve min_len at CALL time
-  • FIXED: `_rule_can_produce_secret()` removed dead loop
-  • Strict plaintext keyword parser: plain words → \bword\b, <8 chars discarded
-  • Auto-invoke Cloudflare bypass when CF is detected
+Fixes vs v6.1.1:
+  • FIXED: truffleHog source no longer spams WARNING when upstream
+           returns a 404 page or plain-text redirect body.
+  • FIXED: JSON parser now format-aware — only attempts json.loads()
+           when the payload actually starts with { or [.
+  • FIXED: Cached JSON files that are corrupt (HTML pages) are now
+           auto-purged and re-downloaded on next sync.
+  • NEW:   `fallback_urls` per source — try master, then main.
+  • NEW:   `optional` flag per source — downgrade to DEBUG logging and
+           skip circuit-breaker trip for archived / unstable upstreams.
+  • NEW:   `_download_with_fallbacks()` helper.
+  • NEW:   `_looks_like_json()` / `_looks_like_toml()` guards.
+  • Preserved: all v6.1.1 FP-filter logic, CF bypass, proxy pool,
+               300+ bundled patterns, entropy heuristic, output formats.
 
 Pengarang: Yanxzyx
 """
@@ -99,7 +107,7 @@ if not logging.getLogger().handlers:
 # ═══════════════════════════════════════════════════════════════════════════
 # METADATA
 # ═══════════════════════════════════════════════════════════════════════════
-__version__ = "6.1.1"
+__version__ = "6.1.2"
 __author__ = "Yanxzyx"
 
 TOOL_INFO = {
@@ -139,6 +147,7 @@ DEFAULT_TIMEOUT       = 20
 DEFAULT_USER_AGENT    = f"Oxysintx-APIScanner/{__version__} (+https://oxysintx.local)"
 SCANNER_VERSION       = __version__
 
+# ── Proxy tunables ────────────────────────────────────────────────────────
 PROXY_DOWNLOAD_COOLDOWN  = 300.0
 PROXY_DOWNLOAD_RETRIES   = 3
 PROXY_DOWNLOAD_BACKOFF   = 1.5
@@ -147,6 +156,7 @@ PROXY_BREAKER_FAIL_LIMIT = 3
 PROXY_MAX_BLACKLIST      = 200
 DEFAULT_MAX_PROXY_ATTEMPTS = 4
 
+# ── Wordlist tunables ─────────────────────────────────────────────────────
 DOWNLOAD_COOLDOWN     = 300.0
 DOWNLOAD_RETRIES      = 3
 DOWNLOAD_BACKOFF      = 1.5
@@ -154,6 +164,7 @@ DOWNLOAD_TIMEOUT      = 25.0
 BREAKER_FAIL_LIMIT    = 3
 MIN_ACCEPTABLE_RULES  = 3
 
+# ── Cloudflare bypass tunables ────────────────────────────────────────────
 CF_MAX_ATTEMPTS       = 3
 CF_CHALLENGE_TIMEOUT  = 30
 CF_COOKIE_TTL         = 3600
@@ -161,7 +172,7 @@ CF_CACHE_TTL          = 1800
 FLARESOLVERR_URL      = os.getenv("FLARESOLVERR_URL", "").strip()
 FLARESOLVERR_TIMEOUT  = 60
 
-# ── Match validation (v6.1.1) ─────────────────────────────────────────────
+# ── Match validation ──────────────────────────────────────────────────────
 MIN_EXTRACTED_LENGTH     = 10
 MIN_SECRET_ENTROPY       = 2.8
 KEYWORD_MIN_LENGTH       = 8
@@ -296,28 +307,50 @@ def _detect_cloudflare(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# WORDLIST SOURCES + PROXY SOURCES
+# WORDLIST SOURCES  (v6.1.2 — resilient multi-URL + optional sources)
 # ═══════════════════════════════════════════════════════════════════════════
 APIKEY_WORDLIST_SOURCES: Dict[str, Dict[str, Any]] = {
     "gitleaks.toml": {
         "url": "https://raw.githubusercontent.com/gitleaks/gitleaks/master/config/gitleaks.toml",
+        "fallback_urls": [
+            "https://raw.githubusercontent.com/gitleaks/gitleaks/main/config/gitleaks.toml",
+        ],
         "source": "gitleaks/gitleaks",
-        "license": "MIT", "format": "toml", "min_rules": 50,
+        "license": "MIT",
+        "format": "toml",
+        "min_rules": 50,
+        "optional": False,
     },
     "gitleaks_legacy.toml": {
         "url": "https://raw.githubusercontent.com/zricethezav/gitleaks/master/config/gitleaks.toml",
+        "fallback_urls": [
+            "https://raw.githubusercontent.com/zricethezav/gitleaks/main/config/gitleaks.toml",
+        ],
         "source": "zricethezav/gitleaks",
-        "license": "MIT", "format": "toml", "min_rules": 20,
+        "license": "MIT",
+        "format": "toml",
+        "min_rules": 20,
+        "optional": False,
     },
     "trufflehog_regexes.json": {
         "url": "https://raw.githubusercontent.com/dxa4481/truffleHogRegexes/master/truffleHogRegexes/regexes.json",
+        "fallback_urls": [],
         "source": "dxa4481/truffleHogRegexes",
-        "license": "GPL-3.0", "format": "json", "min_rules": 5,
+        "license": "GPL-3.0",
+        "format": "json",
+        "min_rules": 5,
+        "optional": True,
     },
     "seclists_apikeys.txt": {
         "url": "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/api/objects.txt",
+        "fallback_urls": [
+            "https://raw.githubusercontent.com/danielmiessler/SecLists/main/Discovery/Web-Content/api/objects.txt",
+        ],
         "source": "danielmiessler/SecLists",
-        "license": "MIT", "format": "txt", "min_rules": 5,
+        "license": "MIT",
+        "format": "txt",
+        "min_rules": 5,
+        "optional": True,
     },
 }
 
@@ -512,7 +545,7 @@ _PLACEHOLDER_TOKENS = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# ENTROPY + SECRET VALIDATION (v6.1.1 — dynamic min_len)
+# ENTROPY + SECRET VALIDATION
 # ═══════════════════════════════════════════════════════════════════════════
 def shannon_entropy(data: str) -> float:
     if not data:
@@ -529,7 +562,6 @@ def shannon_entropy(data: str) -> float:
 
 
 def _char_diversity_ok(s: str, min_len: Optional[int] = None) -> bool:
-    """v6.1.1: min_len resolved at CALL time (CLI-tuning aware)."""
     if min_len is None:
         min_len = MIN_EXTRACTED_LENGTH
     if len(s) < min_len:
@@ -538,7 +570,6 @@ def _char_diversity_ok(s: str, min_len: Optional[int] = None) -> bool:
 
 
 def looks_like_secret(s: str, min_len: Optional[int] = None) -> bool:
-    """Strict validation. v6.1.1: min_len resolved at CALL time."""
     if min_len is None:
         min_len = MIN_EXTRACTED_LENGTH
 
@@ -569,7 +600,6 @@ def looks_like_secret(s: str, min_len: Optional[int] = None) -> bool:
 
 
 def _rule_can_produce_secret(regex_src: str) -> bool:
-    """v6.1.1: cleaned up, no dead loop."""
     src = (regex_src or "").strip()
     if not src:
         return False
@@ -640,10 +670,32 @@ _proxy_breaker    = _SourceBreaker(PROXY_DOWNLOAD_COOLDOWN, PROXY_BREAKER_FAIL_L
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# LOW-LEVEL DOWNLOAD HELPERS
+# LOW-LEVEL DOWNLOAD HELPERS  (v6.1.2 — format-aware + fallback-aware)
 # ═══════════════════════════════════════════════════════════════════════════
 def _looks_like_html(raw: bytes) -> bool:
     return bool(_HTML_RE.search(raw[:512]))
+
+
+def _looks_like_json(raw: bytes) -> bool:
+    """
+    Return True if the first meaningful byte looks like the start of a
+    JSON document. Used to short-circuit parsing when a source returns
+    a 404 page, redirect body, or plain text.
+    """
+    if not raw:
+        return False
+    head = raw.lstrip(b"\xef\xbb\xbf \t\r\n")
+    return head.startswith((b"{", b"["))
+
+
+def _looks_like_toml(raw: bytes) -> bool:
+    """Reject HTML and obvious binary — allow anything else as TOML text."""
+    if not raw:
+        return False
+    head = raw.lstrip(b"\xef\xbb\xbf \t\r\n")
+    if head.startswith((b"<!", b"<html", b"<?xml")):
+        return False
+    return True
 
 
 def _atomic_write(target: Path, content: str) -> None:
@@ -659,17 +711,35 @@ def _atomic_write(target: Path, content: str) -> None:
 
 
 def _download_raw(
-    url: str, name: str, breaker: _SourceBreaker,
-    retries: int, backoff: float, timeout: float,
+    url: str,
+    name: str,
+    breaker: _SourceBreaker,
+    retries: int,
+    backoff: float,
+    timeout: float,
+    optional: bool = False,
 ) -> Optional[bytes]:
+    """
+    Download a text file with retries + circuit-breaker semantics.
+
+    v6.1.2:
+        • `optional=True` downgrades logging from WARNING to DEBUG and
+          skips the circuit-breaker failure counter, so a permanently
+          dead upstream doesn't trigger a cooldown on every scan.
+    """
     if breaker.is_open(url):
-        logger.info("[apikey] breaker open, skip %s", name)
+        if not optional:
+            logger.info("[apikey] breaker open, skip %s", name)
         return None
+
     last_err: Optional[Exception] = None
+    log_level  = logging.DEBUG if optional else logging.INFO
+    warn_level = logging.DEBUG if optional else logging.WARNING
+
     for attempt in range(retries + 1):
         try:
-            logger.info("[apikey] fetching %s (attempt %d/%d)",
-                        name, attempt + 1, retries + 1)
+            logger.log(log_level, "[apikey] fetching %s (attempt %d/%d)",
+                       name, attempt + 1, retries + 1)
             r = requests.get(
                 url, timeout=timeout,
                 headers={"User-Agent": _BROWSER_UA_PRIMARY},
@@ -687,8 +757,41 @@ def _download_raw(
             last_err = exc
             if attempt < retries:
                 time.sleep(backoff * (2 ** attempt))
-    logger.warning("[apikey] %s failed: %s", name, last_err)
-    breaker.record_failure(url)
+
+    logger.log(warn_level, "[apikey] %s failed: %s", name, last_err)
+    if not optional:
+        breaker.record_failure(url)
+    return None
+
+
+def _download_with_fallbacks(
+    meta: Dict[str, Any],
+    breaker: _SourceBreaker,
+    retries: int,
+    backoff: float,
+    timeout: float,
+) -> Optional[bytes]:
+    """
+    Try the primary URL, then every fallback_url, returning the first
+    successful response. Returns None if all URLs fail.
+    """
+    name     = meta.get("source", "source")
+    optional = bool(meta.get("optional", False))
+
+    urls: List[str] = []
+    if meta.get("url"):
+        urls.append(meta["url"])
+    for u in meta.get("fallback_urls", []) or []:
+        if u and u not in urls:
+            urls.append(u)
+
+    for idx, u in enumerate(urls):
+        raw = _download_raw(
+            u, f"{name}[{idx+1}/{len(urls)}]", breaker,
+            retries, backoff, timeout, optional=optional,
+        )
+        if raw is not None:
+            return raw
     return None
 
 
@@ -705,15 +808,26 @@ def _ensure_wordlist_dir() -> None:
 
 def _parse_gitleaks_toml(text: str) -> List[Dict[str, Any]]:
     if not _HAS_TOML or _toml is None:
+        logger.debug("[apikey] TOML parser not available — skip gitleaks file")
         return []
+    if not text:
+        return []
+
+    head = text.lstrip("\ufeff \t\r\n")[:64].lower()
+    if head.startswith(("<!doctype", "<html", "<?xml")):
+        logger.debug("[apikey] gitleaks source is an HTML page — skipping")
+        return []
+
     try:
         data = _toml.loads(text)
     except Exception as exc:
-        logger.warning("[apikey] gitleaks TOML parse failed: %s", exc)
+        logger.info("[apikey] gitleaks TOML parse failed: %s", exc)
         return []
+
     rules_in = data.get("rules") if isinstance(data, dict) else None
     if not isinstance(rules_in, list):
         return []
+
     out: List[Dict[str, Any]] = []
     for rule in rules_in:
         if not isinstance(rule, dict):
@@ -742,16 +856,38 @@ def _parse_gitleaks_toml(text: str) -> List[Dict[str, Any]]:
 
 
 def _parse_trufflehog_json(text: str) -> List[Dict[str, Any]]:
+    """
+    Parse truffleHog regexes JSON.
+
+    v6.1.2: gracefully handles non-JSON responses (404 pages, redirect
+    bodies) without producing a WARNING — the upstream repo is archived
+    and frequently returns plain text.
+    """
+    if not text:
+        return []
+
+    stripped = text.lstrip("\ufeff \t\r\n")
+    if not stripped.startswith(("{", "[")):
+        logger.debug(
+            "[apikey] truffleHog source is not JSON (first 40 chars: %r) "
+            "— skipping silently",
+            stripped[:40],
+        )
+        return []
+
     try:
-        data = json.loads(text)
+        data = json.loads(stripped)
     except json.JSONDecodeError as exc:
-        logger.warning("[apikey] truffleHog JSON parse failed: %s", exc)
+        logger.info("[apikey] truffleHog JSON parse failed: %s", exc)
         return []
+
     if not isinstance(data, dict):
+        logger.debug("[apikey] truffleHog JSON root is not an object — skipping")
         return []
+
     out: List[Dict[str, Any]] = []
     for name, regex in data.items():
-        if not isinstance(regex, str):
+        if not isinstance(name, str) or not isinstance(regex, str):
             continue
         try:
             re.compile(regex)
@@ -766,11 +902,8 @@ def _parse_trufflehog_json(text: str) -> List[Dict[str, Any]]:
 
 def _parse_plaintext_regex_list(text: str) -> List[Dict[str, Any]]:
     """
-    v6.1.1 STRICT parser.
-
     Plain keywords become word-boundary regexes and are discarded if
-    shorter than KEYWORD_MIN_LENGTH. This kills the classic FP where
-    'B', 'c', 'id', 'v1' matched single characters on any HTML/JS page.
+    shorter than KEYWORD_MIN_LENGTH.
     """
     out: List[Dict[str, Any]] = []
     for raw_line in text.splitlines():
@@ -808,9 +941,30 @@ def _parse_plaintext_regex_list(text: str) -> List[Dict[str, Any]]:
 
 def _extract_rules_from_file(path: Path, fmt: str) -> List[Dict[str, Any]]:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        raw = path.read_bytes()
     except OSError:
         return []
+
+    if not raw:
+        return []
+
+    if _looks_like_html(raw):
+        logger.debug("[apikey] %s looks like HTML — skipping", path.name)
+        return []
+
+    if fmt == "json" and not _looks_like_json(raw):
+        logger.debug("[apikey] %s is not valid JSON — skipping", path.name)
+        return []
+
+    if fmt == "toml" and not _looks_like_toml(raw):
+        logger.debug("[apikey] %s is not plausible TOML — skipping", path.name)
+        return []
+
+    try:
+        text = raw.decode("utf-8", errors="replace")
+    except Exception:
+        return []
+
     if fmt == "toml":
         return _parse_gitleaks_toml(text)
     if fmt == "json":
@@ -826,15 +980,40 @@ def load_wordlist(force_download: bool = False,
     with _wordlist_lock:
         if _wordlist_loaded_cache is not None and not force_download:
             return list(_wordlist_loaded_cache)
+
         _ensure_wordlist_dir()
         rules: List[Dict[str, Any]] = []
+
         for name, meta in APIKEY_WORDLIST_SOURCES.items():
-            path = WORDLIST_DIR / name
-            if force_download or not path.exists() or path.stat().st_size < 64:
+            path     = WORDLIST_DIR / name
+            fmt      = meta.get("format", "txt")
+            optional = bool(meta.get("optional", False))
+
+            need_download = force_download or not path.exists()
+            if not need_download:
+                try:
+                    size = path.stat().st_size
+                except OSError:
+                    size = 0
+                if size < 64:
+                    need_download = True
+                elif fmt == "json":
+                    try:
+                        head = path.read_bytes()[:64].lstrip(b"\xef\xbb\xbf \t\r\n")
+                        if not head.startswith((b"{", b"[")):
+                            logger.info(
+                                "[apikey] %s cached file is not JSON — re-downloading",
+                                name,
+                            )
+                            need_download = True
+                    except OSError:
+                        need_download = True
+
+            if need_download:
                 if not auto_sync:
                     continue
-                raw = _download_raw(
-                    meta["url"], meta["source"], _wordlist_breaker,
+                raw = _download_with_fallbacks(
+                    meta, _wordlist_breaker,
                     DOWNLOAD_RETRIES, DOWNLOAD_BACKOFF, DOWNLOAD_TIMEOUT,
                 )
                 if raw is None:
@@ -844,21 +1023,28 @@ def load_wordlist(force_download: bool = False,
                         f"# {name} — auto-downloaded from {meta['source']}\n"
                         f"# License: {meta.get('license', 'unknown')}\n"
                         f"# Fetched: {_now_iso()}\n"
-                        f"# Format : {meta.get('format', 'txt')}\n\n"
+                        f"# Format : {fmt}\n\n"
                     )
                     _atomic_write(path, header + raw.decode("utf-8", errors="replace"))
                 except OSError:
                     continue
+
             try:
-                file_rules = _extract_rules_from_file(path, meta.get("format", "txt"))
-            except Exception:
+                file_rules = _extract_rules_from_file(path, fmt)
+            except Exception as exc:
+                logger.debug("[apikey] rule extraction failed for %s: %s", name, exc)
                 continue
-            min_rules = meta.get("min_rules", MIN_ACCEPTABLE_RULES)
+
+            min_rules = int(meta.get("min_rules", MIN_ACCEPTABLE_RULES))
             if len(file_rules) < min_rules:
-                logger.debug("[apikey] %s only yielded %d rules (< %d) — skipped",
-                             name, len(file_rules), min_rules)
+                log = logger.debug if optional else logger.info
+                log("[apikey] %s yielded %d rule(s) (< %d) — skipped",
+                    name, len(file_rules), min_rules)
                 continue
+
             rules.extend(file_rules)
+            logger.debug("[apikey] %s → %d rule(s)", name, len(file_rules))
+
         seen: Set[Tuple[str, str]] = set()
         deduped: List[Dict[str, Any]] = []
         for r in rules:
@@ -867,6 +1053,7 @@ def load_wordlist(force_download: bool = False,
                 continue
             seen.add(key)
             deduped.append(r)
+
         _wordlist_loaded_cache = deduped
         logger.info("[apikey] loaded %d external rule(s)", len(deduped))
         return list(deduped)
@@ -884,8 +1071,8 @@ def ensure_wordlists(force: bool = False) -> Dict[str, Any]:
     for name, meta in APIKEY_WORDLIST_SOURCES.items():
         path = WORDLIST_DIR / name
         if force and not path.exists():
-            raw = _download_raw(
-                meta["url"], meta["source"], _wordlist_breaker,
+            raw = _download_with_fallbacks(
+                meta, _wordlist_breaker,
                 DOWNLOAD_RETRIES, DOWNLOAD_BACKOFF, DOWNLOAD_TIMEOUT,
             )
             if raw:
@@ -899,6 +1086,7 @@ def ensure_wordlists(force: bool = False) -> Dict[str, Any]:
             "name": name, "source": meta["source"],
             "format": meta.get("format", "txt"),
             "license": meta.get("license", ""),
+            "optional": bool(meta.get("optional", False)),
             "exists": path.exists(),
             "size": path.stat().st_size if path.exists() else 0,
             "rules": len(rules),
@@ -1749,7 +1937,6 @@ class APIScanner:
         status = 0
         used = "direct"
 
-        # ── Attempt 1: direct ─────────────────────────────────────────
         raw, _ct, status = self._fetch_basic(url, timeout, _BROWSER_UA_PRIMARY, session)
         if raw is not None:
             cf_type = _detect_cloudflare({}, raw, status)
@@ -1759,7 +1946,6 @@ class APIScanner:
                 logger.info("[apikey] CF detected (%s) on %s — invoking bypass",
                             cf_type, url)
 
-        # ── Attempt 2: CF bypass engine ───────────────────────────────
         if body is None and self._cf_bypass is not None:
             cf_body, cf_headers, cf_status, cf_method = self._cf_bypass.fetch(url)
             if cf_body is not None:
@@ -1767,7 +1953,6 @@ class APIScanner:
                 status = cf_status
                 used = f"cf-bypass:{cf_method}"
 
-        # ── Attempt 3: Safari UA retry on 403 ─────────────────────────
         if body is None and status == 403:
             raw, _ct, status = self._fetch_basic(
                 url, timeout, _BROWSER_UA_SECONDARY, session
@@ -1776,7 +1961,6 @@ class APIScanner:
                 body = raw
                 used = "direct-safari-ua"
 
-        # ── Attempt 4: proxy rotation ─────────────────────────────────
         if body is None and self.proxy_manager and self._should_use_proxy(status):
             logger.info("[apikey] %s blocked — trying proxies", url)
             for attempt in range(self.max_proxy_attempts):
@@ -1807,7 +1991,6 @@ class APIScanner:
                     break
                 self.proxy_manager.mark_failure(proxy_url)
 
-        # ── Attempt 5: HTTPS → HTTP fallback ──────────────────────────
         if body is None and url.startswith("https://"):
             http_fb = url.replace("https://", "http://", 1)
             raw, _ct, _st = self._fetch_basic(
@@ -2080,7 +2263,7 @@ def _format_output(result: Dict[str, Any], fmt: str) -> str:
 # CLI
 # ═══════════════════════════════════════════════════════════════════════════
 def main() -> None:
-    # ▼ FIX v6.1.1: global declaration MUST be first statement
+    # ▼ global declaration MUST be first statement
     global MIN_EXTRACTED_LENGTH, MIN_SECRET_ENTROPY
 
     p = argparse.ArgumentParser(
@@ -2121,7 +2304,6 @@ def main() -> None:
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
-    # Apply global tuning from CLI (global declared at top — safe now)
     MIN_EXTRACTED_LENGTH = max(4, int(args.min_key_length))
     MIN_SECRET_ENTROPY = max(0.0, float(args.min_entropy))
 

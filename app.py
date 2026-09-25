@@ -1,34 +1,25 @@
 #!/usr/bin/env python3
 """
-Oxysintx — Main Flask Application (v4.0.0)
+Oxysintx — Main Flask Application (v4.2.0-clean)
 
-Routing and API. MHDDoS engine (start.py) integrated as external subprocess.
-Attack launches directly on user request.
+Integrated stack:
+  • scan_apikey v6.1.2   — Cloudflare bypass + strict FP filter
+  • scan_xss v2.0.0       — Wordlist-based XSS scanner
+  • sql_map v3.0.0        — Nation-grade SQLi scanner
+  • scan_ssl v3.0.0       — Full chain cert inspector
+  • scan_ip_info v5.0.0   — Dual-mode IP intelligence
+  • scan_tech_fingerprint v3.0.0 — DNS + favicon + multi-path
+  • scan_headers v3.0.0   — Advanced header analyzer + CF bypass
+  • port_scan v4.0.0      — Wordlist-driven port scanner
+  • modules.fixes         — Runtime patch for port_scan
 
-v4.0.0 changelog
-    • Integrated scan_apikey v6.1.1 (Cloudflare bypass + strict FP filter)
-    • New endpoints:
-        – GET  /api/apikey/status
-        – GET  /api/apikey/cf-status
-        – GET  /api/apikey/wordlists
-        – POST /api/apikey/wordlists/sync
-        – GET  /api/apikey/proxies
-        – POST /api/apikey/proxies/sync
-        – POST /api/apikey/scan          (with --min-key-length / --min-entropy)
-    • /api/tools availability map now reports `apikey` capabilities.
-    • /api/modules/status reports apikey module + CF strategy list.
-    • Startup banner shows apikey scanner status.
-    • Fixed: scan_apikey import failure no longer aborts boot.
-
-Preserved from v3.9.0:
-    • /api/tools returns { tools, availability, count } — namespaced shape.
-    • Defensive filtering: internal metadata keys dropped server-side.
-
-Removed in earlier releases:
-    – modules.whatsapp blueprint
-    – modules.quick_menu + all compatibility routes
-    – modules.testing + all /api/code_test/* endpoints
-    – /Emergens_DB.html, /code_test.html, /emergens-control-m4ddos.html
+v4.2.0-clean changelog
+  • HTTP Logger module fully removed (import, init, routes, references)
+  • Auto-import modules.fixes at boot (applies port_scan patches)
+  • New endpoints for every upgraded module (status/scan/stream)
+  • Unified module health check at /api/modules/status
+  • Better exception logging across all scan endpoints
+  • Preserved: v4.1.0 endpoints, MHDDoS panel, payment, chat, etc.
 
 Author: Yanxzyx
 """
@@ -80,18 +71,47 @@ from modules.telegram import (
     set_orchestrator, set_history_store,
 )
 
-# ── Optional: exploit / recon modules ──────────────────────────────────
+# ── Apply runtime patches (port_scan hardening) ───────────────────────────
+try:
+    from modules import fixes as _oxysintx_fixes
+    _fixes_available = True
+except Exception as _fixes_err:
+    _oxysintx_fixes = None
+    _fixes_available = False
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Optional modules — each guarded
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Port scan ─────────────────────────────────────────────────────────────
+try:
+    from modules.port_scan import (
+        run as port_scan_run,
+        run_streaming as port_scan_stream,
+        load_basic_ports as port_scan_load_basic,
+        load_ports_from_folder as port_scan_load_expert,
+        to_csv as port_scan_to_csv,
+        to_nmap_xml as port_scan_to_nmap,
+        to_sarif as port_scan_to_sarif,
+        TOOL_INFO as PORT_SCAN_INFO,
+    )
+    _port_scan_available = True
+except ImportError as _e:
+    _port_scan_available = False
+    _port_scan_err = str(_e)
+
+# ── Dirfuzz ───────────────────────────────────────────────────────────────
 try:
     from modules.dirfuzz import (
         run as dirfuzz_run,
         run_streaming as dirfuzz_stream,
         list_wordlists as dirfuzz_list_wordlists,
-        ensure_wordlist_dir as dirfuzz_ensure_dir,
     )
     _dirfuzz_available = True
 except ImportError:
     _dirfuzz_available = False
 
+# ── SQLi Engine ───────────────────────────────────────────────────────────
 try:
     from modules.sqli_engine import (
         run as sqli_run,
@@ -103,34 +123,57 @@ try:
 except ImportError:
     _sqli_engine_available = False
 
+# ── SQLMap (v3.0.0) ───────────────────────────────────────────────────────
 try:
     from modules import sql_map as sql_map_module
+    from modules.sql_map import (
+        ensure_wordlists as sqlmap_ensure_wordlists,
+        load_sqli_wordlist as sqlmap_load_wordlist,
+        TOOL_INFO as SQLMAP_TOOL_INFO,
+    )
     _sql_map_available = True
-except ImportError:
+    _sqlmap_wordlist_available = True
+except ImportError as _e:
+    sql_map_module = None
     _sql_map_available = False
+    _sqlmap_wordlist_available = False
+    _sqlmap_import_err = str(_e)
 
+# ── Lightweight SQL injection ────────────────────────────────────────────
 try:
     from modules import sql_injection as sql_injection_module
     _sql_injection_available = True
 except ImportError:
     _sql_injection_available = False
 
+# ── XSS exploiter ────────────────────────────────────────────────────────
 try:
     from modules.xss_exploiter import (
         run as xss_exploiter_run,
         run_streaming as xss_exploiter_stream,
-        ensure_wordlist as xss_ensure_wordlist,
+        ensure_wordlist as xss_exploiter_ensure_wordlist,
     )
     _xss_exploiter_available = True
 except ImportError:
     _xss_exploiter_available = False
 
+# ── XSS (v2.0.0) ─────────────────────────────────────────────────────────
 try:
     from modules import xss as xss_module
+    from modules.xss import (
+        ensure_wordlists as xss_ensure_wordlists,
+        load_xss_wordlist as xss_load_wordlist,
+        TOOL_INFO as XSS_TOOL_INFO,
+    )
     _xss_available = True
-except ImportError:
+    _xss_wordlist_available = True
+except ImportError as _e:
+    xss_module = None
     _xss_available = False
+    _xss_wordlist_available = False
+    _xss_import_err = str(_e)
 
+# ── Sniper ───────────────────────────────────────────────────────────────
 try:
     from modules.sniper import (
         run as sniper_run,
@@ -140,12 +183,7 @@ try:
 except ImportError:
     _sniper_available = False
 
-try:
-    from modules.http_logger import HttpLogger
-    _http_logger_available = True
-except ImportError:
-    _http_logger_available = False
-
+# ── Wordlist scraper ─────────────────────────────────────────────────────
 try:
     from modules.git_scraper_wordlist import (
         sync           as wordlist_sync,
@@ -158,21 +196,24 @@ try:
 except ImportError:
     _wordlist_scraper_available = False
 
+# ── Downsea blueprint ────────────────────────────────────────────────────
 try:
     from modules.downsea import downsea_bp
     _downsea_available = True
 except ImportError:
     _downsea_available = False
 
+# ── AI Chat ──────────────────────────────────────────────────────────────
 from ai_chat.chat_handler import ChatHandler
 
+# ── Analytic manager ─────────────────────────────────────────────────────
 try:
     from modules.analytic_manager import AnalyticDataManager
     _analytic_available = True
 except ImportError:
     _analytic_available = False
 
-# ── scan_apikey v6.1.1 integration ─────────────────────────────────────
+# ── scan_apikey v6.1.2 ───────────────────────────────────────────────────
 try:
     from modules import scan_apikey as apikey_module
     from modules.scan_apikey import (
@@ -187,10 +228,67 @@ try:
         __version__              as apikey_version,
     )
     _apikey_available = True
-except ImportError as _apikey_import_err:
+except ImportError as _e:
     apikey_module = None
     _apikey_available = False
-    _apikey_import_err_msg = str(_apikey_import_err)
+    _apikey_import_err = str(_e)
+
+# ── scan_ssl v3.0.0 ──────────────────────────────────────────────────────
+try:
+    from modules import scan_ssl as ssl_module
+    from modules.scan_ssl import (
+        run as ssl_run,
+        run_streaming as ssl_stream,
+        TOOL_INFO as SSL_TOOL_INFO,
+    )
+    _ssl_available = True
+except ImportError as _e:
+    ssl_module = None
+    _ssl_available = False
+    _ssl_import_err = str(_e)
+
+# ── scan_ip_info v5.0.0 ──────────────────────────────────────────────────
+try:
+    from modules import scan_ip_info as ipinfo_module
+    from modules.scan_ip_info import (
+        run as ipinfo_run,
+        run_streaming as ipinfo_stream,
+        TOOL_INFO as IPINFO_TOOL_INFO,
+    )
+    _ipinfo_available = True
+except ImportError as _e:
+    ipinfo_module = None
+    _ipinfo_available = False
+    _ipinfo_import_err = str(_e)
+
+# ── scan_tech_fingerprint v3.0.0 ─────────────────────────────────────────
+try:
+    from modules import scan_tech_fingerprint as techfp_module
+    from modules.scan_tech_fingerprint import (
+        run as techfp_run,
+        TOOL_INFO as TECHFP_TOOL_INFO,
+    )
+    _techfp_available = True
+except ImportError as _e:
+    techfp_module = None
+    _techfp_available = False
+    _techfp_import_err = str(_e)
+
+# ── scan_headers v3.0.0 ──────────────────────────────────────────────────
+try:
+    from modules import scan_headers as headers_module
+    from modules.scan_headers import (
+        run as headers_run,
+        run_streaming as headers_stream,
+        TOOL_INFO as HEADERS_TOOL_INFO,
+        _HAS_CURL_CFFI as headers_has_curl_cffi,
+        _HAS_CLOUDSCRAPER as headers_has_cloudscraper,
+    )
+    _headers_available = True
+except ImportError as _e:
+    headers_module = None
+    _headers_available = False
+    _headers_import_err = str(_e)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -624,7 +722,7 @@ set_history_store(history_store)
 # ═══════════════════════════════════════════════════════════════════════════
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 for d in ["userdata", "listschool", os.path.join("static", "data"),
-          "files", os.path.join("files", "proxies"), "wordlist"]:
+          "files", os.path.join("files", "proxies"), "wordlist", "porttxt"]:
     os.makedirs(os.path.join(PROJECT_ROOT, d), exist_ok=True)
 
 DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
@@ -634,6 +732,7 @@ TEMPLATES_DIR = os.path.join(PROJECT_ROOT, 'templates')
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Thread-safe JSON I/O
@@ -708,24 +807,6 @@ def _count_inbound_request():
 def _inbound_stats():
     with _request_log_lock:
         return _total_requests_seen, len(_request_timestamps)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# HTTP Logger
-# ═══════════════════════════════════════════════════════════════════════════
-http_logger = None
-if _http_logger_available:
-    try:
-        persist_dir = Path(DATA_DIR) / "http_logs"
-        http_logger = HttpLogger(
-            max_entries=int(os.getenv("HTTP_LOG_BUFFER", "5000")),
-            max_body_bytes=int(os.getenv("HTTP_LOG_BODY_MAX", "8192")),
-            persist_dir=persist_dir,
-        )
-        http_logger.attach(app)
-    except Exception as e:
-        logger.error(f"Failed to attach HttpLogger: {e}")
-        http_logger = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -865,6 +946,7 @@ def _save_payments(payments):
 
 
 payment_plans = _load_plans()
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Login rate limiting
@@ -1315,7 +1397,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/4.0.0"},
+            headers={"User-Agent": "Oxysintx/4.2.0"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1548,29 +1630,17 @@ _INTERNAL_TOOL_KEYS = {"_availability", "__availability__", "availability",
 @app.route("/api/tools")
 @api_login_required
 def api_tools():
-    """
-    Return discovered scan tools + a sibling availability report.
-
-    Response shape (v4.0.0):
-        {
-          "tools":        { "<tool_id>": {...}, ... },
-          "availability": { "<feature>": true|false, ... },
-          "count":        <int>
-        }
-    """
     try:
         raw_tools = scan_orchestrator.list_tools() or {}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error("Failed to list scan tools: %s", exc, exc_info=True)
         raw_tools = {}
 
-    tools: Dict[str, Any] = {}
+    tools = {}
     for name, info in raw_tools.items():
         if not name or not isinstance(name, str):
             continue
-        if name.startswith("_"):
-            continue
-        if name in _INTERNAL_TOOL_KEYS:
+        if name.startswith("_") or name in _INTERNAL_TOOL_KEYS:
             continue
         if "school" in name.lower():
             continue
@@ -1584,11 +1654,15 @@ def api_tools():
         "xss_exploiter":    _xss_exploiter_available,
         "xss":              _xss_available,
         "sniper":           _sniper_available,
-        "http_logger":      _http_logger_available,
         "wordlist_scraper": _wordlist_scraper_available,
         "analytic":         _analytic_available,
         "downsea":          _downsea_available,
         "apikey":           _apikey_available,
+        "ssl":              _ssl_available,
+        "ipinfo":           _ipinfo_available,
+        "techfp":           _techfp_available,
+        "headers":          _headers_available,
+        "port_scan":        _port_scan_available,
     }
 
     return jsonify({
@@ -1637,16 +1711,17 @@ def api_scan_tool_direct(tool_name):
     try:
         return jsonify(TOOL_MAP[tool_name].run(target, mode))
     except Exception as e:
+        logger.error(f"scan tool {tool_name} failed: {e}", exc_info=True)
         return jsonify({"error": "tool_execution_failed", "detail": str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# API Key Scanner endpoints (scan_apikey v6.1.1)
+# API Key Scanner (scan_apikey v6.1.2)
 # ═══════════════════════════════════════════════════════════════════════════
 def _apikey_unavailable_response():
     return jsonify({
         "error": "apikey module not available",
-        "detail": _apikey_import_err_msg if not _apikey_available else "",
+        "detail": _apikey_import_err if not _apikey_available else "",
     }), 503
 
 
@@ -1671,8 +1746,8 @@ def api_apikey_status():
         },
         "proxy": proxy_stats,
         "filter_config": {
-            "min_key_length": getattr(apikey_module, "MIN_EXTRACTED_LENGTH", 10),
-            "min_entropy":    getattr(apikey_module, "MIN_SECRET_ENTROPY", 2.8),
+            "min_key_length":  getattr(apikey_module, "MIN_EXTRACTED_LENGTH", 10),
+            "min_entropy":     getattr(apikey_module, "MIN_SECRET_ENTROPY", 2.8),
             "keyword_min_len": getattr(apikey_module, "KEYWORD_MIN_LENGTH", 8),
         },
     })
@@ -1757,21 +1832,6 @@ def api_apikey_proxies_sync():
 @app.route("/api/apikey/scan", methods=["POST"])
 @role_required("owner", "analyst")
 def api_apikey_scan():
-    """
-    Direct apikey scan with tuning options.
-
-    Body:
-        {
-          "target":         "https://example.com",   # or file/dir path
-          "mode":           "basic" | "expert",
-          "min_key_length": 10,                       # optional (int)
-          "min_entropy":    2.8,                      # optional (float)
-          "entropy_threshold": 4.5,                   # expert-mode entropy floor
-          "no_proxy":       false,
-          "no_cf_bypass":   false,
-          "max_proxy_attempts": 4
-        }
-    """
     if not _apikey_available:
         return _apikey_unavailable_response()
 
@@ -1784,9 +1844,6 @@ def api_apikey_scan():
     if mode not in ("basic", "expert"):
         mode = "basic"
 
-    # Apply per-request tuning (module-level globals, thread-safe enough
-    # for low-frequency admin scans; if you need true isolation spin
-    # APIScanner with class-level overrides instead).
     try:
         if "min_key_length" in data:
             apikey_module.MIN_EXTRACTED_LENGTH = max(4, int(data["min_key_length"]))
@@ -1811,6 +1868,362 @@ def api_apikey_scan():
     except Exception as e:
         logger.error(f"apikey scan failed: {e}", exc_info=True)
         return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SSL scanner (scan_ssl v3.0.0)
+# ═══════════════════════════════════════════════════════════════════════════
+def _ssl_unavailable():
+    return jsonify({"error": "ssl module not available",
+                    "detail": _ssl_import_err if not _ssl_available else ""}), 503
+
+
+@app.route("/api/ssl/status")
+@api_login_required
+def api_ssl_status():
+    if not _ssl_available:
+        return _ssl_unavailable()
+    return jsonify({
+        "available": True,
+        "version":   SSL_TOOL_INFO.get("version", "?"),
+        "name":      SSL_TOOL_INFO.get("name", "SSL/TLS"),
+    })
+
+
+@app.route("/api/ssl/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_ssl_scan():
+    if not _ssl_available:
+        return _ssl_unavailable()
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    mode = data.get("mode", "basic")
+    try:
+        result = ssl_run(
+            target, mode=mode,
+            port=int(data.get("port", 443)),
+            timeout=float(data.get("timeout", 8.0)),
+            verify=bool(data.get("verify", False)),
+            sni=bool(data.get("sni", True)),
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"ssl scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/ssl/scan/stream")
+@role_required("owner", "analyst")
+def api_ssl_scan_stream():
+    if not _ssl_available:
+        return _ssl_unavailable()
+    target = (request.args.get("target") or request.args.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    cancel_event = threading.Event()
+    options = {
+        "mode":   request.args.get("mode", "basic"),
+        "port":   int(request.args.get("port", 443)),
+        "timeout": float(request.args.get("timeout", 8.0)),
+        "verify": request.args.get("verify", "0") == "1",
+        "sni":    request.args.get("sni", "1") == "1",
+    }
+    def _gen():
+        try:
+            for ev in ssl_stream(target, options, cancel_event):
+                yield _sse_format(ev)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"ssl stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+    return _sse_response(_gen())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# IP Info scanner (scan_ip_info v5.0.0)
+# ═══════════════════════════════════════════════════════════════════════════
+def _ipinfo_unavailable():
+    return jsonify({"error": "ipinfo module not available",
+                    "detail": _ipinfo_import_err if not _ipinfo_available else ""}), 503
+
+
+@app.route("/api/ipinfo/status")
+@api_login_required
+def api_ipinfo_status():
+    if not _ipinfo_available:
+        return _ipinfo_unavailable()
+    return jsonify({
+        "available": True,
+        "version":   IPINFO_TOOL_INFO.get("version", "?"),
+        "name":      IPINFO_TOOL_INFO.get("name", "IP & ASN Info"),
+    })
+
+
+@app.route("/api/ipinfo/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_ipinfo_scan():
+    if not _ipinfo_available:
+        return _ipinfo_unavailable()
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("ip") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    mode = data.get("mode", "basic")
+    kwargs = {
+        "cache_ttl":      int(data.get("cache_ttl", 3600)),
+        "include_rdns":   bool(data.get("include_rdns", True)),
+        "include_asn":    bool(data.get("include_asn", True)),
+        "include_local":  bool(data.get("include_local", mode == "expert")),
+        "include_threat": bool(data.get("include_threat", True)),
+        "use_cf_bypass":  bool(data.get("use_cf_bypass", True)),
+        "offline":        bool(data.get("offline", False)),
+        "ipinfo_token":   data.get("ipinfo_token"),
+    }
+    try:
+        return jsonify(ipinfo_run(target, mode=mode, **kwargs))
+    except Exception as e:
+        logger.error(f"ipinfo scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/ipinfo/scan/stream")
+@role_required("owner", "analyst")
+def api_ipinfo_scan_stream():
+    if not _ipinfo_available:
+        return _ipinfo_unavailable()
+    target = (request.args.get("target") or request.args.get("ip") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    cancel_event = threading.Event()
+    options = {
+        "mode":           request.args.get("mode", "basic"),
+        "include_local":  request.args.get("local", "1") == "1",
+        "include_threat": request.args.get("threat", "1") == "1",
+        "use_cf_bypass":  request.args.get("cf_bypass", "1") == "1",
+        "offline":        request.args.get("offline", "0") == "1",
+    }
+    def _gen():
+        try:
+            for ev in ipinfo_stream(target, options, cancel_event):
+                yield _sse_format(ev)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"ipinfo stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+    return _sse_response(_gen())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tech fingerprint (scan_tech_fingerprint v3.0.0)
+# ═══════════════════════════════════════════════════════════════════════════
+def _techfp_unavailable():
+    return jsonify({"error": "tech_fingerprint module not available",
+                    "detail": _techfp_import_err if not _techfp_available else ""}), 503
+
+
+@app.route("/api/techfp/status")
+@api_login_required
+def api_techfp_status():
+    if not _techfp_available:
+        return _techfp_unavailable()
+    return jsonify({
+        "available": True,
+        "version":   TECHFP_TOOL_INFO.get("version", "?"),
+        "name":      TECHFP_TOOL_INFO.get("name", "Tech Fingerprint"),
+    })
+
+
+@app.route("/api/techfp/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_techfp_scan():
+    if not _techfp_available:
+        return _techfp_unavailable()
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    try:
+        return jsonify(techfp_run(
+            target,
+            mode=data.get("mode", "basic"),
+            timeout=int(data.get("timeout", 8)),
+            check_favicon=bool(data.get("check_favicon", True)),
+            probe_extra=bool(data.get("probe_extra", True)),
+        ))
+    except Exception as e:
+        logger.error(f"techfp scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Headers scanner (scan_headers v3.0.0)
+# ═══════════════════════════════════════════════════════════════════════════
+def _headers_unavailable():
+    return jsonify({"error": "headers module not available",
+                    "detail": _headers_import_err if not _headers_available else ""}), 503
+
+
+@app.route("/api/headers/status")
+@api_login_required
+def api_headers_status():
+    if not _headers_available:
+        return _headers_unavailable()
+    return jsonify({
+        "available": True,
+        "version":   HEADERS_TOOL_INFO.get("version", "?"),
+        "cf_bypass": {
+            "curl_cffi":   headers_has_curl_cffi,
+            "cloudscraper": headers_has_cloudscraper,
+        },
+    })
+
+
+@app.route("/api/headers/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_headers_scan():
+    if not _headers_available:
+        return _headers_unavailable()
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    try:
+        return jsonify(headers_run(
+            target,
+            mode=data.get("mode", "basic"),
+            timeout=float(data.get("timeout", 12.0)),
+            verify_ssl=bool(data.get("verify_ssl", True)),
+            check_paths=bool(data.get("check_paths", False)),
+            check_discovery=bool(data.get("check_discovery", True)),
+            use_cf_bypass=bool(data.get("use_cf_bypass", True)),
+        ))
+    except Exception as e:
+        logger.error(f"headers scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/headers/scan/stream")
+@role_required("owner", "analyst")
+def api_headers_scan_stream():
+    if not _headers_available:
+        return _headers_unavailable()
+    target = (request.args.get("target") or request.args.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    cancel_event = threading.Event()
+    options = {
+        "mode":            request.args.get("mode", "basic"),
+        "check_paths":     request.args.get("check_paths", "0") == "1",
+        "check_discovery": request.args.get("check_discovery", "0") == "1",
+        "use_cf_bypass":   request.args.get("cf_bypass", "1") == "1",
+    }
+    def _gen():
+        try:
+            for ev in headers_stream(target, options, cancel_event):
+                yield _sse_format(ev)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"headers stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+    return _sse_response(_gen())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Port scan (v4.0.0 + fixes)
+# ═══════════════════════════════════════════════════════════════════════════
+def _port_scan_unavailable():
+    return jsonify({"error": "port_scan module not available",
+                    "detail": _port_scan_err if not _port_scan_available else ""}), 503
+
+
+@app.route("/api/portscan/status")
+@api_login_required
+def api_portscan_status():
+    if not _port_scan_available:
+        return _port_scan_unavailable()
+    return jsonify({
+        "available": True,
+        "version":   PORT_SCAN_INFO.get("version", "?"),
+        "patched":   _fixes_available,
+        "fixes":     ({} if not _fixes_available else _oxysintx_fixes.check())
+                     if _fixes_available else {},
+    })
+
+
+@app.route("/api/portscan/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_portscan_scan():
+    if not _port_scan_available:
+        return _port_scan_unavailable()
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+
+    kwargs = {
+        "timeout":     float(data.get("timeout", 0.4)),
+        "max_workers": int(data.get("max_workers", 400)),
+        "banner":      bool(data.get("banner", False)),
+        "tls":         bool(data.get("tls", False)),
+        "rdns":        bool(data.get("rdns", False)),
+        "rate_limit":  float(data.get("rate_limit", 0.0)),
+    }
+    try:
+        return jsonify(port_scan_run(target, mode=data.get("mode", "basic"), **kwargs))
+    except Exception as e:
+        logger.error(f"port scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/portscan/scan/stream")
+@role_required("owner", "analyst")
+def api_portscan_scan_stream():
+    if not _port_scan_available:
+        return _port_scan_unavailable()
+    target = (request.args.get("target") or request.args.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    cancel_event = threading.Event()
+    options = {
+        "timeout":     float(request.args.get("timeout", 0.4)),
+        "max_workers": int(request.args.get("max_workers", 400)),
+        "banner":      request.args.get("banner", "0") == "1",
+        "tls":         request.args.get("tls", "0") == "1",
+        "rdns":        request.args.get("rdns", "0") == "1",
+        "rate_limit":  float(request.args.get("rate_limit", 0.0)),
+    }
+    def _gen():
+        try:
+            for ev in port_scan_stream(target, request.args.get("mode", "basic"),
+                                       options, cancel_event):
+                yield _sse_format(ev)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"port scan stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+    return _sse_response(_gen())
+
+
+@app.route("/api/portscan/validate")
+@api_login_required
+def api_portscan_validate():
+    if not _port_scan_available:
+        return _port_scan_unavailable()
+    try:
+        basic, b_meta = port_scan_load_basic(None)
+        expert, e_meta = port_scan_load_expert(None)
+        return jsonify({
+            "basic":  {"count": len(basic), **b_meta},
+            "expert": {"count": len(expert), **e_meta},
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2004,7 +2417,7 @@ def api_telegram_broadcast():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# MHDDoS Attack Panel (API only)
+# MHDDoS Attack Panel
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/mhddos/methods")
 @login_required
@@ -2422,13 +2835,20 @@ def api_sqli_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SQLMap API
+# SQLMap API (v3.0.0)
 # ═══════════════════════════════════════════════════════════════════════════
+def _sqlmap_unavailable_response():
+    return jsonify({
+        "error": "sql_map module not available",
+        "detail": _sqlmap_import_err if not _sql_map_available else "",
+    }), 503
+
+
 @app.route("/api/sqlmap/scan", methods=["POST"])
 @role_required("owner", "analyst")
 def api_sqlmap_scan():
     if not _sql_map_available:
-        return jsonify({"error": "sql_map module not available"}), 503
+        return _sqlmap_unavailable_response()
     data = request.get_json(silent=True) or {}
     target = (data.get("target") or data.get("url") or "").strip()
     if not target:
@@ -2437,18 +2857,80 @@ def api_sqlmap_scan():
     if mode not in ("basic", "expert"):
         mode = "basic"
     kwargs = {
-        "method": data.get("method", "GET"), "params": data.get("params"),
+        "method": data.get("method", "GET"),
+        "params": data.get("params"),
         "timeout": float(data.get("timeout", 5.0)),
         "max_threads": int(data.get("max_threads", 10)),
         "verify_ssl": bool(data.get("verify_ssl", False)),
-        "headers": data.get("headers"), "cookies": data.get("cookies"),
+        "headers": data.get("headers"),
+        "cookies": data.get("cookies"),
         "proxies": data.get("proxies"),
+        "max_duration": float(data.get("max_duration", 120.0)),
+        "rate_limit": float(data.get("rate_limit", 25.0)),
     }
     try:
         return jsonify(sql_map_module.run(target, mode, **kwargs))
     except Exception as e:
         logger.error(f"sql_map scan failed: {e}", exc_info=True)
         return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/sqlmap/scan/stream")
+@role_required("owner", "analyst")
+def api_sqlmap_scan_stream():
+    if not _sql_map_available:
+        return _sqlmap_unavailable_response()
+    target = (request.args.get("target") or request.args.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    mode = request.args.get("mode", "basic")
+    if mode not in ("basic", "expert"):
+        mode = "basic"
+    cancel_event = threading.Event()
+    options = {
+        "method": request.args.get("method", "GET"),
+        "timeout": float(request.args.get("timeout", 5.0)),
+        "max_threads": int(request.args.get("max_threads", 10)),
+        "max_duration": float(request.args.get("max_duration", 120.0)),
+        "rate_limit": float(request.args.get("rate_limit", 25.0)),
+    }
+    def _gen():
+        try:
+            for event in sql_map_module.run_streaming(
+                target, mode=mode, options=options, cancel_event=cancel_event
+            ):
+                yield _sse_format(event)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"sqlmap stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+    return _sse_response(_gen())
+
+
+@app.route("/api/sqlmap/wordlists")
+@api_login_required
+def api_sqlmap_wordlists():
+    if not _sqlmap_wordlist_available:
+        return jsonify({"error": "sql_map wordlist helpers not available"}), 503
+    try:
+        return jsonify(sqlmap_ensure_wordlists(force=False))
+    except Exception as e:
+        logger.error(f"sqlmap wordlists status failed: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/sqlmap/wordlists/sync", methods=["POST"])
+@role_required("owner", "analyst")
+def api_sqlmap_wordlists_sync():
+    if not _sqlmap_wordlist_available:
+        return jsonify({"error": "sql_map wordlist helpers not available"}), 503
+    try:
+        sqlmap_load_wordlist(force_download=True, auto_sync=True)
+        return jsonify(sqlmap_ensure_wordlists(force=True))
+    except Exception as e:
+        logger.error(f"sqlmap wordlists sync failed: {e}", exc_info=True)
+        return jsonify({"error": "sync_failed", "detail": str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2476,7 +2958,7 @@ def api_sql_injection_scan():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# XSS Exploiter API
+# XSS Exploiter API (wordlist-based)
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/xss/wordlist")
 @api_login_required
@@ -2484,7 +2966,7 @@ def api_xss_wordlist():
     if not _xss_exploiter_available:
         return jsonify({"error": "xss_exploiter module not available"}), 503
     try:
-        return jsonify(xss_ensure_wordlist())
+        return jsonify(xss_exploiter_ensure_wordlist())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -2551,13 +3033,20 @@ def api_xss_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Lightweight XSS
+# Lightweight XSS (v2.0.0)
 # ═══════════════════════════════════════════════════════════════════════════
+def _xss_unavailable_response():
+    return jsonify({
+        "error": "xss module not available",
+        "detail": _xss_import_err if not _xss_available else "",
+    }), 503
+
+
 @app.route("/api/xss_simple/scan", methods=["POST"])
 @role_required("owner", "analyst")
 def api_xss_simple_scan():
     if not _xss_available:
-        return jsonify({"error": "xss module not available"}), 503
+        return _xss_unavailable_response()
     data = request.get_json(silent=True) or {}
     target = (data.get("target") or data.get("url") or "").strip()
     if not target:
@@ -2566,16 +3055,44 @@ def api_xss_simple_scan():
     if mode not in ("basic", "expert"):
         mode = "basic"
     kwargs = {
-        "method": data.get("method", "GET"), "params": data.get("params"),
-        "timeout": float(data.get("timeout", 5.0)),
+        "method": data.get("method", "GET"),
+        "params": data.get("params"),
+        "timeout": float(data.get("timeout", 6.0)),
         "max_threads": int(data.get("max_threads", 10)),
         "verify_ssl": bool(data.get("verify_ssl", False)),
+        "mutate": bool(data.get("mutate", False)),
+        "max_payloads": int(data.get("max_payloads", 400)),
     }
     try:
         return jsonify(xss_module.run(target, mode, **kwargs))
     except Exception as e:
         logger.error(f"xss module scan failed: {e}", exc_info=True)
         return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/xss/wordlists")
+@api_login_required
+def api_xss_wordlists():
+    if not _xss_wordlist_available:
+        return jsonify({"error": "xss wordlist helpers not available"}), 503
+    try:
+        return jsonify(xss_ensure_wordlists(force=False))
+    except Exception as e:
+        logger.error(f"xss wordlists status failed: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/xss/wordlists/sync", methods=["POST"])
+@role_required("owner", "analyst")
+def api_xss_wordlists_sync():
+    if not _xss_wordlist_available:
+        return jsonify({"error": "xss wordlist helpers not available"}), 503
+    try:
+        xss_load_wordlist(force_download=True, auto_sync=True)
+        return jsonify(xss_ensure_wordlists(force=True))
+    except Exception as e:
+        logger.error(f"xss wordlists sync failed: {e}", exc_info=True)
+        return jsonify({"error": "sync_failed", "detail": str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2632,131 +3149,6 @@ def api_sniper_scan_stream():
         except Exception as e:
             logger.error(f"sniper stream failed: {e}", exc_info=True)
             yield _sse_format({"type": "error", "message": str(e)})
-    return _sse_response(_gen())
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# HTTP Logger API
-# ═══════════════════════════════════════════════════════════════════════════
-@app.route("/api/logger/requests", methods=["GET"])
-@role_required("owner", "analyst")
-def api_logger_requests():
-    if http_logger is None:
-        return jsonify({"error": "http_logger not available"}), 503
-    try:
-        result = http_logger.list(
-            page=int(request.args.get("page", 1)),
-            size=int(request.args.get("size", 100)),
-            q=request.args.get("q") or None,
-            method=request.args.get("method") or None,
-            status_min=request.args.get("status_min", type=int),
-            status_max=request.args.get("status_max", type=int),
-            anomaly=request.args.get("anomaly") or None,
-            tag=request.args.get("tag") or None,
-            ip=request.args.get("ip") or None,
-            since_ms=request.args.get("since_ms", type=int),
-        )
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/logger/requests/<entry_id>", methods=["GET"])
-@role_required("owner", "analyst")
-def api_logger_request_detail(entry_id):
-    if http_logger is None:
-        return jsonify({"error": "http_logger not available"}), 503
-    entry = http_logger.get(entry_id)
-    if entry is None:
-        return jsonify({"error": "not_found"}), 404
-    return jsonify(entry)
-
-
-@app.route("/api/logger/stats", methods=["GET"])
-@role_required("owner", "analyst")
-def api_logger_stats():
-    if http_logger is None:
-        return jsonify({"error": "http_logger not available"}), 503
-    try:
-        return jsonify(http_logger.stats())
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/logger/clear", methods=["POST"])
-@role_required("owner")
-def api_logger_clear():
-    if http_logger is None:
-        return jsonify({"error": "http_logger not available"}), 503
-    try:
-        n = http_logger.clear()
-        return jsonify({"success": True, "cleared": n})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/logger/requests/<entry_id>/tag", methods=["POST"])
-@role_required("owner", "analyst")
-def api_logger_tag(entry_id):
-    if http_logger is None:
-        return jsonify({"error": "http_logger not available"}), 503
-    data = request.get_json(silent=True) or {}
-    tag = (data.get("tag") or "").strip()
-    add = bool(data.get("add", True))
-    if not tag:
-        return jsonify({"error": "tag_required"}), 400
-    ok = http_logger.tag(entry_id, tag, add=add)
-    if not ok:
-        return jsonify({"error": "not_found"}), 404
-    return jsonify({"success": True})
-
-
-@app.route("/api/logger/har", methods=["GET"])
-@role_required("owner", "analyst")
-def api_logger_har():
-    if http_logger is None:
-        return jsonify({"error": "http_logger not available"}), 503
-    try:
-        listing = http_logger.list(
-            page=int(request.args.get("page", 1)),
-            size=min(int(request.args.get("size", 200)), 1000),
-            q=request.args.get("q") or None,
-            method=request.args.get("method") or None,
-            status_min=request.args.get("status_min", type=int),
-            status_max=request.args.get("status_max", type=int),
-            anomaly=request.args.get("anomaly") or None,
-            tag=request.args.get("tag") or None,
-            ip=request.args.get("ip") or None,
-        )
-        return jsonify(http_logger.to_har(listing["items"]))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/logger/stream")
-@role_required("owner", "analyst")
-def api_logger_stream():
-    if http_logger is None:
-        return jsonify({"error": "http_logger not available"}), 503
-    subscriber = http_logger.subscribe()
-    def _gen():
-        try:
-            yield _sse_format({"type": "hello", "stats": http_logger.stats()})
-            last_heartbeat = time.monotonic()
-            while True:
-                try:
-                    event = subscriber.get(timeout=1.0)
-                    yield _sse_format(event)
-                except Exception:
-                    pass
-                now = time.monotonic()
-                if now - last_heartbeat >= 15.0:
-                    last_heartbeat = now
-                    yield _sse_format({"type": "heartbeat", "ts": int(now)})
-        except GeneratorExit:
-            pass
-        finally:
-            http_logger.unsubscribe(subscriber)
     return _sse_response(_gen())
 
 
@@ -3175,7 +3567,6 @@ def v1_scan_status(job_id):
 @app.route('/api/v1/apikey/scan', methods=['POST'])
 @_api_key_required
 def v1_apikey_scan():
-    """External API-key-authenticated apikey scanner entry point."""
     if not _apikey_available:
         return jsonify({'error': 'apikey module not available'}), 503
     body = request.get_json(silent=True) or {}
@@ -3206,30 +3597,85 @@ def v1_apikey_scan():
 @app.route("/api/modules/status")
 @api_login_required
 def api_modules_status():
-    apikey_status: Dict[str, Any] = {"available": _apikey_available}
+    apikey_status = {"available": _apikey_available}
     if _apikey_available:
         apikey_status.update({
-            "version":         apikey_version,
-            "curl_cffi":       apikey_has_curl_cffi,
-            "cloudscraper":    apikey_has_cloudscraper,
-            "flaresolverr":    bool(apikey_flaresolverr_url),
-            "cf_bypass":       True,
+            "version":      apikey_version,
+            "curl_cffi":    apikey_has_curl_cffi,
+            "cloudscraper": apikey_has_cloudscraper,
+            "flaresolverr": bool(apikey_flaresolverr_url),
+            "cf_bypass":    True,
         })
+
+    xss_status = {"available": _xss_available}
+    if _xss_available:
+        xss_status["version"] = XSS_TOOL_INFO.get("version", "?")
+        if _xss_wordlist_available:
+            try:
+                xss_status["wordlists"] = xss_ensure_wordlists(force=False)
+            except Exception as e:
+                xss_status["wordlists_error"] = str(e)
+
+    sqlmap_status = {"available": _sql_map_available}
+    if _sql_map_available:
+        sqlmap_status["version"] = SQLMAP_TOOL_INFO.get("version", "?")
+        if _sqlmap_wordlist_available:
+            try:
+                sqlmap_status["wordlists"] = sqlmap_ensure_wordlists(force=False)
+            except Exception as e:
+                sqlmap_status["wordlists_error"] = str(e)
+
+    ssl_status = {"available": _ssl_available}
+    if _ssl_available:
+        ssl_status["version"] = SSL_TOOL_INFO.get("version", "?")
+
+    ipinfo_status = {"available": _ipinfo_available}
+    if _ipinfo_available:
+        ipinfo_status["version"] = IPINFO_TOOL_INFO.get("version", "?")
+
+    techfp_status = {"available": _techfp_available}
+    if _techfp_available:
+        techfp_status["version"] = TECHFP_TOOL_INFO.get("version", "?")
+
+    headers_status = {"available": _headers_available}
+    if _headers_available:
+        headers_status.update({
+            "version":      HEADERS_TOOL_INFO.get("version", "?"),
+            "curl_cffi":    headers_has_curl_cffi,
+            "cloudscraper": headers_has_cloudscraper,
+        })
+
+    portscan_status = {"available": _port_scan_available}
+    if _port_scan_available:
+        portscan_status["version"] = PORT_SCAN_INFO.get("version", "?")
+        portscan_status["patched"] = _fixes_available
+
+    fixes_status = {"available": _fixes_available}
+    if _fixes_available:
+        try:
+            fixes_status.update(_oxysintx_fixes.check())
+        except Exception as e:
+            fixes_status["error"] = str(e)
 
     return jsonify({
         "dirfuzz":          {"available": _dirfuzz_available},
         "sqli_engine":      {"available": _sqli_engine_available,
                              "sources": list(SQLI_WORDLIST_SOURCES.keys()) if _sqli_engine_available else []},
-        "sql_map":          {"available": _sql_map_available},
+        "sql_map":          sqlmap_status,
         "sql_injection":    {"available": _sql_injection_available},
         "xss_exploiter":    {"available": _xss_exploiter_available},
-        "xss":              {"available": _xss_available},
+        "xss":              xss_status,
         "sniper":           {"available": _sniper_available},
-        "http_logger":      {"available": http_logger is not None},
         "wordlist_scraper": {"available": _wordlist_scraper_available},
         "analytic":         {"available": _analytic_available},
         "downsea":          {"available": _downsea_available},
         "apikey":           apikey_status,
+        "ssl":              ssl_status,
+        "ipinfo":           ipinfo_status,
+        "techfp":           techfp_status,
+        "headers":          headers_status,
+        "port_scan":        portscan_status,
+        "fixes":            fixes_status,
     })
 
 
@@ -3252,13 +3698,47 @@ def _print_startup(port=None):
     if _xss_exploiter_available:    modules.append("xss_exploiter")
     if _xss_available:              modules.append("xss")
     if _sniper_available:           modules.append("sniper")
-    if http_logger is not None:     modules.append("http_logger")
     if _wordlist_scraper_available: modules.append("wordlist_scraper")
     if _analytic_available:         modules.append("analytic_manager")
     if _downsea_available:          modules.append("downsea")
+    if _ssl_available:              modules.append("ssl")
+    if _ipinfo_available:           modules.append("ipinfo")
+    if _techfp_available:           modules.append("techfp")
+    if _headers_available:          modules.append("headers")
+    if _port_scan_available:        modules.append("port_scan")
     if modules:
         info_lines.append(f"  Modules    : {', '.join(modules)}")
 
+    # Wordlist status
+    wl_lines = []
+    if _xss_available and _xss_wordlist_available:
+        try:
+            st = xss_ensure_wordlists(force=False)
+            files = st.get("files", []) if isinstance(st, dict) else []
+            ok = sum(1 for f in files if f.get("exists") and f.get("payloads"))
+            total_payloads = sum(int(f.get("payloads", 0)) for f in files)
+            wl_lines.append(
+                f"  XSS wordlist: {ok}/{len(files)} sources  "
+                f"({total_payloads} payloads)"
+            )
+        except Exception:
+            wl_lines.append("  XSS wordlist: (status unavailable)")
+    if _sql_map_available and _sqlmap_wordlist_available:
+        try:
+            st = sqlmap_ensure_wordlists(force=False)
+            files = st.get("files", []) if isinstance(st, dict) else []
+            ok = sum(1 for f in files if f.get("exists") and f.get("payloads"))
+            total_payloads = sum(int(f.get("payloads", 0)) for f in files)
+            wl_lines.append(
+                f"  SQLMap wordlist: {ok}/{len(files)} sources  "
+                f"({total_payloads} payloads)"
+            )
+        except Exception:
+            wl_lines.append("  SQLMap wordlist: (status unavailable)")
+    for line in wl_lines:
+        info_lines.append(line)
+
+    # API scanner
     if _apikey_available:
         cf_flags = []
         if apikey_has_curl_cffi:    cf_flags.append("curl_cffi")
@@ -3271,9 +3751,19 @@ def _print_startup(port=None):
         )
     else:
         info_lines.append(
-            "  API Scanner: NOT LOADED — install curl_cffi / cloudscraper "
-            "for full functionality"
+            "  API Scanner: NOT LOADED — install curl_cffi / cloudscraper"
         )
+
+    # Fixes status
+    if _fixes_available:
+        try:
+            fx = _oxysintx_fixes.check()
+            info_lines.append(
+                f"  Patches    : port_scan {fx.get('port_scan_version', '?')} "
+                f"(patched={fx.get('patched', False)})"
+            )
+        except Exception:
+            pass
 
     print("\n".join(info_lines), flush=True)
     print(flush=True)

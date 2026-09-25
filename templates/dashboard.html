@@ -46,7 +46,6 @@
             <button class="nav-item" data-section="testing"><i class="fas fa-magnifying-glass"></i><span data-i18n="nav_testing">Security Testing</span></button>
             <button class="nav-item" data-section="exploit"><i class="fas fa-bug"></i><span data-i18n="nav_exploit">Exploit Suite</span></button>
             <button class="nav-item" data-section="mhddos"><i class="fas fa-tower-broadcast"></i><span data-i18n="nav_mhddos">MHDDoS Control</span></button>
-            <button class="nav-item" data-section="httplogger"><i class="fas fa-wave-square"></i><span data-i18n="nav_httplogger">HTTP Logger</span><span class="nav-chat-badge" id="navHttpLogBadge" hidden>0</span></button>
             <button class="nav-item" data-section="assets"><i class="fas fa-layer-group"></i><span data-i18n="nav_assets">Assets</span></button>
             <button class="nav-item" data-section="console"><i class="fas fa-terminal"></i><span data-i18n="nav_console">System Console</span></button>
             <button class="nav-item" data-section="chat"><i class="fas fa-comments"></i><span data-i18n="nav_chat">AI Assistant</span></button>
@@ -236,7 +235,7 @@
                     <div class="panel-title">
                         <i class="fas fa-bug"></i>
                         <span data-i18n="exploit_title">Exploit Suite</span>
-                        <span style="margin-left:auto;font-size:0.68rem;color:var(--text-muted);" data-i18n="exploit_desc">Dirfuzz · SQLi · SQLMap · XSS · Sniper · HTTP Logger</span>
+                        <span style="margin-left:auto;font-size:0.68rem;color:var(--text-muted);" data-i18n="exploit_desc">Dirfuzz · SQLi · SQLMap · XSS · Sniper</span>
                     </div>
                     <p style="color:var(--text-secondary);font-size:0.78rem;margin:-4px 0 12px;line-height:1.55;" data-i18n="exploit_hint">
                         All modules run against targets you own or are authorized to test. Results stream live when supported.
@@ -257,21 +256,6 @@
                         The MHDDoS engine runs as an external subprocess. Use only against systems you own or are authorized to test.
                     </p>
                     <div data-emergens-panel="mhddos"></div>
-                </div>
-            </section>
-
-            <!-- ========== HTTP LOGGER (standalone isolated instance) ========== -->
-            <section class="content-section" id="section-httplogger">
-                <div class="panel">
-                    <div class="panel-title">
-                        <i class="fas fa-wave-square"></i>
-                        <span data-i18n="httplogger_title">HTTP Logger</span>
-                        <span class="ex-live-pill" id="httploggerLivePill" style="margin-left:auto;display:none;"><span class="dot"></span>Live</span>
-                    </div>
-                    <p style="color:var(--text-secondary);font-size:0.78rem;margin:-4px 0 12px;line-height:1.55;" data-i18n="httplogger_hint">
-                        Every inbound request captured in a rolling buffer with anomaly detection (SQLi, XSS, path traversal, scanner UAs). Export to HAR for DevTools.
-                    </p>
-                    <div data-emergens-panel="exploit-logger"></div>
                 </div>
             </section>
 
@@ -560,6 +544,7 @@
                             <button class="ui-mode-choice" data-mode="mobile" id="uiModeMobile"><i class="fas fa-mobile-screen"></i><span data-i18n="prefs_ui_mobile">Phone Layout</span></button>
                             <button class="ui-mode-choice" data-mode="desktop" id="uiModeDesktop"><i class="fas fa-laptop"></i><span data-i18n="prefs_ui_desktop">Laptop Layout</span></button>
                         </div>
+                    </div>
                     <div class="settings-option-card">
                         <div class="settings-option-title"><i class="fas fa-bars"></i><span data-i18n="prefs_sidebar_title">Sidebar / Menu Appearance</span></div>
                         <div class="settings-option-desc" data-i18n="prefs_sidebar_desc">Customize how the navigation sidebar looks and behaves. Changes apply immediately.</div>
@@ -907,9 +892,7 @@
      DASHBOARD WIRING — mount the new panels.
        • MHDDoS Control  → [data-emergens-panel="mhddos"]
        • Exploit Suite   → [data-emergens-panel="exploit"]   (default instance)
-       • HTTP Logger     → [data-emergens-panel="exploit-logger"]
-                            (independent isolated instance via .create())
-     Also keeps the sidebar badges in sync.
+     Also keeps the sidebar badge in sync.
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
@@ -938,17 +921,7 @@
       window.ExploitSuite.mount(exploitMount, { defaultTab: 'dirfuzz' });
     }
 
-    /* ── 3. HTTP Logger — separate isolated instance ────────────────── *
-     *  We do NOT clone the DOM (that killed event listeners before).
-     *  Instead we ask ExploitSuite to spin up a second, fully
-     *  independent suite focused on the logger tab.                     */
-    const loggerMount = document.querySelector('[data-emergens-panel="exploit-logger"]');
-    if (loggerMount && window.ExploitSuite && typeof window.ExploitSuite.create === 'function') {
-      const loggerInstance = window.ExploitSuite.create('logger');
-      loggerInstance.mount(loggerMount, { defaultTab: 'logger' });
-    }
-
-    /* ── 4. Sidebar badge — MHDDoS running count ────────────────────── */
+    /* ── 3. Sidebar badge — MHDDoS running count ────────────────────── */
     function syncMhddosBadge() {
       if (!window.MHDDoSControl) return;
       const badge = document.getElementById('mhddosRunningBadge');
@@ -964,55 +937,29 @@
       }
     }
 
-    /* ── 5. Sidebar badge — HTTP Logger captured count ──────────────── */
-    async function syncHttpLogBadge() {
-      const badge = document.getElementById('navHttpLogBadge');
-      if (!badge) return;
-      try {
-        const r = await fetch('/api/logger/stats', { credentials: 'same-origin' });
-        if (!r.ok) return;
-        const s = await r.json();
-        const n = s.buffer_size || 0;
-        if (n > 0) {
-          badge.hidden = false;
-          badge.textContent = n > 999 ? '999+' : String(n);
-        } else {
-          badge.hidden = true;
-        }
-      } catch (_) { /* silent */ }
-    }
+    /* ── 4. Periodic badge sync ─────────────────────────────────────── */
+    setInterval(syncMhddosBadge, 3000);
 
-    /* ── 6. Periodic badge sync ─────────────────────────────────────── */
-    setInterval(syncMhddosBadge,  3000);
-    setInterval(syncHttpLogBadge, 8000);
-    setTimeout(syncHttpLogBadge,  1500);
-
-    /* ── 7. i18n — extra labels for the new panels ──────────────────── */
+    /* ── 5. i18n — extra labels for the new panels ──────────────────── */
     if (window.i18n && typeof window.i18n.extend === 'function') {
       window.i18n.extend({
         en: {
-          nav_exploit:      'Exploit Suite',
-          nav_mhddos:       'MHDDoS Control',
-          nav_httplogger:   'HTTP Logger',
-          exploit_title:    'Exploit Suite',
-          exploit_desc:     'Dirfuzz · SQLi · SQLMap · XSS · Sniper · HTTP Logger',
-          exploit_hint:     'All modules run against targets you own or are authorized to test. Results stream live when supported.',
-          mhddos_title:     'MHDDoS Control Panel',
-          mhddos_hint:      'The MHDDoS engine runs as an external subprocess. Use only against systems you own or are authorized to test.',
-          httplogger_title: 'HTTP Logger',
-          httplogger_hint:  'Every inbound request captured in a rolling buffer with anomaly detection (SQLi, XSS, path traversal, scanner UAs). Export to HAR for DevTools.',
+          nav_exploit:   'Exploit Suite',
+          nav_mhddos:    'MHDDoS Control',
+          exploit_title: 'Exploit Suite',
+          exploit_desc:  'Dirfuzz · SQLi · SQLMap · XSS · Sniper',
+          exploit_hint:  'All modules run against targets you own or are authorized to test. Results stream live when supported.',
+          mhddos_title:  'MHDDoS Control Panel',
+          mhddos_hint:   'The MHDDoS engine runs as an external subprocess. Use only against systems you own or are authorized to test.',
         },
         ms: {
-          nav_exploit:      'Exploit Suite',
-          nav_mhddos:       'Kawalan MHDDoS',
-          nav_httplogger:   'HTTP Logger',
-          exploit_title:    'Exploit Suite',
-          exploit_desc:     'Dirfuzz · SQLi · SQLMap · XSS · Sniper · HTTP Logger',
-          exploit_hint:     'Semua modul berjalan terhadap sasaran yang anda miliki atau dibenarkan untuk diuji. Keputusan distrim secara langsung bila disokong.',
-          mhddos_title:     'Panel Kawalan MHDDoS',
-          mhddos_hint:      'Enjin MHDDoS berjalan sebagai subproses luaran. Guna hanya terhadap sistem yang anda miliki atau dibenarkan untuk diuji.',
-          httplogger_title: 'HTTP Logger',
-          httplogger_hint:  'Setiap permintaan masuk ditangkap dalam penampan bergolek dengan pengesanan anomali (SQLi, XSS, path traversal, UA pengimbas). Eksport ke HAR untuk DevTools.',
+          nav_exploit:   'Exploit Suite',
+          nav_mhddos:    'Kawalan MHDDoS',
+          exploit_title: 'Exploit Suite',
+          exploit_desc:  'Dirfuzz · SQLi · SQLMap · XSS · Sniper',
+          exploit_hint:  'Semua modul berjalan terhadap sasaran yang anda miliki atau dibenarkan untuk diuji. Keputusan distrim secara langsung bila disokong.',
+          mhddos_title:  'Panel Kawalan MHDDoS',
+          mhddos_hint:   'Enjin MHDDoS berjalan sebagai subproses luaran. Guna hanya terhadap sistem yang anda miliki atau dibenarkan untuk diuji.',
         },
       });
     }
