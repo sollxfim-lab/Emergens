@@ -105,3 +105,7 @@
 2026-09-25 14:51:48,998 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
 2026-09-25 14:51:48,999 [INFO] bootstrap: telegram bot auto-restart invoked
 2026-09-25 14:54:32,741 [INFO] [xss] loaded 867 payloads from xss_exploit.txt
+2026-09-25 23:14:46,625 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 23:14:47,067 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 23:33:10,399 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 23:33:10,900 [INFO] bootstrap: telegram bot auto-restart invoked

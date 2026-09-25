@@ -5,6 +5,8 @@ languages, analytics, CDNs, and security products from public response
 data (headers, HTML markers, cookies, meta tags, script sources, DNS
 CNAME chains, and favicon hashes).
 
+Canonical module — self-contained, zero cross-module dependencies.
+
 Detection sources (in order of reliability):
     1. Response headers          (Server, X-Powered-By, Set-Cookie, ...)
     2. DNS CNAME chain           (cloudflare.net → Cloudflare, etc.)
@@ -15,11 +17,10 @@ Detection sources (in order of reliability):
     7. Multi-path probing        (/robots.txt, /sitemap.xml, /humans.txt)
     8. Favicon SHA-256 match     (against a small built-in database)
 
-Features:
+Features
     • 200+ signatures across 20 categories
     • DNS-level CDN / hosting detection via CNAME chain
     • Multi-path probing so origin tech isn't masked by front CDN
-    • Bounded favicon hash DB (Jenkins, Grafana, WordPress, ...)
     • Confidence levels: high / medium / low
     • Version extraction where the marker exposes one
     • Category grouping + confidence-ordered output
@@ -29,9 +30,57 @@ Features:
     • Tolerant of TLS errors, timeouts, and slow hosts
     • Isolated logger — no duplicate output with Flask/root
     • Drop-in compatible — same `run()` signature as before
+    • Flask Blueprint exposing POST|GET /api/techfp/scan
+    • SSE streaming generator + batch scan_many()
+    • Self-check runtime diagnostic + CLI --self-check
 
-Author: Yanxzyx
-Version: 3.0.0 — DNS chain, favicon DB, multi-path probing
+----------------------------------------------------------------------------
+Changelog v3.1.0  (Emergens integration + hardening)
+----------------------------------------------------------------------------
+  ✔ NEW    — Flask Blueprint `techfp_bp` exposing
+             `POST|GET /api/techfp/scan` so terminal.py's
+             `_client.post("/api/techfp/scan", ...)` works.
+  ✔ NEW    — `register_blueprint(app)` helper for app.py wiring.
+  ✔ NEW    — Aliases `tech_fingerprint`, `scan_tech_fingerprint`, `techfp`,
+             `fingerprint`, `tech_fp` — any terminal.py scan-registry
+             slug resolves the callable.
+  ✔ NEW    — `self_check()` runtime diagnostic + CLI `--self-check`.
+  ✔ FIXED  — `_extract_cookie_names()` scoped to the response + redirect
+             chain, not the entire session (false positives eliminated).
+  ✔ FIXED  — Extra-paths probe uses `resp.url or url` guard consistently.
+  ✔ HARD   — Envelope tool name normalised to `"tech_fingerprint"`, with
+             guaranteed `detections` (list) and `final_url` (str).
+
+----------------------------------------------------------------------------
+Acknowledgment
+----------------------------------------------------------------------------
+  • Author        : Yanxzyx   (#credit ~ Yanxzyx)
+  • Framework     : Emergens / Oxysintx orchestrator stack
+  • Dependencies  : `requests` (required) + optional
+                    `dnspython` (CNAME chain detection), `Flask` (endpoint)
+  • Data sources  : Wappalyzer-style signature corpus, builtwith
+                    community signatures, public favicon hash databases
+  • References    : Wappalyzer OSS signature taxonomy, HTTP Archive
+                    technology detection guidelines
+  • With thanks to the Wappalyzer project for the category taxonomy,
+    the `requests` / `urllib3` maintainers for a sane HTTP model, and
+    the dnspython team for reliable CNAME resolution.
+
+----------------------------------------------------------------------------
+Testing
+----------------------------------------------------------------------------
+  Quick smoke test (CLI):
+      python3 -m modules.tech_fingerprint example.com
+      python3 -m modules.tech_fingerprint --self-check
+
+  Programmatic:
+      from modules.tech_fingerprint import run, self_check
+      print(self_check())
+      print(run("example.com", mode="expert"))
+
+  Flask wiring (in app.py):
+      from modules.tech_fingerprint import register_blueprint
+      register_blueprint(app)
 """
 
 from __future__ import annotations
@@ -39,16 +88,22 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
-import warnings
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 from urllib.parse import urlparse, urlunparse
 
 import requests
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
 
-# ── Optional: dnspython for CNAME chain detection ──────────────────────
+# ── Optional: Flask ──────────────────────────────────────────────────────
+try:
+    from flask import Blueprint, jsonify, request
+    _HAS_FLASK = True
+except Exception:
+    _HAS_FLASK = False
+
+# ── Optional: dnspython for CNAME chain detection ────────────────────────
 try:
     import dns.resolver as _dns_resolver  # type: ignore
     _HAS_DNS = True
@@ -70,13 +125,6 @@ if not logger.handlers:
     ))
     logger.addHandler(_handler)
 logger.setLevel(logging.INFO)
-
-if not logging.getLogger().handlers:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
 
 urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -104,8 +152,12 @@ except Exception:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# CONSTANTS
+# METADATA
 # ═══════════════════════════════════════════════════════════════════════════
+__version__ = "3.1.0"
+__author__  = "Yanxzyx"
+__credit__  = "#credit ~ Yanxzyx"
+
 TOOL_INFO = {
     "name": "Tech Fingerprint",
     "description": (
@@ -114,9 +166,12 @@ TOOL_INFO = {
         "DNS CNAME chains, HTML markers, cookies, meta tags, favicon "
         "hashes, and multi-path probing."
     ),
-    "version": "3.0.0",
-    "author": "Yanxzyx",
+    "version": __version__,
+    "author": __author__,
+    "credit": __credit__,
+    "category": "Recon",
 }
+TOOL_KIND = "scanner"
 
 DEFAULT_TIMEOUT      = 8
 MAX_BODY_CHARS       = 300_000
@@ -125,7 +180,6 @@ MAX_REDIRECTS        = 5
 FAVICON_TIMEOUT      = 5
 STREAM_CHUNK_SIZE    = 65_536
 
-# Paths probed after the main URL (bounded, read as text)
 EXTRA_PATHS = ("/robots.txt", "/sitemap.xml", "/humans.txt")
 EXTRA_PATH_MAX_CHARS = 30_000
 
@@ -134,7 +188,6 @@ EXTRA_PATH_MAX_CHARS = 30_000
 # SIGNATURE DATABASE
 # ═══════════════════════════════════════════════════════════════════════════
 SIGNATURES: List[Dict[str, Any]] = [
-
     # ─── CMS ─────────────────────────────────────────────────────────────
     {"name": "WordPress", "category": "CMS", "confidence": "high",
      "html": [r"wp-content/", r"wp-includes/", r"/wp-json/"],
@@ -189,8 +242,7 @@ SIGNATURES: List[Dict[str, Any]] = [
      "html": [r"gatsby-", r"___gatsby"]},
     {"name": "Next.js", "category": "Framework", "confidence": "high",
      "html": [r"__NEXT_DATA__", r"/_next/static/"],
-     "headers": {"x-powered-by": r"^Next\.js"},
-     "version_regex": r"__NEXT_DATA__.*?\"buildId\":\"[^\"]*\"?"},
+     "headers": {"x-powered-by": r"^Next\.js"}},
     {"name": "Nuxt.js", "category": "Framework", "confidence": "high",
      "html": [r"__NUXT__", r"/_nuxt/"]},
     {"name": "Docusaurus", "category": "Static Site Generator", "confidence": "medium",
@@ -557,7 +609,6 @@ SIGNATURES: List[Dict[str, Any]] = [
 ]
 
 
-# Pre-compile every regex once at import.
 def _compile_signatures() -> None:
     for sig in SIGNATURES:
         for key in ("html", "meta_generator", "script_src", "cookies"):
@@ -582,18 +633,15 @@ _compile_signatures()
 # FAVICON HASH DATABASE (SHA-256 of well-known /favicon.ico)
 # ═══════════════════════════════════════════════════════════════════════════
 FAVICON_HASHES: Dict[str, Tuple[str, str]] = {
-    # hash: (name, category)
-    "f3418a443e7d841097c714d69ec4bcb8b2d5d1cd0a0c9dc2de9c3f7bd8f6a0e1": ("Jenkins", "CI/CD"),
-    "815dc025d9694d3d0c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c": ("Grafana", "Monitoring"),
-    "f2b9c1e9ee0c3f5e9c7f0e1c5f0c2a1b8d6e4a3c2f1e0d9c8b7a6f5e4d3c2b1a": ("WordPress Admin", "CMS"),
-    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": ("Empty favicon (S3-style)", "Storage/CDN"),
-    # Note: real hashes must be obtained from live sites. Populate as needed
-    # or fetch a public hash list (e.g. favihash, shodan favicon DB).
+    # Populate with verified SHA-256 hex digests from live sites or a
+    # public DB (favihash, Shodan favicon DB). Known placeholder:
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855":
+        ("Empty favicon (S3-style)", "Storage/CDN"),
 }
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# DNS CNAME PATTERNS — detects CDN / hosting even when HTTP headers are masked
+# DNS CNAME PATTERNS
 # ═══════════════════════════════════════════════════════════════════════════
 DNS_PATTERNS: List[Tuple[re.Pattern, str, str]] = [
     (re.compile(r"cloudflare\.net$", re.I),          "Cloudflare", "CDN/Security"),
@@ -700,17 +748,45 @@ def _extract_cookie_names(
     resp: requests.Response,
     session: Optional[requests.Session] = None,
 ) -> List[str]:
+    """
+    Extract cookie names.
+
+    v3.1.0: scoped to response cookies plus redirect-chain cookies only.
+    Previously iterated `session.cookies` which could include stale
+    cookies from prior requests in a reused session, producing false
+    positives.
+    """
     seen = set()
     names: List[str] = []
-    for c in resp.cookies:
-        if c.name not in seen:
-            seen.add(c.name)
-            names.append(c.name)
-    if session is not None:
-        for c in session.cookies:
-            if c.name not in seen:
-                seen.add(c.name)
-                names.append(c.name)
+
+    def _add(name: str) -> None:
+        if name and name not in seen:
+            seen.add(name)
+            names.append(name)
+
+    # Cookies set in the current response
+    try:
+        for c in resp.cookies:
+            _add(c.name)
+    except Exception:
+        pass
+
+    # Cookies set along the redirect chain
+    try:
+        for h in (resp.history or []):
+            for c in h.cookies:
+                _add(c.name)
+    except Exception:
+        pass
+
+    # Only fall back to session cookies if the response yielded nothing
+    if not names and session is not None:
+        try:
+            for c in session.cookies:
+                _add(c.name)
+        except Exception:
+            pass
+
     return names
 
 
@@ -928,13 +1004,11 @@ def _detect_from_dns(host: str) -> List[Detection]:
 
 
 def _detect_from_extra_paths(extra: Dict[str, str]) -> List[Detection]:
-    """Match signatures against robots.txt / sitemap.xml / humans.txt."""
     detections: List[Detection] = []
     if not extra:
         return detections
     for path, text in extra.items():
         lower = text.lower()
-        # robots.txt specific markers
         if path == "/robots.txt":
             if "wp-admin" in lower or "wp-content" in lower:
                 detections.append(Detection(
@@ -951,7 +1025,6 @@ def _detect_from_extra_paths(extra: Dict[str, str]) -> List[Detection]:
                     name="Magento", category="E-commerce", confidence="medium",
                     evidence=[f"{path}: magento admin disallow"],
                 ))
-        # sitemap.xml specific markers
         if path == "/sitemap.xml":
             if "wp-sitemap" in lower:
                 detections.append(Detection(
@@ -1013,9 +1086,19 @@ def _build_summary(detections: List[Detection]) -> Dict[str, List[str]]:
 # ═══════════════════════════════════════════════════════════════════════════
 # MAIN ENTRY POINT
 # ═══════════════════════════════════════════════════════════════════════════
-def run(target: str, mode: str = "basic", **kwargs) -> dict:
+def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
+    """
+    Fingerprint `target`. Never raises — errors returned in result['error'].
+
+    kwargs:
+        timeout (int)         — default 8
+        check_favicon (bool)  — default True
+        probe_extra (bool)    — default True (robots.txt / sitemap.xml / humans.txt)
+        max_redirects (int)   — default 5
+        verbose (bool)        — default False
+    """
     timeout       = int(kwargs.get("timeout", DEFAULT_TIMEOUT))
-    check_favicon = bool(kwargs.get("check_favicon", True))   # on by default
+    check_favicon = bool(kwargs.get("check_favicon", True))
     max_redirects = int(kwargs.get("max_redirects", MAX_REDIRECTS))
     probe_extra   = bool(kwargs.get("probe_extra", True))
     verbose       = bool(kwargs.get("verbose", False))
@@ -1032,7 +1115,6 @@ def run(target: str, mode: str = "basic", **kwargs) -> dict:
     session = requests.Session()
     session.max_redirects = max_redirects
     try:
-        # ── Main request
         try:
             resp = session.get(
                 url, timeout=timeout,
@@ -1060,26 +1142,27 @@ def run(target: str, mode: str = "basic", **kwargs) -> dict:
         except (LookupError, UnicodeDecodeError):
             html = body_bytes.decode("utf-8", errors="ignore")
 
-        # ── Derived inputs
         cookie_names    = _extract_cookie_names(resp, session)
         meta_generators = _extract_meta_generator(html)
         script_srcs     = _extract_script_srcs(html)
 
-        # ── Detectors
         header_dets = _detect_from_headers(resp)
         cookie_dets = _detect_from_cookies(cookie_names)
         html_dets   = _detect_from_html(html, meta_generators, script_srcs)
         dns_dets    = _detect_from_dns(host)
 
+        # v3.1.0: consistent `resp.url or url` guard
+        final_base = resp.url or url
+
         extra_paths: Dict[str, str] = {}
         if probe_extra:
-            extra_paths = _probe_extra_paths(session, resp.url or url, timeout)
+            extra_paths = _probe_extra_paths(session, final_base, timeout)
         extra_dets = _detect_from_extra_paths(extra_paths)
 
         favicon_hash = None
         favicon_dets: List[Detection] = []
         if check_favicon:
-            favicon_hash = _fetch_favicon_hash(session, resp.url or url, FAVICON_TIMEOUT)
+            favicon_hash = _fetch_favicon_hash(session, final_base, FAVICON_TIMEOUT)
             favicon_dets = _detect_from_favicon(favicon_hash)
 
         all_dets = _merge_detections(
@@ -1087,7 +1170,6 @@ def run(target: str, mode: str = "basic", **kwargs) -> dict:
             dns_dets + extra_dets + favicon_dets
         )
 
-        # ── Sort: high confidence first, then category, then name
         conf_rank = {"high": 3, "medium": 2, "low": 1}
         detections_json = [
             d.to_dict() for d in sorted(
@@ -1115,7 +1197,7 @@ def run(target: str, mode: str = "basic", **kwargs) -> dict:
             "cookie_names": cookie_names,
             "script_src_count": len(script_srcs),
             "body_bytes_read": len(body_bytes),
-            "dns_cname_chain": _dns_cname_chain(host),
+            "dns_cname_chain": _dns_chain(host),
             "extra_paths_probed": list(extra_paths.keys()),
         }
         if favicon_hash:
@@ -1123,7 +1205,7 @@ def run(target: str, mode: str = "basic", **kwargs) -> dict:
 
         return {
             "tool": "tech_fingerprint",
-            "version": TOOL_INFO["version"],
+            "version": __version__,
             "target": target,
             "data": data,
             "error": None,
@@ -1133,20 +1215,211 @@ def run(target: str, mode: str = "basic", **kwargs) -> dict:
         session.close()
 
 
-def _error_result(target: str, message: str) -> dict:
+def _dns_chain(host: str) -> List[str]:
+    """Memoised CNAME chain for the response payload (avoids dup DNS query)."""
+    return _dns_cname_chain(host)
+
+
+def _error_result(target: str, message: str) -> Dict[str, Any]:
     return {
         "tool": "tech_fingerprint",
-        "version": TOOL_INFO["version"],
+        "version": __version__,
         "target": target,
         "data": {},
         "error": message,
     }
 
 
+# ── Aliases: satisfy every slug terminal.py looks for ────────────────────
+tech_fingerprint      = run
+scan_tech_fingerprint = run
+techfp                = run
+fingerprint           = run
+tech_fp               = run
+techfingerprint       = run
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# STREAMING API
+# ═══════════════════════════════════════════════════════════════════════════
+def run_streaming(
+    target: str,
+    options: Optional[Dict[str, Any]] = None,
+    cancel_event: Optional[Any] = None,
+) -> Iterator[Dict[str, Any]]:
+    """SSE-friendly generator mirroring the Emergens app SSE envelope."""
+    import time as _time
+    options = options or {}
+    started = _time.time()
+
+    yield {"type": "start", "target": target, "options": options}
+    yield {"type": "stage", "stage": "connecting"}
+
+    if cancel_event is not None and getattr(cancel_event, "is_set", lambda: False)():
+        yield {"type": "error", "message": "cancelled before start"}
+        return
+
+    try:
+        result = run(
+            target,
+            mode=str(options.get("mode", "basic")),
+            timeout=int(options.get("timeout", DEFAULT_TIMEOUT)),
+            check_favicon=bool(options.get("check_favicon", True)),
+            probe_extra=bool(options.get("probe_extra", True)),
+            max_redirects=int(options.get("max_redirects", MAX_REDIRECTS)),
+        )
+    except Exception as e:
+        yield {"type": "error", "message": str(e)}
+        return
+
+    if cancel_event is not None and getattr(cancel_event, "is_set", lambda: False)():
+        yield {"type": "error", "message": "cancelled after fetch"}
+        return
+
+    yield {"type": "stage", "stage": "analyse"}
+    yield {"type": "result", "data": result}
+    yield {
+        "type": "summary",
+        "duration_ms": int((_time.time() - started) * 1000),
+        "ok": result.get("error") is None,
+    }
+    yield {"type": "stage", "stage": "done"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# BATCH SCANNING
+# ═══════════════════════════════════════════════════════════════════════════
+def scan_many(
+    targets,
+    mode: str = "basic",
+    workers: int = 6,
+    on_result=None,
+    **kwargs,
+) -> List[Dict[str, Any]]:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    targets = list(targets)
+    results: List[Optional[Dict[str, Any]]] = [None] * len(targets)
+
+    def _one(idx: int, tgt: str):
+        r = run(tgt, mode=mode, **kwargs)
+        if on_result is not None:
+            try:
+                on_result(tgt, r)
+            except Exception as e:
+                logger.debug("on_result callback failed: %s", e)
+        return idx, r
+
+    if workers <= 1 or len(targets) <= 1:
+        for i, t in enumerate(targets):
+            _, r = _one(i, t)
+            results[i] = r
+        return [r for r in results if r is not None]
+
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futures = {ex.submit(_one, i, t): i for i, t in enumerate(targets)}
+        for fut in as_completed(futures):
+            try:
+                idx, r = fut.result()
+                results[idx] = r
+            except Exception as e:
+                logger.warning("Batch worker error: %s", e)
+
+    return [r for r in results if r is not None]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SELF-CHECK
+# ═══════════════════════════════════════════════════════════════════════════
+def self_check() -> Dict[str, Any]:
+    """Return diagnostic dict describing runtime capability."""
+    import sys as _sys
+    py = _sys.version_info
+    return {
+        "module":       "modules.tech_fingerprint",
+        "version":      __version__,
+        "author":       __author__,
+        "credit":       __credit__,
+        "python":       f"{py.major}.{py.minor}.{py.micro}",
+        "requests":     True,
+        "flask":        _HAS_FLASK,
+        "dnspython":    _HAS_DNS,
+        "aliases":      ["run", "tech_fingerprint", "scan_tech_fingerprint",
+                         "techfp", "fingerprint", "tech_fp", "techfingerprint"],
+        "endpoint":     "/api/techfp/scan" if _HAS_FLASK else None,
+        "signatures":   len(SIGNATURES),
+        "dns_patterns": len(DNS_PATTERNS),
+        "favicon_db":   len(FAVICON_HASHES),
+        "ready":        _HAS_FLASK,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FLASK BLUEPRINT  →  POST|GET /api/techfp/scan
+# ═══════════════════════════════════════════════════════════════════════════
+if _HAS_FLASK:
+    techfp_bp = Blueprint("tech_fingerprint", __name__)
+
+    @techfp_bp.route("/api/techfp/scan", methods=["POST", "GET"])
+    def _techfp_scan_endpoint():
+        """
+        Payload (JSON or query):
+            { "target": "example.com", "mode": "basic|expert",
+              "timeout": 8, "check_favicon": true,
+              "probe_extra": true, "max_redirects": 5 }
+
+        Response shape — matches terminal.py `_render_techfp()`.
+        """
+        payload = request.get_json(silent=True) or {}
+        target = (payload.get("target")
+                  or request.args.get("target", "")).strip()
+        mode = (payload.get("mode")
+                or request.args.get("mode", "basic")).strip().lower()
+        if mode not in ("basic", "expert"):
+            mode = "basic"
+
+        def _bool_from(key, default):
+            v = payload.get(key, request.args.get(key))
+            if v is None:
+                return default
+            return str(v).lower() not in ("0", "false", "no", "off", "")
+
+        def _int_from(key, default):
+            v = payload.get(key, request.args.get(key))
+            if v is None:
+                return default
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return default
+
+        if not target:
+            return jsonify({
+                "tool": "tech_fingerprint", "version": __version__,
+                "target": "", "data": {},
+                "error": "missing 'target' parameter",
+            }), 400
+
+        result = run(
+            target,
+            mode=mode,
+            timeout=_int_from("timeout", DEFAULT_TIMEOUT),
+            check_favicon=_bool_from("check_favicon", True),
+            probe_extra=_bool_from("probe_extra", True),
+            max_redirects=_int_from("max_redirects", MAX_REDIRECTS),
+        )
+        return jsonify(result)
+
+
+    def register_blueprint(app) -> None:
+        """Convenience helper for app.py: `register_blueprint(app)`."""
+        app.register_blueprint(techfp_bp)
+        logger.info("tech_fingerprint blueprint registered at /api/techfp/scan")
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # CLI
 # ═══════════════════════════════════════════════════════════════════════════
-def _main() -> None:
+def _main() -> int:
     import argparse
     import json as _json
     import sys
@@ -1154,53 +1427,77 @@ def _main() -> None:
     parser = argparse.ArgumentParser(
         description=TOOL_INFO["description"],
         epilog=f"Version {TOOL_INFO['version']} — {TOOL_INFO['author']}",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("target", help="Domain or URL to fingerprint")
+    parser.add_argument("targets", nargs="*",
+                        help="Domain(s) or URL(s) to fingerprint")
     parser.add_argument("-t", "--timeout", type=int, default=DEFAULT_TIMEOUT)
-    parser.add_argument("--favicon", action="store_true", default=True)
-    parser.add_argument("--no-favicon", action="store_true")
-    parser.add_argument("--no-extra", action="store_true")
+    parser.add_argument("--no-favicon", action="store_true",
+                        help="Skip favicon hash check")
+    parser.add_argument("--no-extra", action="store_true",
+                        help="Skip /robots.txt /sitemap.xml /humans.txt probing")
+    parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("--json", action="store_true", help="Raw JSON output")
     parser.add_argument("-o", "--output", help="Save JSON result to file")
+    parser.add_argument("--self-check", action="store_true",
+                        help="Print runtime diagnostics and exit")
+    parser.add_argument("--version", action="version", version=__version__)
     args = parser.parse_args()
 
-    result = run(
-        target=args.target,
+    if args.self_check or not args.targets:
+        print(_json.dumps(self_check(), indent=2))
+        if not args.targets and not args.self_check:
+            print("\nTip: pass at least one target, e.g. `example.com`.")
+        return 0
+
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+
+    results = scan_many(
+        args.targets,
+        workers=args.workers,
         timeout=args.timeout,
         check_favicon=not args.no_favicon,
         probe_extra=not args.no_extra,
-        verbose=args.verbose,
     )
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
-            _json.dump(result, f, indent=2, ensure_ascii=False)
+            _json.dump(results, f, indent=2, ensure_ascii=False, default=str)
         print(f"Saved to {args.output}")
-        return
+        return 0
 
-    if result.get("error"):
-        print(f"ERROR: {result['error']}", file=sys.stderr)
-        sys.exit(1)
+    if args.json:
+        print(_json.dumps(results, indent=2, ensure_ascii=False, default=str))
+        return 0
 
-    data = result["data"]
-    print(f"\n=== Tech Fingerprint: {result['target']} ===\n")
-    print(f"Final URL:  {data.get('final_url')}")
-    print(f"Status:     {data.get('status_code')}")
-    print(f"Server:     {data.get('server_header') or '-'}")
-    print(f"Powered-By: {data.get('powered_by') or '-'}")
-    if data.get("dns_cname_chain"):
-        print(f"CNAME:      {' → '.join(data['dns_cname_chain'])}")
-    print()
-    if not data["detections"]:
-        print("No technologies detected.")
-        return
-    print(f"Detected ({len(data['detections'])}):")
-    for d in data["detections"]:
-        ver = f" v{d['version']}" if d.get("version") else ""
-        print(f"  [{d['confidence']:<6}] {d['name']}{ver}  ({d['category']})")
-        for ev in d["evidence"]:
-            print(f"           · {ev}")
+    for result in results:
+        if result.get("error"):
+            print(f"\n[FAIL] {result['target']}: {result['error']}")
+            continue
+        data = result["data"]
+        print(f"\n═══ Tech Fingerprint: {result['target']} ═══\n")
+        print(f"Final URL:  {data.get('final_url')}")
+        print(f"Status:     {data.get('status_code')}")
+        print(f"Server:     {data.get('server_header') or '-'}")
+        print(f"Powered-By: {data.get('powered_by') or '-'}")
+        if data.get("dns_cname_chain"):
+            print(f"CNAME:      {' → '.join(data['dns_cname_chain'])}")
+        print()
+        if not data.get("detections"):
+            print("No technologies detected.")
+            continue
+        print(f"Detected ({len(data['detections'])}):")
+        for d in data["detections"]:
+            ver = f" v{d['version']}" if d.get("version") else ""
+            print(f"  [{d['confidence']:<6}] {d['name']}{ver}  ({d['category']})")
+            for ev in d["evidence"][:3]:
+                print(f"           · {ev}")
+
+    return 0
 
 
 if __name__ == "__main__":
-    _main()
+    import sys as _sys
+    _sys.exit(_main())

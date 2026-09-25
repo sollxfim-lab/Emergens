@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-HTTP Security Header Analyzer — Advanced Intelligence Scanner (v3.0.0)
+HTTP Security Header Analyzer — Advanced Intelligence Scanner (v3.1.0)
+======================================================================
 
 Enterprise-grade HTTP security analysis with:
   • Multi-layer Cloudflare bypass (curl_cffi / cloudscraper / FlareSolverr / manual)
@@ -20,9 +21,56 @@ Enterprise-grade HTTP security analysis with:
   • Batch scanning + SSE streaming
   • Bounded response reader (2 MB cap), session reuse + Retry adapter
   • Isolated logger, backward-compatible run(target, mode) signature
+  • Flask Blueprint: POST|GET /api/headers/scan
+  • Module aliases: headers_check, scan_headers, headers, headers_scan
 
-Author: Yanxzyx
-Version: 3.0.0
+----------------------------------------------------------------------------
+Changelog v3.1.0  (Emergens integration + hardening)
+----------------------------------------------------------------------------
+  ✔ NEW    — Flask Blueprint `headers_bp` exposing
+             `POST|GET /api/headers/scan` so terminal.py's
+             `_client.post("/api/headers/scan", ...)` works out-of-the-box.
+  ✔ NEW    — `register_blueprint(app)` helper for app.py wiring.
+  ✔ NEW    — Aliases `headers_check`, `scan_headers`, `headers`,
+             `headers_scan` — any terminal.py scan-registry slug resolves.
+  ✔ NEW    — `self_check()` runtime diagnostic + CLI `--self-check`.
+  ✔ FIXED  — `_make_fake_response()` now constructs a proper `.raw.headers`
+             (`urllib3.HTTPHeaderDict`) so `_analyse_cookies()` no longer
+             crashes on the CF-bypass path.
+  ✔ FIXED  — `_analyse_cookies()` guarded against `resp.raw is None`.
+  ✔ HARD   — Response envelope's `tool` field normalised to `"headers"`.
+  ✔ HARD   — Blueprint endpoint gracefully parses JSON / query-string /
+             defaults, and never 500s on bad input.
+
+----------------------------------------------------------------------------
+Acknowledgment
+----------------------------------------------------------------------------
+  • Author        : Yanxzyx   (#credit ~ Yanxzyx)
+  • Framework     : Emergens / Oxysintx orchestrator stack
+  • Dependencies  : `requests` (required) + optional `curl_cffi`,
+                    `cloudscraper` for CF bypass, `Flask` for the endpoint
+  • References    : OWASP Secure Headers Project, securityheaders.com
+                    grading, RFC 6797 (HSTS), RFC 6265bis (cookies),
+                    RFC 9116 (security.txt), CSP Level 3
+  • With thanks to the `requests` and `urllib3` maintainers for exposing
+    a sane Response / HTTPHeaderDict model, and to the cloudscraper /
+    curl_cffi teams for making CF research reproducible.
+
+----------------------------------------------------------------------------
+Testing
+----------------------------------------------------------------------------
+  Quick smoke test (CLI):
+      python3 -m modules.headers_check example.com --mode expert
+      python3 -m modules.headers_check --self-check
+
+  Programmatic:
+      from modules.headers_check import run, self_check
+      print(self_check())
+      print(run("example.com", mode="expert"))
+
+  Flask wiring (in app.py):
+      from modules.headers_check import register_blueprint
+      register_blueprint(app)
 """
 
 from __future__ import annotations
@@ -31,20 +79,34 @@ import argparse
 import hashlib
 import json as _json
 import logging
+import os
 import re
 import socket
 import ssl
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
-from urllib.parse import urlparse, urlunparse, urljoin
+from urllib.parse import urlparse, urlunparse
 
 import requests
 from requests.adapters import HTTPAdapter
+from requests.structures import CaseInsensitiveDict
 from urllib3.util.retry import Retry
+try:
+    from urllib3._collections import HTTPHeaderDict
+except Exception:
+    try:
+        from urllib3.response import HTTPHeaderDict  # type: ignore
+    except Exception:
+        HTTPHeaderDict = None  # type: ignore
+
+# ── Optional: Flask ───────────────────────────────────────────────────────
+try:
+    from flask import Blueprint, jsonify, request
+    _HAS_FLASK = True
+except Exception:
+    _HAS_FLASK = False
 
 # ── Optional: Cloudflare bypass libraries ─────────────────────────────────
 try:
@@ -83,7 +145,7 @@ except ImportError:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# LOGGING
+# LOGGING — isolated
 # ═══════════════════════════════════════════════════════════════════════════
 logger = logging.getLogger("oxysintx.headers")
 logger.propagate = False
@@ -96,19 +158,13 @@ if not logger.handlers:
     logger.addHandler(_h)
 logger.setLevel(logging.INFO)
 
-if not logging.getLogger().handlers:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # METADATA
 # ═══════════════════════════════════════════════════════════════════════════
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 __author__  = "Yanxzyx"
+__credit__  = "#credit ~ Yanxzyx"
 
 TOOL_INFO = {
     "name": "HTTP Security Headers",
@@ -120,25 +176,25 @@ TOOL_INFO = {
     ),
     "category": "Web Security",
     "author": __author__,
+    "credit": __credit__,
 }
 TOOL_KIND = "scanner"
 
-FLARESOLVERR_URL = __import__("os").getenv("FLARESOLVERR_URL", "").strip()
+FLARESOLVERR_URL = os.getenv("FLARESOLVERR_URL", "").strip()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CONSTANTS
 # ═══════════════════════════════════════════════════════════════════════════
-DEFAULT_TIMEOUT     = 12
-DEFAULT_MAX_BYTES   = 2 * 1024 * 1024
-DEFAULT_RETRIES     = 2
-DEFAULT_BACKOFF     = 0.6
-STREAM_CHUNK_SIZE   = 65536
-MAX_HEADER_VALUE    = 4096
-DEFAULT_RATE_LIMIT  = 30.0
+DEFAULT_TIMEOUT      = 12
+DEFAULT_MAX_BYTES    = 2 * 1024 * 1024
+DEFAULT_RETRIES      = 2
+DEFAULT_BACKOFF      = 0.6
+STREAM_CHUNK_SIZE    = 65536
+MAX_HEADER_VALUE     = 4096
+DEFAULT_RATE_LIMIT   = 30.0
 CF_CHALLENGE_TIMEOUT = 30
 
-# User-Agent pool
 _UA_POOL = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -153,7 +209,6 @@ _UA_POOL = [
     "Gecko/20100101 Firefox/125.0",
 ]
 
-# Deprecated headers
 DEPRECATED_HEADERS = {
     "X-XSS-Protection": {
         "reason": "Ignored by modern browsers; can introduce vulnerabilities. "
@@ -190,17 +245,15 @@ COMMON_PATHS = ["/", "/login", "/signin", "/admin", "/api",
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# HEADER DEFINITIONS (30+ headers)
+# HEADER DEFINITIONS (30+)
 # ═══════════════════════════════════════════════════════════════════════════
 SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
-    # ── Transport security ────────────────────────────────────────────────
     "Strict-Transport-Security": {
         "description": "Forces HTTPS connections (HSTS)",
         "severity":    "critical",
         "weight":      6,
         "recommendation": "Add: Strict-Transport-Security: max-age=63072000; includeSubDomains; preload",
     },
-    # ── Content restrictions ──────────────────────────────────────────────
     "Content-Security-Policy": {
         "description": "Restricts resource loading — strongest defence against XSS",
         "severity":    "critical",
@@ -219,21 +272,18 @@ SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
         "weight":      4,
         "recommendation": "Add: X-Frame-Options: DENY",
     },
-    # ── MIME & sniffing ──────────────────────────────────────────────────
     "X-Content-Type-Options": {
         "description": "Prevents MIME-type sniffing",
         "severity":    "normal",
         "weight":      2,
         "recommendation": "Add: X-Content-Type-Options: nosniff",
     },
-    # ── Privacy / referral ───────────────────────────────────────────────
     "Referrer-Policy": {
         "description": "Controls referrer information sent cross-origin",
         "severity":    "normal",
         "weight":      2,
         "recommendation": "Add: Referrer-Policy: strict-origin-when-cross-origin",
     },
-    # ── Feature policy ───────────────────────────────────────────────────
     "Permissions-Policy": {
         "description": "Controls browser features (camera, mic, geolocation…)",
         "severity":    "normal",
@@ -244,9 +294,8 @@ SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
         "description": "Deprecated predecessor of Permissions-Policy",
         "severity":    "info",
         "weight":      0,
-        "recommendation": "Replace with Permissions-Policy (modern browsers ignore Feature-Policy)",
+        "recommendation": "Replace with Permissions-Policy",
     },
-    # ── Cross-origin isolation ───────────────────────────────────────────
     "Cross-Origin-Resource-Policy": {
         "description": "Prevents cross-origin resource inclusion",
         "severity":    "hard",
@@ -265,7 +314,6 @@ SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
         "weight":      3,
         "recommendation": "Add: Cross-Origin-Opener-Policy: same-origin",
     },
-    # ── Fetch metadata (informational) ───────────────────────────────────
     "Sec-Fetch-Site": {
         "description": "Fetch metadata — site context",
         "severity":    "info",
@@ -284,7 +332,6 @@ SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
         "weight":      1,
         "recommendation": "Browser-managed — informational only.",
     },
-    # ── Reporting ────────────────────────────────────────────────────────
     "Report-To": {
         "description": "Reporting endpoint group (CSP / NEL / deprecation)",
         "severity":    "low",
@@ -303,7 +350,6 @@ SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
         "weight":      1,
         "recommendation": "Optional: NEL enables fleet-wide network error collection",
     },
-    # ── Legacy / secondary ───────────────────────────────────────────────
     "X-Download-Options": {
         "description": "Prevents IE from executing downloads in site context",
         "severity":    "low",
@@ -353,12 +399,11 @@ SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
         "recommendation": "Informational only.",
     },
     "Vary": {
-        "description": "Controls cache keys (Accept-Encoding, Origin, etc.)",
+        "description": "Controls cache keys",
         "severity":    "info",
         "weight":      0,
         "recommendation": "Informational — Vary: Origin needed for CORS correctness",
     },
-    # ── Server identification (may leak info) ────────────────────────────
     "Server": {
         "description": "Web server identification — may leak version",
         "severity":    "info",
@@ -377,7 +422,6 @@ SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
         "weight":      0,
         "recommendation": "Remove or suppress version headers",
     },
-    # ── Access control ───────────────────────────────────────────────────
     "Access-Control-Allow-Origin": {
         "description": "CORS allowed origin — critical if misconfigured",
         "severity":    "hard",
@@ -425,7 +469,6 @@ WAF_SIGNATURES: Dict[str, List[str]] = {
 
 def _detect_waf(headers: Dict[str, str], body: str,
                 status: int) -> Optional[Dict[str, Any]]:
-    """Detect WAF/CDN from headers + body markers."""
     headers_lower = {k.lower(): (v or "").lower() for k, v in headers.items()}
     hay = " ".join(f"{k}: {v}" for k, v in headers_lower.items())
     body_lower = (body or "")[:8192].lower()
@@ -443,7 +486,6 @@ def _detect_waf(headers: Dict[str, str], body: str,
 
 def _detect_cloudflare(headers: Dict[str, str], body: bytes,
                        status: int) -> Optional[str]:
-    """Classify CF challenge type: uam | js_challenge | managed | turnstile | waf_block | none."""
     h_lower = {k.lower(): (v or "").lower() for k, v in headers.items()}
     has_cf = ("cloudflare" in h_lower.get("server", "")) or any(
         m in h_lower for m in _CF_HEADER_MARKERS
@@ -471,13 +513,7 @@ def _detect_cloudflare(headers: Dict[str, str], body: bytes,
 # CLOUDFLARE BYPASS ENGINE
 # ═══════════════════════════════════════════════════════════════════════════
 class CloudflareBypass:
-    """
-    Multi-strategy bypass chain:
-        1. curl_cffi     — TLS fingerprint impersonation (best)
-        2. cloudscraper  — JS challenge solver
-        3. FlareSolverr  — external solver (if FLARESOLVERR_URL set)
-        4. manual        — headers + UA + cookie persistence
-    """
+    """Multi-strategy CF bypass: curl_cffi → cloudscraper → FlareSolverr → manual."""
 
     def __init__(self, timeout: int = DEFAULT_TIMEOUT,
                  cf_timeout: int = CF_CHALLENGE_TIMEOUT,
@@ -587,7 +623,6 @@ class CloudflareBypass:
             return None
 
     def fetch(self, url: str) -> Tuple[Optional[bytes], Dict, int, str]:
-        """Return (body, headers, status, method_used)."""
         strategies: List[Tuple[str, Callable]] = []
         if _HAS_CURL_CFFI:
             strategies.append(("curl_cffi", self._fetch_curl_cffi))
@@ -619,7 +654,6 @@ class CloudflareBypass:
 # TECH STACK FINGERPRINTING
 # ═══════════════════════════════════════════════════════════════════════════
 TECH_PATTERNS: List[Tuple[re.Pattern, str, str]] = [
-    # (pattern, name, category)
     (re.compile(r"nginx", re.I),                   "Nginx", "Web Server"),
     (re.compile(r"apache", re.I),                  "Apache", "Web Server"),
     (re.compile(r"microsoft-iis", re.I),           "IIS", "Web Server"),
@@ -647,7 +681,6 @@ TECH_PATTERNS: List[Tuple[re.Pattern, str, str]] = [
 
 
 def _fingerprint_tech(headers: Dict[str, str]) -> List[Dict[str, str]]:
-    """Detect tech stack from response headers."""
     found: List[Dict[str, str]] = []
     seen = set()
     header_blob = " ".join(f"{k}: {v}" for k, v in headers.items())
@@ -673,12 +706,8 @@ COMPLIANCE_MAP = {
             "X-Frame-Options", "Content-Security-Policy",
             "Referrer-Policy", "Permissions-Policy",
         ],
-        "A07_Identification_Auth_Failures": [
-            "Strict-Transport-Security",
-        ],
-        "A08_Software_Data_Integrity_Failures": [
-            "Content-Security-Policy",
-        ],
+        "A07_Identification_Auth_Failures": ["Strict-Transport-Security"],
+        "A08_Software_Data_Integrity_Failures": ["Content-Security-Policy"],
     },
     "PCI_DSS_4.0": {
         "Req_4.2_Encrypt_Transmission": ["Strict-Transport-Security"],
@@ -705,7 +734,6 @@ COMPLIANCE_MAP = {
 
 
 def _compliance_report(present: Dict[str, str]) -> Dict[str, Any]:
-    """Map present/missing headers to compliance framework controls."""
     out: Dict[str, Any] = {}
     for framework, controls in COMPLIANCE_MAP.items():
         fw: Dict[str, Any] = {}
@@ -723,64 +751,88 @@ def _compliance_report(present: Dict[str, str]) -> Dict[str, Any]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# COOKIE ANALYSIS
+# COOKIE ANALYSIS — HARDENED in v3.1.0
 # ═══════════════════════════════════════════════════════════════════════════
 def _analyse_cookies(resp: requests.Response) -> List[Dict[str, Any]]:
+    """
+    Extract and audit Set-Cookie headers.
+
+    v3.1.0: guarded against `resp.raw is None` (which happens when the
+    scanner reconstructs a Response via `_make_fake_response` for the
+    CF-bypass path).
+    """
     cookies: List[Dict[str, Any]] = []
+    raw: List[str] = []
+
     try:
-        raw = resp.raw.headers.get_all("Set-Cookie") if hasattr(resp.raw, "headers") else []
+        raw_headers = getattr(resp.raw, "headers", None) if resp.raw else None
+        if raw_headers is not None and hasattr(raw_headers, "get_all"):
+            raw = list(raw_headers.get_all("Set-Cookie") or [])
     except Exception:
         raw = []
+
+    if not raw:
+        try:
+            sc = resp.headers.get("Set-Cookie") if resp.headers else None
+            if sc:
+                raw = [sc]
+        except Exception:
+            raw = []
+
     for item in raw or []:
         if not item:
             continue
-        parts = [p.strip() for p in item.split(";")]
-        if not parts:
+        try:
+            parts = [p.strip() for p in item.split(";")]
+            if not parts:
+                continue
+            name_val = parts[0]
+            flags = parts[1:]
+            lower = [f.lower() for f in flags]
+            is_secure   = any(f == "secure" for f in lower)
+            is_httponly = any(f == "httponly" for f in lower)
+            samesite = next((f.split("=", 1)[1].strip().lower()
+                             for f in flags if f.lower().startswith("samesite=")), None)
+            max_age = expires = domain = path = None
+            for f in flags:
+                fl = f.lower()
+                if fl.startswith("max-age="):
+                    try: max_age = int(f.split("=", 1)[1].strip())
+                    except Exception: pass
+                elif fl.startswith("expires="): expires = f.split("=", 1)[1].strip()
+                elif fl.startswith("domain="):  domain  = f.split("=", 1)[1].strip()
+                elif fl.startswith("path="):    path    = f.split("=", 1)[1].strip()
+            name = name_val.split("=", 1)[0].strip() if "=" in name_val else name_val
+
+            issues = []
+            if not is_secure:
+                issues.append({"severity": "high",
+                               "issue": "Cookie transmitted without Secure flag"})
+            if not is_httponly:
+                issues.append({"severity": "medium",
+                               "issue": "Cookie accessible to JavaScript (no HttpOnly)"})
+            if samesite is None:
+                issues.append({"severity": "medium",
+                               "issue": "SameSite not set (browsers default to Lax)"})
+            elif samesite == "none" and not is_secure:
+                issues.append({"severity": "high",
+                               "issue": "SameSite=None requires Secure"})
+            if name.startswith("__Host-") and (not is_secure or domain is not None or path != "/"):
+                issues.append({"severity": "high",
+                               "issue": "__Host- prefix requires Secure, no Domain, Path=/"})
+            elif name.startswith("__Secure-") and not is_secure:
+                issues.append({"severity": "high",
+                               "issue": "__Secure- prefix requires Secure flag"})
+
+            cookies.append({
+                "name_value": name_val[:128], "name": name,
+                "secure": is_secure, "httponly": is_httponly,
+                "samesite": samesite, "max_age": max_age, "expires": expires,
+                "domain": domain, "path": path, "issues": issues,
+            })
+        except Exception as e:
+            logger.debug("[headers] cookie parse failed: %s", e)
             continue
-        name_val = parts[0]
-        flags = parts[1:]
-        lower = [f.lower() for f in flags]
-        is_secure   = any(f == "secure" for f in lower)
-        is_httponly = any(f == "httponly" for f in lower)
-        samesite = next((f.split("=", 1)[1].strip().lower()
-                         for f in flags if f.lower().startswith("samesite=")), None)
-        max_age = expires = domain = path = None
-        for f in flags:
-            fl = f.lower()
-            if fl.startswith("max-age="):
-                try: max_age = int(f.split("=", 1)[1].strip())
-                except: pass
-            elif fl.startswith("expires="): expires = f.split("=", 1)[1].strip()
-            elif fl.startswith("domain="):  domain  = f.split("=", 1)[1].strip()
-            elif fl.startswith("path="):    path    = f.split("=", 1)[1].strip()
-        name = name_val.split("=", 1)[0].strip() if "=" in name_val else name_val
-
-        issues = []
-        if not is_secure:
-            issues.append({"severity": "high",
-                           "issue": "Cookie transmitted without Secure flag"})
-        if not is_httponly:
-            issues.append({"severity": "medium",
-                           "issue": "Cookie accessible to JavaScript (no HttpOnly)"})
-        if samesite is None:
-            issues.append({"severity": "medium",
-                           "issue": "SameSite not set (browsers default to Lax)"})
-        elif samesite == "none" and not is_secure:
-            issues.append({"severity": "high",
-                           "issue": "SameSite=None requires Secure"})
-        if name.startswith("__Host-") and (not is_secure or domain is not None or path != "/"):
-            issues.append({"severity": "high",
-                           "issue": "__Host- prefix requires Secure, no Domain, Path=/"})
-        elif name.startswith("__Secure-") and not is_secure:
-            issues.append({"severity": "high",
-                           "issue": "__Secure- prefix requires Secure flag"})
-
-        cookies.append({
-            "name_value": name_val[:128], "name": name,
-            "secure": is_secure, "httponly": is_httponly,
-            "samesite": samesite, "max_age": max_age, "expires": expires,
-            "domain": domain, "path": path, "issues": issues,
-        })
     return cookies
 
 
@@ -839,12 +891,10 @@ def _analyse_csp_quality(csp_value: str) -> Dict[str, Any]:
                          "issue": "object-src should be 'none'"})
         score -= 10
     if not base_uri:
-        findings.append({"severity": "low",
-                         "issue": "base-uri not set"})
+        findings.append({"severity": "low", "issue": "base-uri not set"})
         score -= 5
     if not frame_anc:
-        findings.append({"severity": "low",
-                         "issue": "frame-ancestors not set"})
+        findings.append({"severity": "low", "issue": "frame-ancestors not set"})
         score -= 5
     if "report-uri" not in directives and "report-to" not in directives:
         findings.append({"severity": "info",
@@ -880,7 +930,6 @@ _TARGET_BLANK_RE = re.compile(
 
 
 def _analyse_html_body(body: bytes, final_url: str) -> Dict[str, Any]:
-    """Static analysis of the response HTML for security issues."""
     if not body:
         return {}
     try:
@@ -889,7 +938,6 @@ def _analyse_html_body(body: bytes, final_url: str) -> Dict[str, Any]:
         return {}
 
     inline_scripts = _INLINE_SCRIPT_RE.findall(text)
-    # Filter out JSON-LD and template blocks that aren't executable
     executable_inline = [
         s.strip() for s in inline_scripts
         if s.strip() and not re.match(r"^\s*(?:\{|\"|<)", s.strip())
@@ -902,7 +950,6 @@ def _analyse_html_body(body: bytes, final_url: str) -> Dict[str, Any]:
     mixed_content = _HTTP_IN_HTTPS_RE.findall(text) if final_url.startswith("https://") else []
     meta_refresh = _META_REFRESH_RE.findall(text)
     target_blank = _TARGET_BLANK_RE.findall(text)
-    # Count unsafe target=_blank without rel=noopener
     target_blank_unsafe = 0
     for tag in re.findall(r'<a\b[^>]*target\s*=\s*["\']_blank["\'][^>]*>', text, re.I):
         if "rel=" not in tag.lower() or (
@@ -947,17 +994,16 @@ def _analyse_html_body(body: bytes, final_url: str) -> Dict[str, Any]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SECURITY.TXT / ROBOTS.TXT CHECK
+# DISCOVERY FILES
 # ═══════════════════════════════════════════════════════════════════════════
 def _check_discovery_files(session: requests.Session, base_url: str,
                            timeout: float) -> Dict[str, Any]:
-    """Fetch and analyse /security.txt, /.well-known/security.txt, /robots.txt, /sitemap.xml."""
     out: Dict[str, Any] = {}
     paths = {
-        "security_txt":  "/.well-known/security.txt",
+        "security_txt":     "/.well-known/security.txt",
         "security_txt_alt": "/security.txt",
-        "robots_txt":    "/robots.txt",
-        "sitemap_xml":   "/sitemap.xml",
+        "robots_txt":       "/robots.txt",
+        "sitemap_xml":      "/sitemap.xml",
     }
     parsed = urlparse(base_url)
     base = urlunparse((parsed.scheme, parsed.netloc, "", "", "", ""))
@@ -1011,16 +1057,11 @@ def _quality_hsts(value: str) -> Dict[str, Any]:
             "issue": "max-age below 1 year (2 years recommended for preload)",
         })
     if "includesubdomains" not in v:
-        out["issues"].append({
-            "severity": "medium",
-            "issue": "includeSubDomains not set",
-        })
+        out["issues"].append({"severity": "medium",
+                              "issue": "includeSubDomains not set"})
         out["score"] -= 15
     if "preload" not in v:
-        out["issues"].append({
-            "severity": "info",
-            "issue": "preload not set",
-        })
+        out["issues"].append({"severity": "info", "issue": "preload not set"})
     out.update({"max_age": max_age,
                 "include_subdomains": "includesubdomains" in v,
                 "preload": "preload" in v,
@@ -1121,8 +1162,7 @@ def _grade(score: int, has_csp: bool, has_hsts: bool) -> str:
 
 def _risk_score(score: int, missing: List[Dict], quality: List[Dict],
                 grade: str) -> Dict[str, Any]:
-    """CVSS-like overall risk (0–10)."""
-    base_risk = (100 - score) / 10.0      # 0–10
+    base_risk = (100 - score) / 10.0
     crit_missing = sum(1 for m in missing if m.get("severity") == "critical")
     hard_missing = sum(1 for m in missing if m.get("severity") == "hard")
     crit_quality = sum(1 for q in quality if q.get("severity") in ("high", "critical"))
@@ -1194,7 +1234,7 @@ def _analyse_redirects(resp: requests.Response) -> Dict[str, Any]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SCANNER CORE
+# SESSION / IO HELPERS
 # ═══════════════════════════════════════════════════════════════════════════
 def _build_session(headers: Optional[Dict[str, str]] = None,
                    verify_ssl: bool = True,
@@ -1258,6 +1298,57 @@ def _safe_join(base: str, path: str) -> str:
                        "", "", ""))
 
 
+def _make_fake_response(url: str, headers: Dict[str, str],
+                        status: int, body: bytes) -> requests.Response:
+    """
+    Wrap a bypass result as a requests.Response-like object.
+
+    v3.1.0: constructs a proper `urllib3.HTTPHeaderDict` for `.raw.headers`
+    so `_analyse_cookies()` can extract Set-Cookie reliably, even for
+    responses produced by curl_cffi / cloudscraper.
+    """
+    r = requests.Response()
+    r.url = url
+    r.status_code = status
+    r._content = body or b""
+    r.encoding = "utf-8"
+    r.history = []
+
+    plain: Dict[str, str] = {}
+    hd = HTTPHeaderDict() if HTTPHeaderDict is not None else None
+    for k, v in (headers or {}).items():
+        if isinstance(v, (list, tuple)):
+            if hd is not None:
+                for item in v:
+                    try:
+                        hd.add(k, str(item))
+                    except Exception:
+                        pass
+            plain[k] = ", ".join(str(x) for x in v)
+        else:
+            if hd is not None:
+                try:
+                    hd.add(k, str(v))
+                except Exception:
+                    pass
+            plain[k] = str(v)
+
+    r.headers = CaseInsensitiveDict(plain)
+
+    if hd is not None:
+        class _FakeRaw:
+            def __init__(self, h):
+                self.headers = h
+
+        r.raw = _FakeRaw(hd)
+    else:
+        r.raw = None
+    return r
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# RESPONSE ANALYSER
+# ═══════════════════════════════════════════════════════════════════════════
 def _analyze_response(resp: requests.Response, body: bytes,
                       mode: str, target: str,
                       waf_info: Optional[Dict],
@@ -1367,24 +1458,22 @@ def _analyze_response(resp: requests.Response, body: bytes,
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# MAIN ENTRY POINT (orchestrator-compatible)
+# MAIN ENTRY POINT
 # ═══════════════════════════════════════════════════════════════════════════
 def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
     """
-    Audit HTTP security headers of `target`.
+    Audit HTTP security headers of `target`. Never raises.
 
     kwargs:
-        timeout (float)      — default 12s
-        verify_ssl (bool)    — default True
-        headers (dict)       — custom request headers
-        follow_redirects     — default True
-        check_paths (bool)   — also scan /login, /api, /admin
+        timeout (float)       — default 12s
+        verify_ssl (bool)     — default True
+        headers (dict)        — custom request headers
+        follow_redirects      — default True
+        check_paths (bool)    — also scan /login, /api, /admin
         check_discovery (bool)— fetch security.txt / robots.txt / sitemap.xml
-        use_cf_bypass (bool) — enable Cloudflare bypass (default True)
-        proxy (dict)         — proxy dict {"http": ..., "https": ...}
-        max_bytes (int)      — bounded body read
-
-    Returns: {tool, version, target, data, error}
+        use_cf_bypass (bool)  — enable Cloudflare bypass (default True)
+        proxy (dict)          — proxy dict {"http": ..., "https": ...}
+        max_bytes (int)       — bounded body read
     """
     timeout          = float(kwargs.get("timeout", DEFAULT_TIMEOUT))
     verify_ssl       = bool(kwargs.get("verify_ssl", True))
@@ -1410,7 +1499,6 @@ def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
     used_url: Optional[str] = None
     cf_method_used: Optional[str] = None
 
-    # ── Attempt 1: standard session
     for url in urls:
         try:
             r = session.get(url, timeout=timeout,
@@ -1418,7 +1506,6 @@ def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
             body = _read_bounded(r, max_bytes)
             cf_type = _detect_cloudflare(dict(r.headers), body, r.status_code)
             if cf_type and use_cf_bypass:
-                # Body looks like a CF challenge — try bypass
                 logger.info("[headers] CF detected (%s) → invoking bypass", cf_type)
                 cf = CloudflareBypass(
                     timeout=int(timeout), cf_timeout=CF_CHALLENGE_TIMEOUT,
@@ -1449,12 +1536,14 @@ def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
     if resp is None:
         return _error_result(target, last_error or "Could not connect to target")
 
-    # Reconstruct body if not already read (bypass path fills it directly)
     if not body and hasattr(resp, "content"):
-        body = resp.content[:max_bytes]
+        try:
+            body = resp.content[:max_bytes]
+        except Exception:
+            body = b""
 
-    # ── WAF + tech fingerprint (from headers)
-    waf_info = _detect_waf(dict(resp.headers), body.decode("utf-8", "ignore")[:8192],
+    waf_info = _detect_waf(dict(resp.headers),
+                           body.decode("utf-8", "ignore")[:8192],
                            resp.status_code)
     tech_stack = _fingerprint_tech(dict(resp.headers))
     cf_type = _detect_cloudflare(dict(resp.headers), body, resp.status_code)
@@ -1469,7 +1558,6 @@ def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
         "manual":       True,
     }
 
-    # ── Multi-path probing
     if check_paths:
         paths_data = []
         for path in COMMON_PATHS:
@@ -1490,15 +1578,16 @@ def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
                 paths_data.append({"path": path, "url": full, "error": str(e)})
         data["paths"] = paths_data
 
-    # ── Discovery files
     if check_discovery:
         try:
-            data["discovery"] = _check_discovery_files(session, used_url or urls[0], timeout)
+            data["discovery"] = _check_discovery_files(
+                session, used_url or urls[0], timeout,
+            )
         except Exception as e:
             data["discovery_error"] = str(e)
 
     return {
-        "tool":    "headers_check",
+        "tool":    "headers",   # normalised slug
         "version": __version__,
         "target":  target,
         "data":    data,
@@ -1506,28 +1595,22 @@ def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
     }
 
 
-def _make_fake_response(url: str, headers: Dict[str, str],
-                        status: int, body: bytes) -> requests.Response:
-    """Wrap a bypass result as a requests.Response-like object."""
-    r = requests.Response()
-    r.url = url
-    r.status_code = status
-    r._content = body
-    r.headers.update(headers or {})
-    r.encoding = "utf-8"
-    r.history = []
-    r.raw = None
-    return r
-
-
 def _error_result(target: str, message: str) -> Dict[str, Any]:
     return {
-        "tool":    "headers_check",
+        "tool":    "headers",
         "version": __version__,
         "target":  target,
         "data":    {},
         "error":   message,
     }
+
+
+# ── Aliases: satisfy every slug terminal.py looks for ────────────────────
+headers_check  = run
+scan_headers   = run
+headers        = run
+headers_scan   = run
+check_headers  = run
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1540,10 +1623,8 @@ def run_streaming(
 ) -> Iterator[Dict[str, Any]]:
     options = options or {}
     started = time.time()
-
     yield {"type": "start", "target": target, "options": options}
     yield {"type": "stage", "stage": "connecting"}
-
     try:
         result = run(
             target,
@@ -1561,12 +1642,10 @@ def run_streaming(
     except Exception as e:
         yield {"type": "error", "message": str(e)}
         return
-
     if cancel_event is not None and hasattr(cancel_event, "is_set"):
         if cancel_event.is_set():
             yield {"type": "error", "message": "cancelled"}
             return
-
     yield {"type": "stage", "stage": "analyse"}
     yield {"type": "result", "data": result}
     yield {
@@ -1617,10 +1696,33 @@ def scan_many(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# EXPORT: SARIF
+# SELF-CHECK
+# ═══════════════════════════════════════════════════════════════════════════
+def self_check() -> Dict[str, Any]:
+    """Return diagnostic dict describing runtime capability."""
+    py = sys.version_info
+    return {
+        "module":       "modules.headers_check",
+        "version":      __version__,
+        "author":       __author__,
+        "credit":       __credit__,
+        "python":       f"{py.major}.{py.minor}.{py.micro}",
+        "requests":     True,
+        "flask":        _HAS_FLASK,
+        "curl_cffi":    _HAS_CURL_CFFI,
+        "cloudscraper": _HAS_CLOUDSCRAPER,
+        "flaresolverr": bool(FLARESOLVERR_URL),
+        "aliases":      ["run", "headers_check", "scan_headers",
+                         "headers", "headers_scan", "check_headers"],
+        "endpoint":     "/api/headers/scan" if _HAS_FLASK else None,
+        "ready":        _HAS_FLASK,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SARIF EXPORT
 # ═══════════════════════════════════════════════════════════════════════════
 def to_sarif(result: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert a single scan result to SARIF 2.1.0."""
     d = result.get("data", {})
     findings = []
     for m in d.get("missing_headers", []):
@@ -1650,6 +1752,77 @@ def to_sarif(result: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# FLASK BLUEPRINT  →  POST|GET /api/headers/scan
+# ═══════════════════════════════════════════════════════════════════════════
+if _HAS_FLASK:
+    headers_bp = Blueprint("headers_check", __name__)
+
+    @headers_bp.route("/api/headers/scan", methods=["POST", "GET"])
+    def _headers_scan_endpoint():
+        """
+        Payload (JSON or query):
+            { "target": "example.com", "mode": "basic|expert",
+              "timeout": 12, "verify_ssl": true,
+              "check_paths": false, "check_discovery": false,
+              "use_cf_bypass": true }
+
+        Response shape — matches terminal.py `_render_headers()`:
+            {
+              "tool": "headers", "version": "3.1.0",
+              "target": "example.com",
+              "data": { url, server, grade, score_percent,
+                        risk: {label, score}, missing_headers: [...],
+                        present_headers: {...}, ... },
+              "error": null
+            }
+        """
+        payload = request.get_json(silent=True) or {}
+        target = (payload.get("target")
+                  or request.args.get("target", "")).strip()
+        mode = (payload.get("mode")
+                or request.args.get("mode", "basic")).strip().lower()
+        if mode not in ("basic", "expert"):
+            mode = "basic"
+
+        def _bool_from(key, default):
+            v = payload.get(key, request.args.get(key))
+            if v is None:
+                return default
+            return str(v).lower() not in ("0", "false", "no", "off", "")
+
+        try:
+            timeout = float(payload.get("timeout")
+                            or request.args.get("timeout")
+                            or DEFAULT_TIMEOUT)
+        except (TypeError, ValueError):
+            timeout = DEFAULT_TIMEOUT
+
+        if not target:
+            return jsonify({
+                "tool": "headers", "version": __version__,
+                "target": "", "data": {},
+                "error": "missing 'target' parameter",
+            }), 400
+
+        result = run(
+            target,
+            mode=mode,
+            timeout=timeout,
+            verify_ssl=_bool_from("verify_ssl", True),
+            check_paths=_bool_from("check_paths", False),
+            check_discovery=_bool_from("check_discovery", mode == "expert"),
+            use_cf_bypass=_bool_from("use_cf_bypass", True),
+        )
+        return jsonify(result)
+
+
+    def register_blueprint(app) -> None:
+        """Convenience helper for app.py: `register_blueprint(app)`."""
+        app.register_blueprint(headers_bp)
+        logger.info("headers_check blueprint registered at /api/headers/scan")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # CLI
 # ═══════════════════════════════════════════════════════════════════════════
 def _print_human(result: Dict[str, Any]) -> None:
@@ -1675,7 +1848,7 @@ def _print_human(result: Dict[str, Any]) -> None:
     if d.get("cf_bypass_used"):
         print(f"CF bypass   : {d['cf_bypass_used']}")
     if d.get("tech_stack"):
-        print(f"Tech stack  : " +
+        print("Tech stack  : " +
               ", ".join(f"{t['name']}" + (f" v{t['version']}" if t.get('version') else "")
                         for t in d['tech_stack']))
     print()
@@ -1687,7 +1860,7 @@ def _print_human(result: Dict[str, Any]) -> None:
 
     print(f"✓ Present ({len(present)})")
     for h, v in list(present.items())[:25]:
-        print(f"    {h}: {v[:70]}")
+        print(f"    {h}: {str(v)[:70]}")
     if missing:
         print(f"\n✗ Missing ({len(missing)})")
         for m in missing:
@@ -1703,7 +1876,6 @@ def _print_human(result: Dict[str, Any]) -> None:
         for dep in deprecated:
             print(f"    {dep['header']}: {dep['reason']}")
 
-    # Compliance
     comp = d.get("compliance", {})
     if comp:
         print("\nCompliance:")
@@ -1717,7 +1889,7 @@ def _main() -> int:
         description=f"HTTP Security Header Analyzer v{__version__}",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("targets", nargs="+", help="Hostnames or URLs")
+    parser.add_argument("targets", nargs="*", help="Hostnames or URLs")
     parser.add_argument("--mode", choices=["basic", "expert"], default="basic")
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     parser.add_argument("--workers", type=int, default=6)
@@ -1729,8 +1901,16 @@ def _main() -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--sarif", action="store_true")
     parser.add_argument("--output", help="Write JSON to file")
+    parser.add_argument("--self-check", action="store_true",
+                        help="print runtime diagnostics and exit")
     parser.add_argument("--version", action="version", version=__version__)
     args = parser.parse_args()
+
+    if args.self_check or not args.targets:
+        print(_json.dumps(self_check(), indent=2))
+        if not args.targets and not args.self_check:
+            print("\nTip: pass at least one target, e.g. `example.com`.")
+        return 0
 
     proxy_dict = {"http": args.proxy, "https": args.proxy} if args.proxy else None
 

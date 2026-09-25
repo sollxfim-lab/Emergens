@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Oxysintx — IP & ASN Intelligence Module (v5.0.0)
+Oxysintx — IP & ASN Intelligence Module (v5.1.0)
+=================================================
 
 Enterprise IP intelligence scanner with dual-mode operation:
 
@@ -37,8 +38,58 @@ Extra features
   • Isolated logger — never duplicates Flask handlers
   • Backward-compatible run(target, mode) orchestrator signature
 
-Author: Yanxzyx
-Version: 5.0.0
+----------------------------------------------------------------------------
+Changelog v5.1.0  (Emergens integration + hardening)
+----------------------------------------------------------------------------
+  ✔ NEW    — Flask Blueprint `ipinfo_bp` exposing
+             `POST|GET /api/ipinfo/scan` so terminal.py's
+             `_client.post("/api/ipinfo/scan", ...)` works.
+  ✔ NEW    — `register_blueprint(app)` helper for app.py wiring.
+  ✔ NEW    — Aliases `ip_info`, `scan_ip_info`, `ipinfo`, `ip_info_scan`
+             — any terminal.py scan-registry slug resolves the callable.
+  ✔ NEW    — `self_check()` runtime diagnostic + CLI `--self-check`.
+  ✔ FIXED  — `to_sarif()` guarded against `dnsbl is None` — no more
+             `AttributeError` on SARIF export.
+  ✔ FIXED  — `_main()` CLI logic `include_local` cleaned (was affected
+             by Python `and`/`or` precedence).
+  ✔ HARD   — Envelope always returns `tool="ip_info"` matching
+             terminal.py's `_render_ipinfo()` expectations.
+  ✔ HARD   — Primary module path is `modules.scan_ip_info` — matches
+             terminal.py `MODULE_PROBES` entry.
+
+----------------------------------------------------------------------------
+Acknowledgment
+----------------------------------------------------------------------------
+  • Author        : Yanxzyx   (#credit ~ Yanxzyx)
+  • Framework     : Emergens / Oxysintx orchestrator stack
+  • Dependencies  : `requests` (required) + optional
+                    `dnspython` (Team Cymru ASN), `curl_cffi` +
+                    `cloudscraper` (Cloudflare bypass), `Flask` (endpoint)
+  • Data sources  : Team Cymru (ASN), IANA / RIR RDAP, WHOIS port 43,
+                    Spamhaus / SORBS / SpamCop DNSBL, Tor Project
+                    bulk exit list, official RIR RDAP bootstrap
+  • References    : RFC 3912 (WHOIS), RFC 7480–7484 (RDAP),
+                    RFC 5782 (DNSBL), RFC 7208 (SPF context)
+  • With thanks to Team Cymru for their free DNS-based ASN service,
+    the Tor Project for publishing exit-node lists, and the
+    `requests` / `urllib3` maintainers for a sane HTTP model.
+
+----------------------------------------------------------------------------
+Testing
+----------------------------------------------------------------------------
+  Quick smoke test (CLI):
+      python3 -m modules.scan_ip_info 1.1.1.1 --mode expert
+      python3 -m modules.scan_ip_info 1.1.1.1 --offline
+      python3 -m modules.scan_ip_info --self-check
+
+  Programmatic:
+      from modules.scan_ip_info import run, self_check
+      print(self_check())
+      print(run("1.1.1.1", mode="expert"))
+
+  Flask wiring (in app.py):
+      from modules.scan_ip_info import register_blueprint
+      register_blueprint(app)
 """
 
 from __future__ import annotations
@@ -64,6 +115,13 @@ from urllib.parse import urlparse
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+# ── Optional: Flask ───────────────────────────────────────────────────────
+try:
+    from flask import Blueprint, jsonify, request
+    _HAS_FLASK = True
+except Exception:
+    _HAS_FLASK = False
 
 # ── Optional: Cloudflare bypass libs ──────────────────────────────────────
 try:
@@ -105,19 +163,13 @@ if not logger.handlers:
     logger.addHandler(_h)
 logger.setLevel(logging.INFO)
 
-if not logging.getLogger().handlers:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # METADATA
 # ═══════════════════════════════════════════════════════════════════════════
-__version__ = "5.0.0"
+__version__ = "5.1.0"
 __author__  = "Yanxzyx"
+__credit__  = "#credit ~ Yanxzyx"
 
 TOOL_INFO = {
     "name": "IP & ASN Info",
@@ -130,6 +182,7 @@ TOOL_INFO = {
     ),
     "category": "Network",
     "author": __author__,
+    "credit": __credit__,
 }
 TOOL_KIND = "scanner"
 
@@ -159,7 +212,6 @@ _UA_POOL = [
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 ]
 
-# DNS-based blacklist zones (queried as <reversed-ip>.<zone>)
 DNSBL_ZONES = {
     "zen.spamhaus.org":         "Spamhaus ZEN",
     "b.barracudacentral.org":   "Barracuda",
@@ -173,14 +225,12 @@ DNSBL_ZONES = {
     "ubl.unsubscore.com":       "Lashback UBL",
 }
 
-# Known datacenter / hosting ASNs (informational hint)
 HOSTING_ASNS = {
     "AS13335", "AS14061", "AS16509", "AS14618", "AS15169", "AS396982",
     "AS8075", "AS20940", "AS19527", "AS54113", "AS24940", "AS20473",
     "AS63949", "AS9009", "AS12876", "AS16276", "AS51167", "AS197540",
 }
 
-# CDN ASN → name (for ASN-based CDN detection)
 CDN_ASNS = {
     "AS13335": "Cloudflare",
     "AS20940": "Akamai",
@@ -199,7 +249,6 @@ CDN_ASNS = {
     "AS20473": "Vultr",
 }
 
-# Scoring weights per provider for merge priority
 PROVIDER_WEIGHTS = {
     "ipinfo.io":    1.00,
     "ipapi.is":     0.95,
@@ -271,69 +320,9 @@ class _TokenBucket:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# DATA STRUCTURES
-# ═══════════════════════════════════════════════════════════════════════════
-@dataclass
-class IPInfoResult:
-    ip: str
-
-    # ── Geo
-    country: Optional[str] = None
-    country_code: Optional[str] = None
-    region: Optional[str] = None
-    city: Optional[str] = None
-    postal: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    timezone: Optional[str] = None
-    utc_offset: Optional[str] = None
-
-    # ── Network
-    isp: Optional[str] = None
-    org: Optional[str] = None
-    asn: Optional[str] = None
-    asn_name: Optional[str] = None
-    asn_country: Optional[str] = None
-    asn_registry: Optional[str] = None
-    asn_route: Optional[str] = None
-    asn_description: Optional[str] = None
-    bgp_prefix: Optional[str] = None
-    domain: Optional[str] = None
-    reverse_dns: Optional[str] = None
-    type: Optional[str] = None
-
-    # ── IP classification (local)
-    ip_version: Optional[int] = None
-    is_private: Optional[bool] = None
-    is_loopback: Optional[bool] = None
-    is_multicast: Optional[bool] = None
-    is_reserved: Optional[bool] = None
-    is_link_local: Optional[bool] = None
-    is_global: Optional[bool] = None
-    ip_scope: Optional[str] = None
-
-    # ── Security flags
-    is_proxy: Optional[bool] = None
-    is_hosting: Optional[bool] = None
-    is_mobile: Optional[bool] = None
-    is_tor: Optional[bool] = None
-    is_vpn: Optional[bool] = None
-    is_abuse: Optional[bool] = None
-
-    # ── Provider / source
-    provider: Optional[str] = None
-    providers_used: List[str] = field(default_factory=list)
-    confidence: Optional[float] = None
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
 # LOCAL INTELLIGENCE — no external API needed
 # ═══════════════════════════════════════════════════════════════════════════
 def _classify_ip(ip: str) -> Dict[str, Any]:
-    """Classify an IP address locally using the stdlib ipaddress module."""
     try:
         addr = ipaddress.ip_address(ip)
     except ValueError:
@@ -343,7 +332,6 @@ def _classify_ip(ip: str) -> Dict[str, Any]:
         reverse_ptr = ".".join(reversed(ip.split("."))) + ".in-addr.arpa"
     else:
         version = 6
-        # Nibble-reversed ip6.arpa form
         hex_expanded = addr.exploded.replace(":", "")
         reverse_ptr = ".".join(reversed(hex_expanded)) + ".ip6.arpa"
     return {
@@ -365,9 +353,7 @@ def _classify_ip(ip: str) -> Dict[str, Any]:
 
 
 def _reverse_dns(ip: str, timeout: float = 5.0) -> Optional[str]:
-    """PTR lookup (uses system resolver)."""
     try:
-        # socket.gethostbyaddr is blocking; wrap in a thread timeout guard
         result: List[Optional[str]] = [None]
 
         def _worker():
@@ -386,7 +372,6 @@ def _reverse_dns(ip: str, timeout: float = 5.0) -> Optional[str]:
 
 def _forward_confirm(hostname: str, expected_ip: str,
                      timeout: float = 5.0) -> bool:
-    """Confirm hostname resolves back to the same IP (forward-confirmed rDNS)."""
     try:
         infos = socket.getaddrinfo(hostname, None, proto=socket.IPPROTO_TCP)
         return any(info[4][0] == expected_ip for info in infos)
@@ -395,10 +380,7 @@ def _forward_confirm(hostname: str, expected_ip: str,
 
 
 def _team_cymru_asn(ip: str) -> Dict[str, Any]:
-    """
-    Team Cymru ASN lookup via DNS TXT — no HTTP API, works for IPv4 + IPv6.
-    Returns {asn, asn_name, asn_country, asn_registry, asn_route, asn_description}.
-    """
+    """Team Cymru ASN lookup via DNS TXT — no HTTP API, works for IPv4 + IPv6."""
     out: Dict[str, Any] = {}
     if not _HAS_DNS:
         logger.debug("[ip] dnspython not installed — skipping Team Cymru")
@@ -458,13 +440,9 @@ def _team_cymru_asn(ip: str) -> Dict[str, Any]:
 
 
 def _rdap_lookup(ip: str, timeout: float = RDAP_TIMEOUT) -> Dict[str, Any]:
-    """
-    Query RDAP (official registry protocol) via rdap.org bootstrap.
-    No API key required — returns raw registry data.
-    """
+    """Query RDAP (official registry protocol) via rdap.org bootstrap."""
     out: Dict[str, Any] = {}
     try:
-        # rdap.org is the official IANA bootstrap
         r = requests.get(
             f"https://rdap.org/ip/{ip}",
             timeout=timeout,
@@ -478,7 +456,6 @@ def _rdap_lookup(ip: str, timeout: float = RDAP_TIMEOUT) -> Dict[str, Any]:
         out["rdap_name"]   = data.get("name")
         out["rdap_type"]   = data.get("type")
         out["rdap_country"] = data.get("country")
-        # Organization / description
         for ent in (data.get("entities") or [])[:3]:
             roles = ent.get("roles") or []
             vcard = ent.get("vcardArray") or []
@@ -495,7 +472,6 @@ def _rdap_lookup(ip: str, timeout: float = RDAP_TIMEOUT) -> Dict[str, Any]:
                     out.setdefault("rdap_entities", []).append({
                         "role": role, "name": name,
                     })
-        # Events (registration, last changed)
         for ev in (data.get("events") or [])[:4]:
             action = ev.get("eventAction")
             date   = ev.get("eventDate")
@@ -503,7 +479,6 @@ def _rdap_lookup(ip: str, timeout: float = RDAP_TIMEOUT) -> Dict[str, Any]:
                 out.setdefault("rdap_events", []).append({
                     "action": action, "date": date,
                 })
-        # Remarks
         for rem in (data.get("remarks") or [])[:2]:
             desc = rem.get("description") or []
             if desc:
@@ -513,7 +488,6 @@ def _rdap_lookup(ip: str, timeout: float = RDAP_TIMEOUT) -> Dict[str, Any]:
     return out
 
 
-# ── WHOIS raw port 43 (no HTTP API) ───────────────────────────────────────
 _WHOIS_SERVERS = {
     "arin":   "whois.arin.net",
     "ripe":   "whois.ripe.net",
@@ -524,10 +498,7 @@ _WHOIS_SERVERS = {
 
 
 def _whois_raw(ip: str, timeout: float = WHOIS_TIMEOUT) -> Dict[str, Any]:
-    """
-    Query WHOIS on TCP port 43 directly. Tries IANA referral first,
-    then falls back to well-known RIR servers.
-    """
+    """Query WHOIS on TCP port 43 directly. Tries IANA referral first."""
     out: Dict[str, Any] = {}
 
     def _query(server: str, query: str) -> Optional[str]:
@@ -555,7 +526,6 @@ def _whois_raw(ip: str, timeout: float = WHOIS_TIMEOUT) -> Dict[str, Any]:
             server = m.group(1).strip()
 
     if not server:
-        # Try each RIR until one responds with "NetRange" or "inetnum"
         for name, srv in _WHOIS_SERVERS.items():
             text = _query(srv, ip)
             if text and re.search(r"(NetRange|inetnum|inet6num|CIDR)", text, re.I):
@@ -564,7 +534,6 @@ def _whois_raw(ip: str, timeout: float = WHOIS_TIMEOUT) -> Dict[str, Any]:
 
     if text:
         out["whois_server"] = server
-        # Extract a few useful fields (informational)
         for field_name, pattern in (
             ("whois_netname",    r"^\s*NetName:\s*(.+)$"),
             ("whois_orgname",    r"^\s*OrgName:\s*(.+)$"),
@@ -581,10 +550,8 @@ def _whois_raw(ip: str, timeout: float = WHOIS_TIMEOUT) -> Dict[str, Any]:
     return out
 
 
-# ── DNSBL / RBL blacklist checks ──────────────────────────────────────────
 def _dnsbl_check(ip: str, zones: Optional[Dict[str, str]] = None,
                  timeout: float = DNSBL_TIMEOUT) -> Dict[str, Any]:
-    """Check IPv4 IP against public DNSBL zones. IPv6 skipped (not supported widely)."""
     out: Dict[str, Any] = {"listed": False, "results": []}
     if ":" in ip:
         out["skipped"] = "IPv6 not supported by most public DNSBLs"
@@ -597,7 +564,6 @@ def _dnsbl_check(ip: str, zones: Optional[Dict[str, str]] = None,
         try:
             ans = socket.gethostbyname_ex(fqdn)
             if ans and ans[2]:
-                # 127.0.0.x response indicates listing; x = reason code
                 for addr in ans[2]:
                     if addr.startswith("127."):
                         out["listed"] = True
@@ -614,10 +580,8 @@ def _dnsbl_check(ip: str, zones: Optional[Dict[str, str]] = None,
     return out
 
 
-# ── TCP reachability probe ────────────────────────────────────────────────
 def _tcp_probe(ip: str, ports: Tuple[int, ...] = (80, 443, 22, 21),
                timeout: float = TCP_PROBE_TIMEOUT) -> Dict[str, Any]:
-    """Probe common TCP ports to check reachability. Returns per-port status."""
     family = socket.AF_INET6 if ":" in ip else socket.AF_INET
     results: List[Dict[str, Any]] = []
     for port in ports:
@@ -641,10 +605,8 @@ def _tcp_probe(ip: str, ports: Tuple[int, ...] = (80, 443, 22, 21),
             "any_open": any(p["status"] == "open" for p in results)}
 
 
-# ── TLS certificate fetch ─────────────────────────────────────────────────
 def _tls_cert(ip: str, port: int = 443,
               timeout: float = TLS_TIMEOUT) -> Optional[Dict[str, Any]]:
-    """Fetch TLS certificate from the target (SNI disabled for raw IP)."""
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
@@ -670,7 +632,6 @@ def _tls_cert(ip: str, port: int = 443,
     return None
 
 
-# ── TOR exit node list (cached) ───────────────────────────────────────────
 _tor_cache: Dict[str, Any] = {"list": None, "ts": 0.0}
 _tor_lock = threading.Lock()
 
@@ -706,7 +667,6 @@ def _is_tor_exit(ip: str) -> Optional[bool]:
     return ip in exits
 
 
-# ── CDN / hosting detection ───────────────────────────────────────────────
 def _detect_cdn(asn: Optional[str], org: Optional[str]) -> Optional[str]:
     if asn and asn.upper() in CDN_ASNS:
         return CDN_ASNS[asn.upper()]
@@ -854,7 +814,6 @@ class CloudflareBypass:
             return None
 
     def get_json(self, url: str) -> Optional[Dict[str, Any]]:
-        """Fetch JSON via bypass chain. Returns parsed dict or None."""
         strategies: List[Tuple[str, Callable]] = []
         if _HAS_CURL_CFFI:
             strategies.append(("curl_cffi", self._fetch_curl_cffi))
@@ -1069,7 +1028,6 @@ class IPInfoIOProvider(GeoProvider):
 
 
 class IPApiIsProvider(GeoProvider):
-    """ipapi.is — free tier, no key required for basic lookups."""
     name = "ipapi.is"
     supports_ipv6 = True
     weight = PROVIDER_WEIGHTS["ipapi.is"]
@@ -1119,7 +1077,6 @@ class IPApiIsProvider(GeoProvider):
 
 
 class FreeIPAPIProvider(GeoProvider):
-    """freeipapi.com — free, no key, IPv4+IPv6."""
     name = "freeipapi.com"
     supports_ipv6 = True
     weight = PROVIDER_WEIGHTS["freeipapi.com"]
@@ -1154,22 +1111,7 @@ class FreeIPAPIProvider(GeoProvider):
 # MAIN LOOKUP CLASS
 # ═══════════════════════════════════════════════════════════════════════════
 class IPInfoLookup:
-    """
-    Enterprise IP & ASN intelligence scanner.
-
-    Args:
-        providers:        list of GeoProvider instances
-        include_ipinfo:   add ipinfo.io as fallback
-        ipinfo_token:     optional ipinfo.io token
-        cache_ttl:        TTL cache in seconds
-        timeout:          HTTP timeout
-        include_rdns:     perform reverse DNS
-        include_asn:      perform Team Cymru ASN lookup
-        include_local:    perform local analysis (RDAP, WHOIS, DNSBL, TCP, TLS)
-        include_threat:   check TOR exit nodes + CDN / hosting flags
-        use_cf_bypass:    use Cloudflare bypass engine
-        offline:          skip all external API providers
-    """
+    """Enterprise IP & ASN intelligence scanner."""
 
     def __init__(
         self,
@@ -1223,7 +1165,6 @@ class IPInfoLookup:
         except Exception:
             pass
 
-    # ── helpers ────────────────────────────────────────────────────────
     def _resolve_host(self, target: str) -> Optional[str]:
         try:
             for family in (socket.AF_INET, socket.AF_INET6):
@@ -1246,7 +1187,6 @@ class IPInfoLookup:
             return False
 
     def _merge_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Merge provider results using weight-based priority per field."""
         merged: Dict[str, Any] = {}
         field_weight: Dict[str, float] = {}
         providers_used: List[str] = []
@@ -1272,7 +1212,6 @@ class IPInfoLookup:
             )
         return merged
 
-    # ── local intelligence ────────────────────────────────────────────
     def _local_intel(self, ip: str) -> Dict[str, Any]:
         local: Dict[str, Any] = {}
         local.update(_classify_ip(ip) or {})
@@ -1284,10 +1223,8 @@ class IPInfoLookup:
         return local
 
     def _deep_intel(self, ip: str, asn: Optional[str]) -> Dict[str, Any]:
-        """RDAP + WHOIS + DNSBL + TCP + TLS (only in local/deep mode)."""
         deep: Dict[str, Any] = {}
 
-        # RDAP
         try:
             rdap = _rdap_lookup(ip, timeout=RDAP_TIMEOUT)
             if rdap:
@@ -1295,7 +1232,6 @@ class IPInfoLookup:
         except Exception:
             pass
 
-        # WHOIS
         try:
             whois_data = _whois_raw(ip, timeout=WHOIS_TIMEOUT)
             if whois_data:
@@ -1303,7 +1239,6 @@ class IPInfoLookup:
         except Exception:
             pass
 
-        # DNSBL
         if self.include_threat:
             try:
                 dnsbl = _dnsbl_check(ip, timeout=DNSBL_TIMEOUT)
@@ -1314,7 +1249,6 @@ class IPInfoLookup:
             except Exception:
                 pass
 
-        # TCP probe (common ports)
         if self.include_local:
             try:
                 tcp = _tcp_probe(ip, ports=(80, 443, 22, 21),
@@ -1323,7 +1257,6 @@ class IPInfoLookup:
             except Exception:
                 pass
 
-            # TLS cert (only if 443 open)
             if deep.get("tcp", {}).get("any_open"):
                 tls = _tls_cert(ip, port=443, timeout=TLS_TIMEOUT)
                 if tls:
@@ -1335,41 +1268,33 @@ class IPInfoLookup:
                       org: Optional[str]) -> Dict[str, Any]:
         flags: Dict[str, Any] = {}
         if self.include_threat:
-            # Tor exit
             try:
                 tor = _is_tor_exit(ip)
                 if tor is not None:
                     flags["is_tor"] = tor
             except Exception:
                 pass
-            # CDN
             cdn = _detect_cdn(asn, org)
             if cdn:
                 flags["cdn"] = cdn
-            # Hosting
             hosting = _is_hosting(asn)
             if hosting is not None:
                 flags["is_hosting"] = hosting
         return flags
 
-    # ── lookup pipeline ───────────────────────────────────────────────
     def lookup(self, target: str) -> Tuple[Dict[str, Any], Optional[str]]:
-        # 1. Resolve to IP
         ip = target if self._is_ip(target) else self._resolve_host(target)
         if not ip:
             return {}, f"Cannot resolve host: {target}"
 
-        # 2. Cache
         cached = self.cache.get(ip)
         if cached:
             logger.info("[ip] cache hit for %s", ip)
             return cached, None
 
-        # 3. Local classification (always)
         merged = self._local_intel(ip)
         merged["ip"] = ip
 
-        # 4. Team Cymru ASN (offline-capable — DNS TXT only)
         if self.include_asn:
             try:
                 asn_info = _team_cymru_asn(ip)
@@ -1378,7 +1303,6 @@ class IPInfoLookup:
             except Exception as e:
                 logger.debug("[ip] Team Cymru failed: %s", e)
 
-        # 5. API providers (skip in offline mode)
         provider_results: List[Dict[str, Any]] = []
         if not self.offline and self.providers:
             def _query(p: GeoProvider):
@@ -1407,7 +1331,6 @@ class IPInfoLookup:
                 else:
                     merged.setdefault(k, v)
 
-        # 6. Deep intelligence (RDAP / WHOIS / DNSBL / TCP / TLS)
         if self.include_local:
             try:
                 deep = self._deep_intel(ip, merged.get("asn"))
@@ -1417,26 +1340,20 @@ class IPInfoLookup:
             except Exception as e:
                 logger.debug("[ip] deep intel failed: %s", e)
 
-        # 7. Threat flags (Tor / CDN / hosting)
         flags = self._threat_flags(ip, merged.get("asn"), merged.get("org"))
         for k, v in flags.items():
             if v is not None:
                 merged.setdefault(k, v)
 
-        # 8. Provider field for top-line reporting
         if provider_results:
             top = max(provider_results,
                       key=lambda r: r.get("_provider_weight", 0.0))
             merged["provider"] = top.get("provider")
 
-        # 9. Strip internal keys
         clean = {k: v for k, v in merged.items() if not k.startswith("_")}
-
-        # 10. Cache + return
         self.cache.set(ip, clean)
         return clean, None
 
-    # ── orchestrator-compatible entry point ───────────────────────────
     def run(self, target: str, mode: str = "basic") -> Dict[str, Any]:
         start = time.time()
         data, error = self.lookup(target)
@@ -1471,21 +1388,7 @@ class IPInfoLookup:
 # PUBLIC ENTRY POINT (orchestrator compatible)
 # ═══════════════════════════════════════════════════════════════════════════
 def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
-    """
-    Scan an IP or hostname.
-
-    kwargs:
-        cache_ttl (int)      — cache TTL in seconds
-        include_rdns (bool)
-        include_asn (bool)
-        include_local (bool) — RDAP / WHOIS / DNSBL / TCP / TLS
-        include_threat (bool)— Tor / CDN / hosting flags
-        use_cf_bypass (bool) — enable Cloudflare bypass
-        offline (bool)       — skip external APIs
-        ipinfo_token (str)
-        timeout (float)
-        rate_limit (float)
-    """
+    """Scan an IP or hostname. Never raises — errors in result['error']."""
     scanner = IPInfoLookup(
         cache_ttl=int(kwargs.get("cache_ttl", DEFAULT_CACHE_TTL)),
         timeout=float(kwargs.get("timeout", DEFAULT_TIMEOUT)),
@@ -1499,6 +1402,15 @@ def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
         rate_limit=float(kwargs.get("rate_limit", DEFAULT_RATE_LIMIT)),
     )
     return scanner.run(target, mode)
+
+
+# ── Aliases: satisfy every slug terminal.py looks for ────────────────────
+ip_info          = run
+scan_ip_info     = run
+ipinfo           = run
+ip_info_scan     = run
+scan_ipinfo      = run
+ip_lookup        = run
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1576,10 +1488,35 @@ def scan_many(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SARIF EXPORT
+# SELF-CHECK — runtime diagnostic
+# ═══════════════════════════════════════════════════════════════════════════
+def self_check() -> Dict[str, Any]:
+    """Return diagnostic dict describing runtime capability."""
+    py = sys.version_info
+    return {
+        "module":         "modules.scan_ip_info",
+        "version":        __version__,
+        "author":         __author__,
+        "credit":         __credit__,
+        "python":         f"{py.major}.{py.minor}.{py.micro}",
+        "requests":       True,
+        "flask":          _HAS_FLASK,
+        "dnspython":      _HAS_DNS,
+        "curl_cffi":      _HAS_CURL_CFFI,
+        "cloudscraper":   _HAS_CLOUDSCRAPER,
+        "flaresolverr":   bool(FLARESOLVERR_URL),
+        "aliases":        ["run", "ip_info", "scan_ip_info", "ipinfo",
+                           "ip_info_scan", "scan_ipinfo", "ip_lookup"],
+        "endpoint":       "/api/ipinfo/scan" if _HAS_FLASK else None,
+        "ready":          _HAS_FLASK,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SARIF EXPORT — v5.1.0 hardened
 # ═══════════════════════════════════════════════════════════════════════════
 def to_sarif(result: Dict[str, Any]) -> Dict[str, Any]:
-    d = result.get("data", {}) or {}
+    d = result.get("data") or {}
     findings = []
     if d.get("is_tor"):
         findings.append({
@@ -1591,9 +1528,10 @@ def to_sarif(result: Dict[str, Any]) -> Dict[str, Any]:
         findings.append({
             "ruleId": "ip/abuse-listed",
             "level": "error",
-            "message": {"text": "IP is listed in a DNSBL blacklist"},
+            "message": {"text": "IP is flagged for abuse"},
         })
-    if d.get("dnsbl", {}).get("listed"):
+    dnsbl = d.get("dnsbl")
+    if isinstance(dnsbl, dict) and dnsbl.get("listed"):
         findings.append({
             "ruleId": "ip/dnsbl",
             "level": "error",
@@ -1610,6 +1548,93 @@ def to_sarif(result: Dict[str, Any]) -> Dict[str, Any]:
             "results": findings,
         }],
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FLASK BLUEPRINT  →  POST|GET /api/ipinfo/scan
+# ═══════════════════════════════════════════════════════════════════════════
+if _HAS_FLASK:
+    ipinfo_bp = Blueprint("ip_info", __name__)
+
+    @ipinfo_bp.route("/api/ipinfo/scan", methods=["POST", "GET"])
+    def _ipinfo_scan_endpoint():
+        """
+        Payload (JSON or query):
+            { "target": "1.1.1.1", "mode": "basic|expert",
+              "offline": false, "include_local": true,
+              "include_threat": true, "use_cf_bypass": true,
+              "timeout": 10, "cache_ttl": 3600,
+              "ipinfo_token": "<optional>" }
+
+        Response shape — matches terminal.py `_render_ipinfo()`:
+            {
+              "tool": "ip_info", "version": "5.1.0",
+              "target": "1.1.1.1",
+              "data": { ip, reverse_dns, country, city, asn, isp,
+                        is_proxy, is_hosting, is_tor, is_vpn, is_abuse,
+                        dnsbl: {listed, results: [...]}, rdap: {...},
+                        whois: {...}, tcp: {...}, tls: {...}, ... },
+              "error": null,
+              "metadata": { ... }
+            }
+        """
+        payload = request.get_json(silent=True) or {}
+        target = (payload.get("target")
+                  or request.args.get("target", "")).strip()
+        mode = (payload.get("mode")
+                or request.args.get("mode", "basic")).strip().lower()
+        if mode not in ("basic", "expert"):
+            mode = "basic"
+
+        def _bool_from(key, default):
+            v = payload.get(key, request.args.get(key))
+            if v is None:
+                return default
+            return str(v).lower() not in ("0", "false", "no", "off", "")
+
+        try:
+            timeout = float(payload.get("timeout")
+                            or request.args.get("timeout")
+                            or DEFAULT_TIMEOUT)
+        except (TypeError, ValueError):
+            timeout = DEFAULT_TIMEOUT
+
+        try:
+            cache_ttl = int(payload.get("cache_ttl")
+                            or request.args.get("cache_ttl")
+                            or DEFAULT_CACHE_TTL)
+        except (TypeError, ValueError):
+            cache_ttl = DEFAULT_CACHE_TTL
+
+        if not target:
+            return jsonify({
+                "tool": "ip_info", "version": __version__,
+                "target": "", "data": {}, "error": None,
+                "metadata": {},
+                "error": "missing 'target' parameter",
+            }), 400
+
+        result = run(
+            target,
+            mode=mode,
+            timeout=timeout,
+            cache_ttl=cache_ttl,
+            offline=_bool_from("offline", False),
+            include_local=_bool_from("include_local", mode == "expert"),
+            include_threat=_bool_from("include_threat", True),
+            include_rdns=_bool_from("include_rdns", True),
+            include_asn=_bool_from("include_asn", True),
+            use_cf_bypass=_bool_from("use_cf_bypass", True),
+            ipinfo_token=payload.get("ipinfo_token")
+                          or request.args.get("ipinfo_token"),
+        )
+        return jsonify(result)
+
+
+    def register_blueprint(app) -> None:
+        """Convenience helper for app.py: `register_blueprint(app)`."""
+        app.register_blueprint(ipinfo_bp)
+        logger.info("ip_info blueprint registered at /api/ipinfo/scan")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1631,12 +1656,11 @@ def _print_human(result: Dict[str, Any]) -> None:
         print(_colored(f"\n[FAIL] {result['target']}: {result['error']}", "red"))
         return
 
-    d = result["data"]
-    meta = result.get("metadata", {})
+    d = result.get("data") or {}
+    meta = result.get("metadata") or {}
 
     print(_colored(f"\n═══ IP & ASN Intelligence: {result['target']} ═══\n", "cyan"))
 
-    # ── Network core ────────────────────────────────────────────────
     print(_colored("Network", "yellow"))
     print(f"  IP           : {d.get('ip')}")
     if d.get("reverse_dns"):
@@ -1662,7 +1686,6 @@ def _print_human(result: Dict[str, Any]) -> None:
     if d.get("confidence"):
         print(f"  Confidence   : {d['confidence']}")
 
-    # ── Geo ─────────────────────────────────────────────────────────
     if d.get("country") or d.get("city"):
         print(_colored("\nGeolocation", "yellow"))
         loc = ", ".join(filter(None, [d.get("city"), d.get("region"),
@@ -1674,7 +1697,6 @@ def _print_human(result: Dict[str, Any]) -> None:
         if d.get("timezone"):
             print(f"  Timezone     : {d['timezone']}")
 
-    # ── ISP / Org ───────────────────────────────────────────────────
     if d.get("isp") or d.get("org"):
         print(_colored("\nISP / Organisation", "yellow"))
         if d.get("isp"): print(f"  ISP          : {d['isp']}")
@@ -1682,7 +1704,6 @@ def _print_human(result: Dict[str, Any]) -> None:
         if d.get("domain"): print(f"  Domain       : {d['domain']}")
         if d.get("type"):   print(f"  Type         : {d['type']}")
 
-    # ── Security flags ──────────────────────────────────────────────
     sec_keys = ["is_proxy", "is_hosting", "is_mobile", "is_tor", "is_vpn",
                 "is_abuse", "cdn"]
     sec_present = {k: d.get(k) for k in sec_keys if d.get(k) is not None}
@@ -1693,22 +1714,20 @@ def _print_human(result: Dict[str, Any]) -> None:
             color = "red" if v in (True, "true") else "green"
             print(f"  {label:<13}: " + _colored(str(v), color))
 
-    # ── DNSBL ───────────────────────────────────────────────────────
-    if d.get("dnsbl"):
-        bl = d["dnsbl"]
+    dnsbl = d.get("dnsbl")
+    if isinstance(dnsbl, dict):
         print(_colored("\nDNSBL / RBL", "yellow"))
-        if bl.get("skipped"):
-            print(f"  {bl['skipped']}")
-        elif bl.get("listed"):
-            print(_colored(f"  ⚠ LISTED on {len(bl['results'])} zone(s):", "red"))
-            for r in bl["results"]:
+        if dnsbl.get("skipped"):
+            print(f"  {dnsbl['skipped']}")
+        elif dnsbl.get("listed"):
+            print(_colored(f"  ⚠ LISTED on {len(dnsbl.get('results', []))} zone(s):", "red"))
+            for r in dnsbl.get("results", []):
                 print(f"    - {r['zone']} ({r['name']})")
         else:
             print(_colored("  ✓ Not listed on any checked zone", "green"))
 
-    # ── RDAP / WHOIS ────────────────────────────────────────────────
-    if d.get("rdap"):
-        rdap = d["rdap"]
+    rdap = d.get("rdap")
+    if isinstance(rdap, dict):
         print(_colored("\nRDAP", "yellow"))
         for k, label in (("rdap_handle", "Handle"), ("rdap_name", "Name"),
                          ("rdap_type", "Type"), ("rdap_country", "Country")):
@@ -1717,8 +1736,8 @@ def _print_human(result: Dict[str, Any]) -> None:
         for ev in rdap.get("rdap_events", []):
             print(f"  {ev['action']:<13}: {ev['date']}")
 
-    if d.get("whois"):
-        w = d["whois"]
+    w = d.get("whois")
+    if isinstance(w, dict):
         print(_colored("\nWHOIS", "yellow"))
         for k, label in (("whois_server", "Server"),
                          ("whois_netname", "Netname"),
@@ -1731,21 +1750,21 @@ def _print_human(result: Dict[str, Any]) -> None:
             if w.get(k):
                 print(f"  {label:<13}: {w[k]}")
 
-    # ── TCP / TLS ───────────────────────────────────────────────────
-    if d.get("tcp"):
+    tcp = d.get("tcp")
+    if isinstance(tcp, dict):
         print(_colored("\nTCP Reachability", "yellow"))
-        for p in d["tcp"].get("probes", []):
+        for p in tcp.get("probes", []):
             status_color = {"open": "green", "closed": "red",
                             "filtered": "yellow"}.get(p["status"], "dim")
             lat = f" ({p['latency_ms']}ms)" if "latency_ms" in p else ""
             print(f"  Port {p['port']:<5} : " +
                   _colored(p["status"].upper() + lat, status_color))
 
-    if d.get("tls"):
-        tls = d["tls"]
+    tls = d.get("tls")
+    if isinstance(tls, dict):
         print(_colored("\nTLS Certificate", "yellow"))
-        subj = tls.get("subject", {}).get("commonName", "-")
-        iss = tls.get("issuer", {}).get("organizationName", "-")
+        subj = (tls.get("subject") or {}).get("commonName", "-")
+        iss = (tls.get("issuer") or {}).get("organizationName", "-")
         print(f"  Subject      : {subj}")
         print(f"  Issuer       : {iss}")
         if tls.get("protocol"):
@@ -1753,7 +1772,6 @@ def _print_human(result: Dict[str, Any]) -> None:
         if tls.get("not_after"):
             print(f"  Expires      : {tls['not_after']}")
 
-    # ── Metadata ────────────────────────────────────────────────────
     print(_colored("\nMetadata", "yellow"))
     for k in ("timestamp", "elapsed_seconds", "mode", "offline",
               "resolved_ip", "providers_tried"):
@@ -1769,7 +1787,7 @@ def _main() -> int:
         description=f"Oxysintx IP & ASN Intelligence v{__version__}",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("targets", nargs="+",
+    parser.add_argument("targets", nargs="*",
                         help="IP addresses or hostnames (one or more)")
     parser.add_argument("--mode", choices=["basic", "expert"], default="basic")
     parser.add_argument("--offline", action="store_true",
@@ -1793,12 +1811,26 @@ def _main() -> int:
     parser.add_argument("--sarif", action="store_true",
                         help="SARIF output (single target only)")
     parser.add_argument("--output", help="Write JSON to file")
+    parser.add_argument("--self-check", action="store_true",
+                        help="Print runtime diagnostics and exit")
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
+    if args.self_check or not args.targets:
+        print(_json.dumps(self_check(), indent=2))
+        if not args.targets and not args.self_check:
+            print("\nTip: pass at least one target, e.g. `1.1.1.1`.")
+        return 0
+
     if args.verbose:
         logger.setLevel(logging.DEBUG)
+
+    # v5.1.0 — cleaned include_local logic (was precedence-ambiguous)
+    include_local = (not args.no_local) if args.mode == "expert" else False
+    if args.mode == "basic" and not args.no_local:
+        # Allow basic mode to still include TCP/TLS deep intel via explicit flag
+        include_local = False
 
     results = scan_many(
         args.targets,
@@ -1808,7 +1840,7 @@ def _main() -> int:
         timeout=args.timeout,
         include_rdns=not args.no_rdns,
         include_asn=not args.no_asn,
-        include_local=not args.no_local and args.mode == "expert" or not args.no_local,
+        include_local=include_local,
         include_threat=not args.no_threat,
         use_cf_bypass=not args.no_cf_bypass,
         offline=args.offline,
