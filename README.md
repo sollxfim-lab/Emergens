@@ -1,83 +1,156 @@
-Emergens — Security Testing & Exploiter Dashboard
-https://img.shields.io/badge/version-4.4.2-blue?style=for-the-badge
-https://img.shields.io/badge/python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white
-https://img.shields.io/badge/flask-runtime-000000?style=for-the-badge&logo=flask&logoColor=white
-https://img.shields.io/badge/license-authorized%20use%20only-red?style=for-the-badge
+Emergens
+<p align="center"> <img src="templates/favicon.svg" alt="Emergens" width="80" height="80"> </p><h1 align="center">Emergens</h1><p align="center"> <strong>Field Intelligence Console — Passive Reconnaissance & Authorized Security Testing</strong> </p><p align="center"> <a href="#quick-start"><img src="https://img.shields.io/badge/quick%20start-2%20minutes-blue?style=for-the-badge" alt="Quick Start"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-authorized%20use%20only-red?style=for-the-badge" alt="License"></a> <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-4.4.2-blue?style=for-the-badge" alt="Version"></a> <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a> <a href="https://flask.palletsprojects.com"><img src="https://img.shields.io/badge/flask-runtime-000000?style=for-the-badge&logo=flask&logoColor=white" alt="Flask"></a> </p><p align="center"> <a href="#features">Features</a> · <a href="#quick-start">Quick Start</a> · <a href="#architecture">Architecture</a> · <a href="#modules">Modules</a> · <a href="#dashboard">Dashboard</a> · <a href="#extending">Extending</a> · <a href="#faq">FAQ</a> · <a href="#license">License</a> </p>
+[!WARNING]
+Authorized testing only. Use of this tool is permitted only when you have obtained explicit authorization from the system owner and only for lawful purposes, such as authorized security testing or use on websites you own or control. The creator and contributors provide this tool "as is," without warranties of any kind, and assume no liability for any misuse, damage, loss, service interruption, legal consequence, or other outcome arising from its use. You are solely responsible for obtaining proper authorization and complying with all applicable laws and regulations. By using this tool, you accept full responsibility for your actions.
 
-Authorization notice — Use of this tool is permitted only when you have obtained explicit authorization from the system owner and only for lawful purposes, such as authorized security testing or use on websites you own or control. The creator and contributors provide this tool "as is," without warranties of any kind, and assume no liability for any misuse, damage, loss, service interruption, legal consequence, or other outcome arising from its use. You are solely responsible for obtaining proper authorization and complying with all applicable laws and regulations. By using this tool, you accept full responsibility for your actions.
+Why Emergens
+Emergens is a modular, plugin-driven field intelligence console for authorized reconnaissance and security testing. It bundles passive enumeration (WHOIS, DNS, TLS, HTTP headers), active web scanning (SQLi, XSS, LFI/RFI, directory fuzzing), an MHDDoS control panel, Telegram integration, a global chat, an AI assistant, and a full utility toolset — all behind a role-based authentication layer with zero public registration.
 
-A modular, plugin-driven field intelligence console for authorized reconnaissance and security testing. Passive enumeration, active web scanners, an MHDDoS control panel, Telegram integration, a global chat, an AI assistant, and a full utility toolset — all behind a role-based authentication layer with no public registration.
+Built for security teams who need one console instead of ten CLI tools.
 
-Table of contents
-Highlights
+What makes it different	
+Plugin backend	Drop a .py file into modules/ — it auto-registers. No edits to app.py.
+Server-side RBAC	Every endpoint verifies the role. Viewer write attempts get HTTP 403, not just a hidden button.
+Self-contained UI	All CSS and JS ship under templates/. No bundler. No node_modules. No build step.
+Intrusive-tool gating	Active scanners are excluded from automatic basic-mode runs. A Quick Scan never fires payloads.
+Live SSE streaming	Long-running scans stream progress in real time.
+Streamlined first run	python app.py provisions the owner account, prints the password once, and serves on port 8080.
+Features
+<details open> <summary><strong>Reconnaissance — 11 passive modules</strong></summary>
+#	Module	Returns
+1	WHOIS	Registrar, creation / expiry dates, name servers, organization, status flags
+2	DNS Records	A · AAAA · MX · NS · CNAME · SOA · TXT with TTLs
+3	SSL / TLS Inspector	Full chain, key algorithm, expiry countdown, SANs, OCSP stapling, cipher grade A+–F
+4	HTTP Security Headers	30+ headers, CSP analyzer, cookie audit, OWASP / PCI-DSS / HIPAA / SOC2 mapping
+5	Subdomain Discovery	Certificate Transparency logs, DNS brute-force, passive OSINT
+6	Technology Fingerprint	Server, framework, CMS, CDN, JS libraries, favicon hash
+7	IP / ASN Info	Geolocation, ISP, ASN, hosting provider, reverse DNS, threat flags
+8	Email Security	SPF, DKIM, DMARC parser with plain-language verdict
+9	Port Scan	Wordlist-driven TCP — 1000-port basic cap, full-range expert
+10	Connectivity Check	Multi-probe latency, packet loss, min / avg / max
+11	LFI / RFI Scanner	Local and Remote File Inclusion — see below
+</details><details> <summary><strong>Exploit Suite — 6 active scanners</strong></summary>
+Module	Purpose
+Dirfuzz	Directory and file discovery
+SQLi Engine	Lightweight SQL injection — error / boolean / time / union
+SQLMap	Comprehensive SQL injection
+XSS Exploiter	Reflected XSS with WAF bypass
+XSS (lightweight)	Fast XSS probe — 400 payloads
+Sniper	Combined audit — Dirfuzz + XSS + takeover enumeration
+Each supports live SSE streaming to the console.
 
+</details><details> <summary><strong>Operations and integrations</strong></summary>
+Feature	Description
+MHDDoS Control Panel	External subprocess manager — 27 Layer 7 methods, 22 Layer 4 methods
+Telegram Bot	/scan, /history, /status, /help — Public or Owner-only mode
+Global Chat	Shared real-time conversation, owner-lockable
+AI Assistant	Bring-your-own Anthropic key, claude-sonnet-5
+Emergens DB	Leak-data search across userdata/*.json
+Tools Hub	Brat Generator, Reels, OSINT, Anime, WiFi, IP Check, Music, Downloader, MCTOOLS
+Live Console	CPU · RAM · Disk · streamed logs with syntax coloring
+Theme Studio	Presets, custom colors, brand name, logo, custom page title
+i18n	English and Bahasa Malaysia
+</details>
 Quick start
+Requirements
+Python 3.10+
 
-Roles and permissions
+A Unix-like shell (macOS, Linux, WSL) or PowerShell on Windows
 
-Reconnaissance modules
+Optional: an Anthropic API key for the AI Assistant
 
-Exploit Suite
-
-LFI / RFI Scanner
-
-MHDDoS Control Panel
-
-Emergens DB — leak data search
-
-Integrations
-
-Tools Hub
-
-Dashboard and UX
-
-Project structure
-
-Adding your own tool
-
-Version manifest
-
-Security notes
-
-Changelog
-
-Highlights
-Zero public registration	Accounts are created by an Owner only. The default Yanxzyx owner is provisioned on first run and the password is shown once.
-Server-side role enforcement	Every API endpoint verifies the role. Viewer write attempts receive HTTP 403 regardless of what the UI hides.
-Modular plugin backend	Drop a .py file into modules/ and it auto-registers. No edits to app.py or scan_orchestrator.py needed.
-Self-contained UI	All CSS and JS live under templates/. No build step, no bundler, no node_modules.
-Intrusive-tool gating	LFI/RFI, XSS, SQLMap, SQLi, Dirfuzz, and Sniper are excluded from the basic-mode auto fallback — a dashboard Quick Scan can never fire them without an explicit selection.
-Live SSE streaming	Long-running scans stream progress to the console in real time.
-Two languages	English and Bahasa Malaysia, switchable at runtime.
-Dark / light theme + Theme Studio	Presets, custom accent colors, brand name, logo, custom page title.
-Quick start
+Install
 bash
 git clone <repo-url> emergens
 cd emergens
 
 python -m venv venv
-source venv/bin/activate                # Windows: venv\Scripts\activate
+source venv/bin/activate              # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Optional — enables the AI Assistant
 cp .env.example .env
-# Edit .env and set ANTHROPIC_API_KEY=sk-ant-...
-
-python app.py
-First run — the console auto-provisions the Yanxzyx account with the Owner role. The password is printed once in the terminal. Save it — it is not shown again.
-
-Rotate the password at any time:
-
+# Optional — edit .env and set ANTHROPIC_API_KEY=sk-ant-...
+Run
 bash
-python app.py reset-password
-Default port is 8080. Override with the PORT environment variable:
+python app.py
+First run — the console auto-provisions the Yanxzyx account with the Owner role. The password prints once. Save it.
+
+Default port is 8080. Override it with the PORT environment variable:
 
 bash
 PORT=9090 python app.py
 Open http://localhost:8080 and log in.
 
+Rotate the owner password
+bash
+python app.py reset-password
+Docker (optional)
+bash
+docker run -d \
+  --name emergens \
+  -p 8080:8080 \
+  -e PORT=8080 \
+  -v $(pwd)/userdata:/app/userdata \
+  -v $(pwd)/data:/app/data \
+  emergens:latest
 Non-interactive stdin (Docker, CI, piped installs) automatically skips the port prompt and uses the default — docker run -i never hangs.
 
+Architecture
+text
+┌─────────────────────────────────────────────────────────────────┐
+│                       EMERGENS ARCHITECTURE                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   BROWSER                                                       │
+│   ├── templates/dashboard.html   ← shell + inline i18n          │
+│   ├── templates/css/style.css    ← 56 sections, design tokens   │
+│   └── templates/js/              ← script.js + 3 addons         │
+│                                                                 │
+│        │ HTTPS / SSE                                            │
+│        ▼                                                        │
+│                                                                 │
+│   FLASK (app.py)                                                │
+│   ├── auth/          SQLite users + RBAC                        │
+│   ├── core/          logger · history · system monitor          │
+│   └── ai_chat/       Anthropic wrapper                          │
+│                                                                 │
+│        │ plugin discovery                                       │
+│        ▼                                                        │
+│                                                                 │
+│   SCAN ORCHESTRATOR                                             │
+│   ├── registry       walks modules/ on import                   │
+│   ├── dispatcher     mode-string vs options-dict                │
+│   └── jobs           bounded semaphore · cancellation · SSE     │
+│                                                                 │
+│        │                                                         │
+│        ▼                                                         │
+│                                                                 │
+│   MODULES/            one file per tool — auto-registered       │
+│   ├── recon/          whois · dns · ssl · headers · ip · …      │
+│   ├── exploit/        dirfuzz · sql_map · xss · sniper · lfi_rfi│
+│   ├── integrations/   telegram · search_user · scan_school      │
+│   └── fixes.py        runtime patches                           │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+Request flow for a scan
+text
+Browser           app.py              Orchestrator          Module
+   │                 │                      │                  │
+   │  POST /api/scan/start                 │                  │
+   ├────────────────►│                      │                  │
+   │                 │  start_scan()        │                  │
+   │                 ├─────────────────────►│                  │
+   │                 │                      │  discover_tools  │
+   │   { job_id }    │                      │  ──────────────► │
+   │◄────────────────┤                      │                  │
+   │                 │                      │                  │
+   │  GET /api/scan/<id>/status            │   run(target)    │
+   ├────────────────►│  get_progress()      ├─────────────────►│
+   │                 ├─────────────────────►│                  │
+   │   { percent }   │                      │   { data }       │
+   │◄────────────────┤◄─────────────────────┤◄─────────────────┤
+   │                 │                      │                  │
+   │   repeat until status = "completed"   │                  │
 Roles and permissions
 Role	Tools (scan / history / chat)	Delete / Clear	Settings	Theme Studio
 Owner	Yes	Yes	Yes	Yes
@@ -89,105 +162,51 @@ Analyst — full scan, history, and chat access. Cannot create accounts or chang
 
 Viewer — read-only. Start Scan, Quick Scan, delete, and AI Chat send/clear are blocked server-side, not just hidden in the UI.
 
-Reconnaissance modules
-Eleven passive, read-only modules. Equivalent to what whois, dig, openssl s_client, securityheaders.com, or crt.sh would return. No exploits are sent.
-
-#	Module	Description
-1	WHOIS	Registrar, creation and expiry dates, name servers, organization, status flags.
-2	DNS Records	A / AAAA / MX / NS / CNAME / SOA / TXT with TTLs.
-3	SSL/TLS Inspector	Full chain, key algorithm, expiry countdown, SANs, OCSP stapling, cipher strength, A+–F grade.
-4	HTTP Security Headers	30+ headers, CSP analyzer, cookie audit, OWASP / PCI-DSS / HIPAA / SOC2 mapping, Cloudflare bypass.
-5	Subdomain Discovery	Certificate Transparency logs, DNS brute-force, passive OSINT.
-6	Technology Fingerprint	Server, framework, CMS, CDN, JS libraries, favicon hash, multi-path probing.
-7	IP / ASN Info	Geolocation, ISP, ASN, hosting provider, reverse DNS, threat flags.
-8	Email Security	SPF, DKIM, DMARC parser with plain-language verdict.
-9	Port Scan	Wordlist-driven TCP scanner — 1000-port basic cap, full-range expert mode.
-10	Connectivity Check	Multi-probe latency, packet loss, min / avg / max.
-11	LFI / RFI Scanner	Local and Remote File Inclusion — see below.
-Exploit Suite
-Active scanners — run only against authorized targets. Each supports live SSE streaming.
-
-Module	Purpose	Techniques
-Dirfuzz	Directory and file discovery	Wordlist-driven, tunable concurrency
-SQLi Engine	Lightweight SQL injection	error / boolean / time / union — up to 15 params in expert mode
-SQLMap	Comprehensive SQLi	All SQLMap techniques, tunable threads and duration
-XSS Exploiter	Reflected XSS	Wordlist-based, WAF bypass
-XSS (lightweight)	Fast XSS probe	400 payloads, optional mutation
-Sniper	Combined audit	Chains Dirfuzz + XSS + takeover enumeration under one budget
-Every module respects --max-duration, --rate-limit, and --concurrency. Wordlists are exposed via /api/<module>/wordlists and refreshed with POST /api/<module>/wordlists/sync.
-
+Modules
 LFI / RFI Scanner
-Nation-grade file inclusion scanner with ~200 curated payloads across:
+Nation-grade file inclusion scanner with ~200 curated payloads.
 
-Linux sensitive files — /etc/passwd, /etc/shadow, /etc/hosts, /proc/self/environ, /proc/self/cmdline, Apache / Nginx / auth logs, SSH keys, .bash_history.
+Coverage
 
-Windows sensitive files — win.ini, boot.ini, system.ini, web.config, sysprep.inf, system32\drivers\etc\hosts.
+Linux — /etc/passwd, /etc/shadow, /etc/hosts, /proc/self/environ, /proc/self/cmdline, Apache / Nginx / auth logs, SSH keys, .bash_history
 
-Traversal styles — ../, ..%2f, %2e%2e%2f, ..%252f, ....//, ..%c0%af (overlong UTF-8), ..\ (Windows).
+Windows — win.ini, boot.ini, system.ini, web.config, sysprep.inf, system32\drivers\etc\hosts
 
-PHP wrappers — php://filter (base64 / rot13 / zlib / iconv chains), data://, expect://, zip://, phar://, php://input.
+Traversal styles — ../, ..%2f, %2e%2e%2f, ..%252f, ....//, ..%c0%af (overlong UTF-8), ..\
 
-RFI — http://, https://, //, ftp://, \\smb, data://, plus out-of-band callback support via --callback-url.
+PHP wrappers — php://filter (base64 / rot13 / zlib / iconv), data://, expect://, zip://, phar://, php://input
+
+RFI — http://, https://, //, ftp://, \\smb, data://, plus out-of-band callback
 
 Detection signals
-Signature match on response body
 
-Base64-decoded PHP source disclosure
-
-PHP error delta
-
-Content-type flip
-
-Body-length divergence
-
+Signal	Weight
+Signature match on body	High
+Base64-decoded PHP source disclosure	High
+PHP error delta	Medium
+Content-type flip	Low
+Body-length divergence	Low
 Every finding is scored 0–100 for confidence and tagged critical / high / medium / low.
 
-Modes
-basic — approximately 70 payloads, fast.
+Modes — basic (~70 payloads, fast) and expert (~200 payloads, exhaustive).
 
-expert — approximately 200 payloads, exhaustive.
-
-Dashboard output
-Dedicated result card with:
-
-Six KPIs — Findings · Params · Payloads · Tests · Requests · Duration
-
-Clickable severity filter
-
-Per-finding confidence bars
-
-Collapsible payload and excerpt blocks (so multi-kilobyte Cloudflare challenges never stretch the card)
-
-Collapsible params drawer
+Dashboard output — Six KPIs · clickable severity filter · per-finding confidence bars · collapsible payload and excerpt blocks · collapsible params drawer.
 
 CLI
+
 bash
 python3 -m modules.lfi_rfi http://target/page.php?file=x
 python3 -m modules.lfi_rfi http://target/ --mode expert --json
 python3 -m modules.lfi_rfi --self-check
 python3 -m modules.lfi_rfi --list-payloads
-MHDDoS Control Panel
-The MHDDoS engine runs as an external subprocess managed by app.py.
-
-Layer 7 methods — GET, POST, HEAD, CFB, CFBUAM, BYPASS, OVH, STRESS, DYN, SLOW, NULL, COOKIE, PPS, EVEN, GSB, DGB, AVB, APACHE, XMLRPC, BOT, BOMB, DOWNLOADER, KILLER, TOR, RHEX, STOMP.
-
-Layer 4 methods — TCP, UDP, SYN, VSE, MINECRAFT, MCBOT, CONNECTION, CPS, FIVEM, FIVEM-TOKEN, TS3, MCPE, ICMP, OVH-UDP, MEM, NTP, DNS, ARD, CLDAP, CHAR, RDP.
-
-Reflector support — MEM / NTP / DNS / ARD / CLDAP / CHAR / RDP accept a reflector file.
-
-Proxy rotation — proxy file selector, proxy type, RPC index.
-
-Live monitoring — running attacks, per-attack status, 50-entry history, stop and stop-all.
-
-Use only against systems you own or are authorized to test.
-
-Emergens DB — leak data search
+Emergens DB — Leak data search
 A private lookup tool for JSON datasets placed in userdata/. Designed for internal OSINT research and data analysis during authorized testing.
 
-Supported JSON layouts
-School structure — school, classes, students arrays.
+Supported layouts
 
-Legacy flat records — nama_penuh or name fields.
+School structure — school, classes, students arrays
+
+Legacy flat records — nama_penuh or name fields
 
 json
 {
@@ -209,78 +228,22 @@ json
 }
 The backend flattens this structure into individual records before searching, so you can query by any student detail and get full context back.
 
-Searchable fields
-Full name · IC number · Class name · Student number · School name — all case-insensitive.
+Searchable fields — Full name · IC number · Class name · Student number · School name (case-insensitive).
 
-Access
-Open http://localhost:8080/Emergens_DB.html. The page verifies your session before showing content and redirects to /login.html if invalid.
+Access — http://localhost:8080/Emergens_DB.html. The page verifies your session before showing content.
 
-Integrations
-Telegram Bot
-Command Emergens from any Telegram client.
-
-Commands — /start, /scan <domain>, /history, /status, /help.
-
-Modes — Public (any chat) or Owner-only (restricted to the configured Owner Chat ID).
-
-Per-chat registry — every chat that has sent /start is listed with its Chat ID.
-
-Broadcast — one message to every registered chat.
-
-Auto-restart — the bot restarts on every server boot if credentials are stored.
-
-Setup: create a bot via @BotFather, paste the token and username into Telegram Bot in the sidebar, optionally set your Chat ID (via @userinfobot) to lock it to Owner-only mode, and press Connect Bot.
-
-Global Chat
-Every signed-in account sees the same real-time conversation. Tap any name to view that user's profile (avatar, role). Owners can lock chat — non-owners then see a locked banner and are blocked from sending.
-
-AI Assistant
-Bring-your-own Anthropic API key. Set ANTHROPIC_API_KEY in .env; the console uses claude-sonnet-5. Chat history is stored server-side and can be cleared at any time.
-
-Prayer times (Waktu Solat)
-Live prayer times from the Aladhan API for Malaysia (JAKIM method) and Indonesia (Kemenag method). Cross-check against official sources for compliance.
-
-Network traffic
-Inbound — real request counter, sampled every few seconds from /api/system/stats.
-
-Outbound — every fetch() the dashboard itself issues, bucketed into a 60-second rolling window.
-
-Both rendered as SVG spark-lines with hover tooltips.
-
-Tools Hub
-A floating toolbox accessible from the sidebar's Tools entry. Each tool opens in a fullscreen workspace inside the hub modal.
-
-Tool	Purpose
-Brat Generator	Brat-style cover generator — offline canvas renderer, optional remote API.
-Reels	TikTok keyword video search with in-console preview.
-OSINT	Username / email / number lookup across configured sources.
-Anime	OtakOtaku search — anime, characters, articles.
-WiFi Scanner	Honest network info panel — shows what browsers are permitted to read (connection type, approximate location).
-IP Check	Geolocate any IP or domain via ipwho.is; "Check My IP" for your own.
-Music Downloader	Apple Music search + direct-audio fetch (when configured).
-Downloader	TikTok watermark-free fetch / Pinterest image search.
-MCTOOLS	MCPEDL search for Minecraft skins, mods, shaders, texture packs.
-Quick Access	Reserved for user-added quick links.
-Every tool endpoint is a public third-party API consumed by the browser. When an endpoint is not configured or returns an error, the tool shows an honest error rather than fabricated data.
-
-Dashboard and UX
+Dashboard
 Theme Studio (Owner-only)
 Presets · Custom primary and secondary accent colors · Brand name · Custom page title · Custom logo (upload or link) · AI provider override · Auto-open console after scans.
 
-Sidebar customizer (Preferences)
+Sidebar customizer
 Accent color (7 presets) · Sidebar style (Solid / Glass / Minimal) · Show or hide navigation labels · Default-open state.
 
-Display overrides
-Auto / Phone / Laptop layout modes · Detected device and battery level · Language toggle (English / Bahasa Malaysia).
-
 Quick Menu
-A draggable floating action button in the bottom-right corner. Click to open a radial menu with shortcuts to Basic Scan, Expert Scan, History, Console, AI Chat, Telegram, and any custom links you add. Up to 5 user links can be pinned. Long-press a custom item to remove it.
+A draggable floating action button in the bottom-right. Opens a radial menu with shortcuts to Basic Scan, Expert Scan, History, Console, AI Chat, Telegram, and any custom links you add. Up to 5 user links can be pinned.
 
 Floating windows
-Every Quick Menu action opens a draggable, resizable, minimizable popup. Windows remember position and size per browser. Minimized windows dock to the bottom-left corner.
-
-Notes
-A local-only scratchpad that auto-saves to localStorage on input. No server round-trip.
+Every Quick Menu action opens a draggable, resizable, minimizable popup. Windows remember position and size per browser.
 
 Profile
 Avatar upload or link · Scan count · API keys · Telegram chats · Session time · Current theme and storage mode · Sign out.
@@ -288,8 +251,8 @@ Avatar upload or link · Scan count · API keys · Telegram chats · Session tim
 Project structure
 text
 emergens/
-├── app.py                        # Flask routing. Modular backend.
-├── config.py                     # Paths, secrets, .env loader.
+├── app.py                        # Flask routing — modular backend
+├── config.py                     # Paths, secrets, .env loader
 ├── requirements.txt
 ├── .env.example
 │
@@ -299,14 +262,14 @@ emergens/
 │
 ├── core/                         # Shared infrastructure
 │   ├── logger_setup.py
-│   ├── history_store.py          # SQLite history
+│   ├── history_store.py
 │   └── system_monitor.py
 │
-├── modules/                      # Plugin directory — one file per tool
+├── modules/                      # Plugin directory
 │   ├── scan_orchestrator.py      # Job manager + module discovery
-│   ├── fixes.py                  # Runtime patches (port_scan hardening)
+│   ├── fixes.py                  # Runtime patches
 │   │
-│   ├── whois_lookup.py
+│   ├── whois_lookup.py           # Reconnaissance
 │   ├── dns_lookup.py
 │   ├── ssl_check.py
 │   ├── headers_check.py
@@ -316,7 +279,7 @@ emergens/
 │   ├── email_security.py
 │   ├── port_scan.py
 │   ├── connectivity_check.py
-│   ├── lfi_rfi.py                # Local / Remote File Inclusion scanner
+│   ├── lfi_rfi.py                # LFI / RFI scanner
 │   │
 │   ├── dirfuzz.py                # Exploit Suite
 │   ├── sqli_engine.py
@@ -325,16 +288,16 @@ emergens/
 │   ├── xss.py
 │   ├── sniper.py
 │   │
-│   ├── scan_apikey.py            # Secret and API-key discovery
-│   ├── scan_school.py            # School search backend
-│   ├── search_user.py            # Emergens DB — leak data search
+│   ├── scan_apikey.py            # Secret & API-key discovery
+│   ├── scan_school.py
+│   ├── search_user.py            # Emergens DB
 │   ├── source_viewer.py          # VS Code-style source fetch
-│   ├── git_scraper_wordlist.py   # Wordlist sync from public repos
-│   ├── telegram.py               # Telegram bot bridge
-│   ├── downsea.py                # Downsea blueprint
-│   └── analytic_manager.py       # Exploit repository and analytics
+│   ├── git_scraper_wordlist.py
+│   ├── telegram.py
+│   ├── downsea.py
+│   └── analytic_manager.py
 │
-├── ai_chat/                      # Anthropic wrapper
+├── ai_chat/
 │   └── chat_handler.py
 │
 ├── userdata/                     # JSON datasets for Emergens DB
@@ -358,16 +321,16 @@ emergens/
     ├── terms.html
     │
     ├── css/
-    │   └── style.css             # Single stylesheet
+    │   └── style.css             # 56 sections, design tokens
     │
     └── js/
         ├── script.js             # Core dashboard logic
-        ├── script2.js            # LFI/RFI renderer addon
+        ├── script2.js            # LFI / RFI renderer addon
         ├── app-mh5783.js         # MHDDoS Control panel
         └── app-ex3bve.js         # Exploit Suite panel
 All CSS and JavaScript are served from templates/ — there is no static/ directory. The only external runtime dependencies are the Google Fonts stylesheet and the Font Awesome CDN, both loaded from dashboard.html's <head>.
 
-Adding your own tool
+Extending
 Create a file in modules/. Minimum viable shape:
 
 python
@@ -380,7 +343,6 @@ TOOL_INFO = {
     "author": "YourName",
 }
 
-# Optional but recommended
 TOOL_KIND    = "scanner"   # a non-scanner kind excludes the module
 IS_SCAN_TOOL = True        # set False to keep it out of the registry
 
@@ -400,6 +362,7 @@ TOOL_KIND	Filter — non-scanner kinds are excluded
 IS_SCAN_TOOL	Hard on/off switch
 run_streaming(target, options, cancel_event)	SSE streaming support
 to_sarif(result)	SARIF export for CI integration
+[!IMPORTANT]
 If your module is intrusive — sends payloads, probes for injection, makes outbound requests beyond passive recon — add its name to _INTRUSIVE_TOOLS in scan_orchestrator.py. This excludes it from the automatic basic-mode fallback so a dashboard Quick Scan never fires it without an explicit selection.
 
 Version manifest
@@ -425,6 +388,34 @@ javascript
 // Browser console
 window.LfiRfiRenderer.selfCheck()
 // { version: "1.1.0", ... }
+FAQ
+<details> <summary><strong>Why is the default port 8080?</strong></summary>
+Port 8080 is the conventional unprivileged HTTP alternative to 80. It does not require root, is not blocked by most corporate proxies, and does not collide with development servers that commonly bind to 3000, 5000, or 8000. Override it with the PORT environment variable.
+
+</details><details> <summary><strong>How do I reset the owner password?</strong></summary>
+bash
+python app.py reset-password
+This generates a new random password for Yanxzyx while keeping the Owner role. The old password stops working immediately.
+
+</details><details> <summary><strong>Why does the dashboard say "not secure" in the browser bar?</strong></summary>
+TLS has not been configured. Before exposing the console to the internet, run it behind a reverse proxy (Nginx, Caddy, Traefik) with a valid certificate, and set SESSION_COOKIE_SECURE=1.
+
+</details><details> <summary><strong>Why is <code>lfi_rfi</code> excluded from Quick Scan?</strong></summary>
+LFI/RFI is an active intrusion technique — it sends traversal payloads and probes for inclusion. Basic mode is deliberately limited to passive reconnaissance. The scanner remains selectable from the Security Testing carousel in expert mode.
+
+</details><details> <summary><strong>How do I add a new module?</strong></summary>
+Drop a .py file in modules/ that exposes a callable run(target, mode, **kwargs). See Extending for the full contract. No edits to app.py or scan_orchestrator.py required.
+
+</details><details> <summary><strong>Where is the database?</strong></summary>
+Users and history are stored in SQLite files under userdata/ and data/. Back up those directories to preserve state.
+
+</details><details> <summary><strong>The AI Assistant doesn't reply.</strong></summary>
+Set ANTHROPIC_API_KEY in .env. Without it the assistant endpoint returns an error rather than fabricating a response.
+
+</details><details> <summary><strong>Can I use Emergens against a domain I don't own?</strong></summary>
+Only with explicit written authorization — a signed penetration-test agreement or an active bug-bounty program that names the domain in scope. Running scans against infrastructure without permission may violate computer-misuse laws in your jurisdiction, even when every module used is purely passive.
+
+</details>
 Security notes
 Password storage — Werkzeug hashes with per-user salt. No plaintext anywhere.
 
@@ -438,23 +429,21 @@ Runtime patches — modules/fixes.py hard-caps basic port scans at 1000 ports so
 
 Intrusive-tool gating — LFI/RFI, XSS, SQLMap, SQLi, Dirfuzz, and Sniper are excluded from automatic basic-mode execution.
 
-HTTPS — run behind a reverse proxy with a valid certificate before exposing to the internet. If your browser shows a "not secure" warning, TLS has not been configured yet.
+HTTPS — run behind a reverse proxy with a valid certificate before exposing to the internet.
 
 Legal — the operator is solely responsible for obtaining written authorization and complying with all applicable laws.
 
 Changelog
-4.4.2
-Core (app.py)
+See CHANGELOG.md for the full release history.
 
-Logger namespace rebranded oxysintx → opencode across app.py, scan_orchestrator.py, fixes.py.
+4.4.2 — latest
+Logger namespace rebranded oxysintx → opencode.
 
 Boot sequence — animated blue spinner, per-step status, first-run password banner.
 
-Ctrl+C on the port prompt exits cleanly (code 130).
+Ctrl+C on port prompt exits cleanly (code 130). While serving exits cleanly (code 0).
 
-Ctrl+C while serving exits cleanly (code 0).
-
-Non-TTY stdin auto-falls back to the default port.
+Non-TTY stdin auto-falls back to default port.
 
 Default port changed to 8080.
 
@@ -462,78 +451,64 @@ Bootstrap dedup — ensure_default_user() and auto_restart_bot() run once per pr
 
 Chat cache mtime race fixed.
 
-_read_bounded() closes the response in a finally block.
+_read_bounded() closes response in a finally block.
 
 404 handler HTML cached at import time.
 
 4.4.0
-LFI / RFI scanner integrated end-to-end — import guard, 4 endpoints, availability entry, module-status entry, boot-screen line.
+LFI / RFI scanner integrated end-to-end — 4 endpoints, availability entry, boot-screen line.
 
-Ally color theme applied across all CLI output.
+Ally color theme across all CLI output.
 
 Removed /downloader_pinterest_tiktok.html and /data_main.html.
 
-Bootstrap duplicate log lines removed.
-
 3.8.0 — scan_orchestrator.py
-_INTRUSIVE_TOOLS gating — lfi_rfi, xss, xss_exploiter, sql_map, sql_injection, sqli_engine, sniper, dirfuzz excluded from automatic basic mode.
+_INTRUSIVE_TOOLS gating.
 
-get_registry_snapshot() exposes intrusive_tools and filtered basic_tools.
+list_tools() output includes intrusive and available flags.
 
-list_tools() output includes "intrusive": bool and "available": bool on every entry.
-
-Tool-list announcement word-wraps at 68 columns and colors intrusive entries differently.
-
-3.7.0 — scan_orchestrator.py
-Registry announcement bypasses the root logger, writes blue to sys.stdout.
-
-Embedded-mode detection skips the announcement when app.py already prints its own boot screen.
-
-Non-TTY fallback prints one clean line.
-
-1.1.0 — lfi_rfi.py CLI renderer
-All colored strings precomputed outside f-strings (fixes SyntaxError).
-
-Docstring Windows path escaped (fixes SyntaxWarning).
+Tool-list announcement word-wraps at 68 columns.
 
 1.1.0 — templates/js/script2.js
-Redesigned LFI/RFI card — compact KPI row, cleaner typography, tighter spacing.
+Redesigned LFI/RFI card — compact KPI row, clickable severity filter, collapsible payload / excerpt blocks.
 
-Clickable severity filter chips.
+Zero emoji — Font Awesome icons only.
 
-Collapsible payload and excerpt blocks — solves the multi-kilobyte Cloudflare challenge overflow.
+Event delegation on #scanResultGrid.
 
-Collapsible params drawer.
+Fixed duplicate render.
 
-Zero emoji — every glyph is a Font Awesome icon class.
+Contributing
+Fork the repository.
 
-Event delegation on #scanResultGrid — one listener instead of per-card.
+Create a feature branch — git checkout -b feature/my-feature.
 
-Fixed duplicate render (extracts LFI entries before delegating to the original renderer).
+Commit with conventional commits — feat: add X, fix: resolve Y.
 
-6.2 — templates/css/style.css
-Section 51 — IP Info hero card.
+Test locally — python app.py and verify in the dashboard.
 
-Section 52 — SSL/TLS certificate helpers.
+Open a pull request describing the motivation and the change.
 
-Section 53 — Country flag / map link polish.
+Keep PRs focused. One feature or fix per PR. Include a short description of the "why" — the "what" is visible in the diff.
 
-Section 54 — Light-theme overrides for new panels.
+Acknowledgments
+Built on the shoulders of these projects and communities:
 
-Section 55 — Tech Fingerprint cards.
+Flask — the runtime
 
-Section 56 — LFI/RFI result card.
+Werkzeug — password hashing and WSGI
 
-1.0.0 — lfi_rfi.py
-Initial release — approximately 200 payloads, 6 traversal styles, PHP wrappers, RFI out-of-band.
+Font Awesome — icons
 
-Multi-signal detection with confidence scoring.
+Space Grotesk and JetBrains Mono — typography
 
-SARIF export, SSE streaming, Flask blueprint.
+Aladhan API — prayer times
 
-<div align="center">
-Emergens — Field Intelligence Console
+mcstatus.io — Minecraft server status
 
-Authorized testing only. You are responsible for the targets you touch.
+OWASP WSTG — methodology reference for the scanner suite
 
-</div>
+License
+Authorized use only. No license is granted for use against infrastructure you do not own or lack written authorization to test. See the authorization notice at the top of this document.
+
+<p align="center"> <sub>Built by <a href="https://github.com/Yanxzyx">Yanxzyx</a> · Emergens v4.4.2</sub> </p><p align="center"> <strong>Authorized testing only. You are responsible for the targets you touch.</strong> </p>
