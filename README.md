@@ -1,283 +1,257 @@
-markdown
-Copy
 <!-- Header -->
 <p align="center">
-  <img src="templates/logo.png" alt="Emergens Logo" width="180">
+  <img src="templates/logo.png" alt="Emergens logo" width="180">
 </p>
 
 <p align="center">
   <a href="https://github.com/sollxfim-lab/Emergens">
     <img src="https://img.shields.io/badge/GitHub-Emergens-181717?style=for-the-badge&logo=github" alt="GitHub">
   </a>
-  <img src="https://img.shields.io/badge/version-4.4.2-blue?style=for-the-badge" alt="Version">
-  <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey?style=for-the-badge" alt="Platform">
-  <img src="https://img.shields.io/badge/license-MIT%20%2B%20Authorized%20Use-red?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/version-4.4.2-blue?style=for-the-badge" alt="Version 4.4.2">
+  <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10 or newer">
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=for-the-badge" alt="Supported platforms">
+  <img src="https://img.shields.io/badge/license-MIT%20%2B%20Authorized%20Use-red?style=for-the-badge" alt="MIT license with authorized-use requirements">
 </p>
 
-<h1 align="center">Field Intelligence Console</h1>
-<p align="center"><em>Passive reconnaissance &amp; authorized security testing</em></p>
+<h1 align="center">Emergens</h1>
+<p align="center"><strong>Field Intelligence Console</strong></p>
+<p align="center"><em>Passive reconnaissance and authorized security testing</em></p>
 
----
+> [!WARNING]
+> **Authorized use only.** Emergens must be used only against systems for which you have explicit written authorization. You are solely responsible for complying with all applicable laws, regulations, and contractual requirements. See the [License](#license) section before using this project.
 
-> **Authorized testing only.**  
-> Use is permitted only with explicit written authorization from the system owner.  
-> The operator is solely responsible for complying with all applicable laws.  
-> *See [License](#license) for details.*
-
----
-
-## Table of Contents
+## Contents
 
 - [Overview](#overview)
-- [Key Features](#key-features)
+- [Features](#features)
 - [Requirements](#requirements)
-- [Installation Step by Step](#installation-step-by-step)
-  - [Step 1: Check Prerequisites](#step-1-check-prerequisites)
-  - [Step 2: Clone Repository](#step-2-clone-repository)
-  - [Step 3: Create Virtual Environment](#step-3-create-virtual-environment)
-  - [Step 4: Activate Virtual Environment](#step-4-activate-virtual-environment)
-  - [Step 5: Install Dependencies](#step-5-install-dependencies)
-  - [Step 6: Configure Environment (Optional)](#step-6-configure-environment-optional)
-  - [Step 7: Start Application](#step-7-start-application)
-  - [Step 8: Access Console](#step-8-access-console)
-  - [Step 9: First Run Setup](#step-9-first-run-setup)
-  - [Step 10: Verify Installation (Optional)](#step-10-verify-installation-optional)
-  - [Step 11: Docker Installation (Alternative)](#step-11-docker-installation-alternative)
-  - [Step 12: HTTPS Setup (Production)](#step-12-https-setup-production)
+- [Installation](#installation)
 - [Configuration](#configuration)
-- [CLI Reference](#cli-reference)
-- [Directory Layout](#directory-layout)
-- [Stopping the Server](#stopping-the-server)
+- [CLI reference](#cli-reference)
+- [Directory layout](#directory-layout)
+- [Stopping the server](#stopping-the-server)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
----
-
 ## Overview
 
-**Emergens** is a modular security testing console designed for passive reconnaissance and authorized penetration testing. It provides a unified dashboard for orchestrating scans, inspecting SSL/TLS posture, handling HTTP metadata, and extending capabilities through modular workflows.
+**Emergens** is a modular security-testing console for passive reconnaissance and authorized penetration-testing workflows. It provides a unified dashboard for running scan modules, reviewing results, and inspecting common web and TLS security signals.
 
-The project is actively maintained and available on GitHub:  
-https://github.com/sollxfim-lab/Emergens
+The project is maintained at [github.com/sollxfim-lab/Emergens](https://github.com/sollxfim-lab/Emergens).
 
----
+## Features
 
-## Key Features
-
-- **Scan Orchestrator** – Centralized management of multiple scan modules.
-- **LFI / RFI Scanner** – Detect local and remote file inclusion vulnerabilities.
-- **SSL Inspector** – Analyze certificates, ciphers, and protocol configurations.
-- **HTTP Header Analyzer** – Identify security misconfigurations in HTTP responses.
-- **AI Assistant** – Optional integration with Anthropic API for intelligent analysis.
-- **Cloudflare Bypass** – Optional FlareSolverr integration for external bypass strategy.
-- **Modular Architecture** – Easily extendable with custom modules.
-- **Docker Support** – Ready-to-deploy container image with persistent volumes.
-
----
+- **Scan orchestrator** — Centralized management of registered scan modules.
+- **LFI/RFI scanner** — Test for local and remote file-inclusion issues in authorized environments.
+- **SSL/TLS inspector** — Review certificates, ciphers, and protocol configuration.
+- **HTTP header analyzer** — Identify common security misconfigurations in HTTP responses.
+- **Optional AI assistant** — Integrate with the Anthropic API for analysis assistance.
+- **Optional external integration** — Connect to a FlareSolverr instance when permitted by your test scope.
+- **Modular architecture** — Add and maintain custom modules independently.
+- **Docker support** — Run the console with persistent data volumes.
 
 ## Requirements
 
 | Component | Requirement |
-|-----------|-------------|
-| **Python** | 3.10 or newer |
-| **Shell** | Unix-like (macOS, Linux, WSL) or PowerShell on Windows |
-| **Optional** | Anthropic API key – enables the AI Assistant |
-| **Optional** | FlareSolverr URL – enables external Cloudflare bypass |
+| --- | --- |
+| Python | 3.10 or newer |
+| Git | Required for installation from source |
+| Operating system | Linux, macOS, Windows, or WSL |
+| Optional | Anthropic API key for the AI assistant |
+| Optional | FlareSolverr URL for the external integration |
 
----
+## Installation
 
-## Installation Step by Step
-
-Follow the steps below in order. Each step includes the exact commands to run.
-
-### Step 1: Check Prerequisites
-
-Ensure you have Python 3.10+ and Git installed.
+### 1. Clone the repository
 
 ```bash
-python3 --version
-git --version
-If Python is not installed, download it from https://www.python.org/downloads/. If Git is not installed, download it from https://git-scm.com/downloads/.
-
-Step 2: Clone Repository
-bash
-Copy
 git clone https://github.com/sollxfim-lab/Emergens.git emergens
 cd emergens
-Step 3: Create Virtual Environment
-bash
-Copy
+```
+
+### 2. Create and activate a virtual environment
+
+**Linux/macOS/WSL:**
+
+```bash
 python3 -m venv venv
-This creates an isolated Python environment in the venv/ folder.
-
-Step 4: Activate Virtual Environment
-Choose the command for your operating system.
-
-Linux / macOS
-bash
-Copy
 source venv/bin/activate
-Windows PowerShell
-powershell
-Copy
+```
+
+**Windows PowerShell:**
+
+```powershell
+py -3 -m venv venv
 .\venv\Scripts\Activate.ps1
-Windows Command Prompt (CMD)
-cmd
-Copy
+```
+
+**Windows Command Prompt:**
+
+```bat
+py -3 -m venv venv
 venv\Scripts\activate.bat
-After activation, your terminal prompt should show (venv).
+```
 
-Step 5: Install Dependencies
-bash
-Copy
-pip install --upgrade pip
-pip install -r requirements.txt
-This installs all required Python packages.
+### 3. Install dependencies
 
-Step 6: Configure Environment (Optional)
-Copy the example environment file:
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-bash
-Copy
+### 4. Configure the environment (optional)
+
+If the repository provides an example environment file, copy it before editing:
+
+```bash
 cp .env.example .env
-Edit .env to set optional variables:
+```
 
-env
-Copy
+Then add only the integrations you need:
+
+```dotenv
 ANTHROPIC_API_KEY=your_key_here
 FLARESOLVERR_URL=http://localhost:8191
-If you do not need the AI Assistant or Cloudflare bypass, you can skip this step.
+```
 
-Step 7: Start Application
-bash
-Copy
+Do not commit `.env` files or API keys to the repository.
+
+### 5. Start the application
+
+```bash
 python app.py
-The console listens on http://localhost:8080 by default.
+```
 
-To override the port:
+The console listens on `http://localhost:8080` by default. To use another port:
 
-bash
-Copy
+```bash
 PORT=9090 python app.py
-Non-interactive environments (Docker, CI, piped installs) automatically skip the port prompt and use the default.
+```
 
-Step 8: Access Console
-Open your browser and navigate to:
+On Windows PowerShell:
 
-text
-Copy
-http://localhost:8080
-Step 9: First Run Setup
-On first boot, the console provisions the default owner account:
+```powershell
+$env:PORT = "9090"
+python app.py
+```
 
-Field	Value
-Username	Yanxzyx
-Role	Owner
-Password	Printed once in the terminal
-Save the password immediately. It is not shown again.
+Open <http://localhost:8080> in your browser, or use the port you configured.
 
-The startup banner reports:
+### First-run setup
 
-Number of registered scan modules
-Runtime patches applied
-Wordlist loading status
-Cloudflare bypass availability
-Any module that failed to load – usually a sign of an incomplete pip install
+On first startup, Emergens provisions the default owner account and prints the generated password once in the terminal. Save that password securely; it is not displayed again.
+
+The startup output also reports registered modules, runtime patches, wordlist status, external-integration availability, and module-load errors.
+
 To rotate the owner password later:
 
-bash
-Copy
+```bash
 python app.py reset-password
-This generates a new random password for Yanxzyx while keeping the Owner role. The previous password stops working immediately.
+```
 
-Step 10: Verify Installation (Optional)
-Check the application version:
+The generated password replaces the previous password immediately.
 
-bash
-Copy
+### Verify the installation (optional)
+
+```bash
 python app.py --version
-Verify module versions:
+python -c "from modules.lfi_rfi import __version__; print(__version__)"
+python -c "from modules.scan_orchestrator import __version__; print(__version__)"
+```
 
-bash
-Copy
-python3 -c "from modules.lfi_rfi import __version__; print(__version__)"
-python3 -c "from modules.scan_orchestrator import __version__; print(__version__)"
-Step 11: Docker Installation (Alternative)
-If you prefer Docker, run:
+### Docker (alternative)
 
-bash
-Copy
+Build the image from the repository, then run it with persistent volumes:
+
+```bash
+docker build -t emergens:latest .
 docker run -d \
   --name emergens \
   -p 8080:8080 \
   -e PORT=8080 \
-  -e SESSION_COOKIE_SECURE=1 \
-  -v $(pwd)/userdata:/app/userdata \
-  -v $(pwd)/data:/app/data \
+  -v "$(pwd)/userdata:/app/userdata" \
+  -v "$(pwd)/data:/app/data" \
   emergens:latest
-Volume mounts preserve user accounts, scan history, and JSON datasets across container rebuilds.
+```
 
-Step 12: HTTPS Setup (Production)
-Always run behind a reverse proxy (Nginx, Caddy, Traefik) with a valid TLS certificate before exposing the console to the internet.
+The volume mounts preserve user accounts, scan history, and application data across container rebuilds.
 
-bash
-Copy
+> **Windows note:** Replace `$(pwd)` with an absolute Windows path or use Docker Desktop's path-mounting syntax.
+
+## Configuration
+
+Environment variables can be placed in `.env` or exported in the shell.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PORT` | `8080` | HTTP listen port. |
+| `SESSION_COOKIE_SECURE` | `0` | Set to `1` when serving through HTTPS. |
+| `TRUST_PROXY` | `0` | Set to `1` only when a trusted reverse proxy sets forwarding headers. |
+| `ANTHROPIC_API_KEY` | — | Enables the optional AI assistant. |
+| `FLARESOLVERR_URL` | — | Configures the optional external integration. |
+| `OPENCODE_QUIET` | `0` | Set to `1` to suppress startup animation. |
+| `NO_COLOR` | — | Set to `1` to disable ANSI colors. |
+| `FORCE_COLOR` | — | Set to `1` to force colors in non-TTY output. |
+
+### Production HTTPS
+
+Do not expose the development server directly to the internet. Use a properly configured reverse proxy such as Nginx, Caddy, or Traefik with a valid TLS certificate.
+
+When HTTPS is enabled at the proxy, set:
+
+```bash
 SESSION_COOKIE_SECURE=1 python app.py
-If your proxy sets X-Forwarded-For and X-Real-IP, also set:
+```
 
-bash
-Copy
+If the proxy supplies `X-Forwarded-For` and `X-Real-IP`, enable proxy handling only when that proxy is trusted:
+
+```bash
 SESSION_COOKIE_SECURE=1 TRUST_PROXY=1 python app.py
-Configuration
-Environment variables can be set in a .env file or exported directly.
+```
 
-Variable	Default	Purpose
-PORT	8080	HTTP listen port
-SESSION_COOKIE_SECURE	0	Set to 1 when serving over HTTPS
-TRUST_PROXY	0	Set to 1 to honour X-Forwarded-For and X-Real-IP
-ANTHROPIC_API_KEY	—	Enables the AI Assistant
-FLARESOLVERR_URL	—	External Cloudflare bypass endpoint
-OPENCODE_QUIET	0	Set to 1 to suppress startup animation
-NO_COLOR	—	Set to 1 to disable ANSI colours
-FORCE_COLOR	—	Set to 1 to force colours in non-TTY output
-CLI Reference
-bash
-Copy
-python app.py                     # Start the console
-python app.py reset-password      # Rotate the default owner password
-python app.py --version           # Print version and exit
-Directory Layout
-After the first run, the following structure is created:
+## CLI reference
 
-text
-Copy
+```text
+python app.py                     Start the console
+python app.py reset-password      Rotate the owner password
+python app.py --version           Print the application version
+```
+
+## Directory layout
+
+After the first run, the following directories and files may be created:
+
+```text
 emergens/
-├── data/                 Scan history, uploads, chat cache, settings
+├── data/                 Scan history, uploads, chat cache, and settings
 ├── logs/                 Server logs
-├── userdata/             SQLite — users, tokens, profiles, datasets
+├── userdata/             SQLite database for users, tokens, profiles, and datasets
 ├── wordlist/             Runtime-cached payload libraries
 ├── porttxt/              Port wordlists
 └── payment_data.json     Optional payment records
-Backup tip: Back up data/ and userdata/ to preserve state. Both are plain files.
+```
 
-Stopping the Server
-Press Ctrl+C in the terminal.
-At the port prompt → exits with code 130.
-While serving → exits with code 0 after a graceful shutdown.
-Both paths print a clean status line — no Python traceback.
+Back up `data/` and `userdata/` to preserve application state. Review backups carefully because they may contain sensitive information.
 
-Troubleshooting
-Symptom	Cause	Fix
-Address already in use	Port 8080 taken	Set PORT= to a free port
-ModuleNotFoundError	Missing dependency	Re-run pip install -r requirements.txt
-Fewer modules loaded than expected	Import error	Check boot log; install optional extras (curl_cffi, cloudscraper)
-Browser shows "not secure"	TLS not configured	Use reverse proxy and set SESSION_COOKIE_SECURE=1
-AI Assistant returns error	Missing key	Set ANTHROPIC_API_KEY in .env
-Forgot owner password	—	python app.py reset-password
-License
-This project is released under the MIT License. However, usage is strictly limited to authorized security testing only. No license is granted for testing infrastructure you do not own or lack written authorization to test.
+## Stopping the server
 
-See the LICENSE file for full details.
+Press <kbd>Ctrl</kbd>+<kbd>C</kbd> in the terminal. Emergens performs a graceful shutdown and exits without printing a Python traceback.
 
-<p align="center"> <sub><strong>Emergens</strong> · v4.4.2 · Yanxzyx</sub><br> <sub>Made for the security community</sub> </p> ```
+## Troubleshooting
+
+| Symptom | Likely cause | Recommended fix |
+| --- | --- | --- |
+| Address already in use | Port `8080` is occupied | Set `PORT` to an available port. |
+| `ModuleNotFoundError` | A dependency is missing | Re-run `python -m pip install -r requirements.txt`. |
+| Fewer modules loaded than expected | A module failed to import | Review the startup log and install the required optional dependencies. |
+| Browser reports an insecure connection | TLS is not configured | Put the application behind a reverse proxy with HTTPS. |
+| AI assistant returns an error | API key is missing or invalid | Set `ANTHROPIC_API_KEY` in `.env` and restart the application. |
+| Owner password is unavailable | The one-time password was not saved | Run `python app.py reset-password`. |
+
+## License
+
+Emergens is distributed under the MIT License, subject to the authorized-use requirements described in the repository's [`LICENSE`](LICENSE) file. No permission is granted to test, scan, or access infrastructure that you do not own or have explicit written authorization to assess.
+
+<p align="center">
+  <sub><strong>Emergens</strong> · v4.4.2 · Made for the security community</sub>
+</p>
