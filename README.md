@@ -1,5 +1,4 @@
-Emergens
-<div align="center"><picture> <source media="(prefers-color-scheme: dark)" srcset="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCI+PGRlZnM+PGxpbmVhckdyYW1lbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MGE1ZmEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxZTQwYWYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcng9IjQ4IiBmaWxsPSIjMGIwYjBiIi8+PHBvbHlnb24gcG9pbnRzPSIxMTQsMjAgNjAsMTA4IDkwLDEwOCA3OCwxNzIgMTQ4LDgwIDExMCw4MCIgZmlsbD0idXJsKCNnKSIvPjwvc3ZnPg=="> <img alt="Emergens" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCI+PGRlZnM+PGxpbmVhckdyYW1lbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMzYjgyZjYiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxZDQwYWYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcng9IjQ4IiBmaWxsPSIjZmFmYWZhIi8+PHBvbHlnb24gcG9pbnRzPSIxMTQsMjAgNjAsMTA4IDkwLDEwOCA3OCwxNzIgMTQ4LDgwIDExMCw4MCIgZmlsbD0idXJsKCNnKSIvPjwvc3ZnPg=="> </picture><h1>Emergens</h1><p><strong>Field Intelligence Console</strong><br> <em>Passive reconnaissance &amp; authorized security testing</em></p><p> <img alt="Version" src="https://img.shields.io/badge/version-4.4.2-blue?style=flat-square"> <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white"> <img alt="Flask" src="https://img.shields.io/badge/flask-runtime-000000?style=flat-square&logo=flask&logoColor=white"> <img alt="License" src="https://img.shields.io/badge/license-authorized%20use%20only-red?style=flat-square"> </p><p> <a href="#overview">Overview</a> · <a href="#quick-start">Quick Start</a> · <a href="#roles">Roles</a> · <a href="#modules">Modules</a> · <a href="#lfi--rfi-scanner">LFI/RFI</a> · <a href="#extending">Extending</a> · <a href="#versions">Versions</a> · <a href="#security">Security</a> · <a href="#faq">FAQ</a> </p></div>
+<div align="center"> <img alt="Emergens" src="https://img.shields.io/badge/Emergens-Field%20Intelligence%20Console-3b82f6?style=for-the-badge" /> <br> <strong>Field Intelligence Console</strong><br> <em>Passive reconnaissance &amp; authorized security testing</em> <br><br> <img alt="Version" src="https://img.shields.io/badge/version-4.4.2-blue?style=flat-square"> <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white"> <img alt="Flask" src="https://img.shields.io/badge/flask-runtime-000000?style=flat-square&logo=flask&logoColor=white"> <img alt="License" src="https://img.shields.io/badge/license-authorized%20use%20only-red?style=flat-square"> <br><br> <a href="#overview">Overview</a> · <a href="#quick-start">Quick Start</a> · <a href="#roles">Roles</a> · <a href="#modules">Modules</a> · <a href="#lfi--rfi-scanner">LFI/RFI</a> · <a href="#extending">Extending</a> · <a href="#versions">Versions</a> · <a href="#security">Security</a> · <a href="#faq">FAQ</a> </div>
 [!WARNING]
 Authorized testing only. Use is permitted only with explicit written authorization from the system owner. The operator is solely responsible for complying with all applicable laws.
 
@@ -34,6 +33,7 @@ pip install -r requirements.txt
 
 cp .env.example .env                                 # optional — set ANTHROPIC_API_KEY
 python app.py
+Item	Value
 Default port	8080 — override with PORT=9090 python app.py
 First run	Provisions Yanxzyx with Owner role; password prints once
 Rotate password	python app.py reset-password
@@ -97,9 +97,15 @@ def run(target: str, mode: str = "basic", **kwargs) -> dict:
     return {"tool": "my_tool", "target": target, "data": {}, "error": None}
 Auto-registered on next import.
 
-Optional helpers — run_streaming() for SSE · to_sarif() for CI export · TOOL_INFO for carousel metadata.
+Optional helpers
 
-Intrusive modules must be added to _INTRUSIVE_TOOLS in scan_orchestrator.py to keep them out of automatic basic-mode runs.
+run_streaming() for SSE
+
+to_sarif() for CI export
+
+TOOL_INFO for carousel metadata
+
+⚠️ Intrusive modules must be added to _INTRUSIVE_TOOLS in scan_orchestrator.py to keep them out of automatic basic-mode runs.
 
 Versions
 Component	Version
@@ -188,9 +194,7 @@ Fixed duplicate render
 License
 Authorized use only. No license is granted for testing infrastructure you do not own or lack written authorization to test.
 
-<div align="center">
-<sub><strong>Emergens</strong> · Yanxzyx · v4.4.2</sub>
-
+<div align="center"> <sub><strong>Emergens</strong> · Yanxzyx · v4.4.2</sub>
 <sub><em>Authorized testing only. You are responsible for the targets you touch.</em></sub>
 
 </div>
