@@ -89,17 +89,18 @@ Follow the steps below in order. Each step includes the exact commands to run.
 
 Ensure you have Python 3.10+ and Git installed.
 
+```bash
 python3 --version
 git --version
 If Python is not installed, download it from https://www.python.org/downloads/.
 If Git is not installed, download it from https://git-scm.com/downloads.
 
-###Step 2: Clone Repository
-
+Step 2: Clone Repository
+bash
 git clone https://github.com/sollxfim-lab/Emergens.git emergens
 cd emergens
 Step 3: Create Virtual Environment
-
+bash
 python3 -m venv venv
 This creates an isolated Python environment in the venv/ folder.
 
@@ -108,17 +109,20 @@ Choose the command for your operating system.
 
 Linux / macOS:
 
+bash
 source venv/bin/activate
 Windows PowerShell:
 
+powershell
 .\venv\Scripts\Activate.ps1
 Windows Command Prompt (CMD):
 
+cmd
 venv\Scripts\activate.bat
 After activation, your terminal prompt should show (venv).
 
 Step 5: Install Dependencies
-
+bash
 pip install --upgrade pip
 pip install -r requirements.txt
 This installs all required Python packages.
@@ -126,26 +130,30 @@ This installs all required Python packages.
 Step 6: Configure Environment (Optional)
 Copy the example environment file:
 
+bash
 cp .env.example .env
 Edit .env to set optional variables:
 
+env
 ANTHROPIC_API_KEY=your_key_here
 FLARESOLVERR_URL=http://localhost:8191
 If you do not need the AI Assistant or Cloudflare bypass, you can skip this step.
 
 Step 7: Start Application
-
+bash
 python app.py
 The console listens on http://localhost:8080 by default.
 
 To override the port:
 
+bash
 PORT=9090 python app.py
 Non-interactive environments (Docker, CI, piped installs) automatically skip the port prompt and use the default.
 
 Step 8: Access Console
 Open your browser and navigate to:
 
+text
 http://localhost:8080
 Step 9: First Run Setup
 On first boot, the console provisions the default owner account:
@@ -170,6 +178,7 @@ Any module that failed to load – usually a sign of an incomplete pip install
 
 To rotate the owner password later:
 
+bash
 python app.py reset-password
 Generates a new random password for Yanxzyx while keeping the Owner role.
 The previous password stops working immediately.
@@ -177,14 +186,17 @@ The previous password stops working immediately.
 Step 10: Verify Installation (Optional)
 Check the application version:
 
+bash
 python app.py --version
 Verify module versions:
 
+bash
 python3 -c "from modules.lfi_rfi import __version__; print(__version__)"
 python3 -c "from modules.scan_orchestrator import __version__; print(__version__)"
 Step 11: Docker Installation (Alternative)
 If you prefer Docker, run:
 
+bash
 docker run -d \
   --name emergens \
   -p 8080:8080 \
@@ -198,9 +210,11 @@ Volume mounts preserve user accounts, scan history, and JSON datasets across con
 Step 12: HTTPS Setup (Production)
 Always run behind a reverse proxy (Nginx, Caddy, Traefik) with a valid TLS certificate before exposing the console to the internet.
 
+bash
 SESSION_COOKIE_SECURE=1 python app.py
 If your proxy sets X-Forwarded-For and X-Real-IP, also set:
 
+bash
 SESSION_COOKIE_SECURE=1 TRUST_PROXY=1 python app.py
 Configuration
 Environment variables can be set in a .env file or exported directly.
@@ -215,7 +229,7 @@ OPENCODE_QUIET	0	Set to 1 to suppress startup animation
 NO_COLOR	—	Set to 1 to disable ANSI colours
 FORCE_COLOR	—	Set to 1 to force colours in non-TTY output
 CLI Reference
-
+bash
 python app.py                     # Start the console
 python app.py reset-password      # Rotate the default owner password
 python app.py --version           # Print version and exit
@@ -256,4 +270,4 @@ No license is granted for testing infrastructure you do not own or lack written 
 
 See the LICENSE file for full details.
 
-<p align="center"> <sub><strong>Emergens</strong> · v4.4.2 · Yanxzyx</sub><br> <sub>Made for the security community</sub> </p>
+<p align="center"> <sub><strong>Emergens</strong> · v4.4.2 · Yanxzyx</sub><br> <sub>Made for the security community</sub> </p> ```
