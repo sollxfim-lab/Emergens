@@ -160,4 +160,4 @@ Forgot owner password	—	python app.py reset-password
 License
 Authorized use only. No license is granted for testing infrastructure you do not own or lack written authorization to test.
 
-<p align="center"> <sub><strong>Emergens</strong> · v4.4.2 · Yanxzyx</sub> </p> ```
+<p align="center"> <sub><strong>Emergens</strong> · v4.4.2 · Yanxzyx</sub> </p>
