@@ -157,5 +157,5 @@ Fewer modules loaded than expected	Import error	Check the boot log; install opti
 Browser shows "not secure"	TLS not configured	Use a reverse proxy and set SESSION_COOKIE_SECURE=1
 AI Assistant returns error	Missing key	Set ANTHROPIC_API_KEY in .env
 Forgot owner password	—	python app.py reset-password
-License
+>License
 Authorized use only. No license is granted for testing infrastructure you do not own or lack written authorization to test.
