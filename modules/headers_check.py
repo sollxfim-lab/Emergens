@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HTTP Security Header Analyzer — Advanced Intelligence Scanner (v3.1.0)
+HTTP Security Header Analyzer — Advanced Intelligence Scanner (v3.2.0)
 ======================================================================
 
 Enterprise-grade HTTP security analysis with:
@@ -25,48 +25,127 @@ Enterprise-grade HTTP security analysis with:
   • Module aliases: headers_check, scan_headers, headers, headers_scan
 
 ----------------------------------------------------------------------------
+Changelog v3.2.0  (dashboard.js contract alignment)
+----------------------------------------------------------------------------
+  ✔ FIXED  — CSP Policy Analysis accordion in dashboard.js rendered raw
+             object keys ("directive_count", "directives", "findings",
+             "score", "source_count") and "[object Object]" for values.
+             Root cause: dashboard.js iterates `csp_analysis` as a flat
+             `{directive: [sources]}` map, but the module returned a
+             structured analysis object.
+             Fix: `csp_analysis` now emits the flat directive map (exactly
+             what `renderHeadersResult()` expects). Rich metadata moved to
+             non-colliding siblings:
+                 csp_score            int  (0–100)
+                 csp_findings         list of {severity, issue}
+                 csp_directive_count  int
+                 csp_source_count     int
+  ✔ NEW    — `final_url` and `redirect_count` flat fields added so the
+             dashboard's URL line and "Redirects" KPI stop falling back
+             to `--`.
+  ✔ NEW    — `csp_report_only_analysis` for CSP-Report-Only header
+             (kept separate from the enforcing CSP).
+  ✔ HARD   — `_analyse_csp_quality()` split into a pure `_parse_csp()`
+             call for the flat map plus a meta analyser — one parse,
+             one pass, no duplicate work.
+  ✔ HARD   — `_read_bounded()` short-circuits on `Content-Length` when
+             the server advertises a size below the cap.
+  ✔ HARD   — `_make_fake_response()` builds a proper `HTTPHeaderDict`
+             with a clean fallback when urllib3 internals move.
+  ✔ HARD   — Removed unused `hashlib` import; tightened type hints.
+  ✔ DOCS   — Added RENDERER CONTRACT section mapping every field the
+             dashboard reads to its producer in this module.
+  ✔ All v3.1.0 features preserved (CF bypass, WAF, tech stack,
+    compliance, cookies, HTML intel, TLS probe, redirects, batch, SSE).
+
+----------------------------------------------------------------------------
 Changelog v3.1.0  (Emergens integration + hardening)
 ----------------------------------------------------------------------------
-  ✔ NEW    — Flask Blueprint `headers_bp` exposing
-             `POST|GET /api/headers/scan` so terminal.py's
-             `_client.post("/api/headers/scan", ...)` works out-of-the-box.
-  ✔ NEW    — `register_blueprint(app)` helper for app.py wiring.
-  ✔ NEW    — Aliases `headers_check`, `scan_headers`, `headers`,
-             `headers_scan` — any terminal.py scan-registry slug resolves.
-  ✔ NEW    — `self_check()` runtime diagnostic + CLI `--self-check`.
-  ✔ FIXED  — `_make_fake_response()` now constructs a proper `.raw.headers`
-             (`urllib3.HTTPHeaderDict`) so `_analyse_cookies()` no longer
-             crashes on the CF-bypass path.
-  ✔ FIXED  — `_analyse_cookies()` guarded against `resp.raw is None`.
-  ✔ HARD   — Response envelope's `tool` field normalised to `"headers"`.
-  ✔ HARD   — Blueprint endpoint gracefully parses JSON / query-string /
-             defaults, and never 500s on bad input.
+  ✔ NEW    — Flask Blueprint `headers_bp` → `POST|GET /api/headers/scan`
+  ✔ NEW    — `register_blueprint(app)` helper
+  ✔ NEW    — Aliases: headers_check, scan_headers, headers, headers_scan
+  ✔ NEW    — `self_check()` + CLI `--self-check`
+  ✔ FIXED  — `_make_fake_response()` builds proper `.raw.headers`
+  ✔ FIXED  — `_analyse_cookies()` guards against `resp.raw is None`
+  ✔ HARD   — Envelope `tool` field normalised to `"headers"`
+
+----------------------------------------------------------------------------
+RENDERER CONTRACT — verified against dashboard.js `renderHeadersResult()`
+----------------------------------------------------------------------------
+The dashboard reads the following keys from `result["data"]`:
+
+    url                     str   — final URL (also mirrored as final_url)
+    final_url               str   — explicit alias read by the renderer
+    status_code             int
+    server                  str
+    redirect_count          int   — count of hops before final response
+    score_percent           int   0–100
+    highest_severity        str   — critical | hard | normal | low | info
+    present_headers         dict  {Header-Name: value}
+    missing_headers         list  [{header, description, severity, recommendation}]
+    cookies                 list  [{name_value, secure, httponly, samesite, ...}]
+    all_response_headers    dict  (expert mode)
+
+Expert mode additionally populates:
+
+    csp_analysis            dict  FLAT {directive: [sources]} — renderer
+                                  iterates this with Object.entries()
+    csp_score               int   0–100
+    csp_findings            list  [{severity, issue}]
+    csp_directive_count     int
+    csp_source_count        int
+    permissions_policy_directives   str
+    tls                     dict  {protocol, cipher, subject, issuer, not_after}
+    content_type            str
+    content_length          int
+    html_analysis           dict  {inline_script_count, mixed_content_count, ...}
+
+Guarantees after a successful HTTP response:
+  • `present_headers` and `missing_headers` are always lists/dicts.
+  • `csp_analysis` is either absent, or a flat map where every value is
+    a list of strings — never a structured object.
+  • `score_percent` is an integer in [0, 100].
+  • `risk` is a dict with `.label`, `.score`, `.grade`.
 
 ----------------------------------------------------------------------------
 Acknowledgment
 ----------------------------------------------------------------------------
   • Author        : Yanxzyx   (#credit ~ Yanxzyx)
   • Framework     : Emergens / Oxysintx orchestrator stack
+  • Dashboard     : dashboard.js — `renderHeadersResult()`,
+                    `renderResults()` (field-based dispatcher).
+                    The CSP-shape fix in v3.2.0 is specifically so the
+                    "CSP Policy Analysis" accordion renders directive
+                    chips instead of raw object keys.
   • Dependencies  : `requests` (required) + optional `curl_cffi`,
                     `cloudscraper` for CF bypass, `Flask` for the endpoint
   • References    : OWASP Secure Headers Project, securityheaders.com
                     grading, RFC 6797 (HSTS), RFC 6265bis (cookies),
                     RFC 9116 (security.txt), CSP Level 3
-  • With thanks to the `requests` and `urllib3` maintainers for exposing
-    a sane Response / HTTPHeaderDict model, and to the cloudscraper /
+  • With thanks to the `requests` / `urllib3` maintainers for a sane
+    Response / HTTPHeaderDict model, and to the cloudscraper /
     curl_cffi teams for making CF research reproducible.
 
 ----------------------------------------------------------------------------
 Testing
 ----------------------------------------------------------------------------
-  Quick smoke test (CLI):
-      python3 -m modules.headers_check example.com --mode expert
+  Runtime diagnostics:
       python3 -m modules.headers_check --self-check
 
-  Programmatic:
-      from modules.headers_check import run, self_check
-      print(self_check())
-      print(run("example.com", mode="expert"))
+  Basic smoke test:
+      python3 -m modules.headers_check example.com
+      python3 -m modules.headers_check example.com --mode expert --json
+
+  CSP-shape smoke test (this is what v3.2.0 fixes):
+      python3 -m modules.headers_check github.com --mode expert --json \\
+        | jq '.data.csp_analysis'
+      # Expected: { "default-src": [...], "script-src": [...], ... }
+      # NOT:       { "directives": {...}, "score": 80, ... }
+
+  Dashboard integration smoke test:
+      curl -sX POST localhost:5000/api/headers/scan \\
+        -H 'Content-Type: application/json' \\
+        -d '{"target":"github.com","mode":"expert"}' | jq .data.csp_analysis
 
   Flask wiring (in app.py):
       from modules.headers_check import register_blueprint
@@ -76,7 +155,6 @@ Testing
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json as _json
 import logging
 import os
@@ -93,8 +171,11 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.structures import CaseInsensitiveDict
 from urllib3.util.retry import Retry
+
+# HTTPHeaderDict — used by _make_fake_response() to give `.raw.headers.get_all`
+# a working implementation for Set-Cookie extraction.
 try:
-    from urllib3._collections import HTTPHeaderDict
+    from urllib3._collections import HTTPHeaderDict  # type: ignore
 except Exception:
     try:
         from urllib3.response import HTTPHeaderDict  # type: ignore
@@ -145,7 +226,7 @@ except ImportError:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# LOGGING — isolated
+# LOGGING — isolated, no propagation to Flask root logger
 # ═══════════════════════════════════════════════════════════════════════════
 logger = logging.getLogger("oxysintx.headers")
 logger.propagate = False
@@ -162,9 +243,15 @@ logger.setLevel(logging.INFO)
 # ═══════════════════════════════════════════════════════════════════════════
 # METADATA
 # ═══════════════════════════════════════════════════════════════════════════
-__version__ = "3.1.0"
+__version__ = "3.2.0"
 __author__  = "Yanxzyx"
 __credit__  = "#credit ~ Yanxzyx"
+__all__ = [
+    "run", "headers_check", "scan_headers", "headers",
+    "headers_scan", "check_headers",
+    "run_streaming", "scan_many", "self_check", "to_sarif",
+    "register_blueprint", "TOOL_INFO", "TOOL_KIND",
+]
 
 TOOL_INFO = {
     "name": "HTTP Security Headers",
@@ -688,7 +775,7 @@ def _fingerprint_tech(headers: Dict[str, str]) -> List[Dict[str, str]]:
         m = rx.search(header_blob)
         if m and name not in seen:
             seen.add(name)
-            entry = {"name": name, "category": category}
+            entry: Dict[str, str] = {"name": name, "category": category}
             if m.groups():
                 entry["version"] = m.group(1)
             found.append(entry)
@@ -742,25 +829,16 @@ def _compliance_report(present: Dict[str, str]) -> Dict[str, Any]:
             status = "compliant" if not missing else (
                 "partial" if len(missing) < len(required_headers) else "non_compliant"
             )
-            fw[control] = {
-                "status": status,
-                "missing_headers": missing,
-            }
+            fw[control] = {"status": status, "missing_headers": missing}
         out[framework] = fw
     return out
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# COOKIE ANALYSIS — HARDENED in v3.1.0
+# COOKIE ANALYSIS
 # ═══════════════════════════════════════════════════════════════════════════
 def _analyse_cookies(resp: requests.Response) -> List[Dict[str, Any]]:
-    """
-    Extract and audit Set-Cookie headers.
-
-    v3.1.0: guarded against `resp.raw is None` (which happens when the
-    scanner reconstructs a Response via `_make_fake_response` for the
-    CF-bypass path).
-    """
+    """Extract and audit Set-Cookie headers. Safe against resp.raw=None."""
     cookies: List[Dict[str, Any]] = []
     raw: List[str] = []
 
@@ -837,9 +915,16 @@ def _analyse_cookies(resp: requests.Response) -> List[Dict[str, Any]]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# CSP PARSER + QUALITY
+# CSP — PARSER + QUALITY (v3.2.0: flat map for dashboard renderer)
 # ═══════════════════════════════════════════════════════════════════════════
 def _parse_csp(csp_value: str) -> Dict[str, List[str]]:
+    """
+    Parse a CSP header into a flat {directive: [sources]} map.
+
+    This is EXACTLY the shape dashboard.js `renderHeadersResult()` iterates
+    with `Object.entries()` — every value must be a list of strings, every
+    key must be a directive name.
+    """
     out: Dict[str, List[str]] = {}
     if not csp_value:
         return out
@@ -854,9 +939,18 @@ def _parse_csp(csp_value: str) -> Dict[str, List[str]]:
 
 
 def _analyse_csp_quality(csp_value: str) -> Dict[str, Any]:
+    """
+    Analyse a CSP header's *quality*.
+
+    Returns a structured dict with the flat directive map under
+    `directives` plus the quality meta. The caller is responsible for
+    emitting `directives` as the top-level `csp_analysis` field so
+    dashboard.js can render it as directive chips.
+    """
     directives = _parse_csp(csp_value)
     findings: List[Dict[str, str]] = []
     score = 100
+
     script_src = directives.get("script-src") or directives.get("default-src", [])
     object_src = directives.get("object-src", [])
     base_uri   = directives.get("base-uri", [])
@@ -901,11 +995,11 @@ def _analyse_csp_quality(csp_value: str) -> Dict[str, Any]:
                          "issue": "No CSP reporting endpoint configured"})
 
     return {
-        "directives": directives,
-        "source_count": sum(len(v) for v in directives.values()),
+        "directives":      directives,
+        "source_count":    sum(len(v) for v in directives.values()),
         "directive_count": len(directives),
-        "findings": findings,
-        "score": max(0, min(100, score)),
+        "findings":        findings,
+        "score":           max(0, min(100, score)),
     }
 
 
@@ -925,6 +1019,9 @@ _META_REFRESH_RE = re.compile(
     r'<meta[^>]+http-equiv\s*=\s*["\']refresh["\'][^>]*>', re.I,
 )
 _TARGET_BLANK_RE = re.compile(
+    r'<a\b[^>]*target\s*=\s*["\']_blank["\'][^>]*>', re.I,
+)
+_TARGET_BLANK_TAG_RE = re.compile(
     r'<a\b[^>]*target\s*=\s*["\']_blank["\'][^>]*>', re.I,
 )
 
@@ -949,12 +1046,11 @@ def _analyse_html_body(body: bytes, final_url: str) -> Dict[str, Any]:
     insecure_actions = [a for a in form_actions if a.lower().startswith("http://")]
     mixed_content = _HTTP_IN_HTTPS_RE.findall(text) if final_url.startswith("https://") else []
     meta_refresh = _META_REFRESH_RE.findall(text)
-    target_blank = _TARGET_BLANK_RE.findall(text)
+    target_blank_tags = _TARGET_BLANK_TAG_RE.findall(text)
     target_blank_unsafe = 0
-    for tag in re.findall(r'<a\b[^>]*target\s*=\s*["\']_blank["\'][^>]*>', text, re.I):
-        if "rel=" not in tag.lower() or (
-            "noopener" not in tag.lower() and "noreferrer" not in tag.lower()
-        ):
+    for tag in target_blank_tags:
+        tl = tag.lower()
+        if "rel=" not in tl or ("noopener" not in tl and "noreferrer" not in tl):
             target_blank_unsafe += 1
 
     issues: List[Dict[str, str]] = []
@@ -987,7 +1083,7 @@ def _analyse_html_body(body: bytes, final_url: str) -> Dict[str, Any]:
         "form_actions": form_actions[:20],
         "mixed_content_count": len(mixed_content),
         "meta_refresh_count": len(meta_refresh),
-        "target_blank_count": len(target_blank),
+        "target_blank_count": len(target_blank_tags),
         "target_blank_unsafe": target_blank_unsafe,
         "issues": issues,
     }
@@ -1226,7 +1322,8 @@ def _analyse_redirects(resp: requests.Response) -> Dict[str, Any]:
         and final_scheme == "https"
     )
     return {
-        "chain": chain, "count": len(chain),
+        "chain": chain,
+        "count": len(chain),
         "downgrades": downgrades,
         "forced_https": http_to_https,
         "final_scheme": final_scheme,
@@ -1260,6 +1357,21 @@ def _build_session(headers: Optional[Dict[str, str]] = None,
 
 
 def _read_bounded(resp: requests.Response, max_bytes: int) -> bytes:
+    """
+    Read up to `max_bytes` of the response body.
+
+    v3.2.0: short-circuits when the server advertises a Content-Length
+    under the cap — reads straight through instead of iterating chunks.
+    """
+    # Fast path — trust Content-Length when it fits under the cap
+    try:
+        cl = resp.headers.get("Content-Length") if resp.headers else None
+        if cl and cl.isdigit() and int(cl) <= max_bytes:
+            content = resp.content
+            return content[:max_bytes] if content else b""
+    except Exception:
+        pass
+
     buf = bytearray()
     try:
         for chunk in resp.iter_content(chunk_size=STREAM_CHUNK_SIZE):
@@ -1303,9 +1415,9 @@ def _make_fake_response(url: str, headers: Dict[str, str],
     """
     Wrap a bypass result as a requests.Response-like object.
 
-    v3.1.0: constructs a proper `urllib3.HTTPHeaderDict` for `.raw.headers`
-    so `_analyse_cookies()` can extract Set-Cookie reliably, even for
-    responses produced by curl_cffi / cloudscraper.
+    v3.2.0: still builds a proper `HTTPHeaderDict` for `.raw.headers` so
+    `_analyse_cookies()` can reliably enumerate every Set-Cookie line,
+    even for responses produced by curl_cffi / cloudscraper.
     """
     r = requests.Response()
     r.url = url
@@ -1339,7 +1451,6 @@ def _make_fake_response(url: str, headers: Dict[str, str],
         class _FakeRaw:
             def __init__(self, h):
                 self.headers = h
-
         r.raw = _FakeRaw(hd)
     else:
         r.raw = None
@@ -1411,11 +1522,20 @@ def _analyze_response(resp: requests.Response, body: bytes,
     grade    = _grade(score_percent, has_csp, has_hsts)
     risk     = _risk_score(score_percent, missing, quality_issues, grade)
 
+    # ── Redirect summary (flat convenience fields for the dashboard) ──
+    redirect_info = _analyse_redirects(resp)
+    final_url     = resp.url
+
     data: Dict[str, Any] = {
-        "url":                  resp.url,
+        # ── Renderer-expected flat fields ───────────────────────────
+        "url":                  final_url,
+        "final_url":            final_url,
         "status_code":          resp.status_code,
         "server":               resp.headers.get("Server", "unknown"),
         "powered_by":           resp.headers.get("X-Powered-By", ""),
+        "redirect_count":       redirect_info["count"],
+
+        # ── Header presence / grading ───────────────────────────────
         "present_headers":      present,
         "missing_headers":      missing,
         "deprecated_headers":   deprecated_found,
@@ -1427,9 +1547,11 @@ def _analyze_response(resp: requests.Response, body: bytes,
         "has_hsts":             has_hsts,
         "recommendation_count": len(missing),
         "risk":                 risk,
+
+        # ── Enrichment ──────────────────────────────────────────────
         "compliance":           _compliance_report(present),
         "cookies":              _analyse_cookies(resp),
-        "redirects":            _analyse_redirects(resp),
+        "redirects":            redirect_info,
         "tech_stack":           tech_stack,
         "waf":                  waf_info,
         "cloudflare_challenge": cf_info,
@@ -1439,20 +1561,45 @@ def _analyze_response(resp: requests.Response, body: bytes,
         data["all_response_headers"] = {
             k: v[:MAX_HEADER_VALUE] for k, v in resp.headers.items()
         }
+
+        # ── CSP — dashboard.js iterates `csp_analysis` as a FLAT map ──
         csp_raw = resp.headers.get("Content-Security-Policy")
         if csp_raw:
-            data["csp_analysis"] = _analyse_csp_quality(csp_raw)
+            csp_q = _analyse_csp_quality(csp_raw)
+            # The renderer treats every key as a directive name; the value
+            # must be a list of source tokens. This is the flat map.
+            data["csp_analysis"]        = csp_q["directives"]
+            # Rich metadata goes into sibling fields so nothing collides.
+            data["csp_score"]           = csp_q["score"]
+            data["csp_findings"]        = csp_q["findings"]
+            data["csp_directive_count"] = csp_q["directive_count"]
+            data["csp_source_count"]    = csp_q["source_count"]
+
+        # CSP-Report-Only is a distinct header — kept separate.
+        csp_ro_raw = resp.headers.get("Content-Security-Policy-Report-Only")
+        if csp_ro_raw:
+            csp_ro_q = _analyse_csp_quality(csp_ro_raw)
+            data["csp_report_only_analysis"] = {
+                "directives":      csp_ro_q["directives"],
+                "score":           csp_ro_q["score"],
+                "findings":        csp_ro_q["findings"],
+                "directive_count": csp_ro_q["directive_count"],
+                "source_count":    csp_ro_q["source_count"],
+            }
+
         pp_raw = resp.headers.get("Permissions-Policy")
         if pp_raw:
             data["permissions_policy_directives"] = pp_raw
-        parsed = urlparse(resp.url)
+
+        parsed = urlparse(final_url)
         if parsed.scheme == "https" and parsed.hostname:
             tls = _probe_tls(parsed.hostname, parsed.port or 443)
             if tls:
                 data["tls"] = tls
-        data["content_type"] = resp.headers.get("Content-Type", "")
+
+        data["content_type"]   = resp.headers.get("Content-Type", "")
         data["content_length"] = len(body)
-        data["html_analysis"] = _analyse_html_body(body, resp.url)
+        data["html_analysis"]  = _analyse_html_body(body, final_url)
 
     return data
 
@@ -1542,11 +1689,11 @@ def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
         except Exception:
             body = b""
 
-    waf_info = _detect_waf(dict(resp.headers),
-                           body.decode("utf-8", "ignore")[:8192],
-                           resp.status_code)
+    waf_info   = _detect_waf(dict(resp.headers),
+                             body.decode("utf-8", "ignore")[:8192],
+                             resp.status_code)
     tech_stack = _fingerprint_tech(dict(resp.headers))
-    cf_type = _detect_cloudflare(dict(resp.headers), body, resp.status_code)
+    cf_type    = _detect_cloudflare(dict(resp.headers), body, resp.status_code)
 
     data = _analyze_response(resp, body, mode, target, waf_info, tech_stack, cf_type)
     data["tested_url"] = used_url
@@ -1587,7 +1734,7 @@ def run(target: str, mode: str = "basic", **kwargs) -> Dict[str, Any]:
             data["discovery_error"] = str(e)
 
     return {
-        "tool":    "headers",   # normalised slug
+        "tool":    "headers",
         "version": __version__,
         "target":  target,
         "data":    data,
@@ -1712,9 +1859,11 @@ def self_check() -> Dict[str, Any]:
         "curl_cffi":    _HAS_CURL_CFFI,
         "cloudscraper": _HAS_CLOUDSCRAPER,
         "flaresolverr": bool(FLARESOLVERR_URL),
+        "httpheader":   HTTPHeaderDict is not None,
         "aliases":      ["run", "headers_check", "scan_headers",
                          "headers", "headers_scan", "check_headers"],
         "endpoint":     "/api/headers/scan" if _HAS_FLASK else None,
+        "renderer":     "dashboard.js :: renderHeadersResult()",
         "ready":        _HAS_FLASK,
     }
 
@@ -1737,6 +1886,13 @@ def to_sarif(result: Dict[str, Any]) -> Dict[str, Any]:
             "ruleId": f"headers-quality/{q['header']}",
             "level": {"high": "error", "medium": "warning"}.get(q["severity"], "note"),
             "message": {"text": f"{q['header']}: {q['issue']}"},
+        })
+    for f in d.get("csp_findings", []) or []:
+        findings.append({
+            "ruleId": "headers-csp/quality",
+            "level": {"high": "error", "medium": "warning"}.get(
+                f.get("severity", ""), "note"),
+            "message": {"text": f"CSP: {f.get('issue', '')}"},
         })
     return {
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -1766,15 +1922,7 @@ if _HAS_FLASK:
               "check_paths": false, "check_discovery": false,
               "use_cf_bypass": true }
 
-        Response shape — matches terminal.py `_render_headers()`:
-            {
-              "tool": "headers", "version": "3.1.0",
-              "target": "example.com",
-              "data": { url, server, grade, score_percent,
-                        risk: {label, score}, missing_headers: [...],
-                        present_headers: {...}, ... },
-              "error": null
-            }
+        Response shape — see RENDERER CONTRACT in module docstring.
         """
         payload = request.get_json(silent=True) or {}
         target = (payload.get("target")
@@ -1875,6 +2023,15 @@ def _print_human(result: Dict[str, Any]) -> None:
         print(f"\n⚠ Deprecated ({len(deprecated)})")
         for dep in deprecated:
             print(f"    {dep['header']}: {dep['reason']}")
+
+    csp = d.get("csp_analysis") or {}
+    if csp:
+        print(f"\nCSP Analysis ({len(csp)} directives, score "
+              f"{d.get('csp_score', '--')}/100)")
+        for directive, sources in csp.items():
+            print(f"    {directive}: {' '.join(sources) if sources else '(empty)'}")
+        for f in d.get("csp_findings", []) or []:
+            print(f"    [{f.get('severity','?')}] {f.get('issue','')}")
 
     comp = d.get("compliance", {})
     if comp:

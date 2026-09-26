@@ -109,3 +109,33 @@
 2026-09-25 23:14:47,067 [INFO] bootstrap: telegram bot auto-restart invoked
 2026-09-25 23:33:10,399 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
 2026-09-25 23:33:10,900 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 23:43:44,434 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 23:43:44,435 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-25 23:48:18,173 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-25 23:48:18,740 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 02:21:32,137 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 02:21:32,648 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 02:23:01,977 [INFO] Scan started: job=c49c01c0-36a6-49c3-83b4-e8d248cb2283 target=github.com mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'port_scan', 'ssl_check', 'tech_fingerprint', 'whois_lookup']
+2026-09-26 02:32:09,406 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 02:32:09,406 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 02:32:55,369 [INFO] Scan started: job=60df5f8a-85c3-43ae-84df-3fef848ee1a4 target=tempail.com mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup']
+2026-09-26 02:35:15,711 [INFO] Scan started: job=7893e87a-bf1e-4150-8f65-3e74245c565d target=devtools.biz.id mode=expert tools=['connectivity_check', 'dns_lookup', 'email_security', 'headers_check', 'ip_info', 'ssl_check', 'subdomain_enum', 'tech_fingerprint', 'whois_lookup']
+2026-09-26 02:39:35,142 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 02:39:35,666 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 02:41:44,442 [INFO] Scan started: job=32bc7100-6192-491a-90f5-f4c7ada264d7 target=tempail.com mode=expert tools=['connectivity_check', 'headers_check']
+2026-09-26 02:49:31,307 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 02:49:31,308 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 02:57:55,601 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 02:57:56,066 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 02:58:21,367 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 02:58:21,368 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 03:39:16,531 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 03:39:17,134 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 03:41:29,453 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 03:41:29,453 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 03:42:23,286 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 03:42:23,286 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 03:45:34,324 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 03:45:34,325 [INFO] bootstrap: telegram bot auto-restart invoked
+2026-09-26 03:46:21,318 [INFO] bootstrap: default user check complete (username=Yanxzyx, first_run=False)
+2026-09-26 03:46:21,319 [INFO] bootstrap: telegram bot auto-restart invoked

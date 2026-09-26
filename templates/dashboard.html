@@ -94,7 +94,7 @@
                 </div>
                 <div class="grid-cards">
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-magnifying-glass"></i></div><div class="stat-label" data-i18n="stat_recon_tools">Recon Tools</div><div class="stat-value" id="toolsCount">--</div></div>
-                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-shield-halved"></i></div><div class="stat-label" data-i18n="stat_security_modules">Security Modules</div><div class="stat-value">10</div></div>
+                    <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-shield-halved"></i></div><div class="stat-label" data-i18n="stat_security_modules">Security Modules</div><div class="stat-value">11</div></div>
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-clock-rotate-left"></i></div><div class="stat-label" data-i18n="stat_total_scans">Total Scans</div><div class="stat-value" id="totalScansCount">--</div></div>
                     <div class="stat-card"><div class="stat-icon-badge"><i class="fas fa-check-circle"></i></div><div class="stat-label" data-i18n="stat_system_status">System Status</div><div class="stat-value" style="color:var(--green);" data-i18n="stat_online">Online</div></div>
                 </div>
@@ -883,8 +883,17 @@
 
 <!-- ═══════════════════════════════════════════════════════════════════════
      SCRIPTS
+     ─────────────────────────────────────────────────────────────────────
+     Load order:
+       1. script.js      — core dashboard logic (renderResults, nav, i18n…)
+       2. script2.js     — LFI/RFI renderer addon. Wraps renderResults()
+                            that script.js just defined, so the LFI/RFI
+                            cards slot into the same result grid.
+       3. app-mh5783.js  — MHDDoS Control panel
+       4. app-ex3bve.js  — Exploit Suite panel
      ═══════════════════════════════════════════════════════════════════════ -->
 <script src="js/script.js"></script>
+<script src="js/script2.js"></script>
 <script src="js/app-mh5783.js"></script>
 <script src="js/app-ex3bve.js"></script>
 

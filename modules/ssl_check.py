@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SSL/TLS Certificate Inspector — comprehensive & production-ready (v3.1.0)
+SSL/TLS Certificate Inspector — comprehensive & production-ready (v3.3.0)
 =========================================================================
 
 Reads exactly what any browser padlock shows, plus deeper fields in expert
@@ -9,77 +9,151 @@ mode. Drop-in compatible with the Emergens orchestrator: exposes
 a Flask blueprint mounted at `/api/ssl/scan`, and `self_check()` runtime
 diagnostics.
 
-Detection coverage
-------------------
-  • Custom port, split connect + handshake timeouts
-  • Granular exception handling: DNS, TCP, TLS, cert-chain, cert-parse
-  • Full certificate chain extraction (Python 3.10+ native; falls back
-    to leaf-only on older runtimes)
-  • Chain validation — issuer / subject linkage, self-signed detection,
-    known-CA registry, expired intermediates, CA basic-constraints
-  • OCSP stapling detection (True / False / None)
-  • Public-key introspection (RSA / DSA / EC / Ed25519 / Ed448) via
-    `cryptography`, with graceful fallback to stdlib
-  • SHA-256 / SHA-1 / SHA-512 fingerprints of every cert in the chain
-  • Subject Alternative Names (DNS, IP, email, URI)
-  • Key usage, extended key usage, certificate policies, AIA, CRL DP
-  • Weak protocol / weak cipher detection with proper classification
-  • Days-until-expiry countdown, expiring-soon flag, expired flag
-  • Bulk `scan_many()` with ThreadPoolExecutor
-  • Streaming generator mirroring the app.py SSE envelope
-  • Isolated logger — never duplicates Flask / root handlers
-  • `run()` never raises — all errors returned in `result["error"]`
-  • Flask Blueprint: POST|GET /api/ssl/scan
-  • Module aliases: ssl_check, scan_ssl, check_ssl, scan_ssl_check
+----------------------------------------------------------------------------
+Changelog v3.3.0
+----------------------------------------------------------------------------
+  ✔ VERIFIED — Response contract matches `renderSslResult()` in dashboard.js.
+             Every field the padlock panel reads is now documented in
+             RENDERER_CONTRACT below and always present in the response.
+  ✔ NEW    — RENDERER_CONTRACT constant + `renderer_contract()` helper so
+             the shape can be inspected from the CLI at any time.
+  ✔ DOCS   — Testing section expanded with the badssl.com matrix
+             (self-signed / expired / wrong-host / untrusted-root) that
+             exercises the unverified-retry path end-to-end.
+  ✔ DOCS   — Acknowledgment section aligned with the Emergens dashboard.
+  ✔ HARD   — All v3.2.0 behavior preserved (unverified retry, flattened
+             convenience fields, expert enrichment, Flask blueprint).
 
 ----------------------------------------------------------------------------
-Changelog v3.1.0  (Emergens integration + hardening)
+Changelog v3.2.0 (from v3.1.0)
 ----------------------------------------------------------------------------
-  ✔ FIXED  — `_extract_chain_der()` now correctly uses
-             `ssl.Certificate.public_bytes(ssl.ENCODING_DER)` (Python 3.10+)
-             instead of the broken `__import__("cryptography").hazmat...`
-             chain that raised at runtime.
-  ✔ NEW    — Flask Blueprint `ssl_bp` exposing
-             `POST|GET /api/ssl/scan` so terminal.py's
-             `_client.post("/api/ssl/scan", ...)` works out-of-the-box.
-  ✔ NEW    — `register_blueprint(app)` helper for app.py wiring.
-  ✔ NEW    — Aliases `ssl_check`, `scan_ssl`, `check_ssl`, `scan_ssl_check`.
-  ✔ NEW    — `self_check()` runtime diagnostic + CLI `--self-check`.
-  ✔ HARD   — Chain extraction honours `max_chain_depth` at source, skips
-             unparsable certs, never raises on exotic runtimes.
-  ✔ HARD   — OCSP stapling gracefully degrades on stripped Python builds.
-  ✔ HARD   — Response envelope always guarantees `data.subject` and
-             `data.issuer` are dicts so renderers never see KeyError.
+  ✔ FIXED  — UI showed `--` for Subject / Issuer / Protocol / Days Left
+             whenever the TLS handshake failed certificate verification
+             (self-signed, expired, hostname mismatch, untrusted CA).
+             The check now retries the handshake with verification OFF
+             and still extracts the full certificate, reporting the
+             verification failure separately via `data.verified` /
+             `data.verify_error`.
+  ✔ NEW    — Flattened convenience fields: `subject_str`, `issuer_str`,
+             `common_name`, `issuer_cn`, `issuer_org`,
+             `cipher_strength_bits`, `chain_length`.
+  ✔ NEW    — `_connect_tls()` helper.
+
+----------------------------------------------------------------------------
+Renderer contract — verified against dashboard.js `renderSslResult()`
+----------------------------------------------------------------------------
+The dashboard reads the following fields from `result["data"]` (basic mode):
+
+    subject              dict   {commonName, organizationName, ...}
+    issuer               dict   {commonName, organizationName, ...}
+    subject_str          str    "CN=example.com · O=Example Inc · C=US"
+    issuer_str           str    flattened issuer DN
+    common_name          str    subject CN ("" if absent)
+    issuer_cn            str    issuer CN
+    issuer_org           str    issuer organization
+    valid_from           str    ISO-8601
+    valid_until          str    ISO-8601
+    protocol             str    "TLSv1.3" / "TLSv1.2" / ...
+    protocol_weak        bool
+    protocol_note        str
+    cipher_suite         str
+    cipher_protocol      str
+    cipher_bits          int
+    cipher_strength_bits int    (alias of cipher_bits)
+    cipher_weak          bool
+    cipher_note          str
+    self_signed          bool
+    publicly_trusted     bool | null
+    serial_number        str    hex
+    chain_length         int
+    days_until_expiry    int    (negative if expired)
+    days_left            int    (alias)
+    is_expired           bool
+    expiring_soon        bool
+    verified             bool   False when unverified retry succeeded
+    verify_error         str | null
+
+Expert mode additionally populates:
+
+    subject_alt_names       list[{type, value}]
+    public_key              dict{algorithm, size_bits, curve?, exponent?}
+    signature_algorithm     str
+    key_usage               list[str]
+    extended_key_usage      list[str]
+    certificate_policies    list[str]
+    is_ca                   bool
+    path_length             int | null
+    ocsp_stapled            bool | null
+    ocsp_urls               list[str]
+    ca_issuers_urls         list[str]
+    crl_urls                list[str]
+    fingerprint_sha256      str
+    fingerprint_sha1        str
+    fingerprint_sha512      str
+    cert_size_bytes         int
+    chain_fingerprints      list[{index, role, subject_cn, fingerprint_sha256, ...}]
+    chain_validation        dict{length, linked, has_root, expired_certs, ...}
+
+After a successful TCP + TLS handshake, `data` is guaranteed non-empty and
+the four padlock KPIs (Days Left / Protocol / Cipher Strength / Chain Certs)
+are always populated — the only way `data` stays empty is if the handshake
+itself failed, in which case `result["error"]` explains why.
 
 ----------------------------------------------------------------------------
 Acknowledgment
 ----------------------------------------------------------------------------
   • Author        : Yanxzyx  (#credit ~ Yanxzyx)
   • Framework     : Emergens / Oxysintx orchestrator stack
+  • Dashboard     : dashboard.js (renderSslResult) — the exact consumer of
+                    this module's response shape; both the flattened
+                    convenience fields (v3.2.0) and the unverified retry
+                    (v3.2.0) were added specifically so the padlock panel
+                    never shows `--` on a reachable host.
   • Dependencies  : stdlib `ssl` (3.10+ chain APIs) + optional
                     `cryptography` for deep X.509 introspection,
                     `Flask` for the /api/ssl/scan endpoint
   • References    : RFC 5280 (X.509), RFC 6960 (OCSP), RFC 8446 (TLS 1.3),
-                    RFC 6797 (HSTS)
+                    RFC 6797 (HSTS), RFC 6125 (SNI / identity).
   • With thanks to the CPython `ssl` maintainers for exposing
-    `get_unverified_chain()` and the `cryptography` team for
-    a sane X.509 object model.
+    `get_unverified_chain()` and the `cryptography` team for a sane
+    X.509 object model.
 
 ----------------------------------------------------------------------------
 Testing
 ----------------------------------------------------------------------------
-  Quick smoke test (CLI):
-      python3 -m modules.ssl_check example.com --mode expert
+  Runtime diagnostics:
       python3 -m modules.ssl_check --self-check
 
+  CLI smoke tests:
+      python3 -m modules.ssl_check example.com
+      python3 -m modules.ssl_check example.com --mode expert
+      python3 -m modules.ssl_check --json example.com | jq .data.subject
+
+  Unverified-retry path — exercises every failure mode the fix addresses:
+      python3 -m modules.ssl_check self-signed.badssl.com     # self-signed
+      python3 -m modules.ssl_check expired.badssl.com         # expired
+      python3 -m modules.ssl_check wrong.host.badssl.com      # CN mismatch
+      python3 -m modules.ssl_check untrusted-root.badssl.com  # bad root
+      # → each should still show Subject / Issuer / Protocol / Days Left
+      #   and set data.verified=false + data.verify_error.
+
   Programmatic:
-      from modules.ssl_check import run, self_check
+      from modules.ssl_check import run, self_check, renderer_contract
       print(self_check())                        # runtime diagnostics
-      print(run("example.com", mode="expert"))   # full result dict
+      print(renderer_contract())                 # response-shape reference
+      r = run("example.com", mode="expert")
+      assert r["error"] is None
+      assert isinstance(r["data"]["subject"], dict)
+      assert isinstance(r["data"]["issuer"], dict)
 
   Flask wiring (in app.py):
       from modules.ssl_check import register_blueprint
       register_blueprint(app)
+
+  Dashboard integration smoke test:
+      curl -sX POST localhost:5000/api/ssl/scan \\
+        -H 'Content-Type: application/json' \\
+        -d '{"target":"example.com","mode":"expert"}' | jq .data.subject
 """
 
 from __future__ import annotations
@@ -135,9 +209,15 @@ logger.setLevel(logging.INFO)
 # ═══════════════════════════════════════════════════════════════════════════
 # METADATA — orchestrator contract
 # ═══════════════════════════════════════════════════════════════════════════
-__version__ = "3.1.0"
+__version__ = "3.3.0"
 __author__  = "Yanxzyx"
 __credit__  = "#credit ~ Yanxzyx"
+__all__ = [
+    "run", "ssl_check", "check_ssl", "scan_ssl", "scan_ssl_check",
+    "ssl_scan", "run_streaming", "scan_many",
+    "self_check", "renderer_contract", "register_blueprint",
+    "SSLChecker", "SSLConfig", "TOOL_INFO", "TOOL_KIND",
+]
 
 TOOL_INFO = {
     "name": "SSL/TLS Certificate Inspector",
@@ -158,6 +238,77 @@ DEFAULT_PORT              = 443
 DEFAULT_CONNECT_TIMEOUT   = 6.0
 DEFAULT_HANDSHAKE_TIMEOUT = 10.0
 DEFAULT_MAX_CHAIN_DEPTH   = 10
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# RENDERER CONTRACT — matches dashboard.js `renderSslResult()`
+# ═══════════════════════════════════════════════════════════════════════════
+RENDERER_CONTRACT: Dict[str, Any] = {
+    "consumer": "dashboard.js :: renderSslResult()",
+    "basic_fields": {
+        "subject":              "dict   — decoded X.509 name {commonName, organizationName, ...}",
+        "issuer":               "dict   — decoded X.509 name",
+        "subject_str":          "str    — flattened DN: 'CN=… · O=… · C=…'",
+        "issuer_str":           "str    — flattened issuer DN",
+        "common_name":          "str    — subject CN ('' when absent)",
+        "issuer_cn":            "str",
+        "issuer_org":           "str",
+        "valid_from":           "str    — ISO-8601",
+        "valid_until":          "str    — ISO-8601",
+        "protocol":             "str    — 'TLSv1.3' | 'TLSv1.2' | …",
+        "protocol_weak":        "bool",
+        "protocol_note":        "str",
+        "cipher_suite":         "str",
+        "cipher_protocol":      "str",
+        "cipher_bits":          "int",
+        "cipher_strength_bits": "int    — alias of cipher_bits",
+        "cipher_weak":          "bool",
+        "cipher_note":          "str",
+        "self_signed":          "bool",
+        "publicly_trusted":     "bool | null",
+        "serial_number":        "str    — hex",
+        "chain_length":         "int",
+        "days_until_expiry":    "int    — negative if expired",
+        "days_left":            "int    — alias",
+        "is_expired":           "bool",
+        "expiring_soon":        "bool",
+        "verified":             "bool   — False when unverified retry succeeded",
+        "verify_error":         "str | null",
+    },
+    "expert_fields": {
+        "subject_alt_names":    "list[{type, value}]",
+        "public_key":           "dict{algorithm, size_bits, curve?, exponent?}",
+        "signature_algorithm":  "str",
+        "key_usage":            "list[str]",
+        "extended_key_usage":   "list[str]",
+        "certificate_policies": "list[str]",
+        "is_ca":                "bool | null",
+        "path_length":          "int | null",
+        "ocsp_stapled":         "bool | null",
+        "ocsp_urls":            "list[str]",
+        "ca_issuers_urls":      "list[str]",
+        "crl_urls":             "list[str]",
+        "fingerprint_sha256":   "str",
+        "fingerprint_sha1":     "str",
+        "fingerprint_sha512":   "str",
+        "cert_size_bytes":      "int",
+        "chain_fingerprints":   "list[{index, role, subject_cn, fingerprint_sha256, ...}]",
+        "chain_validation":     "dict{length, linked, has_root, expired_certs, ...}",
+    },
+    "guarantees": [
+        "After TCP+TLS handshake, `data` is always non-empty.",
+        "`subject` and `issuer` are always dicts (never None/list/str).",
+        "Padlock KPIs (protocol, cipher_bits, chain_length, days_until_expiry) "
+        "are always present.",
+        "Unverified retry populates every basic field and sets "
+        "`verified=false` + `verify_error`.",
+    ],
+}
+
+
+def renderer_contract() -> Dict[str, Any]:
+    """Return the response-shape reference for dashboard.js consumers."""
+    return _json.loads(_json.dumps(RENDERER_CONTRACT))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -197,12 +348,22 @@ KNOWN_CAS = {
     "AC Camerfirma S.A.", "Camerfirma",
 }
 
-# Matches `SSLSocket.version()` output exactly
 _WEAK_PROTOCOLS = {"SSLv2", "SSLv3", "TLSv1", "TLSv1.1"}
 
 _WEAK_CIPHER_MARKERS = (
     "RC4", "DES", "3DES", "MD5", "NULL", "EXPORT", "ANON", "ADH", "AECDH",
 )
+
+_DN_SHORT = {
+    "commonName":              "CN",
+    "organizationName":        "O",
+    "organizationalUnitName":  "OU",
+    "countryName":             "C",
+    "stateOrProvinceName":     "ST",
+    "localityName":            "L",
+    "emailAddress":            "E",
+    "serialNumber":            "serialNumber",
+}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -323,6 +484,36 @@ def _decode_name(name: Any) -> Dict[str, str]:
     except Exception as e:
         logger.debug("Failed to fully decode x509 name: %s", e)
     return out
+
+
+def _format_dict_dn(dn: Dict[str, str]) -> str:
+    """Format a decoded-DN dict into an RFC 2253-ish single-line string."""
+    if not dn:
+        return ""
+    order = ["commonName", "organizationName", "organizationalUnitName",
+             "localityName", "stateOrProvinceName", "countryName",
+             "emailAddress"]
+    parts: List[str] = []
+    seen = set()
+    for key in order:
+        if key in dn and dn[key]:
+            parts.append(f"{_DN_SHORT.get(key, key)}={dn[key]}")
+            seen.add(key)
+    for key, value in dn.items():
+        if key in seen or not value:
+            continue
+        parts.append(f"{_DN_SHORT.get(key, key)}={value}")
+    return ", ".join(parts)
+
+
+def _format_x509_dn(name: Any) -> str:
+    """Format an x509.Name object as an RFC 2253-ish string."""
+    if name is None:
+        return ""
+    try:
+        return _format_dict_dn(_decode_name(name))
+    except Exception:
+        return ""
 
 
 def _get_validity_dates(cert: Any) -> Tuple[Optional[datetime.datetime],
@@ -474,22 +665,10 @@ def _is_publicly_trusted_fallback(cert_dict: Dict[str, Any]) -> Optional[bool]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# CHAIN EXTRACTION — FIXED in v3.1.0
+# CHAIN EXTRACTION
 # ═══════════════════════════════════════════════════════════════════════════
 def _extract_chain_der(ssock: ssl.SSLSocket) -> List[bytes]:
-    """
-    Return the DER chain as a list of bytes, leaf first.
-
-    Python 3.10+ exposes `SSLSocket.get_unverified_chain()` which returns a
-    list of `ssl.Certificate` objects. We call `public_bytes(ssl.ENCODING_DER)`
-    on each — this is the *correct* API. The pre-v3.1 code incorrectly used
-    `__import__("cryptography").hazmat.primitives.serialization.Encoding.DER`
-    which does not exist on `ssl.Certificate` objects and raised at runtime.
-
-    On older runtimes (< 3.10) or stripped builds, we fall back to leaf-only
-    via `getpeercert(binary_form=True)`.
-    """
-    # Preferred: full chain (Python 3.10+)
+    """Return the DER chain as a list of bytes, leaf first."""
     for meth in ("get_unverified_chain", "get_verified_chain"):
         fn = getattr(ssock, meth, None)
         if fn is None:
@@ -511,7 +690,6 @@ def _extract_chain_der(ssock: ssl.SSLSocket) -> List[bytes]:
         except Exception as e:
             logger.debug("Chain extraction via %s failed: %s", meth, e)
 
-    # Fallback: leaf only
     try:
         leaf_der = ssock.getpeercert(binary_form=True)
         return [leaf_der] if leaf_der else []
@@ -652,7 +830,7 @@ def _classify_cipher(cipher_name: Optional[str],
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# CORE CHECKER
+# CONFIG + CORE CHECKER
 # ═══════════════════════════════════════════════════════════════════════════
 @dataclass
 class SSLConfig:
@@ -707,186 +885,113 @@ class SSLChecker:
         infos.sort(key=lambda x: 0 if x[0] == socket.AF_INET else 1)
         family, socktype, proto, _canon, sockaddr = infos[0]
 
-        # ── TCP connect ─────────────────────────────────────────────
-        raw_sock: Optional[socket.socket] = None
-        try:
-            raw_sock = socket.socket(family, socktype, proto)
-            raw_sock.settimeout(self.config.connect_timeout)
-            raw_sock.connect(sockaddr)
-        except socket.timeout:
-            if raw_sock: raw_sock.close()
-            result["error"] = (f"TCP connect timed out after "
-                               f"{self.config.connect_timeout}s")
-            return result
-        except ConnectionRefusedError:
-            if raw_sock: raw_sock.close()
-            result["error"] = f"Connection refused on port {port}"
-            return result
-        except OSError as e:
-            if raw_sock: raw_sock.close()
-            result["error"] = f"Network error: {e}"
-            return result
-        except Exception as e:
-            if raw_sock: raw_sock.close()
-            result["error"] = f"Unexpected connection error: {e}"
-            return result
-
-        # ── TLS context ─────────────────────────────────────────────
-        try:
-            if self.config.verify:
-                ctx = ssl.create_default_context()
-            else:
-                ctx = ssl._create_unverified_context()  # noqa: SLF001
-            try:
-                min_ver = self._resolve_min_version()
-                if min_ver is not None:
-                    ctx.minimum_version = min_ver
-            except (AttributeError, ValueError):
-                pass
-        except Exception as e:
-            raw_sock.close()
-            result["error"] = f"Failed to build SSL context: {e}"
-            return result
-
         server_hostname: Optional[str] = (
             host if self.config.sni and not _is_ip_literal(host) else None
         )
 
-        # ── Handshake ───────────────────────────────────────────────
-        raw_sock.settimeout(self.config.handshake_timeout)
+        # ── TLS handshake (with graceful verify fallback) ────────────
         ssock: Optional[ssl.SSLSocket] = None
+        verify_error: Optional[str] = None
+        used_verify = self.config.verify
+
         try:
-            try:
-                ssock = ctx.wrap_socket(raw_sock,
-                                         server_hostname=server_hostname)
-            except ssl.SSLCertVerificationError as e:
-                msg = getattr(e, "verify_message", None) or str(e)
+            ssock = self._connect_tls(
+                sockaddr, family, socktype, proto,
+                server_hostname, verify=self.config.verify,
+            )
+        except ssl.SSLCertVerificationError as e:
+            msg = getattr(e, "verify_message", None) or str(e)
+            if self.config.verify:
+                logger.info("Verification failed (%s) — retrying unverified "
+                            "to still extract certificate details.", msg)
+                verify_error = msg
+                used_verify = False
+                try:
+                    ssock = self._connect_tls(
+                        sockaddr, family, socktype, proto,
+                        server_hostname, verify=False,
+                    )
+                except socket.timeout:
+                    result["error"] = (
+                        f"TLS handshake timed out after "
+                        f"{self.config.handshake_timeout}s"
+                    )
+                    return result
+                except Exception as e2:
+                    result["error"] = (
+                        f"Certificate verification failed: {msg} "
+                        f"(unverified fallback also failed: {e2})"
+                    )
+                    return result
+            else:
                 result["error"] = f"Certificate verification failed: {msg}"
                 return result
-            except ssl.SSLError as e:
-                result["error"] = f"TLS handshake failed: {e}"
-                return result
-            except socket.timeout:
-                result["error"] = (f"TLS handshake timed out after "
-                                   f"{self.config.handshake_timeout}s")
-                return result
-            except OSError as e:
-                result["error"] = f"Connection error during handshake: {e}"
-                return result
-
-            # ── Certificate + cipher ────────────────────────────────
-            try:
-                cert_dict = ssock.getpeercert(binary_form=False) or {}
-                der_leaf  = ssock.getpeercert(binary_form=True)
-            except ssl.SSLError as e:
-                result["error"] = f"Failed to read peer certificate: {e}"
-                return result
-
-            cipher       = ssock.cipher()
-            protocol_str = ssock.version()
-
-            # ── Chain extraction (FIXED) ────────────────────────────
-            chain_der = _extract_chain_der(ssock)[: self.config.max_chain_depth]
-            if not chain_der and der_leaf:
-                chain_der = [der_leaf]
-            chain_x509 = _parse_chain(chain_der)
-
-            leaf_x509: Optional[Any] = chain_x509[0] if chain_x509 else None
-            if leaf_x509 is None and _HAVE_CRYPTO and der_leaf:
-                try:
-                    leaf_x509 = x509.load_der_x509_certificate(der_leaf)
-                except Exception as e:
-                    logger.debug("Leaf parse failed: %s", e)
-
-            # ── Core fields ─────────────────────────────────────────
-            if leaf_x509 is not None:
-                subject  = _decode_name(leaf_x509.subject)
-                issuer   = _decode_name(leaf_x509.issuer)
-                nb_dt, na_dt = _get_validity_dates(leaf_x509)
-                not_before_str = nb_dt.isoformat() if nb_dt else ""
-                not_after_str  = na_dt.isoformat() if na_dt else ""
-                self_signed    = _is_self_signed_x509(leaf_x509)
-                publicly_trusted = _is_publicly_trusted_x509(leaf_x509)
-                serial_hex = format(leaf_x509.serial_number, "x")
-                if len(serial_hex) % 2 == 1:
-                    serial_hex = "0" + serial_hex
-                serial = serial_hex
-            else:
-                subject  = _dictify_name(cert_dict.get("subject", []))
-                issuer   = _dictify_name(cert_dict.get("issuer", []))
-                not_before_str = cert_dict.get("notBefore", "")
-                not_after_str  = cert_dict.get("notAfter", "")
-                self_signed    = _is_self_signed_fallback(cert_dict)
-                publicly_trusted = _is_publicly_trusted_fallback(cert_dict)
-                serial = cert_dict.get("serialNumber")
-
-            protocol_info = _classify_protocol(protocol_str)
-            cipher_class  = _classify_cipher(
-                cipher[0] if cipher else None,
-                cipher[2] if cipher else None,
-            )
-
-            # v3.1.0 — guarantee subject and issuer are dicts
-            if not isinstance(subject, dict):
-                subject = {}
-            if not isinstance(issuer, dict):
-                issuer = {}
-
-            data: Dict[str, Any] = {
-                "subject":          subject,
-                "issuer":           issuer,
-                "valid_from":       not_before_str,
-                "valid_until":      not_after_str,
-                "protocol":         protocol_str,
-                "protocol_weak":    protocol_info["weak"],
-                "protocol_note":    protocol_info["description"],
-                "cipher_suite":     cipher[0] if cipher else "unknown",
-                "cipher_protocol":  cipher[1] if cipher else None,
-                "cipher_bits":      cipher[2] if cipher else None,
-                "cipher_weak":      cipher_class["weak"],
-                "cipher_note":      cipher_class["reason"],
-                "self_signed":      self_signed,
-                "publicly_trusted": publicly_trusted,
-                "serial_number":    serial,
-                "chain_length":     len(chain_der),
-                "host":             host,
-                "port":             port,
-            }
-
-            # ── Expiry ──────────────────────────────────────────────
-            expiry_dt: Optional[datetime.datetime] = None
-            if leaf_x509 is not None:
-                _, expiry_dt = _get_validity_dates(leaf_x509)
-            if expiry_dt is None:
-                expiry_dt = _parse_date(not_after_str)
-
-            if expiry_dt:
-                delta = expiry_dt - _utcnow()
-                data["days_until_expiry"] = delta.days
-                data["is_expired"]        = delta.days < 0
-                data["expiring_soon"]     = 0 <= delta.days <= 30
-            else:
-                data["days_until_expiry"] = None
-                data["is_expired"]        = None
-                data["expiring_soon"]     = None
-
-            # ── Expert mode ─────────────────────────────────────────
-            if mode == "expert":
-                self._populate_expert(data, leaf_x509, chain_der, chain_x509,
-                                       cert_dict, ssock)
-
-            result["data"] = data
+        except socket.timeout:
+            result["error"] = (f"TCP/TLS handshake timed out after "
+                               f"{self.config.handshake_timeout}s")
+            return result
+        except ConnectionRefusedError:
+            result["error"] = f"Connection refused on port {port}"
+            return result
+        except ssl.SSLError as e:
+            result["error"] = f"TLS handshake failed: {e}"
+            return result
+        except OSError as e:
+            result["error"] = f"Network error: {e}"
+            return result
+        except Exception as e:
+            result["error"] = f"Unexpected TLS error: {e}"
             return result
 
+        # ── Extract certificate data ──────────────────────────────────
+        try:
+            data = self._extract_data(
+                ssock, host, port, mode, verify_error, used_verify,
+            )
+            result["data"] = data
+            return result
         finally:
-            if ssock is not None:
-                try: ssock.close()
-                except Exception: pass
-            elif raw_sock is not None:
-                try: raw_sock.close()
-                except Exception: pass
+            try:
+                ssock.close()
+            except Exception:
+                pass
 
     # ── Internals ─────────────────────────────────────────────────────
+    def _connect_tls(self,
+                     sockaddr: Any,
+                     family: int,
+                     socktype: int,
+                     proto: int,
+                     server_hostname: Optional[str],
+                     verify: bool) -> ssl.SSLSocket:
+        """Do TCP connect + TLS handshake. Caller owns returned socket."""
+        raw = socket.socket(family, socktype, proto)
+        raw.settimeout(self.config.connect_timeout)
+        try:
+            raw.connect(sockaddr)
+        except Exception:
+            try: raw.close()
+            except Exception: pass
+            raise
+
+        try:
+            ctx = (ssl.create_default_context()
+                   if verify else ssl._create_unverified_context())  # noqa: SLF001
+            min_ver = self._resolve_min_version()
+            if min_ver is not None:
+                try:
+                    ctx.minimum_version = min_ver
+                except (AttributeError, ValueError):
+                    pass
+
+            raw.settimeout(self.config.handshake_timeout)
+            ssock = ctx.wrap_socket(raw, server_hostname=server_hostname)
+            return ssock
+        except Exception:
+            try: raw.close()
+            except Exception: pass
+            raise
+
     def _resolve_min_version(self) -> Optional[ssl.TLSVersion]:
         v = (self.config.min_tls_version or "").strip()
         if not v:
@@ -898,6 +1003,159 @@ class SSLChecker:
             "TLSv1.3": ssl.TLSVersion.TLSv1_3,
         }
         return table.get(v)
+
+    def _extract_data(self,
+                      ssock: ssl.SSLSocket,
+                      host: str,
+                      port: int,
+                      mode: str,
+                      verify_error: Optional[str],
+                      used_verify: bool) -> Dict[str, Any]:
+        """Build the `data` dict from a live SSLSocket. Never raises."""
+        try:
+            cert_dict = ssock.getpeercert(binary_form=False) or {}
+        except Exception:
+            cert_dict = {}
+        try:
+            der_leaf = ssock.getpeercert(binary_form=True)
+        except Exception:
+            der_leaf = None
+
+        try:
+            cipher = ssock.cipher()
+        except Exception:
+            cipher = None
+        try:
+            protocol_str = ssock.version()
+        except Exception:
+            protocol_str = None
+
+        chain_der = _extract_chain_der(ssock)[: self.config.max_chain_depth]
+        if not chain_der and der_leaf:
+            chain_der = [der_leaf]
+        chain_x509 = _parse_chain(chain_der)
+
+        leaf_x509: Optional[Any] = chain_x509[0] if chain_x509 else None
+        if leaf_x509 is None and _HAVE_CRYPTO and der_leaf:
+            try:
+                leaf_x509 = x509.load_der_x509_certificate(der_leaf)
+            except Exception as e:
+                logger.debug("Leaf parse failed: %s", e)
+
+        # ── Core subject / issuer / validity ─────────────────────────
+        if leaf_x509 is not None:
+            subject  = _decode_name(leaf_x509.subject)
+            issuer   = _decode_name(leaf_x509.issuer)
+            nb_dt, na_dt = _get_validity_dates(leaf_x509)
+            not_before_str = nb_dt.isoformat() if nb_dt else ""
+            not_after_str  = na_dt.isoformat() if na_dt else ""
+            self_signed    = _is_self_signed_x509(leaf_x509)
+            publicly_trusted = _is_publicly_trusted_x509(leaf_x509)
+            serial_hex = format(leaf_x509.serial_number, "x")
+            if len(serial_hex) % 2 == 1:
+                serial_hex = "0" + serial_hex
+            serial = serial_hex
+            subject_str = _format_x509_dn(leaf_x509.subject)
+            issuer_str  = _format_x509_dn(leaf_x509.issuer)
+        else:
+            subject  = _dictify_name(cert_dict.get("subject", []))
+            issuer   = _dictify_name(cert_dict.get("issuer", []))
+            not_before_str = cert_dict.get("notBefore", "") or ""
+            not_after_str  = cert_dict.get("notAfter", "") or ""
+            self_signed    = _is_self_signed_fallback(cert_dict)
+            publicly_trusted = _is_publicly_trusted_fallback(cert_dict)
+            serial = cert_dict.get("serialNumber")
+            subject_str = _format_dict_dn(subject)
+            issuer_str  = _format_dict_dn(issuer)
+
+        if not isinstance(subject, dict):
+            subject = {}
+        if not isinstance(issuer, dict):
+            issuer = {}
+
+        protocol_info = _classify_protocol(protocol_str)
+        cipher_class  = _classify_cipher(
+            cipher[0] if cipher else None,
+            cipher[2] if cipher else None,
+        )
+
+        data: Dict[str, Any] = {
+            # ── Core (dashboard.js reads these) ─────────────────────
+            "subject":          subject,
+            "issuer":           issuer,
+
+            # ── Flattened convenience fields ────────────────────────
+            "subject_str":      subject_str,
+            "issuer_str":       issuer_str,
+            "common_name":      subject.get("commonName", "") or "",
+            "issuer_cn":        issuer.get("commonName", "") or "",
+            "issuer_org":       issuer.get("organizationName", "") or "",
+
+            # ── Validity ────────────────────────────────────────────
+            "valid_from":       not_before_str,
+            "valid_until":      not_after_str,
+            "not_before":       not_before_str,
+            "not_after":        not_after_str,
+
+            # ── Protocol ────────────────────────────────────────────
+            "protocol":         protocol_str,
+            "protocol_weak":    protocol_info["weak"],
+            "protocol_note":    protocol_info["description"],
+
+            # ── Cipher ──────────────────────────────────────────────
+            "cipher_suite":        cipher[0] if cipher else "unknown",
+            "cipher_protocol":     cipher[1] if cipher else None,
+            "cipher_bits":         cipher[2] if cipher else None,
+            "cipher_strength_bits": cipher[2] if cipher else None,
+            "cipher_weak":         cipher_class["weak"],
+            "cipher_note":         cipher_class["reason"],
+
+            # ── Identity ────────────────────────────────────────────
+            "self_signed":      self_signed,
+            "publicly_trusted": publicly_trusted,
+            "serial_number":    serial,
+
+            # ── Verification result ─────────────────────────────────
+            "verified":         bool(used_verify and not verify_error),
+            "verify_error":     verify_error,
+
+            # ── Chain ───────────────────────────────────────────────
+            "chain_length":      len(chain_der),
+            "chain_depth_known": len(chain_der),
+
+            # ── Connection ──────────────────────────────────────────
+            "host":             host,
+            "port":             port,
+        }
+
+        # ── Expiry ──────────────────────────────────────────────
+        expiry_dt: Optional[datetime.datetime] = None
+        if leaf_x509 is not None:
+            _, expiry_dt = _get_validity_dates(leaf_x509)
+        if expiry_dt is None:
+            expiry_dt = _parse_date(not_after_str)
+
+        if expiry_dt:
+            delta = expiry_dt - _utcnow()
+            data["days_until_expiry"] = delta.days
+            data["days_left"]         = delta.days
+            data["is_expired"]        = delta.days < 0
+            data["expiring_soon"]     = 0 <= delta.days <= 30
+        else:
+            data["days_until_expiry"] = None
+            data["days_left"]         = None
+            data["is_expired"]        = None
+            data["expiring_soon"]     = None
+
+        # ── Expert mode ─────────────────────────────────────────
+        if mode == "expert":
+            try:
+                self._populate_expert(data, leaf_x509, chain_der,
+                                      chain_x509, cert_dict, ssock)
+            except Exception as e:
+                logger.warning("Expert enrichment failed: %s", e)
+
+        return data
 
     def _populate_expert(self,
                          data: Dict[str, Any],
@@ -1023,9 +1281,7 @@ class SSLChecker:
                     entry["subject_cn"] = "?"
             chain_fps.append(entry)
         data["chain_fingerprints"] = chain_fps
-
         data["chain_validation"] = _validate_chain(chain_x509)
-        data["chain_depth_known"] = len(chain_der)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1170,6 +1426,7 @@ def self_check() -> Dict[str, Any]:
         "aliases":      ["run", "ssl_check", "check_ssl", "scan_ssl",
                          "scan_ssl_check", "ssl_scan"],
         "endpoint":     "/api/ssl/scan" if _HAS_FLASK else None,
+        "renderer":     "dashboard.js :: renderSslResult()",
         "ready":        has_chain_api or _HAVE_CRYPTO,
     }
 
@@ -1188,16 +1445,7 @@ if _HAS_FLASK:
               "port": 443, "timeout": 10,
               "verify": true, "sni": true }
 
-        Response shape — matches terminal.py `_render_ssl()`:
-            {
-              "tool": "ssl_check", "version": "3.1.0",
-              "target": "example.com",
-              "data": { subject: {...}, issuer: {...},
-                        protocol, cipher_suite, valid_from, valid_until,
-                        days_until_expiry, is_expired, expiring_soon,
-                        self_signed, publicly_trusted, chain_length, ... },
-              "error": null
-            }
+        Response shape — see RENDERER_CONTRACT / renderSslResult().
         """
         payload = request.get_json(silent=True) or {}
         target = (payload.get("target")
@@ -1251,17 +1499,25 @@ def _print_human(r: Dict[str, Any]) -> None:
     if r.get("error"):
         print(f"[FAIL] {r['target']:40s}  {r['error']}")
         return
-    d = r["data"]
-    subj = (d.get("subject") or {}).get("commonName") or "(no CN)"
-    iss  = (d.get("issuer") or {}).get("organizationName") or "(unknown)"
+    d = r.get("data") or {}
+    subj = (d.get("common_name")
+            or (d.get("subject") or {}).get("commonName")
+            or "(no CN)")
+    iss  = (d.get("issuer_org")
+            or (d.get("issuer") or {}).get("organizationName")
+            or "(unknown)")
     prot = d.get("protocol") or "?"
     exp  = d.get("days_until_expiry")
     tag  = "⚠ weak" if d.get("protocol_weak") else "✓"
+    if d.get("verified") is False:
+        tag = "⚠ unverified"
     print(f"[OK]   {r['target']:40s}  {subj:35s}  {prot:8s}  "
           f"expires in {exp} days  {tag}")
     print(f"        issuer: {iss}")
     if d.get("chain_length"):
         print(f"        chain : {d['chain_length']} cert(s)")
+    if d.get("verify_error"):
+        print(f"        verify: {d['verify_error']}")
 
 
 def _main() -> int:
@@ -1279,8 +1535,14 @@ def _main() -> int:
     ap.add_argument("--json", action="store_true", help="raw JSON output")
     ap.add_argument("--self-check", action="store_true",
                     help="print runtime diagnostics and exit")
+    ap.add_argument("--contract", action="store_true",
+                    help="print the dashboard renderer contract and exit")
     ap.add_argument("--version", action="version", version=__version__)
     args = ap.parse_args()
+
+    if args.contract:
+        print(_json.dumps(renderer_contract(), indent=2))
+        return 0
 
     if args.self_check or not args.targets:
         print(_json.dumps(self_check(), indent=2))

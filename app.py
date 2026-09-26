@@ -1,31 +1,45 @@
 #!/usr/bin/env python3
 """
-Oxysintx — Main Flask Application (v4.2.0-clean)
+Opencode — Main Flask Application (v4.4.2-professional)
 
 Integrated stack:
-  • scan_apikey v6.1.2   — Cloudflare bypass + strict FP filter
-  • scan_xss v2.0.0       — Wordlist-based XSS scanner
-  • sql_map v3.0.0        — Nation-grade SQLi scanner
-  • scan_ssl v3.0.0       — Full chain cert inspector
-  • scan_ip_info v5.0.0   — Dual-mode IP intelligence
+  • scan_apikey v6.1.2    — Cloudflare bypass + strict FP filter
+  • scan_xss v2.0.0        — Wordlist-based XSS scanner
+  • sql_map v3.0.0         — Nation-grade SQLi scanner
+  • scan_ssl v3.3.0        — Full chain cert inspector
+  • scan_ip_info v5.0.0    — Dual-mode IP intelligence
   • scan_tech_fingerprint v3.0.0 — DNS + favicon + multi-path
-  • scan_headers v3.0.0   — Advanced header analyzer + CF bypass
-  • port_scan v4.0.0      — Wordlist-driven port scanner
-  • modules.fixes         — Runtime patch for port_scan
+  • scan_headers v3.2.0    — Advanced header analyzer + CF bypass
+  • port_scan v4.0.0       — Wordlist-driven port scanner (patched → 4.0.1)
+  • lfi_rfi v1.0.2         — Local/Remote File Inclusion scanner
+  • modules.fixes          — Runtime patch for port_scan
 
-v4.2.0-clean changelog
-  • HTTP Logger module fully removed (import, init, routes, references)
-  • Auto-import modules.fixes at boot (applies port_scan patches)
-  • New endpoints for every upgraded module (status/scan/stream)
-  • Unified module health check at /api/modules/status
-  • Better exception logging across all scan endpoints
-  • Preserved: v4.1.0 endpoints, MHDDoS panel, payment, chat, etc.
+v4.4.2 changelog
+  • FIX   — Ctrl+C at the port prompt now exits cleanly with
+            "⊘ Cancelled by user" and exit code 130 (standard SIGINT).
+            Previously a raw Python traceback was printed.
+  • FIX   — Ctrl+C while the Flask server is running shuts down
+            gracefully with "⊘ Server stopped by user".
+  • FIX   — Non-TTY stdin (docker / pipe / CI) now auto-falls back
+            to the default port on EOFError instead of crashing.
+  • CHG   — Default port is now 8080.
 
-v4.2.1 changelog
-  • Added bootstrap() / bootstrap_once() — safe for terminal.py integration
-  • Entrypoint now uses bootstrap_once() so first-run + telegram restart
-    still run when the module is imported instead of executed.
-  • Backward compatible: `python3 app.py` still works exactly the same.
+v4.4.1 changelog
+  • FIX   — _boot_screen() accepts the bootstrap outcome and stops
+            re-invoking ensure_default_user() / auto_restart_bot().
+  • FIX   — bootstrap_once() result is threaded through to the boot
+            screen so first-run password only appears once.
+
+v4.4.0 changelog
+  • NEW   — LFI/RFI scanner fully integrated.
+  • FIX   — Bootstrap no longer duplicates inner log lines.
+  • FIX   — logger namespace switched from "oxysintx" to "opencode".
+  • FIX   — _get_chat_cached() mtime race.
+  • FIX   — SSE Response import is now explicit at module top.
+  • FIX   — _client_ip() honours X-Forwarded-For only when TRUST_PROXY=1.
+  • FIX   — _read_bounded() closes the response in a finally block.
+  • FIX   — 404 page HTML cached as compiled string.
+  • Removed /downloader_pinterest_tiktok.html and /data_main.html.
 
 Author: Yanxzyx
 """
@@ -49,6 +63,7 @@ from functools import wraps
 from importlib import import_module
 from pathlib import Path
 from subprocess import Popen, PIPE
+from typing import Any, Callable, Optional, Tuple
 
 import psutil
 import requests
@@ -77,13 +92,157 @@ from modules.telegram import (
     set_orchestrator, set_history_store,
 )
 
-# ── Apply runtime patches (port_scan hardening) ───────────────────────────
+# ── Runtime patches (port_scan hardening) ─────────────────────────────────
 try:
-    from modules import fixes as _oxysintx_fixes
+    from modules import fixes as _opencode_fixes
     _fixes_available = True
-except Exception as _fixes_err:
-    _oxysintx_fixes = None
+except Exception:
+    _opencode_fixes = None
     _fixes_available = False
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ANSI colour engine
+# ═══════════════════════════════════════════════════════════════════════════
+class _Ansi:
+    RESET      = "\033[0m"
+    BOLD       = "\033[1m"
+    DIM        = "\033[2m"
+    BLUE       = "\033[38;5;39m"
+    BLUE_HI    = "\033[38;5;45m"
+    BLUE_DEEP  = "\033[38;5;27m"
+    BLUE_LIGHT = "\033[38;5;117m"
+    CYAN       = "\033[38;5;51m"
+    GREEN      = "\033[38;5;42m"
+    RED        = "\033[38;5;203m"
+    YELLOW     = "\033[38;5;220m"
+    GRAY       = "\033[38;5;244m"
+    GRAY_DIM   = "\033[38;5;240m"
+    WHITE      = "\033[97m"
+
+
+def _supports_color() -> bool:
+    if os.getenv("NO_COLOR"):
+        return False
+    if os.getenv("FORCE_COLOR"):
+        return True
+    try:
+        return bool(sys.stdout.isatty())
+    except Exception:
+        return False
+
+
+def _enable_windows_vt() -> None:
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+    except Exception:
+        pass
+
+
+_USE_COLOR = _supports_color()
+if _USE_COLOR:
+    _enable_windows_vt()
+
+
+def _c(text: str, color: str) -> str:
+    if not _USE_COLOR:
+        return text
+    return f"{color}{text}{_Ansi.RESET}"
+
+
+_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+_SPINNER_INTERVAL = 0.06
+
+
+def _print_step(label: str, *, ok: bool = True, detail: str = "") -> None:
+    mark = _c("✓", _Ansi.GREEN) if ok else _c("✗", _Ansi.RED)
+    detail_str = f"  {_c(detail, _Ansi.GRAY_DIM)}" if detail else ""
+    sys.stdout.write(f"  {mark} {label}{detail_str}\n")
+    sys.stdout.flush()
+
+
+def _run_with_spinner(
+    label: str,
+    fn: Callable[[], Any],
+    *,
+    success_detail: Optional[Callable[[Any], str]] = None,
+    error_detail: Optional[Callable[[BaseException], str]] = None,
+) -> Tuple[bool, Any]:
+    box: dict = {"ok": False, "value": None, "err": None}
+
+    def _worker():
+        try:
+            box["value"] = fn()
+            box["ok"] = True
+        except BaseException as exc:  # noqa: BLE001
+            box["err"] = exc
+
+    if not _USE_COLOR:
+        _worker()
+        if box["ok"]:
+            detail = ""
+            if success_detail is not None:
+                try:
+                    detail = success_detail(box["value"]) or ""
+                except Exception:
+                    detail = ""
+            _print_step(label, ok=True, detail=detail)
+        else:
+            detail = ""
+            if error_detail is not None:
+                try:
+                    detail = error_detail(box["err"]) or ""
+                except Exception:
+                    detail = str(box["err"])
+            else:
+                detail = str(box["err"]) if box["err"] else ""
+            _print_step(label, ok=False, detail=detail)
+        return box["ok"], box["value"] if box["ok"] else box["err"]
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    i = 0
+    while t.is_alive():
+        frame = _SPINNER_FRAMES[i % len(_SPINNER_FRAMES)]
+        line = f"  {_c(frame, _Ansi.BLUE)} {_c(label, _Ansi.GRAY)}"
+        sys.stdout.write("\r" + line + " " * 10)
+        sys.stdout.flush()
+        i += 1
+        time.sleep(_SPINNER_INTERVAL)
+    t.join(timeout=1.0)
+    sys.stdout.write("\r" + " " * (len(label) + 20) + "\r")
+    sys.stdout.flush()
+
+    if box["ok"]:
+        detail = ""
+        if success_detail is not None:
+            try:
+                detail = success_detail(box["value"]) or ""
+            except Exception:
+                detail = ""
+        _print_step(label, ok=True, detail=detail)
+    else:
+        detail = ""
+        if error_detail is not None:
+            try:
+                detail = error_detail(box["err"]) or ""
+            except Exception:
+                detail = str(box["err"])
+        else:
+            detail = str(box["err"]) if box["err"] else ""
+        _print_step(label, ok=False, detail=detail)
+    return box["ok"], box["value"] if box["ok"] else box["err"]
+
+
+def _print_banner(text: str, color: str = _Ansi.BLUE) -> None:
+    if not _USE_COLOR:
+        print(text)
+        return
+    print("\n".join(_c(line, color) for line in text.split("\n")))
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Optional modules — each guarded
@@ -129,7 +288,7 @@ try:
 except ImportError:
     _sqli_engine_available = False
 
-# ── SQLMap (v3.0.0) ───────────────────────────────────────────────────────
+# ── SQLMap ────────────────────────────────────────────────────────────────
 try:
     from modules import sql_map as sql_map_module
     from modules.sql_map import (
@@ -145,14 +304,14 @@ except ImportError as _e:
     _sqlmap_wordlist_available = False
     _sqlmap_import_err = str(_e)
 
-# ── Lightweight SQL injection ────────────────────────────────────────────
+# ── Lightweight SQL injection ─────────────────────────────────────────────
 try:
     from modules import sql_injection as sql_injection_module
     _sql_injection_available = True
 except ImportError:
     _sql_injection_available = False
 
-# ── XSS exploiter ────────────────────────────────────────────────────────
+# ── XSS exploiter ─────────────────────────────────────────────────────────
 try:
     from modules.xss_exploiter import (
         run as xss_exploiter_run,
@@ -163,7 +322,7 @@ try:
 except ImportError:
     _xss_exploiter_available = False
 
-# ── XSS (v2.0.0) ─────────────────────────────────────────────────────────
+# ── XSS ───────────────────────────────────────────────────────────────────
 try:
     from modules import xss as xss_module
     from modules.xss import (
@@ -179,7 +338,7 @@ except ImportError as _e:
     _xss_wordlist_available = False
     _xss_import_err = str(_e)
 
-# ── Sniper ───────────────────────────────────────────────────────────────
+# ── Sniper ────────────────────────────────────────────────────────────────
 try:
     from modules.sniper import (
         run as sniper_run,
@@ -189,7 +348,7 @@ try:
 except ImportError:
     _sniper_available = False
 
-# ── Wordlist scraper ─────────────────────────────────────────────────────
+# ── Wordlist scraper ──────────────────────────────────────────────────────
 try:
     from modules.git_scraper_wordlist import (
         sync           as wordlist_sync,
@@ -202,24 +361,24 @@ try:
 except ImportError:
     _wordlist_scraper_available = False
 
-# ── Downsea blueprint ────────────────────────────────────────────────────
+# ── Downsea blueprint ─────────────────────────────────────────────────────
 try:
     from modules.downsea import downsea_bp
     _downsea_available = True
 except ImportError:
     _downsea_available = False
 
-# ── AI Chat ──────────────────────────────────────────────────────────────
+# ── AI Chat ───────────────────────────────────────────────────────────────
 from ai_chat.chat_handler import ChatHandler
 
-# ── Analytic manager ─────────────────────────────────────────────────────
+# ── Analytic manager ──────────────────────────────────────────────────────
 try:
     from modules.analytic_manager import AnalyticDataManager
     _analytic_available = True
 except ImportError:
     _analytic_available = False
 
-# ── scan_apikey v6.1.2 ───────────────────────────────────────────────────
+# ── scan_apikey ───────────────────────────────────────────────────────────
 try:
     from modules import scan_apikey as apikey_module
     from modules.scan_apikey import (
@@ -239,7 +398,7 @@ except ImportError as _e:
     _apikey_available = False
     _apikey_import_err = str(_e)
 
-# ── scan_ssl v3.0.0 ──────────────────────────────────────────────────────
+# ── scan_ssl ──────────────────────────────────────────────────────────────
 try:
     from modules import scan_ssl as ssl_module
     from modules.scan_ssl import (
@@ -253,7 +412,7 @@ except ImportError as _e:
     _ssl_available = False
     _ssl_import_err = str(_e)
 
-# ── scan_ip_info v5.0.0 ──────────────────────────────────────────────────
+# ── scan_ip_info ──────────────────────────────────────────────────────────
 try:
     from modules import scan_ip_info as ipinfo_module
     from modules.scan_ip_info import (
@@ -267,7 +426,7 @@ except ImportError as _e:
     _ipinfo_available = False
     _ipinfo_import_err = str(_e)
 
-# ── scan_tech_fingerprint v3.0.0 ─────────────────────────────────────────
+# ── scan_tech_fingerprint ────────────────────────────────────────────────
 try:
     from modules import scan_tech_fingerprint as techfp_module
     from modules.scan_tech_fingerprint import (
@@ -280,7 +439,7 @@ except ImportError as _e:
     _techfp_available = False
     _techfp_import_err = str(_e)
 
-# ── scan_headers v3.0.0 ──────────────────────────────────────────────────
+# ── scan_headers ─────────────────────────────────────────────────────────
 try:
     from modules import scan_headers as headers_module
     from modules.scan_headers import (
@@ -296,9 +455,23 @@ except ImportError as _e:
     _headers_available = False
     _headers_import_err = str(_e)
 
+# ── LFI/RFI Scanner v1.0.2 ───────────────────────────────────────────────
+try:
+    from modules import lfi_rfi as lfi_rfi_module
+    from modules.lfi_rfi import (
+        run as lfi_rfi_run,
+        run_streaming as lfi_rfi_stream,
+        TOOL_INFO as LFI_RFI_TOOL_INFO,
+    )
+    _lfi_rfi_available = True
+except ImportError as _e:
+    lfi_rfi_module = None
+    _lfi_rfi_available = False
+    _lfi_rfi_import_err = str(_e)
+
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STARTUP BANNER
+# BANNER
 # ═══════════════════════════════════════════════════════════════════════════
 BANNER = r"""
                                                                                                       
@@ -310,6 +483,7 @@ BANNER = r"""
 ██▄      ▄▄▌ ▐█▌       ▄█░▀ ██▄      ▄▄▌ ▐▒    ▒▌   ▐█▌     ▓▒░ ██▄      ▄▄▌ ▐█▌     ▄█░▀ ▄█▄     ▄█░▌
 ▀█  ▄▄▄▒▓▀    ▀░      ▐▓▀   ▀█  ▄▄▄▒▓▀   ▀▓▀  ▀▓▀    ▀██▄▄▄▒▓▀▒ ▀█  ▄▄▄▒▓▀    ▀░    ▐▓▀   ▀██▀▀▄▄▒▓▀  
 """
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # MHDDoS engine
@@ -695,6 +869,7 @@ firebaseConfig = {
     "appId": os.getenv("FIREBASE_APP_ID", "1:1085657141149:web:16e7a8b888cb31a59e2974"),
 }
 
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Flask app
 # ═══════════════════════════════════════════════════════════════════════════
@@ -711,7 +886,8 @@ if _downsea_available:
     app.register_blueprint(downsea_bp)
 
 setup_logging(Config.SERVER_LOG_FILE)
-logger = logging.getLogger("oxysintx")
+logger = logging.getLogger("opencode")
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Backing services
@@ -723,6 +899,7 @@ scan_orchestrator = ScanOrchestrator()
 
 set_orchestrator(scan_orchestrator)
 set_history_store(history_store)
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Directories
@@ -781,13 +958,17 @@ def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+_TRUST_PROXY = os.getenv("TRUST_PROXY", "0") == "1"
+
+
 def _client_ip():
-    fwd = request.headers.get('X-Forwarded-For', '')
-    if fwd:
-        return fwd.split(',')[0].strip()
-    real = request.headers.get('X-Real-IP', '').strip()
-    if real:
-        return real
+    if _TRUST_PROXY:
+        fwd = request.headers.get('X-Forwarded-For', '')
+        if fwd:
+            return fwd.split(',')[0].strip()
+        real = request.headers.get('X-Real-IP', '').strip()
+        if real:
+            return real
     return request.remote_addr or 'unknown'
 
 
@@ -1143,18 +1324,6 @@ def api_key_request_token_api_page():
     return render_template("api_key_request_token.html")
 
 
-@app.route("/downloader_pinterest_tiktok.html")
-@login_required
-def downloader_pinterest_tiktok_page():
-    return render_template("downloader_pinterest_tiktok.html")
-
-
-@app.route("/data_main.html")
-@login_required
-def data_main_redirect():
-    return redirect("/downloader_pinterest_tiktok.html")
-
-
 @app.route("/remote_access.html")
 @login_required
 def remote_access_page():
@@ -1404,7 +1573,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Oxysintx/4.2.0"},
+            headers={"User-Agent": "Opencode/4.4.2"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -1670,6 +1839,7 @@ def api_tools():
         "techfp":           _techfp_available,
         "headers":          _headers_available,
         "port_scan":        _port_scan_available,
+        "lfi_rfi":          _lfi_rfi_available,
     }
 
     return jsonify({
@@ -1723,7 +1893,7 @@ def api_scan_tool_direct(tool_name):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# API Key Scanner (scan_apikey v6.1.2)
+# API Key Scanner
 # ═══════════════════════════════════════════════════════════════════════════
 def _apikey_unavailable_response():
     return jsonify({
@@ -1841,16 +2011,13 @@ def api_apikey_proxies_sync():
 def api_apikey_scan():
     if not _apikey_available:
         return _apikey_unavailable_response()
-
     data = request.get_json(silent=True) or {}
     target = (data.get("target") or data.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-
     mode = data.get("mode", "basic")
     if mode not in ("basic", "expert"):
         mode = "basic"
-
     try:
         if "min_key_length" in data:
             apikey_module.MIN_EXTRACTED_LENGTH = max(4, int(data["min_key_length"]))
@@ -1858,7 +2025,6 @@ def api_apikey_scan():
             apikey_module.MIN_SECRET_ENTROPY = max(0.0, float(data["min_entropy"]))
     except (ValueError, TypeError):
         pass
-
     try:
         scanner = apikey_scanner_cls(
             mode=mode,
@@ -1870,15 +2036,14 @@ def api_apikey_scan():
             max_proxy_attempts=int(data.get("max_proxy_attempts", 4)),
             use_cloudflare_bypass=not bool(data.get("no_cf_bypass", False)),
         )
-        result = scanner.run(target)
-        return jsonify(result)
+        return jsonify(scanner.run(target))
     except Exception as e:
         logger.error(f"apikey scan failed: {e}", exc_info=True)
         return jsonify({"error": "scan_failed", "detail": str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SSL scanner (scan_ssl v3.0.0)
+# SSL scanner
 # ═══════════════════════════════════════════════════════════════════════════
 def _ssl_unavailable():
     return jsonify({"error": "ssl module not available",
@@ -1906,16 +2071,14 @@ def api_ssl_scan():
     target = (data.get("target") or data.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-    mode = data.get("mode", "basic")
     try:
-        result = ssl_run(
-            target, mode=mode,
+        return jsonify(ssl_run(
+            target, mode=data.get("mode", "basic"),
             port=int(data.get("port", 443)),
             timeout=float(data.get("timeout", 8.0)),
             verify=bool(data.get("verify", False)),
             sni=bool(data.get("sni", True)),
-        )
-        return jsonify(result)
+        ))
     except Exception as e:
         logger.error(f"ssl scan failed: {e}", exc_info=True)
         return jsonify({"error": "scan_failed", "detail": str(e)}), 500
@@ -1950,7 +2113,7 @@ def api_ssl_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# IP Info scanner (scan_ip_info v5.0.0)
+# IP Info scanner
 # ═══════════════════════════════════════════════════════════════════════════
 def _ipinfo_unavailable():
     return jsonify({"error": "ipinfo module not available",
@@ -2025,7 +2188,7 @@ def api_ipinfo_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Tech fingerprint (scan_tech_fingerprint v3.0.0)
+# Tech fingerprint
 # ═══════════════════════════════════════════════════════════════════════════
 def _techfp_unavailable():
     return jsonify({"error": "tech_fingerprint module not available",
@@ -2067,7 +2230,7 @@ def api_techfp_scan():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Headers scanner (scan_headers v3.0.0)
+# Headers scanner
 # ═══════════════════════════════════════════════════════════════════════════
 def _headers_unavailable():
     return jsonify({"error": "headers module not available",
@@ -2141,7 +2304,107 @@ def api_headers_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Port scan (v4.0.0 + fixes)
+# LFI/RFI Scanner (v1.0.2)
+# ═══════════════════════════════════════════════════════════════════════════
+def _lfi_rfi_unavailable():
+    return jsonify({
+        "error": "lfi_rfi module not available",
+        "detail": _lfi_rfi_import_err if not _lfi_rfi_available else "",
+    }), 503
+
+
+@app.route("/api/lfi_rfi/status")
+@api_login_required
+def api_lfi_rfi_status():
+    if not _lfi_rfi_available:
+        return _lfi_rfi_unavailable()
+    return jsonify({
+        "available": True,
+        "version":   LFI_RFI_TOOL_INFO.get("version", "?"),
+        "name":      LFI_RFI_TOOL_INFO.get("name", "LFI / RFI Scanner"),
+        "category":  LFI_RFI_TOOL_INFO.get("category", "Web Security"),
+        "intrusive": True,
+    })
+
+
+@app.route("/api/lfi_rfi/scan", methods=["POST"])
+@role_required("owner", "analyst")
+def api_lfi_rfi_scan():
+    if not _lfi_rfi_available:
+        return _lfi_rfi_unavailable()
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or data.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    try:
+        return jsonify(lfi_rfi_run(
+            target,
+            mode=data.get("mode", "basic"),
+            timeout=float(data.get("timeout", 10.0)),
+            concurrency=int(data.get("concurrency", 12)),
+            rate_limit=float(data.get("rate_limit", 40.0)),
+            max_duration=float(data.get("max_duration", 120.0)),
+            verify_ssl=bool(data.get("verify_ssl", False)),
+            follow_redirects=bool(data.get("follow_redirects", True)),
+            params=data.get("params"),
+            callback_url=data.get("callback_url"),
+            test_rfi=bool(data.get("test_rfi", True)),
+            headers=data.get("headers"),
+            cookies=data.get("cookies"),
+            proxies=data.get("proxies"),
+        ))
+    except Exception as e:
+        logger.error(f"lfi_rfi scan failed: {e}", exc_info=True)
+        return jsonify({"error": "scan_failed", "detail": str(e)}), 500
+
+
+@app.route("/api/lfi_rfi/scan/stream")
+@role_required("owner", "analyst")
+def api_lfi_rfi_scan_stream():
+    if not _lfi_rfi_available:
+        return _lfi_rfi_unavailable()
+    target = (request.args.get("target") or request.args.get("url") or "").strip()
+    if not target:
+        return jsonify({"error": "target_required"}), 400
+    cancel_event = threading.Event()
+    options = {
+        "mode":         request.args.get("mode", "basic"),
+        "timeout":      float(request.args.get("timeout", 10.0)),
+        "concurrency":  int(request.args.get("concurrency", 12)),
+        "rate_limit":   float(request.args.get("rate_limit", 40.0)),
+        "max_duration": float(request.args.get("max_duration", 120.0)),
+        "verify_ssl":   request.args.get("verify_ssl", "0") == "1",
+        "test_rfi":     request.args.get("test_rfi", "1") == "1",
+        "callback_url": request.args.get("callback_url"),
+    }
+    def _gen():
+        try:
+            for ev in lfi_rfi_stream(target, options, cancel_event):
+                yield _sse_format(ev)
+        except GeneratorExit:
+            cancel_event.set()
+        except Exception as e:
+            logger.error(f"lfi_rfi stream failed: {e}", exc_info=True)
+            yield _sse_format({"type": "error", "message": str(e)})
+    return _sse_response(_gen())
+
+
+@app.route("/api/lfi_rfi/payloads")
+@api_login_required
+def api_lfi_rfi_payloads():
+    if not _lfi_rfi_available:
+        return _lfi_rfi_unavailable()
+    mode = (request.args.get("mode") or "basic").lower()
+    if mode not in ("basic", "expert"):
+        mode = "basic"
+    try:
+        return jsonify(lfi_rfi_module.list_payloads(mode))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Port scan
 # ═══════════════════════════════════════════════════════════════════════════
 def _port_scan_unavailable():
     return jsonify({"error": "port_scan module not available",
@@ -2157,7 +2420,7 @@ def api_portscan_status():
         "available": True,
         "version":   PORT_SCAN_INFO.get("version", "?"),
         "patched":   _fixes_available,
-        "fixes":     ({} if not _fixes_available else _oxysintx_fixes.check())
+        "fixes":     ({} if not _fixes_available else _opencode_fixes.check())
                      if _fixes_available else {},
     })
 
@@ -2171,7 +2434,6 @@ def api_portscan_scan():
     target = (data.get("target") or data.get("url") or "").strip()
     if not target:
         return jsonify({"error": "target_required"}), 400
-
     kwargs = {
         "timeout":     float(data.get("timeout", 0.4)),
         "max_workers": int(data.get("max_workers", 400)),
@@ -2842,7 +3104,7 @@ def api_sqli_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SQLMap API (v3.0.0)
+# SQLMap API
 # ═══════════════════════════════════════════════════════════════════════════
 def _sqlmap_unavailable_response():
     return jsonify({
@@ -2965,7 +3227,7 @@ def api_sql_injection_scan():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# XSS Exploiter API (wordlist-based)
+# XSS Exploiter API
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/xss/wordlist")
 @api_login_required
@@ -3040,7 +3302,7 @@ def api_xss_scan_stream():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Lightweight XSS (v2.0.0)
+# Lightweight XSS
 # ═══════════════════════════════════════════════════════════════════════════
 def _xss_unavailable_response():
     return jsonify({
@@ -3242,12 +3504,9 @@ def api_wordlists_reload():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 404 handler
+# 404 handler — cached compiled HTML
 # ═══════════════════════════════════════════════════════════════════════════
-@app.errorhandler(404)
-def page_not_found(e):
-    username = session.get("username") if session.get("authenticated") else "Guest"
-    html = """<!DOCTYPE html>
+_NOT_FOUND_HTML = """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -3258,27 +3517,20 @@ def page_not_found(e):
         body {
             background-color: #000000;
             background-image:
-                radial-gradient(ellipse at 20% 20%, rgba(255,255,255,0.05) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 80%, rgba(255,255,255,0.05) 0%, transparent 50%),
-                repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 30px),
-                repeating-linear-gradient(-45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 30px);
-            color: #ffffff;
+                radial-gradient(ellipse at 20% 20%, rgba(90,160,255,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(90,160,255,0.06) 0%, transparent 50%),
+                repeating-linear-gradient(45deg, rgba(90,160,255,0.03) 0px, rgba(90,160,255,0.03) 1px, transparent 1px, transparent 30px),
+                repeating-linear-gradient(-45deg, rgba(90,160,255,0.03) 0px, rgba(90,160,255,0.03) 1px, transparent 1px, transparent 30px);
+            color: #e6f0ff;
             font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            position: relative;
-            overflow: hidden;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            height: 100vh; position: relative; overflow: hidden;
         }
         body::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 70%);
-            animation: pulse 4s ease-in-out infinite;
-            pointer-events: none;
+            content: ""; position: absolute; inset: 0;
+            background: radial-gradient(ellipse at center, rgba(90,160,255,0.06) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite; pointer-events: none;
         }
         @keyframes pulse {
             0%, 100% { opacity: 0.5; transform: scale(1); }
@@ -3293,19 +3545,19 @@ def page_not_found(e):
             justify-content: center; flex: 1; animation: fadeIn 1.5s ease-out;
         }
         .username {
-            font-size: 0.9rem; letter-spacing: 0.2em; color: #aaaaaa;
+            font-size: 0.9rem; letter-spacing: 0.2em; color: #7aa7dd;
             text-transform: uppercase; margin-bottom: 10px;
         }
         .main-title {
             font-size: clamp(1.2rem, 3.5vw, 2.5rem); font-weight: 300;
             letter-spacing: 0.35em; text-align: center; text-transform: uppercase;
-            color: #ffffff; text-shadow: 0 0 30px rgba(255,255,255,0.15);
+            color: #8fc0ff; text-shadow: 0 0 30px rgba(90,160,255,0.35);
         }
         .sad-face {
             display: flex; flex-direction: column; align-items: center;
             justify-content: center; gap: 0px; margin-top: 25px;
-            font-size: clamp(1.5rem, 5vw, 3rem); color: #ffffff;
-            text-shadow: 0 0 20px rgba(255,255,255,0.2);
+            font-size: clamp(1.5rem, 5vw, 3rem); color: #8fc0ff;
+            text-shadow: 0 0 20px rgba(90,160,255,0.4);
             animation: slightFloat 3s ease-in-out infinite; line-height: 0.45;
         }
         .sleep-colon, .sleep-mouth {
@@ -3327,10 +3579,10 @@ def page_not_found(e):
         }
         .url-not-found {
             font-size: 0.8rem; letter-spacing: 0.25em;
-            color: #888888; text-transform: uppercase;
+            color: #6a8cba; text-transform: uppercase;
         }
         .url-address {
-            font-size: 0.7rem; letter-spacing: 0.1em; color: #aaaaaa;
+            font-size: 0.7rem; letter-spacing: 0.1em; color: #8fb2dd;
             margin-top: 8px; word-break: break-all;
         }
     </style>
@@ -3353,12 +3605,16 @@ def page_not_found(e):
     </script>
 </body>
 </html>"""
-    html = html.replace("__USERNAME__", username)
-    return html, 404
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    username = session.get("username") if session.get("authenticated") else "Guest"
+    return _NOT_FOUND_HTML.replace("__USERNAME__", username), 404
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Emergens additional endpoints
+# Additional endpoints
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route('/api/settings/server-name', methods=['GET', 'POST'])
 @login_required
@@ -3446,16 +3702,20 @@ _chat_cache_lock = threading.Lock()
 def _get_chat_cached():
     path = os.path.join(DATA_DIR, 'chat.json')
     try:
-        mtime = os.path.getmtime(path)
+        mtime_before = os.path.getmtime(path)
     except OSError:
         return {'messages': [], 'locked': False}
     with _chat_cache_lock:
-        if _chat_cache['data'] is not None and _chat_cache['mtime'] == mtime:
+        if _chat_cache['data'] is not None and _chat_cache['mtime'] == mtime_before:
             return _chat_cache['data']
     data = _load_json('chat', {'messages': [], 'locked': False})
+    try:
+        mtime_after = os.path.getmtime(path)
+    except OSError:
+        mtime_after = mtime_before
     with _chat_cache_lock:
         _chat_cache['data'] = data
-        _chat_cache['mtime'] = mtime
+        _chat_cache['mtime'] = mtime_after
     return data
 
 
@@ -3652,6 +3912,15 @@ def api_modules_status():
             "cloudscraper": headers_has_cloudscraper,
         })
 
+    lfi_rfi_status = {"available": _lfi_rfi_available}
+    if _lfi_rfi_available:
+        lfi_rfi_status.update({
+            "version":   LFI_RFI_TOOL_INFO.get("version", "?"),
+            "name":      LFI_RFI_TOOL_INFO.get("name", "LFI / RFI Scanner"),
+            "category":  LFI_RFI_TOOL_INFO.get("category", "Web Security"),
+            "intrusive": True,
+        })
+
     portscan_status = {"available": _port_scan_available}
     if _port_scan_available:
         portscan_status["version"] = PORT_SCAN_INFO.get("version", "?")
@@ -3660,7 +3929,7 @@ def api_modules_status():
     fixes_status = {"available": _fixes_available}
     if _fixes_available:
         try:
-            fixes_status.update(_oxysintx_fixes.check())
+            fixes_status.update(_opencode_fixes.check())
         except Exception as e:
             fixes_status["error"] = str(e)
 
@@ -3681,115 +3950,188 @@ def api_modules_status():
         "ipinfo":           ipinfo_status,
         "techfp":           techfp_status,
         "headers":          headers_status,
+        "lfi_rfi":          lfi_rfi_status,
         "port_scan":        portscan_status,
         "fixes":            fixes_status,
     })
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Startup banner helper
+# Startup helpers
 # ═══════════════════════════════════════════════════════════════════════════
-def _print_startup(port=None):
-    print(BANNER, flush=True)
-    info_lines = []
-    if port is not None:
-        info_lines.append(f"  Server     : http://localhost:{port}")
-    info_lines.append(f"  Tools      : {len(scan_orchestrator.list_tools())} loaded")
-    info_lines.append(f"  Account    : {DEFAULT_USERNAME}")
-
-    modules = []
-    if _dirfuzz_available:          modules.append("dirfuzz")
-    if _sqli_engine_available:      modules.append("sqli_engine")
-    if _sql_map_available:          modules.append("sql_map")
-    if _sql_injection_available:    modules.append("sql_injection")
-    if _xss_exploiter_available:    modules.append("xss_exploiter")
-    if _xss_available:              modules.append("xss")
-    if _sniper_available:           modules.append("sniper")
-    if _wordlist_scraper_available: modules.append("wordlist_scraper")
-    if _analytic_available:         modules.append("analytic_manager")
-    if _downsea_available:          modules.append("downsea")
-    if _ssl_available:              modules.append("ssl")
-    if _ipinfo_available:           modules.append("ipinfo")
-    if _techfp_available:           modules.append("techfp")
-    if _headers_available:          modules.append("headers")
-    if _port_scan_available:        modules.append("port_scan")
-    if modules:
-        info_lines.append(f"  Modules    : {', '.join(modules)}")
-
-    # Wordlist status
-    wl_lines = []
+def _discover_wordlists_summary() -> str:
+    bits = []
     if _xss_available and _xss_wordlist_available:
         try:
             st = xss_ensure_wordlists(force=False)
             files = st.get("files", []) if isinstance(st, dict) else []
             ok = sum(1 for f in files if f.get("exists") and f.get("payloads"))
-            total_payloads = sum(int(f.get("payloads", 0)) for f in files)
-            wl_lines.append(
-                f"  XSS wordlist: {ok}/{len(files)} sources  "
-                f"({total_payloads} payloads)"
-            )
+            total = sum(int(f.get("payloads", 0)) for f in files)
+            bits.append(f"XSS {ok}/{len(files)} ({total}p)")
         except Exception:
-            wl_lines.append("  XSS wordlist: (status unavailable)")
+            bits.append("XSS n/a")
     if _sql_map_available and _sqlmap_wordlist_available:
         try:
             st = sqlmap_ensure_wordlists(force=False)
             files = st.get("files", []) if isinstance(st, dict) else []
             ok = sum(1 for f in files if f.get("exists") and f.get("payloads"))
-            total_payloads = sum(int(f.get("payloads", 0)) for f in files)
-            wl_lines.append(
-                f"  SQLMap wordlist: {ok}/{len(files)} sources  "
-                f"({total_payloads} payloads)"
-            )
+            total = sum(int(f.get("payloads", 0)) for f in files)
+            bits.append(f"SQLMap {ok}/{len(files)} ({total}p)")
         except Exception:
-            wl_lines.append("  SQLMap wordlist: (status unavailable)")
-    for line in wl_lines:
-        info_lines.append(line)
+            bits.append("SQLMap n/a")
+    return " · ".join(bits)
 
-    # API scanner
-    if _apikey_available:
-        cf_flags = []
-        if apikey_has_curl_cffi:    cf_flags.append("curl_cffi")
-        if apikey_has_cloudscraper: cf_flags.append("cloudscraper")
-        if apikey_flaresolverr_url: cf_flags.append("flaresolverr")
-        cf_flags.append("manual")
-        info_lines.append(
-            f"  API Scanner: v{apikey_version} "
-            f"(CF bypass: {'+'.join(cf_flags)})"
+
+def _loaded_modules_list() -> str:
+    mods = []
+    if _dirfuzz_available:          mods.append("dirfuzz")
+    if _sqli_engine_available:      mods.append("sqli_engine")
+    if _sql_map_available:          mods.append("sql_map")
+    if _sql_injection_available:    mods.append("sql_injection")
+    if _xss_exploiter_available:    mods.append("xss_exploiter")
+    if _xss_available:              mods.append("xss")
+    if _sniper_available:           mods.append("sniper")
+    if _wordlist_scraper_available: mods.append("wordlist_scraper")
+    if _analytic_available:         mods.append("analytic")
+    if _downsea_available:          mods.append("downsea")
+    if _apikey_available:           mods.append("apikey")
+    if _ssl_available:              mods.append("ssl")
+    if _ipinfo_available:           mods.append("ipinfo")
+    if _techfp_available:           mods.append("techfp")
+    if _headers_available:          mods.append("headers")
+    if _port_scan_available:        mods.append("port_scan")
+    if _lfi_rfi_available:          mods.append("lfi_rfi")
+    return ", ".join(mods) if mods else "(none)"
+
+
+def _cf_bypass_summary() -> str:
+    if not _apikey_available:
+        return "unavailable"
+    parts = []
+    if apikey_has_curl_cffi:    parts.append("curl_cffi")
+    if apikey_has_cloudscraper: parts.append("cloudscraper")
+    if apikey_flaresolverr_url: parts.append("flaresolverr")
+    parts.append("manual")
+    return "+".join(parts)
+
+
+def _print_header(port: Optional[int] = None) -> None:
+    _print_banner(BANNER, color=_Ansi.BLUE)
+    if _USE_COLOR:
+        rule = "─" * 74
+        sys.stdout.write(f"  {_c(rule, _Ansi.BLUE_DEEP)}\n\n")
+    else:
+        sys.stdout.write("  " + "─" * 74 + "\n\n")
+    sys.stdout.flush()
+
+
+def _print_ready(port: int) -> None:
+    if _USE_COLOR:
+        arrow = _c("▸", _Ansi.BLUE_HI)
+        label = _c("Server ready", _Ansi.BOLD + _Ansi.WHITE)
+        url = _c(f"http://localhost:{port}", _Ansi.BLUE_HI)
+        sys.stdout.write(f"  {arrow} {label}  {url}\n\n")
+    else:
+        sys.stdout.write(f"  > Server ready  http://localhost:{port}\n\n")
+    sys.stdout.flush()
+
+
+def _boot_screen(bootstrap_result: Optional[dict] = None) -> None:
+    """
+    Claude-Code-style animated boot sequence in bright blue.
+
+    v4.4.1 — Accepts the bootstrap_once() outcome so that
+    ensure_default_user() and auto_restart_bot() are never called twice.
+    """
+    bootstrap_result = bootstrap_result or {}
+
+    # 1) Scan orchestrator discovery
+    def _list_tools():
+        return scan_orchestrator.list_tools() or {}
+
+    _run_with_spinner(
+        "Discovering scan modules",
+        _list_tools,
+        success_detail=lambda t: f"{len(t)} tool(s) registered",
+        error_detail=lambda e: f"orchestrator error: {e}",
+    )
+
+    # 2) Port-scan patch status
+    def _check_fixes():
+        if not _fixes_available:
+            raise RuntimeError("patch module not loaded")
+        return _opencode_fixes.check()
+
+    _run_with_spinner(
+        "Applying port-scan hardening",
+        _check_fixes,
+        success_detail=lambda info: (
+            f"patched={info.get('patched', False)} · "
+            f"v{info.get('port_scan_version', '?')}"
+        ),
+        error_detail=lambda e: "no patch applied (optional)",
+    )
+
+    # 3) Default-user verification — read from bootstrap outcome only
+    first_run = bool(bootstrap_result.get("first_run"))
+    pwd = bootstrap_result.get("created_password")
+    if first_run:
+        _print_step(
+            "Verifying default account",
+            ok=True,
+            detail="first run — new password issued",
         )
     else:
-        info_lines.append(
-            "  API Scanner: NOT LOADED — install curl_cffi / cloudscraper"
+        _print_step(
+            "Verifying default account",
+            ok=True,
+            detail=f"username: {DEFAULT_USERNAME}",
         )
 
-    # Fixes status
-    if _fixes_available:
-        try:
-            fx = _oxysintx_fixes.check()
-            info_lines.append(
-                f"  Patches    : port_scan {fx.get('port_scan_version', '?')} "
-                f"(patched={fx.get('patched', False)})"
-            )
-        except Exception:
-            pass
+    if pwd:
+        sys.stdout.write("\n")
+        sys.stdout.write(
+            f"  {_c('*', _Ansi.YELLOW)} "
+            f"{_c('First run detected — save this password now:', _Ansi.YELLOW)}\n"
+        )
+        sys.stdout.write(f"      username: {_c(DEFAULT_USERNAME, _Ansi.WHITE)}\n")
+        sys.stdout.write(f"      password: {_c(pwd, _Ansi.YELLOW + _Ansi.BOLD)}\n\n")
+        sys.stdout.flush()
 
-    print("\n".join(info_lines), flush=True)
-    print(flush=True)
+    # 4) Telegram bot — read from bootstrap outcome only
+    bot_ok = bool(bootstrap_result.get("bot_restarted"))
+    if bot_ok:
+        _print_step(
+            "Starting Telegram bot",
+            ok=True,
+            detail="auto-restart invoked",
+        )
+    else:
+        _print_step(
+            "Starting Telegram bot",
+            ok=False,
+            detail="skipped (no bot configured or failed)",
+        )
+
+    # 5) Static summary lines
+    wl_summary = _discover_wordlists_summary()
+    if wl_summary:
+        _print_step("Wordlists loaded", ok=True, detail=wl_summary)
+
+    _print_step("Loaded modules", ok=True, detail=_loaded_modules_list())
+    _print_step("Cloudflare bypass", ok=True, detail=_cf_bypass_summary())
+
+    sys.stdout.write("\n")
+    sys.stdout.flush()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Bootstrap — shared by `python3 app.py` and terminal.py
+# Bootstrap
 # ═══════════════════════════════════════════════════════════════════════════
 def bootstrap(verbose: bool = True) -> dict:
     """
-    Run first-run setup tasks that must happen once the module is
-    imported (either directly via `python3 app.py` or via terminal.py).
-
-    Steps:
-      1. ensure_default_user()  — creates the default owner account on first boot
-      2. auto_restart_bot()     — restarts Telegram bot if a token is stored
-
-    Idempotent: safe to call multiple times. Returns a summary dict so the
-    caller (terminal.py) can display the outcome if it wants to.
+    Run first-run setup tasks once.
+    Inner functions own the INFO records; this wrapper logs at DEBUG.
     """
     outcome = {
         "default_username": DEFAULT_USERNAME,
@@ -3799,22 +4141,12 @@ def bootstrap(verbose: bool = True) -> dict:
         "errors":           [],
     }
 
-    # ── 1) Ensure the default user exists ──────────────────────────────
     try:
         new_password = ensure_default_user()
         if new_password:
             outcome["first_run"] = True
             outcome["created_password"] = new_password
-            if verbose:
-                print(BANNER, flush=True)
-                print("  First run — account created automatically", flush=True)
-                print(f"  Username: {DEFAULT_USERNAME}", flush=True)
-                print(f"  Password: {new_password}", flush=True)
-                print("  Role:     owner", flush=True)
-                print("  Save this password now — you will need it to log in.",
-                      flush=True)
-                print(flush=True)
-        logger.info(
+        logger.debug(
             "bootstrap: default user check complete (username=%s, first_run=%s)",
             DEFAULT_USERNAME, outcome["first_run"],
         )
@@ -3822,11 +4154,10 @@ def bootstrap(verbose: bool = True) -> dict:
         outcome["errors"].append(f"ensure_default_user: {exc}")
         logger.error("bootstrap: ensure_default_user failed: %s", exc, exc_info=True)
 
-    # ── 2) Auto-restart Telegram bot if configured ─────────────────────
     try:
         auto_restart_bot()
         outcome["bot_restarted"] = True
-        logger.info("bootstrap: telegram bot auto-restart invoked")
+        logger.debug("bootstrap: telegram bot auto-restart invoked")
     except Exception as exc:
         outcome["errors"].append(f"auto_restart_bot: {exc}")
         logger.error("bootstrap: auto_restart_bot failed: %s", exc, exc_info=True)
@@ -3834,18 +4165,13 @@ def bootstrap(verbose: bool = True) -> dict:
     return outcome
 
 
-# ── Run-once guard so `python3 app.py` and terminal.py never double-run it.
 _bootstrap_lock = threading.Lock()
 _bootstrap_done = False
 _bootstrap_result = None
 
 
 def bootstrap_once(verbose: bool = True) -> dict:
-    """
-    Thread-safe, run-once wrapper around bootstrap(). Use this from
-    terminal.py so the setup runs a single time even if the module is
-    imported more than once.
-    """
+    """Thread-safe, run-once wrapper around bootstrap()."""
     global _bootstrap_done, _bootstrap_result
     with _bootstrap_lock:
         if _bootstrap_done and _bootstrap_result is not None:
@@ -3863,39 +4189,106 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "reset-password":
         existing_role = get_role(DEFAULT_USERNAME) or "owner"
         new_password = create_user(DEFAULT_USERNAME, role=existing_role)
-        print(BANNER, flush=True)
-        print(f"  Password reset for '{DEFAULT_USERNAME}' (role={existing_role})",
-              flush=True)
-        print(f"  Password: {new_password}", flush=True)
-        print("  Copy it now — it will not be shown again.", flush=True)
+        _print_banner(BANNER, color=_Ansi.BLUE)
+        print(f"  Password reset for '{DEFAULT_USERNAME}' (role={existing_role})")
+        print(f"  Password: {new_password}")
+        print("  Copy it now — it will not be shown again.")
         sys.exit(0)
 
-    # ── First-run setup + telegram auto-restart ───────────────────────
-    # Uses bootstrap_once() so terminal.py can safely call it too
-    # without duplicating work.
-    bootstrap_once(verbose=True)
-
     # ── Port resolution ────────────────────────────────────────────────
+    # Default port is now 8080 (was 3052).
+    DEFAULT_PORT = 8080
+
     env_port = os.getenv("PORT")
     if env_port:
-        port = int(env_port)
+        try:
+            port = int(env_port)
+        except ValueError:
+            print(_c(f"  ! Invalid PORT env value: {env_port!r} — using 8080",
+                     _Ansi.YELLOW))
+            port = DEFAULT_PORT
     else:
-        default_port = int(Config.PORT) if hasattr(Config, "PORT") else 8080
-        while True:
+        default_port = DEFAULT_PORT
+        if hasattr(Config, "PORT"):
             try:
-                port_input = input(
-                    f"Enter port (default {default_port}, press Enter for default): "
-                ).strip()
+                cfg_port = int(Config.PORT)
+                if 1 <= cfg_port <= 65535:
+                    default_port = cfg_port
+            except (TypeError, ValueError):
+                pass
+
+        _print_header()
+
+        # Non-interactive stdin (pipe, docker run without -it, CI) — skip
+        # the prompt and use the default port instead of crashing.
+        if not sys.stdin.isatty():
+            port = default_port
+            sys.stdout.write(
+                f"  {_c('!', _Ansi.YELLOW)} "
+                f"{_c('No TTY detected — using default port', _Ansi.YELLOW)} "
+                f"{_c(str(default_port), _Ansi.WHITE)}\n"
+            )
+            sys.stdout.flush()
+        else:
+            while True:
+                try:
+                    prompt = (
+                        f"  {_c('?', _Ansi.BLUE_HI)} "
+                        f"{_c(f'Enter port (default {default_port}):', _Ansi.GRAY)} "
+                    )
+                    port_input = input(prompt).strip()
+                except KeyboardInterrupt:
+                    # Ctrl+C at the port prompt — exit cleanly with the
+                    # standard SIGINT exit code (130).
+                    sys.stdout.write("\n")
+                    sys.stdout.write(
+                        f"  {_c('⊘', _Ansi.YELLOW)} "
+                        f"{_c('Cancelled by user', _Ansi.YELLOW)}\n"
+                    )
+                    sys.stdout.flush()
+                    sys.exit(130)
+                except EOFError:
+                    # stdin closed mid-prompt — fall back to the default.
+                    sys.stdout.write("\n")
+                    sys.stdout.write(
+                        f"  {_c('!', _Ansi.YELLOW)} "
+                        f"{_c('EOF on stdin — using default port', _Ansi.YELLOW)} "
+                        f"{_c(str(default_port), _Ansi.WHITE)}\n"
+                    )
+                    sys.stdout.flush()
+                    port = default_port
+                    break
+
                 if port_input == "":
                     port = default_port
                     break
-                port = int(port_input)
+                try:
+                    port = int(port_input)
+                except ValueError:
+                    print(_c("  Invalid input. Enter a valid port number.",
+                             _Ansi.RED))
+                    continue
                 if port < 1 or port > 65535:
-                    print("Port must be between 1 and 65535.")
+                    print(_c("  Port must be between 1 and 65535.", _Ansi.RED))
                     continue
                 break
-            except ValueError:
-                print("Invalid input. Enter a valid port number.")
 
-    _print_startup(port)
-    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+        print()
+
+    # ── Print banner + run animated boot sequence ──────────────────────
+    _print_header(port=None)
+    result = bootstrap_once(verbose=False)
+    _boot_screen(bootstrap_result=result)
+    _print_ready(port)
+
+    # ── Launch ─────────────────────────────────────────────────────────
+    try:
+        app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+    except KeyboardInterrupt:
+        sys.stdout.write("\n")
+        sys.stdout.write(
+            f"  {_c('⊘', _Ansi.YELLOW)} "
+            f"{_c('Server stopped by user', _Ansi.YELLOW + _Ansi.BOLD)}\n"
+        )
+        sys.stdout.flush()
+        sys.exit(0)

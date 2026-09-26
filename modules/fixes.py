@@ -25,6 +25,34 @@ THE FIX
 4. Emit a clear warning when the cap is hit.
 5. Report an honest port_range summary (contiguous vs sparse).
 
+----------------------------------------------------------------------------
+CHANGELOG — v1.1.0  (Opencode integration)
+----------------------------------------------------------------------------
+  ✔ RENAME  — Logger namespace `oxysintx.port_scan.fixes` →
+              `opencode.port_scan.fixes` (matches the app-wide rebrand).
+  ✔ NEW     — Blue Claude-Code-style terminal output for the patch
+              application step: a small spinner while patches apply,
+              then a single blue ✓ line with the change count and the
+              version bump (v4.0.0 → v4.0.1).
+  ✔ NEW     — `--diagnose` now renders a coloured table (files, size,
+              lines, issues) instead of a raw JSON dump. Add `--json`
+              for the machine-readable output the CI scripts expect.
+  ✔ NEW     — CLI scan output uses the same blue box header + summary
+              border as `ScanReporter` in scan_orchestrator.py, so
+              both tools look like they belong to the same product.
+  ✔ NEW     — Full respect for `NO_COLOR`, `FORCE_COLOR` and
+              `OPENCODE_QUIET` env vars — identical semantics to
+              app.py and scan_orchestrator.py.
+  ✔ NEW     — `check()` includes `logger_namespace` and
+              `colour_enabled` for support diagnostics.
+  ✔ HARD    — `apply()` is fully silent when `OPENCODE_QUIET=1` is set,
+              so importing fixes.py from a headless service never
+              pollutes the log.
+  ✔ PRESERVE — Every public symbol from v1.0.0 remains: `apply()`,
+              `check()`, `diagnose_ports()`, `run_patched`,
+              `load_basic_ports_patched`, `_parse_port_file_patched`,
+              and all tunable constants.
+
 USAGE
 -----
     # Option A — import before port_scan (auto-patches on import)
@@ -41,23 +69,79 @@ USAGE
     # Option D — verify patches are active
     python -m modules.fixes --check
 
+    # Option E — inspect the porttxt/ folder for problematic files
+    python -m modules.fixes --diagnose
+
+    # Option F — same as D/E but machine-readable
+    python -m modules.fixes --check --json
+
 Author : Yanxzyx
-Version: 1.0.0
+Version: 1.1.0
 """
 
 from __future__ import annotations
 
 import argparse
+import json as _json
 import logging
+import os
 import sys
 import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 # ═══════════════════════════════════════════════════════════════════════════
-# LOGGING
+# ANSI COLOUR — bright blue theme, identical to app.py / scan_orchestrator.py
 # ═══════════════════════════════════════════════════════════════════════════
-logger = logging.getLogger("oxysintx.port_scan.fixes")
+class _Ansi:
+    RESET      = "\033[0m"
+    BOLD       = "\033[1m"
+    DIM        = "\033[2m"
+    BLUE       = "\033[38;5;39m"
+    BLUE_HI    = "\033[38;5;45m"
+    BLUE_DEEP  = "\033[38;5;27m"
+    BLUE_LIGHT = "\033[38;5;117m"
+    CYAN       = "\033[38;5;51m"
+    GREEN      = "\033[38;5;42m"
+    RED        = "\033[38;5;203m"
+    YELLOW     = "\033[38;5;220m"
+    GRAY       = "\033[38;5;244m"
+    GRAY_DIM   = "\033[38;5;240m"
+    WHITE      = "\033[97m"
+
+
+def _supports_color() -> bool:
+    """Detect whether stdout can render ANSI colours."""
+    if os.getenv("OPENCODE_QUIET"):
+        return False
+    if os.getenv("NO_COLOR"):
+        return False
+    if os.getenv("FORCE_COLOR"):
+        return True
+    try:
+        return bool(sys.stdout.isatty())
+    except Exception:
+        return False
+
+
+_USE_COLOR = _supports_color()
+
+
+def _c(text: str, color: str) -> str:
+    """Wrap `text` in an ANSI colour, or return it unchanged when colour is off."""
+    if not _USE_COLOR:
+        return text
+    return f"{color}{text}{_Ansi.RESET}"
+
+
+_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# LOGGING — opencode namespace, isolated handler
+# ═══════════════════════════════════════════════════════════════════════════
+logger = logging.getLogger("opencode.port_scan.fixes")
 logger.propagate = False
 if not logger.handlers:
     _h = logging.StreamHandler()
@@ -92,6 +176,86 @@ except ImportError as _e:
     _ps = None
     _PS_AVAILABLE = False
     _PS_IMPORT_ERR = str(_e)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TERMINAL EMITTERS — blue theme, TTY-safe, OPENCODE_QUIET-aware
+# ═══════════════════════════════════════════════════════════════════════════
+def _emit_apply_success(changes: int, version_from: str, version_to: str) -> None:
+    """Print the one-shot blue ✓ line after patches are applied."""
+    if os.getenv("OPENCODE_QUIET"):
+        return
+    if not _USE_COLOR:
+        sys.stdout.write(
+            f"  ok  port_scan patched  ({changes} change"
+            f"{'s' if changes != 1 else ''})  "
+            f"v{version_from} -> v{version_to}\n"
+        )
+        sys.stdout.flush()
+        return
+
+    mark  = _c("✓", _Ansi.GREEN)
+    label = _c(f"Patched port_scan", _Ansi.WHITE)
+    cnt   = _c(f"{changes} change{'s' if changes != 1 else ''}", _Ansi.GRAY)
+    arrow = _c("→", _Ansi.BLUE_HI)
+    bump  = (
+        f"{_c('v' + version_from, _Ansi.GRAY_DIM)} "
+        f"{arrow} "
+        f"{_c('v' + version_to, _Ansi.BLUE_HI)}"
+    )
+    sys.stdout.write(f"  {mark} {label}  ·  {cnt}  ·  {bump}\n")
+    sys.stdout.flush()
+
+
+def _emit_apply_failure(reason: str) -> None:
+    """Print the blue ✗ line when patching fails."""
+    if os.getenv("OPENCODE_QUIET"):
+        return
+    if not _USE_COLOR:
+        sys.stdout.write(f"  !!  port_scan patch failed  ({reason})\n")
+        sys.stdout.flush()
+        return
+
+    mark  = _c("✗", _Ansi.RED)
+    label = _c("Patch failed", _Ansi.BOLD + _Ansi.RED)
+    detail = _c(reason[:110], _Ansi.GRAY_DIM)
+    sys.stdout.write(f"  {mark} {label}  {detail}\n")
+    sys.stdout.flush()
+
+
+def _run_with_spinner(label: str, fn):
+    """
+    Run `fn()` while showing a small blue spinner. Auto-degrades to a
+    silent call in non-TTY / quiet mode. Returns fn's return value.
+    """
+    if not _USE_COLOR or os.getenv("OPENCODE_QUIET"):
+        return fn()
+
+    box: Dict[str, Any] = {"ok": False, "val": None, "err": None}
+
+    def _worker():
+        try:
+            box["val"] = fn()
+            box["ok"] = True
+        except BaseException as exc:  # noqa: BLE001
+            box["err"] = exc
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    i = 0
+    while t.is_alive():
+        frame = _SPINNER_FRAMES[i % len(_SPINNER_FRAMES)]
+        sys.stdout.write(f"\r\033[K  {_c(frame, _Ansi.BLUE)} {_c(label, _Ansi.GRAY)}")
+        sys.stdout.flush()
+        i += 1
+        time.sleep(0.06)
+    t.join(timeout=0.5)
+    sys.stdout.write("\r\033[K")
+    sys.stdout.flush()
+
+    if box["ok"]:
+        return box["val"]
+    raise box["err"]  # type: ignore[misc]
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -206,7 +370,6 @@ def load_basic_ports_patched(
     Reads port2.txt .. port1000.txt from the porttxt folder.
     Falls back to built-in 1-1000 if none are usable.
     """
-    # Constants copied from port_scan module (or fallbacks)
     BASIC_FILE_START = getattr(_ps, "BASIC_FILE_START", 2)
     BASIC_FILE_END   = getattr(_ps, "BASIC_FILE_END", 1000)
     MIN_PORT         = getattr(_ps, "MIN_PORT", 1)
@@ -324,19 +487,13 @@ def run_patched(target: str, mode: str = "basic", **kwargs) -> dict:
       • adds an honest port_range summary + contiguous flag
       • emits a warning when basic mode was capped at 1000
     """
-    # Force basic mode to use the patched loader (monkey-patched on _ps)
-    # by re-invoking the original run() — the loader swap already happened
-    # at apply() time, so we just call through.
     result = _ps._original_run(target, mode=mode, **kwargs)
     if not isinstance(result, dict):
         return result
 
     data = result.get("data") or {}
 
-    # ▼ v4.0.1 — honest port_range reporting
     if mode == "basic" and data.get("mode") == "basic":
-        ports_list = data.get("open_ports_details") or []
-        # We need the actual scanned list — reload metadata from loader
         lm = data.get("load_metadata") or {}
         pmin = lm.get("min_port")
         pmax = lm.get("max_port")
@@ -350,7 +507,6 @@ def run_patched(target: str, mode: str = "basic", **kwargs) -> dict:
             data["port_range"] = [0, 0]
             data["port_range_contiguous"] = False
 
-        # Warning when capped
         if lm.get("capped"):
             data["warning"] = (
                 "Basic mode was capped at 1000 ports. One of your porttxt/*.txt "
@@ -359,7 +515,6 @@ def run_patched(target: str, mode: str = "basic", **kwargs) -> dict:
             )
             logger.warning("[fixes] %s", data["warning"])
 
-        # Attach patch marker
         data["_patched"] = True
         data["_patch_version"] = "4.0.1"
 
@@ -382,46 +537,76 @@ def apply(force: bool = False) -> bool:
             "[fixes] cannot apply — port_scan module not importable: %s",
             _PS_IMPORT_ERR,
         )
+        _emit_apply_failure(f"port_scan not importable: {_PS_IMPORT_ERR}")
         return False
 
     with _PATCH_LOCK:
         if _PATCHED and not force:
             return True
 
+        # Capture the pre-patch version for the nice version bump line.
+        version_from = "?"
         try:
-            # Preserve original run() for our wrapper
+            version_from = str(getattr(_ps, "TOOL_INFO", {}).get("version", "?"))
+        except Exception:
+            pass
+
+        def _do_patch() -> int:
+            """Returns the number of individual changes applied."""
+            changes = 0
+
             if not hasattr(_ps, "_original_run"):
                 _ps._original_run = _ps.run
+                changes += 1
 
-            # Inject new constants
             _ps.MAX_BASIC_PORTS     = MAX_BASIC_PORTS
             _ps.MAX_BASIC_FILE_SIZE = MAX_BASIC_FILE_SIZE
             _ps.MAX_BASIC_LINES     = MAX_BASIC_LINES
             _PATCH_LOG.append(f"constants: MAX_BASIC_PORTS={MAX_BASIC_PORTS}")
+            changes += 1
 
-            # Swap functions
-            _ps._parse_port_file   = _parse_port_file_patched
-            _ps.load_basic_ports   = load_basic_ports_patched
-            _ps.run                = run_patched
-            _PATCH_LOG.append("functions: _parse_port_file, load_basic_ports, run")
+            _ps._parse_port_file = _parse_port_file_patched
+            changes += 1
+            _PATCH_LOG.append("functions: _parse_port_file")
 
-            # Bump visible version
+            _ps.load_basic_ports = load_basic_ports_patched
+            changes += 1
+            _PATCH_LOG.append("functions: load_basic_ports")
+
+            _ps.run = run_patched
+            changes += 1
+            _PATCH_LOG.append("functions: run")
+
             try:
                 _ps.TOOL_INFO["version"] = "4.0.1"
-                _ps.TOOL_INFO["description"] += " [patched by fixes.py]"
+                desc = _ps.TOOL_INFO.get("description", "")
+                if "[patched by fixes.py]" not in desc:
+                    _ps.TOOL_INFO["description"] = desc + " [patched by fixes.py]"
                 _PATCH_LOG.append("TOOL_INFO: version → 4.0.1")
+                changes += 1
             except Exception:
                 pass
 
+            return changes
+
+        try:
+            # Run the patch inside a small blue spinner when stdout is a TTY.
+            changes = _run_with_spinner(
+                "Applying port_scan patches…",
+                _do_patch,
+            )
+
             _PATCHED = True
+            _emit_apply_success(changes, version_from, "4.0.1")
             logger.info(
                 "[fixes] port_scan patched successfully (%d changes)",
-                len(_PATCH_LOG),
+                changes,
             )
             return True
 
         except Exception as e:
             logger.error("[fixes] patch failed: %s", e, exc_info=True)
+            _emit_apply_failure(str(e))
             return False
 
 
@@ -449,6 +634,9 @@ def check() -> Dict[str, Any]:
         "max_basic_ports":     MAX_BASIC_PORTS,
         "max_basic_file_size": MAX_BASIC_FILE_SIZE,
         "max_basic_lines":     MAX_BASIC_LINES,
+        "logger_namespace":    logger.name,
+        "colour_enabled":      _USE_COLOR,
+        "quiet_mode":          bool(os.getenv("OPENCODE_QUIET")),
     }
     if _PS_AVAILABLE:
         out["port_scan_version"] = getattr(_ps, "TOOL_INFO", {}).get("version", "?")
@@ -498,7 +686,6 @@ def diagnose_ports(folder_path: Optional[str] = None) -> Dict[str, Any]:
         except OSError:
             continue
 
-        # Detect suspicious content
         issues: List[str] = []
         if size > MAX_BASIC_FILE_SIZE:
             issues.append(f"file too large ({size} B > {MAX_BASIC_FILE_SIZE} B)")
@@ -535,15 +722,138 @@ def diagnose_ports(folder_path: Optional[str] = None) -> Dict[str, Any]:
             )
 
         report["files"].append({
-            "name":          fpath.name,
-            "size_bytes":    size,
-            "lines":         len(lines),
+            "name":             fpath.name,
+            "size_bytes":       size,
+            "lines":            len(lines),
             "individual_ports": port_count,
-            "issues":        issues,
-            "will_be_skipped": bool(issues),
+            "issues":           issues,
+            "will_be_skipped":  bool(issues),
         })
 
     return report
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PRETTY PRINTERS — blue-theme output for CLI
+# ═══════════════════════════════════════════════════════════════════════════
+def _hr(width: int = 66) -> str:
+    return _c("─" * width, _Ansi.BLUE_DEEP)
+
+
+def _box_top(title: str, width: int = 66) -> str:
+    t = f"─ {title} "
+    return _c("╭" + t + "─" * max(0, width - len(t) - 2) + "╮", _Ansi.BLUE_DEEP)
+
+
+def _box_mid(text: str, width: int = 66) -> str:
+    body = ("  " + text)[: width - 2].ljust(width - 2)
+    return _c("│" + body + "│", _Ansi.BLUE_DEEP)
+
+
+def _box_bot(width: int = 66) -> str:
+    return _c("╰" + "─" * (width - 2) + "╯", _Ansi.BLUE_DEEP)
+
+
+def _print_check_human(state: Dict[str, Any]) -> None:
+    """Human-friendly patch-status output (default for --check)."""
+    width = 66
+    ok = state.get("patched") and state.get("port_scan_available")
+
+    print()
+    print(_box_top("port_scan patch status", width))
+    print(_box_mid(f"port_scan module   : "
+                    f"{'available' if state.get('port_scan_available') else 'missing'}", width))
+    print(_box_mid(f"patched            : "
+                    f"{'yes' if state.get('patched') else 'no'}", width))
+    print(_box_mid(f"loader  patched    : "
+                    f"{state.get('loader_is_patched', False)}", width))
+    print(_box_mid(f"parser  patched    : "
+                    f"{state.get('parse_is_patched', False)}", width))
+    print(_box_mid(f"run()   patched    : "
+                    f"{state.get('run_is_patched', False)}", width))
+    if state.get("port_scan_version"):
+        print(_box_mid(f"port_scan version  : "
+                        f"{state['port_scan_version']}", width))
+    print(_box_mid(f"logger namespace   : "
+                    f"{state.get('logger_namespace', '?')}", width))
+    print(_box_mid(f"colour enabled     : "
+                    f"{state.get('colour_enabled', False)}", width))
+    print(_box_mid(f"quiet mode         : "
+                    f"{state.get('quiet_mode', False)}", width))
+    print(_box_mid(f"max basic ports    : "
+                    f"{state.get('max_basic_ports', '?')}", width))
+    print(_box_bot(width))
+
+    if _USE_COLOR:
+        mark = _c("✓", _Ansi.GREEN) if ok else _c("✗", _Ansi.RED)
+        label = (
+            _c("All patches active", _Ansi.BOLD + _Ansi.GREEN)
+            if ok else
+            _c("Patches NOT active", _Ansi.BOLD + _Ansi.RED)
+        )
+        print(f"  {mark} {label}\n")
+    else:
+        print(f"  {'OK' if ok else 'FAIL'}: "
+              f"{'all patches active' if ok else 'patches NOT active'}\n")
+
+
+def _print_diagnose_human(report: Dict[str, Any]) -> None:
+    """Human-friendly diagnose output (default for --diagnose)."""
+    if report.get("error"):
+        print(f"  {_c('✗', _Ansi.RED)} {report['error']}")
+        return
+
+    width = 66
+    print()
+    print(_box_top("porttxt/ diagnostics", width))
+    print(_box_mid(f"directory : {report.get('directory', '?')}", width))
+    print(_box_mid(f"exists    : {report.get('exists', False)}", width))
+    print(_box_mid(f"files     : {len(report.get('files', []))}", width))
+    print(_box_bot(width))
+
+    files = report.get("files", [])
+    if not files:
+        print(f"  {_c('(no port files found)', _Ansi.GRAY_DIM)}\n")
+        return
+
+    # Header row
+    if _USE_COLOR:
+        hdr = (
+            f"  {_c('STATUS', _Ansi.GRAY_DIM):<10}"
+            f" {_c('FILE', _Ansi.GRAY_DIM):<20}"
+            f" {_c('SIZE', _Ansi.GRAY_DIM):>8}"
+            f" {_c('LINES', _Ansi.GRAY_DIM):>7}"
+            f" {_c('PORTS', _Ansi.GRAY_DIM):>7}"
+            f"  {_c('NOTES', _Ansi.GRAY_DIM)}"
+        )
+    else:
+        hdr = "  STATUS     FILE                    SIZE   LINES   PORTS  NOTES"
+    print(hdr)
+    print("  " + _c("─" * 64, _Ansi.BLUE_DEEP))
+
+    for f in files:
+        skipped = f.get("will_be_skipped")
+        status = (
+            _c("⚠ SKIP", _Ansi.YELLOW) if skipped
+            else _c("✓ OK", _Ansi.GREEN)
+        )
+        name = f["name"] if len(f["name"]) <= 18 else f["name"][:15] + "…"
+        notes = "; ".join(f.get("issues") or [])[:40]
+        print(
+            f"  {status:<10}"
+            f" {name:<20}"
+            f" {f['size_bytes']:>8}"
+            f" {f['lines']:>7}"
+            f" {f['individual_ports']:>7}"
+            f"  {_c(notes, _Ansi.GRAY_DIM)}"
+        )
+
+    warnings = report.get("warnings", [])
+    if warnings:
+        print()
+        for w in warnings:
+            print(f"  {_c('⚠', _Ansi.YELLOW)} {_c(w, _Ansi.GRAY_DIM)}")
+    print()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -569,19 +879,27 @@ def _main() -> int:
     parser.add_argument("--tls", action="store_true")
     parser.add_argument("--rdns", action="store_true")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--json", action="store_true",
+                        help="Emit raw JSON for --check / --diagnose / scan")
     args = parser.parse_args()
 
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
     if args.check:
-        import json
-        print(json.dumps(check(), indent=2))
+        state = check()
+        if args.json:
+            print(_json.dumps(state, indent=2))
+        else:
+            _print_check_human(state)
         return 0
 
     if args.diagnose:
-        import json
-        print(json.dumps(diagnose_ports(args.folder), indent=2))
+        report = diagnose_ports(args.folder)
+        if args.json:
+            print(_json.dumps(report, indent=2))
+        else:
+            _print_diagnose_human(report)
         return 0
 
     if not args.target:
@@ -599,56 +917,85 @@ def _main() -> int:
         verbose=args.verbose,
     )
 
+    if args.json:
+        print(_json.dumps(result, indent=2, default=str))
+        return 0 if not result.get("error") else 1
+
     if result.get("error"):
-        print(f"ERROR: {result['error']}")
+        print(f"  {_c('✗', _Ansi.RED)} {result['error']}")
         return 1
 
     d = result.get("data", {})
-    print("=" * 60)
-    print(f"  Port Scan v{result.get('version', '?')}  (patched)")
-    print("=" * 60)
-    print(f"  Target      : {result['target']}")
-    print(f"  Resolved    : {d.get('resolved_ip', 'unknown')}")
-    print(f"  Mode        : {d.get('mode')}")
-    print(f"  Source      : {d.get('source')}")
+    width = 66
+
+    # ── Header ────────────────────────────────────────────────────────
+    print()
+    print(_box_top(f"port scan  ·  {result.get('target', '?')}", width))
+    print(_box_mid(f"resolved    : {d.get('resolved_ip', 'unknown')}", width))
+    print(_box_mid(f"mode        : {d.get('mode')}", width))
+    print(_box_mid(f"source      : {d.get('source')}", width))
 
     if d.get("port_range"):
         pmin, pmax = d["port_range"]
         if d.get("port_range_contiguous"):
-            print(f"  Range       : {pmin}-{pmax} (contiguous)")
+            range_str = f"{pmin}-{pmax} (contiguous)"
         else:
-            print(f"  Range       : {pmin}..{pmax} "
-                  f"({d.get('ports_checked', 0)} unique ports, sparse)")
+            range_str = (
+                f"{pmin}..{pmax} "
+                f"({d.get('ports_checked', 0)} unique, sparse)"
+            )
+        print(_box_mid(f"range       : {range_str}", width))
 
-    print(f"  Checked     : {d.get('ports_checked', 0)} ports")
-    print(f"  Open        : {d.get('open_count', 0)} found")
-    print(f"  Time        : {d.get('scan_time', 0):.2f}s")
-    print(f"  Threads     : {d.get('threads_used', 0)}")
+    print(_box_mid(f"checked     : {d.get('ports_checked', 0)} ports", width))
 
+    open_count = d.get("open_count", 0)
+    open_colored = (
+        _c(str(open_count), _Ansi.GREEN if open_count else _Ansi.GRAY)
+        if _USE_COLOR else str(open_count)
+    )
+    print(_box_mid(f"open        : {open_colored}", width))
+    print(_box_mid(f"time        : {d.get('scan_time', 0):.2f}s", width))
+    print(_box_mid(f"threads     : {d.get('threads_used', 0)}", width))
+    print(_box_bot(width))
+
+    # ── Warnings ──────────────────────────────────────────────────────
     if d.get("warning"):
-        print(f"  ⚠ WARNING   : {d['warning']}")
+        print(f"  {_c('⚠', _Ansi.YELLOW)} {_c(d['warning'], _Ansi.YELLOW)}")
 
+    # ── Wordlist loading summary ──────────────────────────────────────
     lm = d.get("load_metadata") or {}
     if lm:
-        print(f"  Files       : {lm.get('files_read', 0)} read, "
-              f"{len(lm.get('skipped_files', []))} skipped")
+        files_read = lm.get("files_read", 0)
+        skipped_n = len(lm.get("skipped_files", []))
+        print(f"  {_c('wordlist', _Ansi.GRAY_DIM)}: "
+              f"{files_read} file(s) read, {skipped_n} skipped")
         if lm.get("capped"):
-            print("  ⚠ Capped    : YES (1000-port limit)")
+            print(f"  {_c('⚠ capped at 1000 ports', _Ansi.YELLOW)}")
         for fc in lm.get("file_contributions", [])[:5]:
-            print(f"    · {fc['file']:15s} → {fc['added']:4d} ports")
+            print(f"      {_c('·', _Ansi.BLUE)} "
+                  f"{fc['file']:15s} → {fc['added']:4d} ports")
         if len(lm.get("file_contributions", [])) > 5:
-            print(f"    · ... ({len(lm['file_contributions']) - 5} more files)")
+            more = len(lm["file_contributions"]) - 5
+            print(f"      {_c(f'· ... {more} more file(s)', _Ansi.GRAY_DIM)}")
         for sk in lm.get("skipped_files", [])[:3]:
-            print(f"    ⚠ skipped {sk['file']}: {sk['reason']}")
+            print(f"      {_c('⚠', _Ansi.YELLOW)} "
+                  f"skipped {sk['file']}: "
+                  f"{_c(sk['reason'], _Ansi.GRAY_DIM)}")
 
-    print("-" * 60)
-    for p in d.get("open_ports_details", []):
-        banner = f"  | {p['banner'][:40]}" if p.get("banner") else ""
-        print(f"  {p['port']:5d}/tcp  {p['service']:14s}  "
-              f"{p['response_time']:.3f}s{banner}")
-    if not d.get("open_ports_details"):
-        print("  No open ports found.")
-    print("=" * 60)
+    # ── Open-port table ───────────────────────────────────────────────
+    print("  " + _hr(64))
+    ports = d.get("open_ports_details", [])
+    if ports:
+        for p in ports:
+            banner = f"  {_c(p['banner'][:40], _Ansi.GRAY_DIM)}" if p.get("banner") else ""
+            port_str = _c(f"{p['port']:>5d}", _Ansi.GREEN) if _USE_COLOR else f"{p['port']:>5d}"
+            svc_str  = _c(f"{p['service']:<14s}", _Ansi.WHITE) if _USE_COLOR else f"{p['service']:<14s}"
+            print(f"  {port_str}/tcp  {svc_str}  "
+                  f"{p['response_time']:.3f}s{banner}")
+    else:
+        print(f"  {_c('no open ports found.', _Ansi.GRAY_DIM)}")
+    print("  " + _hr(64))
+    print()
 
     return 0
 
