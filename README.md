@@ -94,7 +94,7 @@ git --version
 If Python is not installed, download it from https://www.python.org/downloads/.
 If Git is not installed, download it from https://git-scm.com/downloads.
 
-Step 2: Clone Repository
+###Step 2: Clone Repository
 
 git clone https://github.com/sollxfim-lab/Emergens.git emergens
 cd emergens
