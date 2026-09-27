@@ -22,11 +22,11 @@
 
 > [!WARNING]
 > ## Authorized use only
-> Emergens is intended exclusively for systems, networks, and applications that you own or have explicit written permission to assess. Do not use it to disrupt services, evade controls, access data without authorization, or test third-party infrastructure. You are responsible for scope, rate limits, approvals, data handling, and compliance with all applicable laws and contracts.
+> Emergens is intended exclusively for systems, networks, and applications that you own or have explicit written permission to assess. Do not use it to disrupt services, evade controls, access data without authorization, or exceed the scope of your authorization document.
 
 ## What is Emergens?
 
-Emergens is a modular security-testing console built for security researchers, defenders, and authorized penetration-testing teams. It brings reconnaissance utilities, scan modules, result review, logging, and operational artifacts together behind a unified interface.
+Emergens is a modular security-testing console built for security researchers, defenders, and authorized penetration-testing teams. It brings reconnaissance utilities, scan modules, result review, and integrated logging to organized security workflows.
 
 The project is designed to help teams move from an approved target scope to structured findings with clearer visibility and repeatable workflows—without losing control of authorization and test boundaries.
 
@@ -46,7 +46,11 @@ The project is designed to help teams move from an approved target scope to stru
 ## Architecture
 
 <p align="center">
-  <img src="artifact-structure.svg" alt="Emergens artifact structure" width="900">
+  <img src="templates/artifact-structure.png" alt="Emergens artifact structure and component organization" width="900">
+</p>
+
+<p align="center">
+  <em>Emergens component structure and artifact flow</em>
 </p>
 
 At a high level, Emergens is organized around:
@@ -100,7 +104,7 @@ docker build -t emergens .
 docker run --rm -p 8080:8080 emergens
 ```
 
-Review `docker-compose.yml` and your local environment before starting. Do not expose an administrative or testing console to the public internet without appropriate authentication, network controls, and monitoring.
+Review `docker-compose.yml` and your local environment before starting. Do not expose an administrative or testing console to the public internet without appropriate authentication, network controls, and access restrictions.
 
 ## Configuration
 
@@ -111,7 +115,7 @@ Keep environment-specific values outside source control whenever possible. Befor
 3. Configure only the integrations required for your workflow.
 4. Use dedicated test credentials and least-privilege access.
 5. Set conservative timeouts, concurrency, and request limits.
-6. Store logs and exported artifacts according to your organization’s retention policy.
+6. Store logs and exported artifacts according to your organization's retention policy.
 
 Never commit API keys, passwords, private keys, proxy credentials, production data, or scan results to the repository. Use a local `.env` file or a secret manager where supported.
 
@@ -162,7 +166,7 @@ Emergens/
 ### A module is unavailable
 
 - Install the dependencies listed in `requirements.txt`.
-- Check the module’s expected files, wordlists, and configuration.
+- Check the module's expected files, wordlists, and configuration.
 - Verify that optional services are running and reachable.
 - Run the built-in module or dependency checks before starting a scan.
 
@@ -190,11 +194,11 @@ The current documented release is **4.4.2**. See [`CHANGELOG.md`](CHANGELOG.md) 
 
 ## License
 
-Emergens is distributed under the MIT License subject to the project’s authorized-use requirements. See [`LICENSE`](LICENSE) for the complete terms.
+Emergens is distributed under the MIT License subject to the project's authorized-use requirements. See [`LICENSE`](LICENSE) for the complete terms.
 
 ## Disclaimer
 
-Emergens is provided for legitimate security research, defensive engineering, and authorized assessment only. The maintainers do not endorse or accept responsibility for unlawful access, disruption, abuse, data loss, or damage resulting from misuse.
+Emergens is provided for legitimate security research, defensive engineering, and authorized assessment only. The maintainers do not endorse or accept responsibility for unlawful access, disruption, abuse, or misuse of this tool.
 
 <p align="center">
   <sub>Built for disciplined security work. Use responsibly.</sub>
