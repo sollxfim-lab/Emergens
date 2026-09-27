@@ -18,10 +18,12 @@
 <p align="center"><em>Passive reconnaissance and authorized security testing</em></p>
 
 > [!WARNING]
-> **Authorized use only.** Emergens must be used only against systems for which you have explicit written authorization. You are solely responsible for complying with all applicable laws, regulations, and contractual requirements in your jurisdiction.
+> **Authorized use only.** Emergens must be used only against systems for which you have explicit written authorization. You are solely responsible for complying with all applicable laws, regulations, and ethical guidelines. Unauthorized access to computer systems is illegal.
+
+## Architecture
 
 <p align="center">
-  <img src="artifact-structure.svg" alt="Emergens artifact structure" width="900">
+  <img src="templates/artifact-structure.png" alt="Emergens artifact structure" width="900">
 </p>
 
 ## Contents
@@ -39,6 +41,6 @@
 
 ## Overview
 
-**Emergens** is a modular security-testing console for passive reconnaissance and authorized penetration-testing workflows. It provides a unified dashboard for running scan modules, reviewing results, and managing operational artifacts under a single interface.
+**Emergens** is a modular security-testing console for passive reconnaissance and authorized penetration-testing workflows. It provides a unified dashboard for running scan modules, reviewing results, and leveraging AI-assisted analysis.
 
 The project is maintained at [github.com/sollxfim-lab/Emergens](https://github.com/sollxfim-lab/Emergens).
