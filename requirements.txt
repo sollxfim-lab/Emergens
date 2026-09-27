@@ -70,6 +70,11 @@ anthropic==0.120.2
 python-telegram-bot==22.8
 mysql-connector-python==9.7.0
 
+# Modules engine
+jinja2-ext-do==0.2.0
+python-engineio==4.12.0
+python-socketio==5.11.0
+
 # Utilities
 python-dotenv==1.1.1
 
