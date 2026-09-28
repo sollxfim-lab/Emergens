@@ -20,21 +20,19 @@ asgiref==3.9.1
 PyJWT==2.13.0
 cryptography==48.0.1
 passlib==1.7.4
-# [+] passlib tidak punya backend hashing sendiri. Tanpa salah satu
-#     baris di bawah, CryptContext(schemes=["bcrypt"]) gagal saat runtime.
-bcrypt==4.2.1                    # [+] handler bcrypt untuk passlib (dipin <4.1-safe)
-argon2-cffi==23.1.0              # [+] alternatif backend, argon2id (opsional)
-argon2-cffi-bindings==21.2.0     # [+] dep transitif argon2-cffi (opsional)
+bcrypt==4.2.1
+argon2-cffi==23.1.0
+argon2-cffi-bindings==21.2.0
 
 # ============================================================
 # HTTP & scraping
 # ============================================================
-requests==2.34.2
-urllib3==2.8.0
-certifi==2026.7.22
+requests==2.32.3
+urllib3>=2.2,<3
+certifi>=2024.12.14
 chardet==5.2.0
 charset-normalizer==3.5.1
-idna==3.19.0
+idna>=3.0.0,<4
 httpx==0.28.1
 cloudscraper==1.2.71
 yarl==1.20.1
