@@ -98,7 +98,7 @@ anthropic==0.120.2
 anyio==4.6.2                     # [+] dep inti httpx/anthropic
 distro==1.9.0                    # [+] dep inti anthropic
 sniffio==1.3.1                   # [+] dep inti anyio
-jiter==0.6.1                     # [+] dep inti anthropic (parsing streaming)
+jiter>=0.2.0                     # [+] dep inti anthropic (parsing streaming) - flexible version for wheel availability
 typing-extensions==4.12.2        # [+] dep inti lintas paket
 
 # ============================================================
