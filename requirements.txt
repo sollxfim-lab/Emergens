@@ -1,6 +1,9 @@
-# ============================================================
-# Web framework
-# ============================================================
+# ═══════════════════════════════════════════════════════════════════════════
+# EMERGENS — requirements.txt  (updated 2026-09-22)
+# Python 3.11+ recommended  (3.13 tested)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ─── Web framework ───────────────────────────────────────────────────────
 Flask==3.1.3
 Werkzeug==3.1.3
 Jinja2==3.1.6
@@ -8,31 +11,22 @@ itsdangerous==2.2.0
 click==8.3.0
 blinker==1.9.0
 
-# ============================================================
-# Production WSGI
-# ============================================================
+# ─── Production WSGI ─────────────────────────────────────────────────────
 gunicorn==26.1.0
 asgiref==3.9.1
 
-# ============================================================
-# Auth & crypto
-# ============================================================
+# ─── Auth & crypto ───────────────────────────────────────────────────────
 PyJWT==2.13.0
 cryptography==48.0.1
 passlib==1.7.4
-bcrypt==4.2.1
-argon2-cffi==23.1.0
-argon2-cffi-bindings==21.2.0
 
-# ============================================================
-# HTTP & scraping
-# ============================================================
-requests==2.32.3
-urllib3>=2.2,<3
-certifi>=2024.12.14
+# ─── HTTP & scraping ─────────────────────────────────────────────────────
+requests==2.34.2
+urllib3==2.8.0
+certifi==2026.7.22
 chardet==5.2.0
 charset-normalizer==3.5.1
-idna>=3.0.0,<4
+idna==3.19.0
 httpx==0.28.1
 cloudscraper==1.2.71
 yarl==1.20.1
@@ -40,23 +34,7 @@ beautifulsoup4==4.15.0
 lxml==6.0.1
 soupsieve==2.8.4
 
-# ============================================================
-# Cloudflare bypass — curl_cffi TLS fingerprint impersonation
-# Fallback range if 0.9.0 unavailable: curl_cffi>=0.7,<0.10
-# ============================================================
-curl_cffi==0.9.0
-cffi==1.17.1                     # [+] dep inti curl_cffi
-pycparser==2.22                  # [+] dep inti cffi
-
-# ============================================================
-# Config parsers (fallbacks for Python < 3.11; no-op on 3.11+)
-# ============================================================
-toml==0.10.2  ; python_version < "3.11"
-tomli==2.2.1  ; python_version < "3.11"
-
-# ============================================================
-# Networking & recon
-# ============================================================
+# ─── Networking & recon ──────────────────────────────────────────────────
 dnspython==2.8.0
 ipaddress==1.0.23
 netaddr==1.3.0
@@ -69,56 +47,31 @@ pyasn1==0.6.4
 pyasn1-modules==0.4.2
 pycryptodome==3.23.0
 pyroxy @ git+https://github.com/MatrixTM/PyRoxy.git
-# [+] Pin ke commit supaya build reproducible. Ganti SHA di bawah dengan
-#     commit yang Anda inginkan, lalu hapus baris lama di atas.
-# pyroxy @ git+https://github.com/MatrixTM/PyRoxy.git@<COMMIT_SHA>
 
-# ============================================================
-# SQLi — retry / parsing
-# ============================================================
+# ═══════════════════════════════════════════════════════════════════════════
+# SQLi ENGINE
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Retry / backoff ──────────────────────────────────────────────────────
 tenacity==9.1.4
+
+# ── SQL parsing ──────────────────────────────────────────────────────────
 sqlparse==0.6.0
 
-# ============================================================
-# SQLi — database drivers
-# ============================================================
-psycopg2-binary==2.9.12          # PostgreSQL
-pymysql==1.1.1                   # MySQL fallback
-pymssql==2.4.1                   # MS SQL Server
-oracledb==2.5.1                  # Oracle
+# ── Database drivers (post-exploitation / direct DB connection) ──────────
+psycopg2-binary==2.9.12          # PostgreSQL — primary driver
+pymysql==1.1.1                   # MySQL pure-python fallback
+pymssql==2.4.1                   # MS SQL Server — setuptools_scm<11.0 fix
+oracledb==2.5.1                  # Oracle — thin mode
 redis==8.1.0                     # Redis
-pymongo==4.18.0                  # MongoDB
+pymongo==4.18.0                  # MongoDB (NoSQL injection vector)
 
-# ============================================================
-# AI
-# ============================================================
+# ─── AI ──────────────────────────────────────────────────────────────────
 anthropic==0.120.2
-# [+] Dep inti SDK anthropic. Pin eksplisit supaya tidak bergeser
-#     diam-diam saat lockfile di-compile.
-anyio==4.6.2                     # [+] dep inti httpx/anthropic
-distro==1.9.0                    # [+] dep inti anthropic
-sniffio==1.3.1                   # [+] dep inti anyio
-jiter>=0.2.0                     # [+] dep inti anthropic (parsing streaming) - flexible version for wheel availability
-typing-extensions==4.12.2        # [+] dep inti lintas paket
 
-# ============================================================
-# Integrations
-# ============================================================
+# ─── Integrations ────────────────────────────────────────────────────────
 python-telegram-bot==22.8
 mysql-connector-python==9.7.0
-# [+] JobQueue PTB tidak ikut di paket inti. Aktifkan salah satu:
-APScheduler==3.10.4              # [+] untuk JobQueue PTB (opsional)
-tzdata==2024.2                   # [+] zona waktu untuk APScheduler (opsional)
 
-# ============================================================
-# Utilities
-# ============================================================
+# ─── Utilities ───────────────────────────────────────────────────────────
 python-dotenv==1.1.1
-
-# ============================================================
-# Optional — FlareSolverr (Docker, not a pip package):
-#   docker run -d --name flaresolverr -p 8080:8080 \
-#     -e LOG_LEVEL=info --restart unless-stopped \
-#     ghcr.io/flaresolverr/flaresolverr:latest
-#   export FLARESOLVERR_URL=http://localhost:8080 , tambahkan modules.engine
-# ============================================================
