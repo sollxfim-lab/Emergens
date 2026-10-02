@@ -2,30 +2,18 @@
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark light">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Access — Emergens | Developer Portal</title>
+    <title>API Access: Emergens | Developer Portal</title>
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="/favicon-180.png">
     <meta name="description" content="Emergens developer API access — authenticate, generate tokens, and test endpoints in a single console.">
     <meta name="theme-color" content="#030712">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%23030712'/%3E%3Cpath d='M33 4L14 34h11l-4 22 22-30H32l5-22z' fill='%2360a5fa'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @font-face {
-            font-family: 'Space Grotesk';
-            src: url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2') format('woff2');
-            font-weight: 400;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: 'Road Rage';
-            src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
     </style>
     <style>
         /* ============================================================
@@ -34,9 +22,9 @@
            ============================================================ */
 
         :root {
-            --font-display: 'Road Rage', 'Space Grotesk', sans-serif;
-            --font-body: 'Space Grotesk', sans-serif;
-            --font-mono: 'JetBrains Mono', 'Space Grotesk', 'Courier New', monospace;
+            --font-display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+            --font-body: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
             --blue-300: #93c5fd;
             --blue-400: #60a5fa;
@@ -675,7 +663,7 @@
             display: flex;
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
-            border-radius: var(--radius-full);
+            border-radius: var(--radius-sm);
             padding: 4px;
             margin-bottom: 16px;
         }
@@ -690,7 +678,7 @@
             color: var(--text-secondary);
             background: transparent;
             border: none;
-            border-radius: var(--radius-full);
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -708,7 +696,7 @@
             bottom: 4px;
             left: 4px;
             background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
-            border-radius: var(--radius-full);
+            border-radius: var(--radius-sm);
             box-shadow: 0 3px 14px var(--blue-glow);
             transition: transform var(--transition-med), width var(--transition-med);
             z-index: 1;
@@ -1210,7 +1198,7 @@
             align-items: center;
             gap: 5px;
             padding: 3px 10px;
-            border-radius: var(--radius-full);
+            border-radius: var(--radius-sm);
             font-size: 0.64rem;
             font-weight: 700;
             border: 1px solid var(--border-color);
@@ -1300,7 +1288,7 @@
         .progress-bar {
             height: 6px;
             background: var(--border-color);
-            border-radius: var(--radius-full);
+            border-radius: var(--radius-sm);
             overflow: hidden;
             margin: 8px 0;
         }
@@ -1308,7 +1296,7 @@
             position: relative;
             height: 100%;
             background: linear-gradient(90deg, var(--blue-600), var(--blue-400));
-            border-radius: var(--radius-full);
+            border-radius: var(--radius-sm);
             transition: width 0.5s ease;
             overflow: hidden;
         }
@@ -1405,6 +1393,7 @@
             .acct-avatar svg { animation: none; }
         }
     </style>
+    <link rel="stylesheet" href="css/emergens-theme.css">
 </head>
 <body>
 

@@ -3,32 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emergens — Login &amp; Signup</title>
-    <meta name="description" content="Sign in to Emergens — the professional web security testing platform.">
-    <meta name="theme-color" content="#030712">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%23030712'/%3E%3Cpath d='M33 4L14 34h11l-4 22 22-30H32l5-22z' fill='%2360a5fa'/%3E%3C/svg%3E">
-    <style>
-        @font-face {
-            font-family: 'Space Grotesk';
-            src: url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2') format('woff2');
-            font-weight: 400;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: 'Road Rage';
-            src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
-    </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta name="color-scheme" content="dark light">
+    <title>Emergens: Sign in</title>
+    <meta name="description" content="Sign in to the Emergens console, the operator panel for authorized web security testing.">
+    <meta name="theme-color" content="#05060C">
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="/favicon-180.png">
+    <!-- Same two families, same Font Awesome build, same CDN flags as dashboard.html, so the
+         auth screen and the console it opens into are drawn from one type system. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>
         :root {
-            --font-display: 'Road Rage', 'Space Grotesk', sans-serif;
-            --font-body: 'Space Grotesk', sans-serif;
-            --font-mono: 'JetBrains Mono', 'Space Grotesk', 'Courier New', monospace;
+            --font-display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+            --font-body: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             --blue-300: #93c5fd;
             --blue-400: #60a5fa;
             --blue-500: #3b82f6;
@@ -72,25 +64,6 @@
             --card-bg: linear-gradient(160deg, rgba(26, 35, 50, 0.95), rgba(10, 15, 30, 0.98));
             --input-bg: #0a0f1e;
             --code-bg: #0d0f1a;
-            --panel-gradient: linear-gradient(155deg, #050a16 0%, #0b1120 15%, #172554 35%, #1e3a8a 55%, #1e40af 75%, #1d4ed8 90%, #2563eb 100%);
-            --panel-overlay: rgba(3, 7, 18, 0.62);
-            --panel-glow-1: rgba(37, 99, 235, 0.45);
-            --panel-glow-2: rgba(29, 78, 216, 0.3);
-            --panel-glow-3: rgba(147, 197, 253, 0.18);
-            --patch-1: rgba(37, 99, 235, 0.5);
-            --patch-2: rgba(59, 130, 246, 0.35);
-            --patch-3: rgba(147, 197, 253, 0.25);
-            --patch-4: rgba(29, 78, 216, 0.4);
-            --patch-5: rgba(96, 165, 250, 0.3);
-            --patch-6: rgba(191, 219, 254, 0.2);
-            --outer-bubble-color: rgba(59, 130, 246, 0.15);
-            --outer-bubble-border: rgba(59, 130, 246, 0.3);
-            --outer-patch-1: rgba(37, 99, 235, 0.14);
-            --outer-patch-2: rgba(59, 130, 246, 0.11);
-            --outer-patch-3: rgba(96, 165, 250, 0.16);
-            --outer-patch-4: rgba(29, 78, 216, 0.12);
-            --outer-patch-5: rgba(147, 197, 253, 0.1);
-            --outer-patch-6: rgba(191, 219, 254, 0.08);
         }
         [data-theme="light"] {
             --bg-primary: #e8ecf2;
@@ -109,25 +82,6 @@
             --card-bg: linear-gradient(160deg, #ffffff, #f5f7fa);
             --input-bg: #f0f2f5;
             --code-bg: #e8ecf2;
-            --panel-gradient: linear-gradient(155deg, #b0c8e8 0%, #9ab8e0 15%, #7ba5d5 35%, #5d8fd0 55%, #4a84d8 75%, #3570cd 90%, #2563c0 100%);
-            --panel-overlay: rgba(30, 58, 95, 0.35);
-            --panel-glow-1: rgba(59, 130, 246, 0.45);
-            --panel-glow-2: rgba(96, 165, 250, 0.35);
-            --panel-glow-3: rgba(147, 197, 253, 0.3);
-            --patch-1: rgba(37, 99, 235, 0.55);
-            --patch-2: rgba(59, 130, 246, 0.4);
-            --patch-3: rgba(147, 197, 253, 0.35);
-            --patch-4: rgba(29, 78, 216, 0.45);
-            --patch-5: rgba(96, 165, 250, 0.38);
-            --patch-6: rgba(191, 219, 254, 0.3);
-            --outer-bubble-color: rgba(59, 130, 246, 0.18);
-            --outer-bubble-border: rgba(59, 130, 246, 0.35);
-            --outer-patch-1: rgba(37, 99, 235, 0.18);
-            --outer-patch-2: rgba(59, 130, 246, 0.14);
-            --outer-patch-3: rgba(96, 165, 250, 0.2);
-            --outer-patch-4: rgba(29, 78, 216, 0.15);
-            --outer-patch-5: rgba(147, 197, 253, 0.12);
-            --outer-patch-6: rgba(191, 219, 254, 0.1);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
@@ -156,125 +110,6 @@
         [hidden] { display: none !important; }
         a { text-decoration: none; color: inherit; }
 
-        .bg-orb {
-            position: fixed; border-radius: 50%;
-            filter: blur(140px); pointer-events: none;
-            z-index: 0; opacity: 0.04;
-        }
-        .bg-orb-1 { width: 700px; height: 700px; background: var(--blue-600); top: -200px; right: -200px; animation: orbDrift1 18s ease-in-out infinite; }
-        .bg-orb-2 { width: 500px; height: 500px; background: var(--blue-700); bottom: -150px; left: -100px; animation: orbDrift2 22s ease-in-out infinite; }
-        .bg-orb-3 { width: 350px; height: 350px; background: var(--gold); top: 45%; left: 55%; opacity: 0.02; animation: orbDrift3 16s ease-in-out infinite; }
-        [data-theme="light"] .bg-orb { opacity: 0.03; }
-        @keyframes orbDrift1 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(-40px, 30px) scale(1.1); }
-            66% { transform: translate(30px, -20px) scale(0.95); }
-        }
-        @keyframes orbDrift2 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(35px, -25px) scale(1.05); }
-            66% { transform: translate(-25px, 35px) scale(1.15); }
-        }
-        @keyframes orbDrift3 {
-            0%, 100% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-45%, -55%) scale(1.2); }
-        }
-
-        .grid-overlay {
-            position: fixed; inset: 0; z-index: 0; pointer-events: none;
-            background-image:
-                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
-            background-size: 60px 60px;
-            mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
-            -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
-        }
-
-        /* Following moon */
-        .moon {
-            position: fixed;
-            top: 8%; right: 6%;
-            width: 110px; height: 110px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 34% 30%,
-                #fdfbf4 0%, #f1ecdf 18%, #ddd6c4 38%, #b9b19c 62%, #837c69 85%, #5f5a4c 100%);
-            box-shadow:
-                inset -22px -16px 46px rgba(10, 10, 15, 0.45),
-                inset 10px 8px 24px rgba(255, 255, 255, 0.25),
-                0 0 50px rgba(241, 236, 223, 0.15);
-            pointer-events: none;
-            z-index: 0;
-            will-change: transform;
-            opacity: 0.9;
-        }
-        .moon::before {
-            content: '';
-            position: absolute; inset: 0; border-radius: 50%;
-            background:
-                radial-gradient(circle at 26% 62%, rgba(70, 65, 55, 0.32) 0%, transparent 10%),
-                radial-gradient(circle at 61% 24%, rgba(70, 65, 55, 0.28) 0%, transparent 8%),
-                radial-gradient(circle at 71% 66%, rgba(70, 65, 55, 0.34) 0%, transparent 12%),
-                radial-gradient(circle at 42% 82%, rgba(70, 65, 55, 0.22) 0%, transparent 7%),
-                radial-gradient(circle at 82% 42%, rgba(70, 65, 55, 0.24) 0%, transparent 6%);
-        }
-        [data-theme="light"] .moon { opacity: 0; visibility: hidden; }
-
-        .outer-bubbles { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-        .outer-bubble {
-            position: absolute; bottom: -80px;
-            border-radius: 50%;
-            background: var(--outer-bubble-color);
-            border: 1.5px solid var(--outer-bubble-border);
-            backdrop-filter: blur(2px);
-            -webkit-backdrop-filter: blur(2px);
-            animation: outerBubbleRise 12s ease-in-out infinite;
-            opacity: 0;
-        }
-        .outer-bubble:nth-child(1) { width: 40px; height: 40px; left: 5%; animation-duration: 13s; animation-delay: 0s; }
-        .outer-bubble:nth-child(2) { width: 25px; height: 25px; left: 12%; animation-duration: 10s; animation-delay: 2s; }
-        .outer-bubble:nth-child(3) { width: 55px; height: 55px; left: 22%; animation-duration: 15s; animation-delay: 4s; }
-        .outer-bubble:nth-child(4) { width: 18px; height: 18px; left: 30%; animation-duration: 9s; animation-delay: 1s; }
-        .outer-bubble:nth-child(5) { width: 35px; height: 35px; left: 38%; animation-duration: 11s; animation-delay: 6s; }
-        .outer-bubble:nth-child(6) { width: 28px; height: 28px; left: 48%; animation-duration: 12.5s; animation-delay: 3s; }
-        .outer-bubble:nth-child(7) { width: 60px; height: 60px; left: 62%; animation-duration: 14s; animation-delay: 5s; }
-        .outer-bubble:nth-child(8) { width: 20px; height: 20px; left: 70%; animation-duration: 9.5s; animation-delay: 0.5s; }
-        .outer-bubble:nth-child(9) { width: 45px; height: 45px; left: 78%; animation-duration: 12s; animation-delay: 7s; }
-        .outer-bubble:nth-child(10) { width: 22px; height: 22px; left: 85%; animation-duration: 10.5s; animation-delay: 2.5s; }
-        .outer-bubble:nth-child(11) { width: 50px; height: 50px; left: 92%; animation-duration: 13.5s; animation-delay: 8s; }
-        .outer-bubble:nth-child(12) { width: 30px; height: 30px; left: 45%; animation-duration: 11.5s; animation-delay: 3.5s; }
-        @keyframes outerBubbleRise {
-            0% { opacity: 0; transform: translateY(0) translateX(0) scale(0.5); }
-            10% { opacity: 1; transform: translateY(-80px) translateX(10px) scale(0.9); }
-            35% { transform: translateY(-180px) translateX(-12px) scale(1); opacity: 0.8; }
-            60% { transform: translateY(-300px) translateX(8px) scale(1.05); opacity: 0.5; }
-            85% { transform: translateY(-420px) translateX(-6px) scale(0.95); opacity: 0.2; }
-            100% { transform: translateY(-550px) translateX(0) scale(0.8); opacity: 0; }
-        }
-
-        .outer-patches { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-        .outer-patch {
-            position: absolute; border-radius: 50%;
-            filter: blur(50px);
-            animation: outerPatchFloat 10s ease-in-out infinite;
-            opacity: 0;
-        }
-        .outer-patch:nth-child(1) { width: 300px; height: 300px; background: var(--outer-patch-1); top: -70px; left: -90px; animation-delay: 0s; }
-        .outer-patch:nth-child(2) { width: 240px; height: 240px; background: var(--outer-patch-2); top: 15%; right: -110px; animation-delay: -3s; }
-        .outer-patch:nth-child(3) { width: 380px; height: 380px; background: var(--outer-patch-3); bottom: -120px; left: 10%; animation-delay: -6s; }
-        .outer-patch:nth-child(4) { width: 200px; height: 200px; background: var(--outer-patch-4); bottom: 8%; right: 15%; animation-delay: -2s; }
-        .outer-patch:nth-child(5) { width: 270px; height: 270px; background: var(--outer-patch-5); top: 48%; left: 55%; animation-delay: -8s; }
-        .outer-patch:nth-child(6) { width: 170px; height: 170px; background: var(--outer-patch-6); top: 65%; left: 3%; animation-delay: -5s; }
-        .outer-patch:nth-child(7) { width: 220px; height: 220px; background: var(--outer-patch-3); top: 3%; right: 25%; animation-delay: -7s; }
-        .outer-patch:nth-child(8) { width: 190px; height: 190px; background: var(--outer-patch-1); top: 75%; left: 35%; animation-delay: -1.5s; }
-        .outer-patch:nth-child(9) { width: 260px; height: 260px; background: var(--outer-patch-2); bottom: -80px; right: 40%; animation-delay: -4.5s; }
-        .outer-patch:nth-child(10) { width: 150px; height: 150px; background: var(--outer-patch-4); top: 30%; left: 20%; animation-delay: -9s; }
-        @keyframes outerPatchFloat {
-            0%, 100% { opacity: 0.4; transform: translate(0, 0) scale(1); }
-            25% { opacity: 0.8; transform: translate(30px, -20px) scale(1.1); }
-            50% { opacity: 0.5; transform: translate(-20px, 25px) scale(0.95); }
-            75% { opacity: 0.9; transform: translate(15px, -10px) scale(1.05); }
-        }
-
         /* ============================================================
            TOP-LEVEL CHROME (moved OUTSIDE the container so shadows
            are no longer clipped by overflow: hidden)
@@ -290,22 +125,24 @@
         }
 
         .qad-btn {
-            height: 40px;
-            padding: 0 16px;
+            height: 36px;
+            padding: 0 14px;
             display: inline-flex;
             align-items: center;
-            gap: 7px;
-            border-radius: var(--radius-full);
-            border: 1px solid var(--gold);
-            background: rgba(212, 165, 116, 0.15);
-            color: var(--gold);
+            gap: 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
             cursor: pointer;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 1px;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            font-weight: 500;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            box-shadow: var(--shadow-sm);
-            transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.5s ease, background var(--transition-med), color var(--transition-med), box-shadow var(--transition-med), border var(--transition-med);
+            transition: opacity var(--transition-med), transform var(--transition-med),
+                        visibility var(--transition-med), border-color var(--transition-fast),
+                        color var(--transition-fast), background-color var(--transition-fast);
             opacity: 0;
             transform: translateY(-10px);
             visibility: hidden;
@@ -318,15 +155,9 @@
             pointer-events: auto;
         }
         .qad-btn:hover {
-            background: var(--gold);
-            color: #000;
-            box-shadow: 0 0 24px var(--gold-glow);
-            transform: translateY(-2px);
-            animation: qadPulse 2s ease-in-out infinite;
-        }
-        @keyframes qadPulse {
-            0%, 100% { box-shadow: 0 0 18px var(--gold-glow); }
-            50% { box-shadow: 0 0 32px var(--gold-glow); }
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
         }
 
         .theme-toggle {
@@ -346,8 +177,6 @@
         .theme-toggle:hover {
             border-color: var(--blue-500);
             color: var(--blue-400);
-            transform: rotate(20deg);
-            box-shadow: 0 0 18px var(--blue-glow);
         }
 
         /* ============================================================
@@ -361,7 +190,7 @@
             min-height: 700px;
             border-radius: var(--radius-xl);
             overflow: hidden;
-            box-shadow: var(--shadow-xl);
+            box-shadow: none;
             border: 1px solid var(--border-subtle);
             background: var(--bg-secondary);
             display: flex;
@@ -393,7 +222,8 @@
             top: 0; left: 0;
             width: 50%; height: 100%;
             z-index: 10;
-            background: var(--panel-gradient);
+            background: var(--bg-tertiary);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -404,100 +234,18 @@
             opacity: 0;
             transform: translateX(-30px);
         }
+        /* One 2px rule carries the ramp on this surface, the way the landing page's
+           primary panel does. It is the only gradient on the screen: the submit button
+           is the only other one, and both sit inside the brand's dose cap. */
+        .blue-overlay::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--grad);
+        }
         .auth-container.show-login .blue-overlay { transform: translateX(100%); }
         .auth-container.show-signup .blue-overlay { transform: translateX(0); }
         .auth-container.visible .blue-overlay { opacity: 1; }
-
-        .panel-photo-bg {
-            position: absolute; inset: 0;
-            background-image: url('https://files.catbox.moe/fcz802.jpg');
-            background-size: cover;
-            background-position: center;
-            z-index: 0;
-            opacity: 0.85;
-            filter: saturate(1.1) contrast(1.05) brightness(0.85);
-            background-color: #0a1120;
-        }
-        .panel-photo-bg::after {
-            content: '';
-            position: absolute; inset: 0;
-            background: var(--panel-overlay);
-            z-index: 1;
-        }
-
-        .panel-light-anim {
-            position: absolute; inset: 0;
-            z-index: 2;
-            pointer-events: none;
-            background: linear-gradient(125deg, transparent 0%, rgba(59, 130, 246, 0.18) 25%, transparent 50%, rgba(37, 99, 235, 0.14) 75%, transparent 100%);
-            background-size: 300% 300%;
-            animation: lightGradientShift 9s ease-in-out infinite;
-            mix-blend-mode: overlay;
-        }
-        @keyframes lightGradientShift {
-            0%, 100% { background-position: 0% 50%; opacity: 0.6; }
-            25% { background-position: 50% 0%; opacity: 0.9; }
-            50% { background-position: 100% 50%; opacity: 1; }
-            75% { background-position: 50% 100%; opacity: 0.8; }
-        }
-        [data-theme="dark"] .panel-light-anim { display: none; }
-
-        .panel-glow-orb {
-            position: absolute;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 3;
-            filter: blur(70px);
-            animation: panelGlowFloat 12s ease-in-out infinite;
-        }
-        .panel-glow-1 { width: 320px; height: 320px; background: var(--panel-glow-1); top: -80px; right: -60px; animation-delay: 0s; }
-        .panel-glow-2 { width: 280px; height: 280px; background: var(--panel-glow-2); bottom: -60px; left: -50px; animation-delay: -4s; }
-        .panel-glow-3 { width: 200px; height: 200px; background: var(--panel-glow-3); top: 45%; left: 40%; animation-delay: -8s; }
-        @keyframes panelGlowFloat {
-            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
-            33% { transform: translate(25px, -20px) scale(1.15); opacity: 0.8; }
-            66% { transform: translate(-15px, 18px) scale(0.95); opacity: 0.6; }
-        }
-
-        .panel-patches {
-            position: absolute; top: 0; right: 0;
-            z-index: 4; pointer-events: none;
-            width: 250px; height: 250px;
-        }
-        .patch {
-            position: absolute; border-radius: 50%;
-            animation: patchFloat 7s ease-in-out infinite;
-            opacity: 0;
-        }
-        .patch:nth-child(1) { width: 70px; height: 70px; background: var(--patch-1); top: 20%; right: 15%; animation-delay: 0s; filter: blur(18px); }
-        .patch:nth-child(2) { width: 45px; height: 45px; background: var(--patch-2); top: 35%; right: 45%; animation-delay: -1.5s; filter: blur(12px); }
-        .patch:nth-child(3) { width: 55px; height: 55px; background: var(--patch-3); top: 55%; right: 25%; animation-delay: -3s; filter: blur(15px); }
-        .patch:nth-child(4) { width: 35px; height: 35px; background: var(--patch-4); top: 15%; right: 55%; animation-delay: -4.5s; filter: blur(10px); }
-        .patch:nth-child(5) { width: 50px; height: 50px; background: var(--patch-5); top: 45%; right: 10%; animation-delay: -2s; filter: blur(14px); }
-        .patch:nth-child(6) { width: 30px; height: 30px; background: var(--patch-6); top: 70%; right: 40%; animation-delay: -5.5s; filter: blur(8px); }
-        @keyframes patchFloat {
-            0%, 100% { opacity: 0; transform: translate(0, 0) scale(0.6); }
-            20% { opacity: 1; transform: translate(-8px, -10px) scale(1); }
-            50% { opacity: 0.8; transform: translate(6px, -20px) scale(1.1); }
-            80% { opacity: 0.4; transform: translate(-4px, -5px) scale(0.9); }
-        }
-
-        .panel-sheen {
-            position: absolute;
-            top: -150%; left: -60%;
-            width: 50%; height: 400%;
-            background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0.12) 45%, rgba(255, 255, 255, 0.22) 50%, rgba(255, 255, 255, 0.12) 55%, transparent 100%);
-            transform: rotate(20deg);
-            animation: sheenSweep 7s ease-in-out infinite;
-            pointer-events: none;
-            z-index: 5;
-        }
-        @keyframes sheenSweep {
-            0% { left: -60%; opacity: 0; }
-            15% { opacity: 1; }
-            40% { left: 120%; opacity: 0; }
-            100% { left: 120%; opacity: 0; }
-        }
 
         .panel-logo {
             display: flex;
@@ -512,21 +260,24 @@
         .auth-container.visible .panel-logo { opacity: 1; transform: translateY(0); }
         .panel-logo svg {
             width: 40px; height: 40px;
-            filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.4));
-            animation: logoPulse 4s ease-in-out infinite;
-        }
-        @keyframes logoPulse {
-            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.4)); }
-            50% { transform: scale(1.05); filter: drop-shadow(0 0 22px rgba(255, 255, 255, 0.6)); }
+            
         }
         .panel-logo .logo-text {
             font-family: var(--font-display);
-            font-weight: 800;
+            font-weight: 600;
             font-size: 20px;
-            color: #fff;
-            letter-spacing: 1px;
-            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
         }
+        /* The three marks carry the ramp, the way the console's crest does. The colour lives
+           in CSS rather than in stop-color attributes, so the marks follow the theme in both
+           themes and the markup holds no palette literal. */
+        .brand-icon svg stop:first-of-type,
+        .panel-logo svg stop:first-of-type { stop-color: var(--accent); }
+        .brand-icon svg stop:last-of-type,
+        .panel-logo svg stop:last-of-type { stop-color: var(--accent2); }
+        .brand-icon svg path,
+        .panel-logo svg path { stroke: var(--accent2); }
         .panel-logo .logo-text span { color: var(--gold-light); }
 
         .panel-content {
@@ -634,7 +385,7 @@
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-lg);
             padding: 28px 24px;
-            box-shadow: var(--shadow-md);
+            box-shadow: none;
             position: relative;
             opacity: 0;
             transform: translateY(25px) scale(0.97);
@@ -662,24 +413,19 @@
             align-items: center;
             justify-content: center;
             border-radius: 12px;
-            animation: pulseGlow 3.5s ease-in-out infinite;
-        }
-        @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 8px 24px var(--blue-glow); }
-            50% { box-shadow: 0 8px 44px var(--blue-glow); }
+            
         }
         .auth-brand .brand-icon svg {
             width: 44px; height: 44px;
-            filter: drop-shadow(0 0 14px var(--blue-glow));
         }
-        .auth-brand h3 {
+        .auth-brand__title {
             font-size: 1.1rem;
             font-weight: 700;
-            color: var(--blue-400);
+            color: var(--text-primary);
             letter-spacing: 0.5px;
             margin-bottom: 2px;
         }
-        .auth-brand h3 span { color: var(--gold); }
+        .auth-brand__title span { color: var(--blue-400); }
         .auth-brand .tagline {
             color: var(--text-secondary);
             font-size: 0.72rem;
@@ -709,12 +455,10 @@
         }
         .input-group:focus-within {
             border-color: var(--blue-500);
-            box-shadow: 0 0 0 3px var(--blue-glow-soft);
             background: var(--bg-elevated);
         }
         .input-group.error {
             border-color: var(--red);
-            box-shadow: 0 0 0 3px var(--red-glow);
             animation: inputError 0.4s ease;
         }
         @keyframes inputError {
@@ -755,7 +499,7 @@
         }
         .input-group .icon-btn:hover {
             color: var(--blue-500);
-            background: var(--blue-glow-soft);
+            background: var(--bg-tertiary);
         }
         .input-group.shake { animation: shake 0.45s ease; }
         @keyframes shake {
@@ -819,7 +563,6 @@
         }
         .captcha-box input:focus {
             border-color: var(--blue-500);
-            box-shadow: 0 0 0 2px var(--blue-glow-soft);
         }
 
         /* Checkbox — real <label> wrapper */
@@ -862,9 +605,8 @@
             outline-offset: 2px;
         }
         .checkbox-wrapper input[type="checkbox"]:checked ~ .custom-checkbox {
-            background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+            background: var(--blue-500);
             border-color: var(--blue-500);
-            box-shadow: 0 0 10px var(--blue-glow-soft);
             animation: checkboxPop 0.3s ease;
         }
         @keyframes checkboxPop {
@@ -873,18 +615,16 @@
             100% { transform: scale(1); }
         }
         .checkbox-wrapper input[type="checkbox"]:checked ~ .custom-checkbox::after {
-            content: '✓';
+            content: '';
             position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: #fff;
-            font-size: 10px;
-            font-weight: 800;
-            line-height: 1;
+            top: 46%; left: 50%;
+            width: 4px; height: 8px;
+            border: solid var(--on-accent, #fff);
+            border-width: 0 2px 2px 0;
+            transform: translate(-50%, -50%) rotate(45deg);
         }
         .checkbox-wrapper.error .custom-checkbox {
             border-color: var(--red);
-            box-shadow: 0 0 0 3px var(--red-glow);
         }
         .checkbox-label {
             font-size: 0.68rem;
@@ -937,8 +677,8 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
-            color: #fff;
+            background: var(--blue-500);
+            color: var(--on-accent, #fff);
             border: none;
             border-radius: var(--radius-sm);
             padding: 10px 16px;
@@ -946,86 +686,33 @@
             font-size: 0.82rem;
             cursor: pointer;
             transition: all var(--transition-med);
-            box-shadow: 0 3px 14px var(--blue-glow);
             width: 100%;
             letter-spacing: 0.2px;
             flex-shrink: 0;
             margin-top: 4px;
         }
-        .btn-primary::after {
-            content: "";
-            position: absolute; inset: 0;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent 60%);
-            opacity: 0;
-            transition: opacity var(--transition-fast);
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 28px var(--blue-glow);
-        }
-        .btn-primary:hover::after { opacity: 1; }
-        .btn-primary:active { transform: translateY(0) scale(0.98); }
+        .btn-primary:hover { transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0) scale(0.99); }
         .btn-primary:disabled {
             opacity: 0.55;
             cursor: not-allowed;
             transform: none;
-            box-shadow: none;
         }
-        .btn-primary:disabled::after { display: none; }
 
         .spin { animation: spin 0.8s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        .social-divider {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 6px 0 5px;
+        /* There is no OAuth provider wired into this build, so the screen states the one
+           sign-in path it has instead of offering two that cannot answer. */
+        .auth-note {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            line-height: 1.6;
+            letter-spacing: 0.02em;
             color: var(--text-muted);
-            font-size: 0.58rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-            flex-shrink: 0;
+            text-align: center;
+            margin-bottom: 20px;
         }
-        .social-divider::before,
-        .social-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border-subtle);
-        }
-        .social-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            flex-shrink: 0;
-        }
-        .btn-social {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 7px 10px;
-            border-radius: var(--radius-sm);
-            font-weight: 600;
-            font-size: 0.72rem;
-            cursor: pointer;
-            transition: all var(--transition-fast);
-            border: 1px solid var(--border-color);
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            font-family: var(--font-body);
-        }
-        .btn-social:hover:not(:disabled) {
-            border-color: var(--blue-500);
-            background: var(--bg-elevated);
-            box-shadow: var(--shadow-sm);
-            transform: translateY(-2px);
-        }
-        .btn-social svg { width: 13px; height: 13px; transition: transform var(--transition-fast); }
-        .btn-social:hover:not(:disabled) svg { transform: scale(1.2); }
-
         .flip-toggle {
             text-align: center;
             font-size: 0.7rem;
@@ -1062,25 +749,15 @@
 
         .qad-modal {
             background: var(--bg-secondary);
-            border: 2px solid rgba(59, 130, 246, 0.2);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius-xl);
             padding: 34px 28px;
             width: 100%;
             max-width: 420px;
-            box-shadow: var(--shadow-xl), 0 0 60px rgba(59, 130, 246, 0.1);
-            animation: modalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: var(--shadow-lg);
+            animation: modalIn 0.24s cubic-bezier(0.22, 0.68, 0.24, 1);
             position: relative;
             overflow: hidden;
-        }
-        .qad-modal::before {
-            content: '';
-            position: absolute;
-            top: -80px; right: -80px;
-            width: 200px; height: 200px;
-            border-radius: 50%;
-            background: var(--gold-glow-soft);
-            filter: blur(80px);
-            pointer-events: none;
         }
         .qad-modal > * { position: relative; z-index: 1; }
         @keyframes modalIn {
@@ -1095,10 +772,9 @@
             display: grid;
             place-items: center;
             font-size: 22px;
-            color: var(--gold);
-            background: var(--gold-glow-soft);
-            border: 1px solid rgba(212, 165, 116, 0.3);
-            box-shadow: 0 0 24px var(--gold-glow-soft);
+            color: var(--accent);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
         }
         .qad-modal-title {
             font-family: var(--font-display);
@@ -1120,12 +796,8 @@
         .qad-modal .input-group { margin-bottom: 12px; }
         .qad-modal .btn-primary {
             margin-top: 8px;
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            color: #1a1206;
-            box-shadow: 0 4px 18px var(--gold-glow);
-        }
-        .qad-modal .btn-primary:hover:not(:disabled) {
-            box-shadow: 0 8px 32px var(--gold-glow);
+            background: var(--grad, var(--blue-500));
+            color: var(--on-accent, #fff);
         }
         .qad-modal-close {
             position: absolute;
@@ -1203,15 +875,11 @@
                 border: none;
             }
             .auth-card { max-width: 100%; }
-
-            .outer-bubble:nth-child(n+7),
-            .outer-patch:nth-child(n+7) { display: none; }
         }
         @media (max-width: 480px) {
             body { padding: 68px 12px 24px; }
             .form-side--login,
             .form-side--signup { padding: 18px 16px; }
-            .social-buttons { grid-template-columns: 1fr; }
             .toast {
                 bottom: 16px;
                 left: 14px;
@@ -1223,8 +891,6 @@
             .top-chrome { top: 14px; right: 12px; gap: 8px; }
             .qad-btn { padding: 0 10px; font-size: 0.65rem; height: 36px; }
             .theme-toggle { width: 36px; height: 36px; }
-            .outer-bubble:nth-child(n+5),
-            .outer-patch:nth-child(n+5) { display: none; }
         }
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
@@ -1233,34 +899,11 @@
                 transition-duration: 0.001ms !important;
                 scroll-behavior: auto !important;
             }
-            .moon { display: none; }
-            .outer-bubble, .outer-patch, .patch { animation: none !important; opacity: 0.3; }
-            .panel-sheen, .panel-light-anim { display: none; }
         }
     </style>
+    <link rel="stylesheet" href="css/emergens-theme.css">
 </head>
 <body>
-    <!-- Backgrounds -->
-    <div class="outer-bubbles">
-        <div class="outer-bubble"></div><div class="outer-bubble"></div>
-        <div class="outer-bubble"></div><div class="outer-bubble"></div>
-        <div class="outer-bubble"></div><div class="outer-bubble"></div>
-        <div class="outer-bubble"></div><div class="outer-bubble"></div>
-        <div class="outer-bubble"></div><div class="outer-bubble"></div>
-        <div class="outer-bubble"></div><div class="outer-bubble"></div>
-    </div>
-    <div class="outer-patches">
-        <div class="outer-patch"></div><div class="outer-patch"></div>
-        <div class="outer-patch"></div><div class="outer-patch"></div>
-        <div class="outer-patch"></div><div class="outer-patch"></div>
-        <div class="outer-patch"></div><div class="outer-patch"></div>
-        <div class="outer-patch"></div><div class="outer-patch"></div>
-    </div>
-    <div class="bg-orb bg-orb-1"></div>
-    <div class="bg-orb bg-orb-2"></div>
-    <div class="bg-orb bg-orb-3"></div>
-    <div class="grid-overlay"></div>
-    <div class="moon" id="moon" aria-hidden="true"></div>
 
     <!-- Top chrome — moved outside the container so hover glows aren't clipped -->
     <div class="top-chrome">
@@ -1283,29 +926,17 @@
                         <svg viewBox="0 0 60 60" fill="none" aria-hidden="true">
                             <defs>
                                 <linearGradient id="authGradLogin" x1="0" y1="0" x2="60" y2="60">
-                                    <stop offset="0" stop-color="#60a5fa" />
-                                    <stop offset="1" stop-color="#1e40af" />
+                                    <stop offset="0" />
+                                    <stop offset="1" />
                                 </linearGradient>
                             </defs>
-                            <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#authGradLogin)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#authGradLogin)" stroke-width="2" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <h3>WELCOME <span>BACK</span></h3>
+                    <h1 class="auth-brand__title">WELCOME <span>BACK</span></h1>
                     <p class="tagline">Log in to your account</p>
                 </div>
-                <div class="social-buttons">
-                    <button class="btn-social" id="githubLoginBtn" type="button" aria-label="Continue with GitHub">
-                        <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-                        </svg> GitHub
-                    </button>
-                    <button class="btn-social" id="googleLoginBtn" type="button" aria-label="Continue with Google">
-                        <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
-                        </svg> Google
-                    </button>
-                </div>
-                <div class="social-divider">or continue with email</div>
+                <p class="auth-note">Email sign-in only. GitHub and Google are not enabled on this instance.</p>
                 <form id="loginForm" class="auth-form" autocomplete="off" novalidate>
                     <label for="loginIdentifier">Username or Email</label>
                     <div class="input-group" id="loginIdentifierGroup">
@@ -1343,29 +974,17 @@
                         <svg viewBox="0 0 60 60" fill="none" aria-hidden="true">
                             <defs>
                                 <linearGradient id="authGradSignup" x1="0" y1="0" x2="60" y2="60">
-                                    <stop offset="0" stop-color="#60a5fa" />
-                                    <stop offset="1" stop-color="#1e40af" />
+                                    <stop offset="0" />
+                                    <stop offset="1" />
                                 </linearGradient>
                             </defs>
-                            <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#authGradSignup)" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#authGradSignup)" stroke-width="2" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <h3>CREATE <span>ACCOUNT</span></h3>
-                    <p class="tagline">Join the security platform</p>
+                    <h2 class="auth-brand__title">CREATE <span>ACCOUNT</span></h2>
+                    <p class="tagline">Create your console account</p>
                 </div>
-                <div class="social-buttons">
-                    <button class="btn-social" id="githubSignupBtn" type="button" aria-label="Sign up with GitHub">
-                        <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-                        </svg> GitHub
-                    </button>
-                    <button class="btn-social" id="googleSignupBtn" type="button" aria-label="Sign up with Google">
-                        <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
-                        </svg> Google
-                    </button>
-                </div>
-                <div class="social-divider">or sign up manually</div>
+                <p class="auth-note">Email sign-up only. GitHub and Google are not enabled on this instance.</p>
                 <form id="signupForm" class="auth-form" autocomplete="off" novalidate>
                     <label for="signupName">Full Name</label>
                     <div class="input-group" id="signupNameGroup">
@@ -1420,37 +1039,27 @@
         </div>
 
         <!-- Blue panel -->
-        <div class="blue-overlay" id="blueOverlay">
-            <div class="panel-photo-bg"></div>
-            <div class="panel-light-anim"></div>
-            <div class="panel-glow-orb panel-glow-1"></div>
-            <div class="panel-glow-orb panel-glow-2"></div>
-            <div class="panel-glow-orb panel-glow-3"></div>
-            <div class="panel-patches">
-                <div class="patch"></div><div class="patch"></div><div class="patch"></div>
-                <div class="patch"></div><div class="patch"></div><div class="patch"></div>
-            </div>
-            <div class="panel-sheen"></div>
+        <div class="blue-overlay miter" id="blueOverlay">
             <div class="panel-logo">
                 <svg viewBox="0 0 60 60" fill="none" aria-hidden="true">
                     <defs>
                         <linearGradient id="panelGrad" x1="0" y1="0" x2="60" y2="60">
                             <stop offset="0" stop-color="#fff" />
-                            <stop offset="1" stop-color="#93c5fd" />
+                            <stop offset="1" />
                         </linearGradient>
                     </defs>
-                    <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#panelGrad)" stroke="#fff" stroke-width="2" stroke-linejoin="round" />
+                    <path d="M33 4L14 34h11l-4 22 22-30H32l5-22z" fill="url(#panelGrad)" stroke-width="2" stroke-linejoin="round" />
                 </svg>
                 <div class="logo-text">EMER<span>GENS</span></div>
             </div>
             <div class="panel-content">
-                <h2>Secure Your Digital World</h2>
-                <p>Join thousands of security professionals using Emergens to test, scan, and protect their web applications with enterprise-grade tools.</p>
+                <h2>The operator console for authorized testing</h2>
+                <p>32 modules across 13 categories, from reconnaissance and injection testing to OSINT. Intrusive checks stay behind explicit selection, and the console is built for systems you own or are cleared to test.</p>
                 <ul class="panel-features">
-                    <li><i class="fas fa-shield-halved" aria-hidden="true"></i> 32+ Security Testing Modules</li>
-                    <li><i class="fas fa-bolt" aria-hidden="true"></i> Real-time Vulnerability Scanning</li>
-                    <li><i class="fas fa-globe" aria-hidden="true"></i> OSINT &amp; Reconnaissance Tools</li>
-                    <li><i class="fas fa-code" aria-hidden="true"></i> Full RESTful API Integration</li>
+                    <li><i class="fas fa-shield-halved" aria-hidden="true"></i> 32 modules across 13 categories</li>
+                    <li><i class="fas fa-bolt" aria-hidden="true"></i> Live scan stream, SARIF export</li>
+                    <li><i class="fas fa-globe" aria-hidden="true"></i> OSINT and reconnaissance tools</li>
+                    <li><i class="fas fa-code" aria-hidden="true"></i> API keys with token access</li>
                 </ul>
             </div>
             <div class="panel-footer-wrap">
@@ -1471,7 +1080,7 @@
             </button>
             <div class="qad-modal-icon"><i class="fas fa-terminal" aria-hidden="true"></i></div>
             <div class="qad-modal-title" id="qadModalTitle">QAD <span>ACCESS</span></div>
-            <div class="qad-modal-sub">Quick Access Dashboard — enter your access code</div>
+            <div class="qad-modal-sub">Quick Access Dashboard. Enter your access code.</div>
             <div class="input-group" id="qadCodeGroup">
                 <i class="fas fa-key" aria-hidden="true"></i>
                 <input type="password" id="qadCodeInput" placeholder="Enter QAD access code" autocomplete="off" spellcheck="false">
@@ -1593,34 +1202,6 @@
     });
 
     // =========================================================================
-    // FOLLOWING MOON
-    // =========================================================================
-    (function initMoon() {
-        var moon = document.getElementById('moon');
-        if (!moon) return;
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-        var targetX = 0, targetY = 0, currentX = 0, currentY = 0;
-        var RANGE_X = 80, RANGE_Y = 55;
-        var running = false;
-
-        window.addEventListener('mousemove', function (e) {
-            targetX = ((e.clientX / window.innerWidth - 0.5) * 2) * RANGE_X;
-            targetY = ((e.clientY / window.innerHeight - 0.5) * 2) * RANGE_Y;
-            if (!running) { running = true; requestAnimationFrame(tick); }
-        }, { passive: true });
-
-        function tick() {
-            currentX += (targetX - currentX) * 0.045;
-            currentY += (targetY - currentY) * 0.045;
-            moon.style.transform = 'translate3d(' + currentX.toFixed(2) + 'px, ' + currentY.toFixed(2) + 'px, 0)';
-            if (Math.abs(targetX - currentX) > 0.1 || Math.abs(targetY - currentY) > 0.1) {
-                requestAnimationFrame(tick);
-            } else {
-                running = false;
-            }
-        }
-    })();
 
     // =========================================================================
     // FLIP BETWEEN LOGIN AND SIGNUP
@@ -1814,13 +1395,6 @@
     // =========================================================================
     // SOCIAL / CONTACT — placeholders
     // =========================================================================
-    function handleSocialLogin(provider) {
-        showToast(provider + ' sign-in is coming soon. Please use email below.', 'info');
-    }
-    document.getElementById('githubLoginBtn').addEventListener('click', function () { handleSocialLogin('GitHub'); });
-    document.getElementById('googleLoginBtn').addEventListener('click', function () { handleSocialLogin('Google'); });
-    document.getElementById('githubSignupBtn').addEventListener('click', function () { handleSocialLogin('GitHub'); });
-    document.getElementById('googleSignupBtn').addEventListener('click', function () { handleSocialLogin('Google'); });
 
     var contactLink = document.getElementById('contactLink');
     if (contactLink) {
@@ -2017,7 +1591,7 @@
         if (agreeTerms.checked) agreeTermsWrapper.classList.remove('error');
     });
 
-    console.log('%cEmergens Auth System v3.3', 'color:#60a5fa;font-size:16px;font-weight:bold;font-family:monospace;');
+    console.log('%cEmergens Auth System v3.3', 'color:' + (getComputedStyle(document.documentElement).getPropertyValue('--blue-400').trim() || '#A855F7') + ';font-size:16px;font-weight:bold;font-family:monospace;');
     console.log('%cQAD Access · Hidden Trigger · Flask API · mobile + a11y + timeout fixes', 'color:#34d399;font-size:12px;font-family:monospace;');
 })();
 </script>

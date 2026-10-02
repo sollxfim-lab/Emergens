@@ -3,24 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Emergens — System Status | Live Uptime &amp; API Monitor</title>
+<title>Emergens: System Status | Live Uptime &amp; API Monitor</title>
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="/favicon-180.png">
+    <meta name="theme-color" content="#05060C">
 <meta name="description" content="Emergens live system status — real-time uptime, service health, API request monitor, response times, incident history and scheduled maintenance.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
-@font-face{font-family:'Space Grotesk';src:url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap;}
-@font-face{font-family:'Road Rage';src:url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');font-weight:normal;font-style:normal;font-display:swap;}
 </style>
 <style>
 /* ============================================================
    EMERGENS — DESIGN SYSTEM v10  (status.html + API monitor)
    ============================================================ */
 :root{
-  --font-display:'Road Rage','Space Grotesk',sans-serif;
-  --font-body:'Space Grotesk',sans-serif;
-  --font-mono:'JetBrains Mono','Space Grotesk',monospace;
+  --font-display:'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --font-body:'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --blue-300:#93c5fd;--blue-400:#60a5fa;--blue-500:#3b82f6;--blue-600:#2563eb;
   --blue-700:#1e40af;--blue-800:#172554;--blue-900:#0f172a;
@@ -107,7 +108,7 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 16px)}
 ::selection{background:var(--blue-600);color:#fff}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-track{background:var(--bg-secondary)}
-::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--blue-700),var(--blue-900));border-radius:999px;border:2px solid var(--bg-secondary)}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--blue-700),var(--blue-900));border-radius: var(--radius-sm);border:2px solid var(--bg-secondary)}
 ::-webkit-scrollbar-thumb:hover{background:var(--blue-600)}
 
 .scroll-progress{position:fixed;top:0;left:0;height:3px;width:0%;z-index:200;background:linear-gradient(90deg,var(--blue-500),var(--gold));box-shadow:0 0 12px var(--blue-glow);transition:width 80ms linear}
@@ -804,6 +805,7 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 16px)}
   .moon,.moon::after{animation:none}
 }
 </style>
+    <link rel="stylesheet" href="css/emergens-theme.css">
 </head>
 <body>
 

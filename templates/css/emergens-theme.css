@@ -1,0 +1,595 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMERGENS CONSOLE THEME — the brand layer for every template in this folder
+   ───────────────────────────────────────────────────────────────────────────
+   Load order matters: this file goes AFTER the template's own stylesheet and
+   before nothing else. It never re-lays-out a component. It re-points colour,
+   type, geometry, elevation and motion at the brand, then enforces the caps.
+
+   Wired in, so far: dashboard.html, login.html, get-started.html. The other
+   templates in this folder still load only their own stylesheet, so they keep
+   the older palette until they get the same link. Two of them also carried
+   decoration this file had to hide rather than remove: login.html and
+   get-started.html have had that markup deleted outright, which is the edit
+   this header asks for.
+
+   The brand is not invented here. It is the same object the landing page is
+   built from: the mark's violet to indigo to azure ramp on the logo's own black
+   field, 45 degree miters taken from the stroke ends, and hairline structure
+   where the old console used shadow. Every ink below carries the same measured
+   contrast the site's DESIGN.md records.
+
+   Dose caps this file enforces, page wide:
+     gradient  4 per surface: the primary action, one 2px rule, the active
+               navigation marker, the newest or active datum.
+     glow      0. Every glow token resolves to transparent.
+     shadow    1 elevation in the app: modal, sheet and toast, the three
+               surfaces that genuinely float above the page.
+     glass     1 surface, the sidebar, and only when the operator's own sidebar
+               setting asks for the frosted style.
+     radius    6 and 10 for controls, 0 and 2 for surfaces, 50% for dots and
+               avatars because a circle is a shape and not a pill.
+     motion    hover, state, and in-flight progress only. No decorative loop
+               survives this file. The list is at the motion section.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── 1. BRAND CONSTANTS ──────────────────────────────────────────────────── */
+:root{
+  /* Raw values, declared once, so every alias below traces back to one place. */
+  --brand-void:#05060C;        /* the logo's own black field */
+  --brand-surface:#0A0C15;     /* one step off the void */
+  --brand-surface-2:#10131F;   /* nested blocks, code, inputs */
+  --brand-surface-3:#161A28;   /* hovers, one step above nested */
+  --brand-line:#202539;        /* the only structure device */
+  --brand-line-soft:#171B29;   /* the quiet half of the same device */
+  --brand-ink:#E9EBF4;         /* 17.0:1 on the void */
+  --brand-ink-mute:#9AA2B8;    /* 7.9:1 on the void */
+  --brand-ink-faint:#7B8399;   /* 5.4:1 on the void, holds AA at 10.5px */
+  --brand-violet:#A855F7;
+  --brand-indigo:#5B6BF0;
+  --brand-azure:#38BDF8;
+  --brand-grad:linear-gradient(90deg,var(--brand-violet),var(--brand-indigo) 52%,var(--brand-azure));
+
+  /* Functional state hues. Not decoration: they encode scan severity, link and
+     job state across the console. Four only, each at a lightness the dark field
+     can carry, and the two loudest reuse the ramp. */
+  --state-ok:#4FD1A5;
+  --state-warn:#F0B24A;
+  --state-bad:#FF6B6B;
+  --state-info:var(--brand-azure);
+
+  /* Shared geometry and easing, identical to the landing page. */
+  --r-ctl:6px;
+  --r-ctl-lg:10px;
+  --cut:14px;
+
+  --font-sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+
+/* ─── 2. ONE REMAP COVERS EVERY TEMPLATE ─────────────────────────────────── */
+/* Ten templates declare the bg, blue, border and radius names; the console's own
+   stylesheet declares those plus the red, gold, steel, ruby and telegram names.
+   Pointing all of them at the brand constants is what rethemes the whole app
+   without touching a single component rule. */
+:root,
+[data-theme="dark"]{
+  --bg-primary:var(--brand-void);
+  --bg-secondary:var(--brand-surface);
+  --bg-tertiary:var(--brand-surface-2);
+  --bg-elevated:var(--brand-surface-3);
+  --bg-card:var(--brand-surface);
+  --bg-card-hover:var(--brand-surface-2);
+  --bg-input:var(--brand-surface-2);
+  --bg-hover:var(--brand-surface-2);
+  --card-bg:var(--brand-surface);
+  --code-bg:#0B0E18;
+  --code-fg:var(--brand-ink);
+  --surface:var(--brand-surface);
+  --surface-2:var(--brand-surface-2);
+
+  --border-color:var(--brand-line);
+  --border-subtle:var(--brand-line-soft);
+  --border:var(--brand-line);
+  --border-accent:var(--brand-indigo);
+  --divider:var(--brand-line-soft);
+
+  --text-primary:var(--brand-ink);
+  --text-secondary:var(--brand-ink-mute);
+  --text-muted:var(--brand-ink-faint);
+  --ink:var(--brand-ink);
+  --ink-mute:var(--brand-ink-mute);
+  --ink-faint:var(--brand-ink-faint);
+
+  /* The ramp, under the names the templates already use for their accents. */
+  --blue-300:#C4B5FD;
+  --blue-400:var(--brand-violet);
+  --blue-500:var(--brand-indigo);
+  --blue-600:#6E7BF3;
+  --blue-700:#4A57D8;
+  --blue-800:#39429F;
+  --blue-900:#232A63;
+  --violet:var(--brand-violet);
+  --indigo:var(--brand-indigo);
+  --azure:var(--brand-azure);
+  --cyan:var(--brand-azure);
+
+  /* The console's stylesheet calls its accents red and gold. Same ramp. */
+  --red-400:var(--brand-violet);
+  --red-500:var(--brand-indigo);
+  --red-600:#4A57D8;
+  --red-700:#39429F;
+  --red-800:#232A63;
+  --gold:var(--brand-violet);
+  --gold-light:#C4B5FD;
+  --green:var(--state-ok);
+  --steel:var(--brand-ink-mute);
+  --telegram-blue:var(--brand-azure);
+  --ruby:var(--state-bad);
+  --ruby-light:#FF9B9B;
+  --amber:var(--state-warn);
+  --ok:var(--state-ok);
+  --warn:var(--state-warn);
+  --bad:var(--state-bad);
+  --info:var(--state-info);
+}
+
+/* ─── 3. WHAT THE OLD THEME SPENT, AND WHAT THIS ONE SPENDS ──────────────── */
+/* Glow, sheen and the soft shadow ladder were the three loudest defaults in the
+   old console. Their tokens now resolve to nothing, so every component that once
+   asked for a glow gets none, and no component rule had to be rewritten. */
+:root,
+[data-theme="dark"]{
+  --red-glow:transparent;      --red-glow-soft:transparent;
+  --gold-glow:transparent;     --green-glow:transparent;
+  --amber-glow:transparent;    --steel-glow:transparent;
+  --telegram-glow:transparent;
+  --ruby-glow:transparent;     --ruby-glow-soft:transparent;
+  --glow:transparent;          --glow-soft:transparent;
+  --sheen:transparent;
+
+  --shadow-sm:none;
+  --shadow-md:none;
+  --shadow-lg:0 18px 48px rgba(2,3,8,.62);   /* the one elevation, for modal, sheet, toast */
+  --shadow-flat:none;
+
+  --accent:var(--brand-indigo);
+  --accent2:var(--brand-azure);
+  --accent-ink:var(--brand-void);
+  --on-accent:var(--brand-void);
+
+  --radius-xs:4px;
+  --radius-sm:var(--r-ctl);
+  --radius-md:var(--r-ctl);
+  --radius-lg:2px;
+  --radius-xl:2px;
+  --radius-full:999px;
+  --r-sm:var(--r-ctl);
+  --r-md:var(--r-ctl);
+  --r-lg:var(--r-ctl-lg);
+  --r-xl:2px;
+  --r-full:999px;
+
+  --grad:var(--brand-grad);
+  --font-ui:var(--font-sans);
+  --font-display:var(--font-sans);
+  --font-body:var(--font-sans);
+  --transition-fast:140ms cubic-bezier(.22,.68,.24,1);
+  --transition-med:240ms cubic-bezier(.22,.68,.24,1);
+  --transition-slow:320ms cubic-bezier(.22,.68,.24,1);
+  --bar-empty:var(--brand-line);
+  --sidebar-width:264px;
+}
+
+/* ─── 4. THE LIGHT THEME, SAME BRAND ─────────────────────────────────────── */
+/* The console ships a theme toggle and people use it in daylight, so the paper
+   side is a real theme rather than an afterthought: the same ramp, an ink scale
+   measured against the paper surface, and the same single elevation. */
+[data-theme="light"]{
+  --bg-primary:#F7F8FC;
+  --bg-secondary:#FFFFFF;
+  --bg-tertiary:#F1F3F9;
+  --bg-elevated:#FFFFFF;
+  --bg-card:#FFFFFF;
+  --bg-card-hover:#F4F6FB;
+  --bg-input:#FFFFFF;
+  --bg-hover:#F1F3F9;
+  --card-bg:#FFFFFF;
+  --border-color:#D8DCE8;
+  --border-subtle:#E7EAF3;
+  --border:#D8DCE8;
+  --text-primary:#0B0E18;
+  --text-secondary:#39415A;      /* 9.4:1 on the paper surface */
+  --text-muted:#5F6780;          /* 5.3:1 on the paper surface */
+  --ink:#0B0E18;
+  --ink-mute:#39415A;
+  --ink-faint:#5F6780;
+  --code-bg:#0B0E18;
+  --code-fg:#E9EBF4;
+  --blue-300:#7A55C9;
+  --blue-400:#7C3AED;
+  --blue-500:#4F46E5;
+  --red-400:#7C3AED;
+  --red-500:#4F46E5;
+  --gold:#7C3AED;
+  --gold-light:#7A55C9;
+  --green:#0F8A63;
+  --steel:#5F6780;
+  --ruby:#D64545;
+  --ruby-light:#B93A3A;
+  --amber:#9A6B12;
+  --ok:#0F8A63;
+  --warn:#9A6B12;
+  --bad:#D64545;
+  --shadow-sm:none;
+  --shadow-md:none;
+  --shadow-lg:0 18px 44px rgba(11,14,24,.14);
+  --sheen:transparent;
+  --red-glow:transparent; --red-glow-soft:transparent; --gold-glow:transparent;
+  --green-glow:transparent; --amber-glow:transparent; --steel-glow:transparent;
+  --ruby-glow:transparent; --ruby-glow-soft:transparent; --telegram-glow:transparent;
+  --on-accent:#FFFFFF;
+  --accent-ink:#FFFFFF;
+}
+
+/* ─── 5. BASE: THE FIELD, THE TYPE, THE FOCUS RING ───────────────────────── */
+/* The old body carried a radial glow plus a noise overlay. That pair is the most
+   common background in generated interfaces and it described nothing about this
+   product. The replacement is the mark's own construction drawing, the same
+   plate the landing page stands on, held at a strength that cannot compete with
+   data. The light theme gets plain paper: a hairline drawing on white reads as a
+   printing error, and the honest thing is to leave it out. */
+body{
+  font-family:var(--font-sans);
+  color:var(--text-primary);
+  background-color:var(--brand-void);
+  background-image:url("../img/plate-hex.svg");
+  background-repeat:no-repeat;
+  background-position:76% -8%;
+  background-size:min(1160px,94vw) auto;
+  background-blend-mode:normal;
+  transition:none;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+[data-theme="light"] body{ background-color:var(--bg-primary); background-image:none; }
+
+/* Type: one family, two voices. Operator text is Archivo, everything the machine
+   says is IBM Plex Mono. Headings take the width axis the wordmark is drawn with. */
+h1,h2,h3,h4,h5,h6{ letter-spacing:-.012em; font-weight:600; }
+h1,h2{ font-variation-settings:"wdth" 118; }
+h3,h4{ font-variation-settings:"wdth" 108; }
+p,li,dd,dt,label,td,th{ font-variation-settings:"wdth" 100; }
+
+code,pre,kbd,samp,.mono,
+[data-mono],.log-line,.log-empty,.timestamp,.stat-value,.stat-delta,
+.release-tag,.version,.endpoint,.token-value,.kv-value,.table-num{
+  font-family:var(--font-mono);
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1;
+}
+.stat-value,.stat-delta,.table-num{ letter-spacing:-.02em; }
+.stat-label,.kv-label,.field-label{ font-family:var(--font-mono); letter-spacing:.1em; text-transform:uppercase; font-size:.68rem; color:var(--ink-faint); }
+
+/* Keyboard focus has to be visible. The console had none: 1100 selectors and not
+   one :focus-visible, which makes the whole app unusable without a mouse. */
+:focus{ outline:none; }
+:focus-visible{
+  outline:2px solid var(--brand-azure);
+  outline-offset:2px;
+  border-radius:var(--r-ctl);
+}
+*::-moz-focus-inner{ border:0; }
+::selection{ background:var(--brand-violet); color:var(--brand-void); }
+::placeholder{ color:var(--ink-faint); opacity:1; }
+
+/* The app shell scrolls inside a fixed page, so the scrollbar is a real surface. */
+*{ scrollbar-width:thin; scrollbar-color:var(--brand-line) transparent; }
+*::-webkit-scrollbar{ width:10px; height:10px; }
+*::-webkit-scrollbar-track{ background:transparent; }
+*::-webkit-scrollbar-thumb{ background:var(--brand-line); border:2px solid transparent; background-clip:content-box; }
+*::-webkit-scrollbar-thumb:hover{ background:var(--ink-faint); background-clip:content-box; }
+
+/* The two rules that carry the ramp, and nowhere else. */
+.rule-grad,.gate__rule,.hero__rule{
+  display:block; height:2px; border:0;
+  background:var(--brand-grad);
+}
+.miter{
+  clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));
+}
+
+/* ─── 6. THE SLOP FLOOR: WHAT THIS FILE SWITCHES OFF, AND WHY ────────────── */
+/* The console shipped 26 to 40 keyframe animations per page: orbiting orbs,
+   floating pyramids, spinning cubes and tori, twinkling stars, drifting moons,
+   sheen sweeps, a rising bubble field. None of it encoded state. All of it
+   competed with the data an operator is reading, and it is the single loudest
+   reason the console did not look like the product it belongs to.
+
+   Under the new motion dial (hover, state change, in-flight progress) the
+   decorative set is switched off here, by name, so the decision lives in one
+   readable place instead of being spread over 1,100 selectors. */
+
+/* 6.1 Decorative geometry: not rendered. These carry no data and no affordance.
+   The rule is deliberately blunt. Removing the markup would be tidier still, and
+   is the better edit when you are already inside that template. */
+.bg-orb,.bg-orb-1,.bg-orb-2,.bg-orb-3,.grid-overlay,.shape3d,.shape-3d,
+.orb-drift,.orb,.orb-1,.orb-2,.orb-3,.cube,.pyramid,.torus,.diamond,.sphere,
+.helix,.icosa,.octa,.tetra,.moon,.moon-glow,.star-twinkle,.orbit-dot,
+.panel-glow-orb,.outer-bubble,.outer-patch,.patch,.sheen,.mc-creeper,
+.telegram-plane-trail,.profile-avatar-ring svg,.profile-avatar-core,.crest polygon,
+.scan-phase-animation i{
+  display:none !important;
+}
+
+/* 6.2 A status light keeps its light and loses its pulse. The colour is the
+   information; the breathing is noise. Every one of these is a real state:
+   link up, socket connected, job running, scan active. */
+.ex-live-pill .dot,.gc-connection-pill.connected .gc-dot,
+.gc-connection-pill.connecting .gc-dot,.live-dot,.net-live-dot,
+.mhd-badge-running,.chat-dot,.avatar-dot,.severity-dot,.tf-conf-dot,.loading-dot{
+  animation:none !important;
+}
+
+/* 6.3 The four loops that stay, because each one is progress rather than
+   decoration, and each one stops when the work it reports stops:
+     .spin                        a request is in flight
+     .scan-radar::before          a scan is sweeping, the instrument metaphor
+     .scan-progress-card.is-active::before
+     .scan-progress-track .fill::after
+   Everything else that used to run forever is off. */
+
+/* ─── 7. COMPONENT SKINS ─────────────────────────────────────────────────── */
+/* These are the names the templates and the console already share. Nothing here
+   changes a layout box or a grid: it changes surface, edge, radius, ink and the
+   one accent, so every screen in the app reads as the same product. */
+
+/* 7.1 Surfaces. A panel is a hairline rectangle on the field. Elevation is not
+   used to say "card"; the line says it, which is why the app can afford exactly
+   one shadow for the three things that truly float. */
+.panel,.stat-card,.card,.section-card,.result-card,.account-summary-card,
+.asset-card,.tool-box,.tf-tech-card,.mhd-card,.ex-card,.music-card,.reel-card,
+.school-card,.osint-profile-card,.net-traffic-card,.scan-progress-card,.fw-window{
+  background:var(--brand-surface);
+  border:1px solid var(--brand-line-soft);
+  border-radius:2px;
+  box-shadow:none;
+}
+.panel:hover,.stat-card:hover,.card:hover,.result-card:hover,.asset-card:hover,
+.tool-box:hover,.tf-tech-card:hover,.mhd-card:hover,.ex-card:hover{
+  border-color:var(--brand-line);
+  background:var(--brand-surface);
+}
+/* The primary panel of a screen takes the miter, the way the landing page's
+   hero and build panels do. One per screen, chosen in the markup. */
+.panel--primary,.miter{
+  clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));
+}
+.panel-title,.card-title,.section-head h2,.asset-card-title,.mhd-card-title{
+  font-family:var(--font-sans);
+  font-weight:600;
+  letter-spacing:-.01em;
+  color:var(--brand-ink);
+}
+.section-num,.num,.stat-label,.kv-label{
+  font-family:var(--font-mono);
+  color:var(--ink-faint);
+  letter-spacing:.12em;
+}
+.stat-value,.asset-kpi-val,.highlight-tile__value{
+  font-family:var(--font-mono);
+  font-variant-numeric:tabular-nums;
+  color:var(--brand-ink);
+  letter-spacing:-.02em;
+}
+.stat-icon-badge,.tool-box-icon,.method-card-icon,.asset-card-icon{
+  background:var(--brand-surface-2);
+  border:1px solid var(--brand-line-soft);
+  border-radius:var(--r-ctl);
+  box-shadow:none;
+  color:var(--brand-violet);
+}
+
+/* 7.2 Buttons. Two weights and one accent. The gradient is spent on the primary
+   action only, so a screen can never show two primary calls to action by
+   accident: the second one has to be a line button. */
+.btn,.btn-primary,.btn-secondary,.btn-ghost,.btn-danger,
+.ex-btn-primary,.mhd-btn-primary,.mhd-btn-danger,.refresh-btn,.copy-code-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:38px;
+  padding:0 16px;
+  font-family:var(--font-sans);
+  font-size:.86rem;
+  font-weight:500;
+  letter-spacing:.005em;
+  border-radius:var(--r-ctl);
+  border:1px solid var(--brand-line);
+  background:transparent;
+  color:var(--brand-ink);
+  box-shadow:none;
+  transition:background-color 140ms var(--ease,cubic-bezier(.22,.68,.24,1)),
+             border-color 140ms var(--ease,cubic-bezier(.22,.68,.24,1)),
+             color 140ms var(--ease,cubic-bezier(.22,.68,.24,1));
+}
+.btn:hover,.btn-secondary:hover,.btn-ghost:hover{
+  border-color:var(--ink-faint);
+  background:var(--brand-surface-2);
+}
+.btn-primary,.ex-btn-primary,.mhd-btn-primary{
+  background:var(--brand-grad);
+  border-color:transparent;
+  color:var(--brand-void);
+  font-weight:600;
+}
+.btn-primary:hover,.ex-btn-primary:hover:not([disabled]),.mhd-btn-primary:hover:not([disabled]){
+  filter:brightness(1.08);
+  box-shadow:none;
+}
+.btn-primary:disabled,.btn[aria-disabled="true"],.ex-btn-primary[disabled],.mhd-btn-primary[disabled]{
+  background:var(--brand-surface-2);
+  border-color:var(--brand-line);
+  color:var(--ink-faint);
+  cursor:not-allowed;
+  filter:none;
+}
+.btn-danger,.mhd-btn-danger{
+  border-color:color-mix(in srgb,var(--state-bad) 46%,var(--brand-line));
+  color:var(--state-bad);
+}
+.btn-danger:hover,.mhd-btn-danger:hover:not([disabled]){
+  background:color-mix(in srgb,var(--state-bad) 12%,transparent);
+  border-color:var(--state-bad);
+  box-shadow:none;
+}
+.btn-telegram{
+  border-color:var(--brand-line);
+  color:var(--brand-azure);
+  background:transparent;
+}
+.btn-telegram:hover{
+  background:color-mix(in srgb,var(--brand-azure) 12%,transparent);
+  border-color:var(--brand-azure);
+  box-shadow:none;
+}
+.btn-sm{padding:0 12px;min-height:32px;font-size:.8rem}
+
+/* 7.3 Inputs and fields. A field is a hairline box on the nested surface, in the
+   mono voice when it holds a machine value, and it never glows on focus: focus is
+   the ring from section 5, which is the same everywhere in the app. */
+.input-group,.input-wrap,.field,.ex-field,.mhd-field,.tool-search,.school-search-input-wrap,
+input[type="text"],input[type="search"],input[type="email"],input[type="password"],
+input[type="url"],input[type="tel"],input[type="number"],select,textarea{
+  background:var(--brand-surface-2);
+  border:1px solid var(--brand-line);
+  border-radius:var(--r-ctl);
+  color:var(--brand-ink);
+  box-shadow:none;
+}
+input:focus,select:focus,textarea:focus,
+.input-group:focus-within,.school-search-input-wrap:focus-within{
+  border-color:var(--brand-indigo);
+  box-shadow:none;
+  outline:none;
+}
+/* The ring is drawn by :focus-visible in section 5; a second ring here would
+   double up on keyboard focus, so fields keep only the border change. */
+.field-icon,.input-group i,.ex-field .field-icon{ color:var(--ink-faint); }
+.field-error,.req,.error-box,.field-error i,.ex-field.is-error .field-icon{ color:var(--state-bad); }
+.field-error,.error-box{ border-color:color-mix(in srgb,var(--state-bad) 54%,var(--brand-line)); }
+
+/* 7.4 Badges, chips and pills. Radius 6, mono for machine values, colour only
+   where it encodes a state. */
+.badge,.chip,.method-badge,.asset-tool-tag,.ex-chip,.mhd-chip,.lang-pill,.seg-btn,
+.seg-tab,.tab-panel-btn,.ts-preset,.lang-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  min-height:30px;padding:0 11px;
+  font-family:var(--font-mono);
+  font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:var(--r-ctl);
+  border:1px solid var(--brand-line);
+  background:var(--brand-surface-2);
+  color:var(--ink-mute);
+  box-shadow:none;
+}
+.badge.success,.badge.ok{ color:var(--state-ok); border-color:color-mix(in srgb,var(--state-ok) 42%,var(--brand-line)); }
+.badge.warning,.badge.warn{ color:var(--state-warn); border-color:color-mix(in srgb,var(--state-warn) 42%,var(--brand-line)); }
+.badge.danger,.badge.bad{ color:var(--state-bad); border-color:color-mix(in srgb,var(--state-bad) 42%,var(--brand-line)); }
+.badge.info,.badge.telegram{ color:var(--state-info); border-color:color-mix(in srgb,var(--state-info) 42%,var(--brand-line)); }
+.lang-pill.active,.seg-btn.active,.seg-tab.active,.ex-chip.active,.mhd-chip.active,
+.ts-preset.active,.lang-btn.active{
+  color:var(--brand-ink);
+  border-color:var(--brand-indigo);
+  background:var(--brand-surface-3);
+}
+
+/* 7.5 Navigation. Active state is the one place a marker carries the ramp.
+   The item that is current gets a 2px rule on its leading edge, no glow. */
+.nav-item,.nav-link,.sidebar-nav-item,.bottom-nav-item{
+  border-radius:var(--r-ctl);
+  color:var(--ink-mute);
+  border:0;
+  background:transparent;
+}
+.nav-item:hover,.nav-link:hover,.sidebar-nav-item:hover,.bottom-nav-item:hover{
+  color:var(--brand-ink);
+  background:var(--brand-surface-2);
+}
+.nav-item.active,.nav-link.active,.sidebar-nav-item.active,.bottom-nav-item.active{
+  color:var(--brand-ink);
+  background:var(--brand-surface-2);
+  box-shadow:none;
+  position:relative;
+}
+.nav-item.active::before,.nav-link.active::before,.sidebar-nav-item.active::before{
+  content:"";position:absolute;left:0;top:6px;bottom:6px;width:2px;
+  background:var(--brand-grad);border-radius:0;
+}
+.nav-item.active i,.nav-link.active i{ color:var(--brand-violet); }
+
+/* 7.6 Code, logs and tables: the machine surfaces. Mono, tabular, hairline. */
+.code-block,pre,.log-line,.log-empty,.terminal,.output-box,.ex-output{
+  background:var(--code-bg);
+  border:1px solid var(--brand-line-soft);
+  border-radius:2px;
+  color:var(--code-fg);
+  font-family:var(--font-mono);
+  box-shadow:none;
+}
+.code-block .copy-code-btn,.copy-code-btn{
+  min-height:26px;padding:0 9px;font-size:.7rem;
+  border-radius:var(--radius-xs);
+  background:var(--brand-surface-2);
+  border:1px solid var(--brand-line);
+  color:var(--ink-mute);
+}
+.copy-code-btn:hover{ color:var(--brand-ink); border-color:var(--ink-faint); }
+table{border-collapse:collapse;width:100%}
+th{
+  font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-faint);text-align:left;font-weight:500;
+  border-bottom:1px solid var(--brand-line);
+}
+td{border-bottom:1px solid var(--brand-line-soft);color:var(--text-secondary)}
+tbody tr:hover td{ background:var(--brand-surface-2) }
+
+/* 7.7 The three surfaces that float, and the states that explain themselves. */
+.modal-card,.fw-window,.toast,.bottom-sheet{
+  background:var(--brand-surface);
+  border:1px solid var(--brand-line);
+  border-radius:2px;
+  box-shadow:var(--shadow-lg);
+}
+.empty-state,.log-empty,.no-data,.ws-empty{
+  border:1px dashed var(--brand-line);
+  border-radius:2px;
+  background:transparent;
+  color:var(--ink-mute);
+  font-family:var(--font-sans);
+}
+.empty-state i,.log-empty i{ color:var(--ink-faint); }
+
+/* ─── 8. REDUCED MOTION ──────────────────────────────────────────────────── */
+/* Motion here is an entrance and a state change, never information. When the operator asks
+   the system for less of it, every animation and transition stops, and nothing that was
+   waiting on an animation is left hidden: the resting state of every element is its visible
+   state. The blanket rule keeps the fill mode, so an entrance jumps to its end frame instead
+   of never arriving. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal, .reveal.visible { opacity: 1 !important; transform: none !important; }
+}
+
+/* __THEME_9__ */
+
+
+
+
+
+

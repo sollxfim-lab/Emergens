@@ -3,30 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Bot — Emergens</title>
+    <title>WhatsApp Bot: Emergens</title>
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="/favicon-180.png">
     <meta name="description" content="Secure console for your Emergens WhatsApp bot — authenticate, upload credentials, and monitor live status and logs.">
     <meta name="theme-color" content="#030712">
     <meta name="color-scheme" content="dark light">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%23030712'/%3E%3Cpath d='M33 4L14 34h11l-4 22 22-30H32l5-22z' fill='%2360a5fa'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @font-face {
-            font-family: 'Space Grotesk';
-            src: url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2') format('woff2');
-            font-weight: 400;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: 'Road Rage';
-            src: url('https://fonts.cdnfonts.com/s/14068/Road_Rage.woff') format('woff');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
     </style>
     <style>
         /* ============================================================
@@ -35,9 +22,9 @@
            ============================================================ */
 
         :root {
-            --font-display: 'Road Rage', 'Space Grotesk', sans-serif;
-            --font-body: 'Space Grotesk', sans-serif;
-            --font-mono: 'JetBrains Mono', 'Space Grotesk', 'Courier New', monospace;
+            --font-display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+            --font-body: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
             --blue-300: #93c5fd;
             --blue-400: #60a5fa;
@@ -824,7 +811,7 @@
             gap: 8px;
             margin: 16px 0 20px;
             padding: 8px 16px;
-            border-radius: var(--radius-full);
+            border-radius: var(--radius-sm);
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
         }
@@ -1165,6 +1152,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="css/emergens-theme.css">
 </head>
 <body>
 
