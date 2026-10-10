@@ -1,47 +1,71 @@
 # Emergens
 
-Field Intelligence Console for Authorized Security Testing
-
 <p align="center">
   <img src="templates/logo.png" alt="Emergens logo" width="180">
 </p>
 
 <p align="center">
-  <strong>Reconnaissance, asset intelligence, scan orchestration, and operational visibility in one focused workspace.</strong>
+  <strong>Field Intelligence Console for Authorized Security Testing</strong>
+</p>
+
+<p align="center">
+  Reconnaissance, asset intelligence, scan orchestration, and operational visibility in one focused workspace.
+</p>
+
+<p align="center">
+  <a href="https://github.com/sollxfim-lab/Emergens"><img src="https://img.shields.io/badge/GitHub-Emergens-181717?style=flat-square&logo=github" alt="GitHub repository"></a>
+  <img src="https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11 or newer">
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-64748b?style=flat-square" alt="Supported platforms">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-dc2626?style=flat-square" alt="MIT License"></a>
 </p>
 
 > [!WARNING]
 > ## Authorized use only
-> Emergens is intended exclusively for systems, networks, and applications that you own or have explicit written permission to assess. Do not use it to disrupt services, evade controls, access data without authorization, or operate outside your approved scope.
+> Emergens is intended exclusively for systems, networks, and applications that you own or have explicit written permission to assess. Do not use it for unauthorized access, disruption, evasion, or any activity outside your approved scope.
 
 ## Overview
 
-Emergens is a modular security-testing console built for security researchers, defenders, and authorized assessment teams. It centralizes reconnaissance, scan execution, operational visibility, and review workflows in a single project environment.
+Emergens is a modular field-intelligence and assessment console designed for security researchers, defenders, and authorized testing teams. It combines reconnaissance, scan orchestration, reporting, and operational visibility into a single workspace.
 
-The codebase includes a web interface, API layer, terminal console, and multiple scan/recon modules for approved testing and defensive engineering work.
+The project includes:
 
-## Features
+- Flask web application and dashboard
+- API-driven modules and service interfaces
+- Local terminal launcher for interactive workflows
+- Recon and security-testing modules
+- Logging, data storage, and local runtime state
+- Optional AI and integration hooks
+
+## Highlights
 
 - Unified operator workspace for web and terminal workflows
-- Modular architecture for adding and managing capabilities
-- Reconnaissance utilities for DNS, host, HTTP, service, and technology context
-- Scan orchestration and job visibility
-- Security-oriented reporting and evidence review
-- Local runtime state, logs, and artifact storage
-- Optional AI-assisted workflows and integrations
-- Cross-platform support for Linux, macOS, and Windows
-- Local Python deployment and Docker deployment support
+- Modular architecture for add-on capabilities
+- Reconnaissance for DNS, hosts, services, HTTP, and technology discovery
+- Orchestration of scan jobs and module execution
+- Structured reporting and result review
+- Local runtime logs and stateful artifacts
+- Optional AI-assisted workflows and external integrations
+- Local Python and Docker deployment support
+- Cross-platform compatibility for Linux, macOS, and Windows
+
+## Project status
+
+The repository is a Python-first project with a strong web UI layer and a broad set of scan/recon modules. The current codebase includes:
+
+- Python application code for Flask app, launcher, and orchestration
+- HTML/CSS/JS templates for the dashboard and UI
+- Modules for recon, scanning, brute-force, SQLi/XSS checks, and related workflows
+- Local data stores and supporting proxy/wordlist resources
 
 ## Requirements
 
-- Python 3.10 or newer
-- `pip` and `venv`
+- Python 3.11+
+- `pip` and `venv` or conda
 - Git
-- Node.js and npm when working on the `web/` client (if used in your environment)
-- Docker and Docker Compose for containerized deployment
-- Network access to approved systems only
+- Docker and Docker Compose (optional, for containerized deployment)
+- Network access only to systems in your approved scope
 
-> Some modules may require optional system packages, elevated privileges, external services, or database drivers depending on the workflow.
+For full functionality, some modules may require additional dependencies or optional system packages.
 
 ## Quick start
 
@@ -60,10 +84,12 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-The app defaults to port 8080 unless configured otherwise. Open the browser at:
+The default application port is configured in `config.py` as `3052` unless overridden by environment variables.
+
+Open the app in your browser:
 
 ```text
-http://127.0.0.1:8080
+http://127.0.0.1:3052
 ```
 
 ### Option B — Conda environment
@@ -80,38 +106,51 @@ python app.py
 docker compose up --build
 ```
 
-Or build/run manually:
+Or build manually:
 
 ```bash
 docker build -t emergens .
-docker run --rm -p 8080:8080 emergens
+docker run --rm -p 3052:3052 emergens
 ```
 
 ## Configuration
 
-Keep environment-specific settings outside source control whenever possible. Before starting work:
+Keep deployment-specific settings outside source control whenever possible.
 
-1. Confirm your approved target list and test window.
-2. Review `config.py`, `config.json`, and deployment environment variables.
-3. Enable only the integrations required for your workflow.
-4. Use dedicated test credentials and least-privilege access.
-5. Set conservative timeouts, concurrency, and request limits.
-6. Store logs and exported artifacts according to your organization’s retention policy.
+Key configuration points:
 
-Avoid committing API keys, passwords, private keys, production data, or sensitive scan results to the repository.
+- `config.py` centralizes environment-driven settings
+- `config.json` is available for local configuration
+- Writes are directed to `instance/` by default
+- Vercel compatibility is supported by switching writable state to `/tmp`
+
+Environment variables that may be used include:
+
+- `PORT`
+- `SECRET_KEY`
+- `USERS_DB_PATH`
+- `HISTORY_DB_PATH`
+- `CHAT_DB_PATH`
+- `ANTHROPIC_API_KEY`
+- `DEEPSEEK_API_KEY`
+- `DEEPSEEK_BASE_URL`
+- `TELEGRAM_BOT_TOKEN`
+- `VERCEL`
+
+Never commit credentials, private keys, production data, or sensitive scan output to the repository.
 
 ## Usage principles
 
-Emergens includes both passive and active testing capabilities. Follow these rules:
+Emergens includes both passive and active testing capabilities. Use the tool responsibly:
 
-- Test only assets explicitly listed in the authorization document.
+- Test only assets explicitly listed in your authorization document.
 - Prefer passive collection and low-impact validation before intrusive checks.
-- Obtain written approval before testing authentication, injection, file access, brute-force, or availability-sensitive functionality.
-- Do not use amplification, traffic-flooding, service-disruption, evasion, or third-party proxy infrastructure against systems you do not control.
+- Obtain written approval before testing authentication, injection, file access, brute forcing, or availability-sensitive functionality.
+- Do not use amplification, disruption, tampering, evasion, or third-party proxy infrastructure against systems you do not control.
 - Stop immediately when a test causes instability or unexpected impact.
 - Preserve evidence responsibly and redact secrets or personal data from reports.
 
-For module-specific behavior, inspect the source and documentation before enabling a module. This repository is not intended to provide attack recipes or disruption guidance.
+This project is not intended to provide attack recipes or disruption guidance.
 
 ## Repository structure
 
@@ -209,67 +248,90 @@ Emergens/
 │   ├── terms.html
 │   └── webps.html
 ├── wordlist/
-└── ... additional runtime-generated folders and artifacts
+└── ... runtime and generated artifacts
 ```
 
 ### Directory overview
 
-- `api/` — API routes and service interfaces
-- `auth/` — authentication and access handlers
-- `core/` — orchestration, configuration, utilities, and shared services
-- `modules/` — reconnaissance, scanning, and security-testing modules
-- `templates/` — dashboard and web UI templates
-- `static/` — front-end static assets
-- `data/` — runtime and state data, logs, and artifacts
-- `files/` — supporting wordlists, user agents, referers, proxies, and data files
-- `logs/` — application logs and diagnostic output
-- `proxy/` and `porttxt/` — proxy and port-related datasets
-- `wordlist/` — wordlists and custom dictionaries for enumeration workflows
-- `ai_chat/` — optional AI chat integration components
-- `instance/` — local instance data and settings
-- `__pycache__/` — Python bytecode cache generated during local runs
+- `api/` — API endpoints and service interfaces
+- `auth/` — authentication and access-related logic
+- `core/` — orchestration, utilities, and shared runtime components
+- `modules/` — reconnaissance and scanner modules
+- `templates/` — HTML dashboard and UI files
+- `static/` — front-end assets
+- `data/` — runtime state, logs, and artifacts
+- `files/` — supporting wordlists, referers, user agents, and proxy-related data
+- `logs/` — application logs
+- `proxy/` — proxy lists and metadata
+- `wordlist/` — enumerations and custom wordlists
+- `instance/` — local database and persistence state
+- `ai_chat/` — AI-related integration layer
+
+## Running and launch flow
+
+The project supports multiple entry points:
+
+```bash
+python app.py
+python terminal.py
+```
+
+The terminal launcher includes a module-resolution/bootstrap flow and can be useful for diagnosing missing or incompatible modules.
+
+```bash
+python terminal.py --diagnose
+python terminal.py --version
+python terminal.py --help
+```
 
 ## Troubleshooting
 
-### Application does not start
+### The application does not start
 
-- Confirm that Python 3.10+ is active: `python --version`
+- Confirm Python 3.11+ is active: `python --version`
 - Recreate the virtual environment and reinstall dependencies
-- Check `logs/` and the terminal output for the first reported error
-- Verify that the configured port is available
+- Check `logs/` and terminal output for the first reported error
+- Verify the configured port is free
 
 ### A module is unavailable
 
-- Install dependencies listed in `requirements.txt`
-- Verify the module’s expected input files, configuration, and dependencies
-- Check optional services or runtimes required by the module
-- Run local validation steps before starting a scan
+- Install dependencies from `requirements.txt`
+- Check module-specific requirements and data files
+- Verify any required optional services are running
+- Run diagnosis: `python terminal.py --diagnose`
 
 ### Docker deployment issues
 
-- Rebuild after dependency changes: `docker compose build --no-cache`
-- Inspect container output with `docker compose logs`
-- Confirm port mappings and mounted directories
-- Avoid running the container with unnecessary privileges
+- Rebuild after dependency changes:
+
+```bash
+docker compose build --no-cache
+```
+
+- Inspect logs:
+
+```bash
+docker compose logs
+```
 
 ## Development
 
-Contributions are welcome when they improve safety, reliability, maintainability, and authorized defensive testing. Please:
+Contributions are welcome when they improve safety, reliability, maintainability, or authorized defensive testing. Please:
 
 1. Create a focused branch from the default branch.
-2. Keep changes small and explain the security impact.
+2. Keep changes small and explain the purpose and impact.
 3. Do not add functionality intended to harm, disrupt, evade, or gain unauthorized access.
 4. Add tests or reproducible validation where practical.
 5. Never include real credentials, private targets, or sensitive scan output.
-6. Open a pull request with a clear summary, test notes, and limitations.
+6. Open a pull request with a clear summary and validation notes.
 
 ## Versioning
 
-The current documented release is 4.4.2. See [`CHANGELOG.md`](CHANGELOG.md) for release notes and implementation history.
+The repository currently documents a version of `4.4.2` in the project README, while the terminal launcher itself reports a newer runtime version in code. See [`CHANGELOG.md`](CHANGELOG.md) for implementation history and release notes.
 
 ## License
 
-Emergens is distributed under the MIT License subject to the project’s authorized-use requirements. See [`LICENSE`](LICENSE) for the complete terms.
+Emergens is distributed under the MIT License, subject to the project's authorized-use requirements. See [`LICENSE`](LICENSE) for the complete terms.
 
 ## Disclaimer
 
