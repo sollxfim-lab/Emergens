@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all code at once  instead of copy code then files 
 COPY . .
 
-ENTRYPOINT ["python", "start.py"]
+ENTRYPOINT ["python", "app.py"]
