@@ -7,7 +7,7 @@ Interactive boot + menu launcher for the Oxysintx Flask stack.
 Blue-themed UI with gradient accents, live progress telemetry, and
 per-module drill-down.
 
-Changelog v6.1.0  (module resolution hot-fix)
+Changelog v6.1.0  (module resolution hot-fix + banner unification)
 ────────────────
   ✔ FIXED  — `detect_modules()` now tries *multiple candidate import
              paths* per logical module. Files named either
@@ -19,14 +19,9 @@ Changelog v6.1.0  (module resolution hot-fix)
   ✔ NEW    — `resolve_module(key)` helper returns the winning import path
              so downstream code (blueprint loader) can re-use it.
   ✔ NEW    — Auto-detects common alias families (`X`, `scan_X`, `X_check`).
+  ✔ NEW    — Banner unified with main.py / app.py so the CLI splash and
+             the Flask boot screen share the exact same ASCII art.
   ✔ PRESERVED — All v6.0.0 flows and UI.
-
-Changelog v6.0.0
-────────────────
-  • REDESIGNED — gradient banner, boot matrix grouped by category,
-    live telemetry (elapsed · stage · ETA · job_id), per-module drill-down.
-  • NEW        — Session resume (~/.emergens_session), severity heatmap,
-    module grid for Scan All, JSON export.
 
 #credit ~ Yanxzyx
 """
@@ -183,14 +178,17 @@ def pause(msg: str = "Press ENTER to continue…") -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# BANNER
+# BANNER  — identical to main.py / app.py ASCII art
 # ═══════════════════════════════════════════════════════════════════════════
 BANNER_LINES = [
-    r"  ▄▄▄▄▄▄▄  ▄▄       ▄▄  ▄▄▄▄▄▄  ▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄  ▄▄▄    ▄▄  ▄▄▄▄▄▄▄",
-    r" ███▀▀▀▀▀ ████     ███ ███▀▀██ ███▀▀▀▀▀ ███▀▀▀██ ████▄  ███ ███▀▀▀▀▀",
-    r" ███      ████     ███ ███  ██ ███▄▄    ███▄▄▄██ ███▀██▄███ ███▄▄   ",
-    r" ███▄▄▄▄▄ ████     ███ ███▄▄██ ███      ███  ███ ███  ▀████  ▀▀███ ",
-    r"  ▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀▀ ▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀ ▀▀▀  ▀▀▀ ▀▀▀    ▀▀▀ ▀▀▀▀▀▀▀",
+    r"                                                                                                      ",
+    r"▐▓▄                         ▐▓▄           ▄ ▄▄▄░▒▄              ▐▓▄                                   ",
+    r" ▒ ▄▄▀▀▀▒▓▄   ■▄█▄▓ ▄█▀▒▓▄   ▒ ▄▄▀▀▀▒▓▄  ▓▒▀▓ ▀  ▓▌  ■▄█▄▓▀▀▒▓▄  ▒ ▄▄▀▀▀▒▓▄   ■▄█▄▓▀▀▒▓▄    ▀▄▄▀▀▀▒▓▄ ",
+    r"▐░▄▀         ▄░▄▀░▀██   ░▒▌ ▐░▄▀         ▐░▓    ▄▒▀ ▄░▄▀░       ▐░▄▀         ▄░▄▀░    ░▒▌ ▄░▄▀        ",
+    r" ░ ▄▀▀░▓      ░    ▓▌  ▄▐█░  ░ ▄▀▀░▓       ▌ ▄█▀▀    ░           ░ ▄▀▀░▓      ░      ▄▐█░  ▀▀▄▀▄░▓▓▄▄ ",
+    r"▐█           ▐█    ░   ▄▀▄▌ ▐█            ░   ▓█    ▐█  ▀▀▀▀█▓▀ ▐█           ▐█      ▄▀▄▌ ▄▄      ▀░░▌",
+    r"██▄      ▄▄▌ ▐█▌       ▄█░▀ ██▄      ▄▄▌ ▐▒    ▒▌   ▐█▌     ▓▒░ ██▄      ▄▄▌ ▐█▌     ▄█░▀ ▄█▄     ▄█░▌",
+    r"▀█  ▄▄▄▒▓▀    ▀░      ▐▓▀   ▀█  ▄▄▄▒▓▀   ▀▓▀  ▀▓▀    ▀██▄▄▄▒▓▀▒ ▀█  ▄▄▄▒▓▀    ▀░    ▐▓▀   ▀██▀▀▄▄▒▓▀  ",
 ]
 
 BANNER_FALLBACK = [
@@ -201,7 +199,16 @@ BANNER_FALLBACK = [
 
 
 def _gradient_for(idx: int) -> str:
-    palette = [C.BLUE_ICE, C.BLUE_LIGHT, C.BLUE, C.BLUE, C.BLUE_DARK]
+    """7-step blue gradient matching the 7 art lines."""
+    palette = [
+        C.BLUE_ICE,    # top highlight
+        C.BLUE_LIGHT,
+        C.BLUE,
+        C.BLUE,
+        C.BLUE_DARK,
+        C.BLUE_DARK,
+        C.BLUE_DEEP,   # bottom shadow
+    ]
     return palette[idx % len(palette)]
 
 
@@ -292,12 +299,6 @@ def _progress_bar(percent: int, width: int = 30) -> str:
 # ═══════════════════════════════════════════════════════════════════════════
 # MODULE MATRIX  — v6.1.0 with candidate paths
 # ═══════════════════════════════════════════════════════════════════════════
-# Structure: (key, [candidate_import_paths], version_attr, label, desc, category)
-#
-# detect_modules() tries each candidate path in order and uses the first
-# that imports successfully. This makes the launcher resilient to file
-# renames (`scan_ssl` ↔ `ssl_check`, `scan_headers` ↔ `headers_check`, …)
-# without requiring shim files.
 MODULE_PROBES: List[Tuple] = [
     # ── API Key ────────────────────────────────────────────────────────
     ("apikey",
@@ -500,17 +501,11 @@ _CATEGORY_ICONS = {
 }
 
 
-# Cache resolved paths so we don't re-import on every call
 _RESOLVED_CACHE: Dict[str, Optional[str]] = {}
 _ERROR_CACHE:    Dict[str, str] = {}
 
 
 def resolve_module(key: str) -> Optional[str]:
-    """
-    Resolve a logical module key to its winning import path.
-    Tries every candidate in MODULE_PROBES until one imports.
-    Returns the path that worked, or None if all candidates failed.
-    """
     if key in _RESOLVED_CACHE:
         return _RESOLVED_CACHE[key]
 
@@ -528,11 +523,10 @@ def resolve_module(key: str) -> Optional[str]:
             importlib.import_module(path)
             _RESOLVED_CACHE[key] = path
             return path
-        except ModuleNotFoundError as e:
+        except ModuleNotFoundError:
             last_err = f"not found ({path})"
             continue
         except ImportError as e:
-            # Module found but its own imports failed — likely a missing dep
             last_err = f"{path}: {e}"
             _ERROR_CACHE[key] = last_err
             continue
@@ -548,10 +542,6 @@ def resolve_module(key: str) -> Optional[str]:
 
 
 def detect_modules() -> Dict[str, Any]:
-    """
-    v6.1.0 — Resolve every logical module by trying all candidate paths.
-    Populates `versions`, `resolved`, and `errors` sub-dicts.
-    """
     result: Dict[str, Any] = {p[0]: False for p in MODULE_PROBES}
     result["versions"] = {}
     result["resolved"] = {}
@@ -616,7 +606,6 @@ def _boot_line(label: str, ok: bool, desc: str = "", ver: str = "",
     print(" " * indent + dot + "  " + c(block.ljust(col_width), C.BLUE_SOFT)
           + "  " + c(tail, tail_col, bold=True))
     if not ok and err:
-        # Show the reason underneath, indented, in a soft red
         err_line = f"    ↳ {err}"
         if len(err_line) > tw - 4:
             err_line = err_line[: tw - 5] + "…"
@@ -685,10 +674,6 @@ def display_boot_sequence(modules: Dict[str, Any],
 # DIAGNOSE — v6.1.0 helper
 # ═══════════════════════════════════════════════════════════════════════════
 def print_diagnosis() -> int:
-    """
-    Print a resolution table for every module.
-    Returns exit code (0 if all loaded, 1 otherwise).
-    """
     print()
     print(c("  Emergens Module Resolution Diagnosis", C.BLUE_LIGHT, bold=True))
     print("  " + c("─" * 68, C.BLUE_DARK))
@@ -696,7 +681,6 @@ def print_diagnosis() -> int:
 
     modules = detect_modules()
 
-    # Column header
     col_key  = 22
     col_stat = 8
     col_path = 44
@@ -2514,7 +2498,6 @@ def main_menu_loop() -> None:
 # ENTRY
 # ═══════════════════════════════════════════════════════════════════════════
 def main() -> None:
-    # CLI flags
     if len(sys.argv) > 1 and sys.argv[1] in ("--help", "-h"):
         clear_screen()
         print_banner()
