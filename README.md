@@ -1,78 +1,49 @@
+# Emergens
+
+Field Intelligence Console for Authorized Security Testing
+
 <p align="center">
   <img src="templates/logo.png" alt="Emergens logo" width="180">
 </p>
 
-<h1 align="center">Emergens</h1>
-
 <p align="center">
-  <strong>Field Intelligence Console for Authorized Security Testing</strong>
-</p>
-
-<p align="center">
-  Reconnaissance, asset intelligence, scan orchestration, and operational visibility in one focused workspace.
-</p>
-
-<p align="center">
-  <a href="https://github.com/sollxfim-lab/Emergens"><img src="https://img.shields.io/badge/GitHub-Emergens-181717?style=flat-square&logo=github" alt="GitHub repository"></a>
-  <img src="https://img.shields.io/badge/version-4.4.2-2563eb?style=flat-square" alt="Version 4.4.2">
-  <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10 or newer">
-  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-64748b?style=flat-square" alt="Supported platforms">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT%20%2B%20authorized%20use-dc2626?style=flat-square" alt="MIT license with authorized-use requirements"></a>
+  <strong>Reconnaissance, asset intelligence, scan orchestration, and operational visibility in one focused workspace.</strong>
 </p>
 
 > [!WARNING]
 > ## Authorized use only
-> Emergens is intended exclusively for systems, networks, and applications that you own or have explicit written permission to assess. Do not use it to disrupt services, evade controls, access data without authorization, or exceed the scope of your authorization document.
+> Emergens is intended exclusively for systems, networks, and applications that you own or have explicit written permission to assess. Do not use it to disrupt services, evade controls, access data without authorization, or operate outside your approved scope.
 
-## What is Emergens?
+## Overview
 
-Emergens is a modular security-testing console built for security researchers, defenders, and authorized penetration-testing teams. It brings reconnaissance utilities, scan modules, result review, and integrated logging to organized security workflows.
+Emergens is a modular security-testing console built for security researchers, defenders, and authorized assessment teams. It centralizes reconnaissance, scan execution, operational visibility, and review workflows in a single project environment.
 
-The project is designed to help teams move from an approved target scope to structured findings with clearer visibility and repeatable workflows—without losing control of authorization and test boundaries.
+The codebase includes a web interface, API layer, terminal console, and multiple scan/recon modules for approved testing and defensive engineering work.
 
-## Highlights
+## Features
 
-- **Unified operator workspace** — access web and terminal workflows from one project.
-- **Modular architecture** — add, inspect, and manage capabilities without coupling every workflow together.
-- **Reconnaissance utilities** — collect useful DNS, host, service, HTTP, and technology context for approved targets.
-- **Scan orchestration** — coordinate available modules and distinguish basic workflows from intrusive checks.
-- **Security-focused reporting** — review findings, severity, evidence, excerpts, and scan status in a consistent UI.
-- **Streaming visibility** — follow long-running jobs and monitor progress from the dashboard.
-- **AI-assisted analysis** — optionally connect supported AI services for investigation and workflow assistance.
-- **Operational logging** — retain application events and scan activity for troubleshooting and review.
-- **Flexible deployment** — run locally with Python or use the included Docker configuration.
-- **Cross-platform tooling** — supported development targets include Linux, macOS, and Windows.
-
-## Architecture
-
-<p align="center">
-  <img src="templates/artifact-structure.png" alt="Emergens artifact structure and component organization" width="900">
-</p>
-
-<p align="center">
-  <em>Emergens component structure and artifact flow</em>
-</p>
-
-At a high level, Emergens is organized around:
-
-- **Web application** — the dashboard, API endpoints, templates, and static assets.
-- **Core services** — configuration, logging, orchestration, authentication, and shared utilities.
-- **Modules** — focused reconnaissance and security-testing capabilities.
-- **Artifacts** — logs, wordlists, proxy data, scan output, and local application state.
-- **Optional integrations** — AI, messaging, database, and external service connectors.
+- Unified operator workspace for web and terminal workflows
+- Modular architecture for adding and managing capabilities
+- Reconnaissance utilities for DNS, host, HTTP, service, and technology context
+- Scan orchestration and job visibility
+- Security-oriented reporting and evidence review
+- Local runtime state, logs, and artifact storage
+- Optional AI-assisted workflows and integrations
+- Cross-platform support for Linux, macOS, and Windows
+- Local Python deployment and Docker deployment support
 
 ## Requirements
 
-- Python **3.10 or newer**
+- Python 3.10 or newer
 - `pip` and `venv`
 - Git
-- Node.js and npm when working on the `web/` client
+- Node.js and npm when working on the `web/` client (if used in your environment)
 - Docker and Docker Compose for containerized deployment
-- Network access to the approved systems and services in your test scope
+- Network access to approved systems only
 
-> Requirements may vary by module. Some capabilities depend on optional system packages, elevated privileges, external services, or database drivers.
+> Some modules may require optional system packages, elevated privileges, external services, or database drivers depending on the workflow.
 
-## Installation
+## Quick start
 
 ### Option A — Local Python environment
 
@@ -86,100 +57,204 @@ source .venv/bin/activate          # Linux/macOS
 
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-python start.py
+python app.py
 ```
 
-The application uses **port 8080 by default**. Open `http://127.0.0.1:8080` after startup unless your local configuration specifies another port.
+The app defaults to port 8080 unless configured otherwise. Open the browser at:
 
-### Option B — Docker
+```text
+http://127.0.0.1:8080
+```
+
+### Option B — Conda environment
+
+```bash
+conda env create -f environment.yml
+conda activate emergens-ci
+python app.py
+```
+
+### Option C — Docker
 
 ```bash
 docker compose up --build
 ```
 
-Or build and run the image directly:
+Or build/run manually:
 
 ```bash
 docker build -t emergens .
 docker run --rm -p 8080:8080 emergens
 ```
 
-Review `docker-compose.yml` and your local environment before starting. Do not expose an administrative or testing console to the public internet without appropriate authentication, network controls, and access restrictions.
-
 ## Configuration
 
-Keep environment-specific values outside source control whenever possible. Before starting a session:
+Keep environment-specific settings outside source control whenever possible. Before starting work:
 
-1. Confirm the approved target list and testing window.
-2. Review `config.json` and any environment variables used by your deployment.
-3. Configure only the integrations required for your workflow.
+1. Confirm your approved target list and test window.
+2. Review `config.py`, `config.json`, and deployment environment variables.
+3. Enable only the integrations required for your workflow.
 4. Use dedicated test credentials and least-privilege access.
 5. Set conservative timeouts, concurrency, and request limits.
-6. Store logs and exported artifacts according to your organization's retention policy.
+6. Store logs and exported artifacts according to your organization’s retention policy.
 
-Never commit API keys, passwords, private keys, proxy credentials, production data, or scan results to the repository. Use a local `.env` file or a secret manager where supported.
+Avoid committing API keys, passwords, private keys, production data, or sensitive scan results to the repository.
 
 ## Usage principles
 
-Emergens can include both passive and active testing capabilities. Use the following operating rules:
+Emergens includes both passive and active testing capabilities. Follow these rules:
 
 - Test only assets explicitly listed in the authorization document.
 - Prefer passive collection and low-impact validation before intrusive checks.
 - Obtain written approval before testing authentication, injection, file access, brute-force, or availability-sensitive functionality.
 - Do not use amplification, traffic-flooding, service-disruption, evasion, or third-party proxy infrastructure against systems you do not control.
-- Pause immediately when a test causes instability or unexpected impact.
+- Stop immediately when a test causes instability or unexpected impact.
 - Preserve evidence responsibly and redact secrets or personal data from reports.
 
-For module-specific behavior, inspect the module documentation and source code before enabling it. This README intentionally does not provide attack recipes or instructions for disrupting services.
+For module-specific behavior, inspect the source and documentation before enabling a module. This repository is not intended to provide attack recipes or disruption guidance.
 
-## Project layout
+## Repository structure
 
 ```text
 Emergens/
-├── app.py                  # Application entry point
-├── start.py                # Startup and terminal entry point
-├── api/                    # API routes and service interfaces
-├── auth/                   # Authentication components
-├── core/                   # Shared services and orchestration
-├── modules/                # Reconnaissance and testing modules
-├── templates/              # Web templates and project artwork
-├── static/                 # Front-end assets
-├── web/                    # Optional web-side tooling
-├── data/                   # Local data and supporting resources
-├── files/                  # Wordlists, proxy data, and runtime files
-├── logs/                   # Runtime logs
-├── config.json             # Local configuration
-├── requirements.txt        # Python dependencies
-├── Dockerfile              # Container image definition
-└── docker-compose.yml       # Containerized deployment
+├── .flake8
+├── CHANGELOG.md
+├── Dockerfile
+├── LICENSE
+├── README.md
+├── app.py
+├── config.json
+├── config.py
+├── docker-compose.yml
+├── environment.yml
+├── requirements.txt
+├── terminal.py
+├── vercel.json
+├── wsgi.py
+├── __pycache__/
+├── ai_chat/
+├── api/
+│   └── index.py
+├── auth/
+├── brute-force-text/
+├── core/
+├── data/
+│   ├── http_logs/
+│   └── takeover_state/
+├── files/
+│   ├── proxies/
+│   ├── referers.txt
+│   └── useragent.txt
+├── instance/
+├── logs/
+├── modules/
+│   ├── __init__.py
+│   ├── _common.py
+│   ├── analytic_manager.py
+│   ├── brute_force.py
+│   ├── connectivity_check.py
+│   ├── dirfuzz.py
+│   ├── dns_lookup.py
+│   ├── downsea.py
+│   ├── email_security.py
+│   ├── exploit_repository.py
+│   ├── fixes.py
+│   ├── git_scraper_wordlist.py
+│   ├── headers_check.py
+│   ├── ip_info.py
+│   ├── lfi_rfi.py
+│   ├── port_scan.py
+│   ├── quick_menu.py
+│   ├── scan_apikey.py
+│   ├── scan_orchestrator.py
+│   ├── scan_school.py
+│   ├── search_user.py
+│   ├── sniper.py
+│   ├── source_viewer.py
+│   ├── sql_injection.py
+│   ├── sql_map.py
+│   ├── sqli_engine.py
+│   ├── ssl_check.py
+│   ├── subdomain_enum.py
+│   ├── subdomain_takeover.py
+│   ├── tech_fingerprint.py
+│   ├── telegram.py
+│   ├── whois_lookup.py
+│   ├── xss.py
+│   └── xss_exploiter.py
+├── porttxt/
+├── proxy/
+│   ├── http.txt
+│   ├── meta.json
+│   ├── proxies.txt
+│   ├── socks4.txt
+│   └── socks5.txt
+├── static/
+├── templates/
+│   ├── css/
+│   ├── img/
+│   ├── js/
+│   ├── artifact-structure.png
+│   ├── dashboard.html
+│   ├── docs.html
+│   ├── favicon-180.png
+│   ├── favicon-32.png
+│   ├── favicon.ico
+│   ├── get-started.html
+│   ├── login.html
+│   ├── logo.png
+│   ├── privacy.html
+│   ├── remote_access.html
+│   ├── status.html
+│   ├── terms.html
+│   └── webps.html
+├── wordlist/
+└── ... additional runtime-generated folders and artifacts
 ```
+
+### Directory overview
+
+- `api/` — API routes and service interfaces
+- `auth/` — authentication and access handlers
+- `core/` — orchestration, configuration, utilities, and shared services
+- `modules/` — reconnaissance, scanning, and security-testing modules
+- `templates/` — dashboard and web UI templates
+- `static/` — front-end static assets
+- `data/` — runtime and state data, logs, and artifacts
+- `files/` — supporting wordlists, user agents, referers, proxies, and data files
+- `logs/` — application logs and diagnostic output
+- `proxy/` and `porttxt/` — proxy and port-related datasets
+- `wordlist/` — wordlists and custom dictionaries for enumeration workflows
+- `ai_chat/` — optional AI chat integration components
+- `instance/` — local instance data and settings
+- `__pycache__/` — Python bytecode cache generated during local runs
 
 ## Troubleshooting
 
-### The application does not start
+### Application does not start
 
-- Confirm that Python 3.10+ is active: `python --version`.
-- Recreate the virtual environment and reinstall dependencies.
-- Check `logs/` and the terminal output for the first reported error.
-- Confirm that port 8080 is available or select a different local port.
+- Confirm that Python 3.10+ is active: `python --version`
+- Recreate the virtual environment and reinstall dependencies
+- Check `logs/` and the terminal output for the first reported error
+- Verify that the configured port is available
 
 ### A module is unavailable
 
-- Install the dependencies listed in `requirements.txt`.
-- Check the module's expected files, wordlists, and configuration.
-- Verify that optional services are running and reachable.
-- Run the built-in module or dependency checks before starting a scan.
+- Install dependencies listed in `requirements.txt`
+- Verify the module’s expected input files, configuration, and dependencies
+- Check optional services or runtimes required by the module
+- Run local validation steps before starting a scan
 
-### Docker deployment has problems
+### Docker deployment issues
 
-- Rebuild after dependency changes: `docker compose build --no-cache`.
-- Inspect container output with `docker compose logs`.
-- Confirm port mappings and mounted directories.
-- Avoid running the container with unnecessary host privileges.
+- Rebuild after dependency changes: `docker compose build --no-cache`
+- Inspect container output with `docker compose logs`
+- Confirm port mappings and mounted directories
+- Avoid running the container with unnecessary privileges
 
 ## Development
 
-Contributions are welcome when they improve safety, reliability, maintainability, or authorized defensive testing. Please:
+Contributions are welcome when they improve safety, reliability, maintainability, and authorized defensive testing. Please:
 
 1. Create a focused branch from the default branch.
 2. Keep changes small and explain the security impact.
@@ -190,15 +265,15 @@ Contributions are welcome when they improve safety, reliability, maintainability
 
 ## Versioning
 
-The current documented release is **4.4.2**. See [`CHANGELOG.md`](CHANGELOG.md) for release notes and implementation history.
+The current documented release is 4.4.2. See [`CHANGELOG.md`](CHANGELOG.md) for release notes and implementation history.
 
 ## License
 
-Emergens is distributed under the MIT License subject to the project's authorized-use requirements. See [`LICENSE`](LICENSE) for the complete terms.
+Emergens is distributed under the MIT License subject to the project’s authorized-use requirements. See [`LICENSE`](LICENSE) for the complete terms.
 
 ## Disclaimer
 
-Emergens is provided for legitimate security research, defensive engineering, and authorized assessment only. The maintainers do not endorse or accept responsibility for unlawful access, disruption, abuse, or misuse of this tool.
+Emergens is provided for legitimate security research, defensive engineering, and authorized assessment only. The maintainers do not endorse or accept responsibility for unlawful access, disruption, or unauthorized testing.
 
 <p align="center">
   <sub>Built for disciplined security work. Use responsibly.</sub>
