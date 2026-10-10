@@ -22,7 +22,7 @@ const translations={
         nav_overview:"Overview",nav_testing:"Security Testing",nav_history:"Scan History",nav_console:"System Console",nav_chat:"AI Assistant",
         nav_label_data:"Data",nav_schools:"School Search",nav_label_integrations:"Integrations",nav_telegram:"Telegram Bot",
         nav_label_resources:"Resources",nav_docs:"Documentation",nav_preferences:"Preferences",nav_settings:"User Management",nav_api:"API Keys",nav_community:"Community",
-        nav_label_tools:"Tools",nav_request:"API Request",nav_webps:"WebPS",nav_monitor:"Monitor",nav_quick_menu:"Quick Menu",nav_minecraft:"Minecraft Status",nav_notes:"Notes",nav_theme_studio:"Theme Studio",
+        nav_label_tools:"Tools",nav_webps:"WebPS",nav_monitor:"Monitor",nav_quick_menu:"Quick Menu",nav_minecraft:"Minecraft Status",nav_notes:"Notes",nav_theme_studio:"Theme Studio",
         masthead_eyebrow:"Bureau Online",masthead_title:"Field Intelligence Console",
         masthead_desc:"Passive reconnaissance across WHOIS, DNS, TLS and exposure surfaces — for domains you own or are authorized to test.",
         masthead_operator:"Operator",masthead_today:"Today",
@@ -128,7 +128,7 @@ const translations={
         nav_overview:"Gambaran Keseluruhan",nav_testing:"Ujian Keselamatan",nav_history:"Sejarah Imbasan",nav_console:"Konsol Sistem",nav_chat:"Pembantu AI",
         nav_label_data:"Data",nav_schools:"Cari Sekolah",nav_label_integrations:"Integrasi",nav_telegram:"Bot Telegram",
         nav_label_resources:"Sumber",nav_docs:"Dokumentasi",nav_preferences:"Keutamaan",nav_settings:"Pengurusan Pengguna",nav_api:"Kunci API",nav_community:"Komuniti",
-        nav_label_tools:"Alatan",nav_request:"Permintaan API",nav_webps:"WebPS",nav_monitor:"Pemantauan",nav_quick_menu:"Quick Menu",nav_minecraft:"Status Minecraft",nav_notes:"Nota",nav_theme_studio:"Studio Tema",
+        nav_label_tools:"Alatan",nav_webps:"WebPS",nav_monitor:"Pemantauan",nav_quick_menu:"Quick Menu",nav_minecraft:"Status Minecraft",nav_notes:"Nota",nav_theme_studio:"Studio Tema",
         masthead_eyebrow:"Biro Dalam Talian",masthead_title:"Konsol Perisikan Lapangan",
         masthead_desc:"Peninjauan pasif merentasi WHOIS, DNS, TLS dan permukaan pendedahan — untuk domain yang anda miliki atau diberi kebenaran untuk diuji.",
         masthead_operator:"Operator",masthead_today:"Hari Ini",
@@ -838,6 +838,14 @@ else if(data.ip&&data.isp&&data.country)html+=renderIpInfoResult(toolResult);
             else if(data.subdomains&&Array.isArray(data.subdomains))html+=renderSubdomainResult(toolResult);
             else if(toolKey==='tech_fingerprint'||toolKey==='tech'||data.detected!==undefined||data.summary_by_category!==undefined)html+=renderTechFingerprintResult(toolResult);
             else if(data.findings!==undefined&&data.stats!==undefined)html+=renderScannerResult(toolResult);
+            else if(toolKey==='ssrf_scan'||data.fetch_candidates!==undefined)html+=renderSsrfResult(toolResult);
+            else if(toolKey==='cors_check'||data.probes!==undefined&&data.misconfigured!==undefined)html+=renderCorsResult(toolResult);
+            else if(toolKey==='http_methods'||data.allowed_methods!==undefined)html+=renderHttpMethodsResult(toolResult);
+            else if(toolKey==='graphql_scan'||data.endpoint_count!==undefined&&data.paths_checked!==undefined)html+=renderGraphqlResult(toolResult);
+            else if(toolKey==='js_exposure'||data.js_files_found!==undefined)html+=renderJsExposureResult(toolResult);
+            else if(toolKey==='wellknown_meta'||data.has_security_txt!==undefined)html+=renderWellknownResult(toolResult);
+            else if(toolKey==='cookie_audit'||data.cookie_count!==undefined&&data.issues!==undefined)html+=renderCookieAuditResult(toolResult);
+            else if(toolKey==='exposure_check'||data.exposed_count!==undefined)html+=renderExposureResult(toolResult);
             else if(data.error==='module_not_found')html+=`<div class="result-card"><div class="result-card-header"><strong>${escapeHtml(toolResult.tool||toolKey)}</strong><span class="badge"><i class="fas fa-plug-circle-xmark"></i> Not Installed</span></div><p style="color:var(--text-muted);font-size:0.8rem;">${escapeHtml(data.message||'This module is not installed on the server yet.')}</p></div>`;
             else if(data.error==='module_error')html+=`<div class="result-card"><div class="result-card-header"><strong>${escapeHtml(toolResult.tool||toolKey)}</strong><span class="badge" style="color:var(--red-500);"><i class="fas fa-triangle-exclamation"></i> Error</span></div><p style="color:var(--text-muted);font-size:0.8rem;">${escapeHtml(data.message||'This module raised an error.')}</p></div>`;
             else html+=`<div class="result-card"><div class="result-card-header"><strong>${escapeHtml(toolResult.tool||toolKey)}</strong><span class="badge success"><i class="fas fa-check"></i> OK</span></div><pre>${escapeHtml(JSON.stringify(data,null,2))}</pre></div>`;
@@ -1876,11 +1884,19 @@ function renderAssets(data, filter=''){
             ${tools.length ? `<div class="asset-card-tools">${tools.slice(0,8).map(tool=>`<span class="asset-tool-tag">${escapeHtml(tool)}</span>`).join('')}${tools.length>8?`<span class="asset-tool-tag">+${tools.length-8}</span>`:''}</div>` : ''}
             <div class="asset-card-actions">
                 <button class="btn-secondary asset-view-btn" data-id="${escapeHtml(String(h.id))}"><i class="fas fa-eye"></i> View</button>
+                <button class="btn-secondary asset-ai-btn ${aiAttachedIds.has(String(h.id))?'is-attached':''}" data-id="${escapeHtml(String(h.id))}" title="Attach this scan to the AI assistant"><i class="fas fa-wand-magic-sparkles"></i> <span>${aiAttachedIds.has(String(h.id))?'Attached to AI':'AI'}</span></button>
                 <button class="btn-secondary asset-del-btn" data-id="${escapeHtml(String(h.id))}" style="color:var(--red)"><i class="fas fa-trash"></i></button>
             </div>
         </div>`;
     }).join('');
 
+    grid.querySelectorAll('.asset-ai-btn').forEach(btn => btn.addEventListener('click', ()=>{
+        const id = btn.dataset.id;
+        const entry = (getStoragePref()==='local' ? getLocalHistory() : allHistory).find(x => String(x.id)===id);
+        if(!entry) return;
+        if(aiAttachedIds.has(id)){ showToast('Already attached to AI context'); return; }
+        attachScanToAi(entry);
+    }));
     grid.querySelectorAll('.asset-view-btn').forEach(btn => btn.addEventListener('click', async ()=>{
         const id = btn.dataset.id;
         if(getStoragePref()==='local'){
@@ -1924,6 +1940,7 @@ async function loadAssets(filter=''){
         if(getStoragePref()==='local'){ allHistory = getLocalHistory(); }
         else{ const r = await fetch('/api/history'); allHistory = await r.json(); }
         renderAssets(allHistory, filter);
+        refreshAssetKpis();
     }catch(e){
         grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Could not load scan history.</div>';
     }
@@ -2023,66 +2040,137 @@ setInterval(()=>{
 },4000);
 setInterval(async()=>{try{const r=await fetch('/api/system/stats');const s=await r.json();document.getElementById('cpuMini').textContent=(s.cpu_percent||0).toFixed(0)+'%';document.getElementById('memMini').textContent=(s.memory_percent||0).toFixed(0)+'%';}catch(e){}},10000);
 
-// ╔══════════════════════════════════════════════════════════╗
-// ║  AI ASSISTANT — powered by api.siputzx.my.id (deepseekr1)   ║
-// ╚══════════════════════════════════════════════════════════╝
-// NOTE: this calls a third-party public API directly from the browser.
-// It could not be verified against the live endpoint while this file was
-// built (that domain isn't reachable from the environment that wrote this
-// code), so the response is parsed defensively — several likely field
-// names are tried before giving up, and a real network/API error is always
-// shown honestly rather than a fake reply.
-const AI_ENDPOINT='https://api.siputzx.my.id/api/ai/deepseekr1';
+// ╔════════════════════════════════════════════════════════════╗
+// ║  AI ASSISTANT — server-backed chat with model selection      ║
+// ╚════════════════════════════════════════════════════════════╝
+// The browser talks to the local Flask server (/api/chat), never to a
+// third-party API directly: the server selects the backend from the
+// chosen model and keeps API keys off the client. Scan results can be
+// attached as context so the assistant analyses live findings.
 const CHAT_HISTORY_KEY='emergens-chat-history';
+const AI_MODEL_KEY='emergens-ai-model';
+let aiAttachedContext=null;   // { entryId, target, summary }
+let aiAttachedIds=new Set(JSON.parse(localStorage.getItem('emergens-ai-attached')||'[]'));
+
+function persistAiAttached(){try{localStorage.setItem('emergens-ai-attached',JSON.stringify([...aiAttachedIds].slice(-50)));}catch(e){}}
 
 function getChatHistory(){try{return JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY)||'[]');}catch(e){return[];}}
 function setChatHistory(arr){try{localStorage.setItem(CHAT_HISTORY_KEY,JSON.stringify(arr.slice(-100)));}catch(e){}}
-function appendChatHistory(role,content){const h=getChatHistory();h.push({role,content,ts:new Date().toISOString()});setChatHistory(h);return h;}
+function appendChatHistory(role,content,meta){const h=getChatHistory();h.push(Object.assign({role,content,ts:new Date().toISOString()},meta||{}));setChatHistory(h);return h;}
 
-async function askSiputzxAI(promptText){
-    const url=`${AI_ENDPOINT}?prompt=${encodeURIComponent(promptText)}`;
+async function askServerAI(promptText, model){
     let res;
     try{
-        res=await fetch(url);
+        res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:promptText,model:model||null,context:aiAttachedContext?aiAttachedContext.summary:null})});
     }catch(networkErr){
-        throw new Error('Could not reach the AI service (network/CORS error).');
+        throw new Error('Could not reach the server chat endpoint (network error).');
     }
     let data;
-    try{
-        data=await res.json();
-    }catch(parseErr){
-        throw new Error(`AI service returned an unreadable response (HTTP ${res.status}).`);
-    }
-    if(data && (data.status===false || data.error)){
-        throw new Error(data.error || 'The AI service returned an error.');
-    }
-    if(!res.ok){
-        throw new Error(`AI service replied with HTTP ${res.status}.`);
-    }
-    // Defensive extraction — the exact success-field name wasn't verifiable
-    // against the live API, so several common shapes are tried in order.
-    // Extract text from the response, unwrapping common JSON wrapper shapes.
-    function _pick(d){ return d && (d.data !== undefined ? d.data : d.result !== undefined ? d.result : d.message !== undefined ? d.message : d.response !== undefined ? d.response : d.answer !== undefined ? d.answer : d.content !== undefined ? d.content : d.output !== undefined ? d.output : null); }
-    const raw = (typeof data === 'string') ? data : (_pick(data) !== null ? _pick(data) : null);
-    if (raw === null || raw === undefined || raw === '') {
-        throw new Error('AI service returned no readable reply text.');
-    }
-    let text;
-    if (typeof raw === 'string') {
-        text = raw;
-    } else if (Array.isArray(raw)) {
-        const strs = raw.filter(function(x){ return typeof x === 'string'; });
-        text = strs.length ? strs.join(' ') : String(raw[0] !== undefined ? raw[0] : '');
-    } else if (raw && typeof raw === 'object') {
-        const firstStr = Object.values(raw).find(function(v){ return typeof v === 'string'; });
-        text = firstStr !== undefined ? firstStr : JSON.stringify(raw, null, 2);
-    } else {
-        text = String(raw);
-    }
-    // Remove stray outer JSON punctuation left by some API wrappers (["..." ], etc.)
-    text = text.trim().replace(/^\["|"\]$/g, '').replace(/^"([\s\S]*)"$/, '$1');
-    return text || 'OK';
+    try{ data=await res.json(); }
+    catch(parseErr){ throw new Error(`Server returned an unreadable response (HTTP ${res.status}).`); }
+    if(data && data.error){ throw new Error(typeof data.error==='string'?data.error:'The chat service returned an error.'); }
+    if(!res.ok){ throw new Error(`Server replied with HTTP ${res.status}.`); }
+    const reply = data.reply || data.message || data.response || data.answer || '';
+    if(!reply){ throw new Error('The AI returned no readable reply text.'); }
+    return {reply: reply, model: data.model||model||''};
 }
+
+// ── Model selector ─────────────────────────────────────────
+async function initAiModelPicker(){
+    const sel=document.getElementById('aiModelSelect');
+    const ready=document.getElementById('aiModelReady');
+    if(!sel)return;
+    try{
+        const r=await fetch('/api/chat/models');
+        const d=await r.json();
+        const models=d.models||[];
+        if(!models.length){ sel.innerHTML='<option value="">No models</option>'; return; }
+        sel.innerHTML=models.map(m=>`<option value="${escapeHtml(m.id)}" ${m.ready?'':'disabled'}>${escapeHtml(m.label)}${m.ready?'':' (no key)'}</option>`).join('');
+        const saved=localStorage.getItem(AI_MODEL_KEY);
+        const ok=saved&&models.some(m=>m.id===saved&&m.ready);
+        sel.value = ok ? saved : (d.default&&models.some(m=>m.id===d.default&&m.ready)?d.default:(models.find(m=>m.ready)||models[0]).id);
+        const current=models.find(m=>m.id===sel.value);
+        if(ready){ready.classList.toggle('ok',!!(current&&current.ready));ready.classList.toggle('off',!(current&&current.ready));}
+        sel.addEventListener('change',()=>{localStorage.setItem(AI_MODEL_KEY,sel.value);showToast(`AI model: ${sel.options[sel.selectedIndex]?.text||sel.value}`);});
+    }catch(e){
+        sel.innerHTML='<option value="">Unavailable</option>';
+        if(ready)ready.classList.add('off');
+    }
+}
+initAiModelPicker();
+
+// ── Scan context attachment ────────────────────────────────
+function summarizeScanForAi(entry){
+    const results=entry.result||entry.results||{};
+    const tools=Object.keys(results);
+    const lines=[`Target: ${entry.target||'unknown'}`,`Mode: ${entry.mode||'basic'}`,`Tools: ${tools.join(', ')||'none'}`,`Status: ${entry.status||'completed'}`,''];
+    for(const[k,r]of Object.entries(results)){
+        const d=(r&&typeof r==='object')?(r.data||r):{};
+        const bits=[];
+        if(d.risk)bits.push(`risk=${d.risk}`);
+        if(d.vulnerable!==undefined)bits.push(`vulnerable=${!!d.vulnerable}`);
+        if(Array.isArray(d.findings))bits.push(`findings=${d.findings.length}`);
+        if(Array.isArray(d.exposed))bits.push(`exposed=${d.exposed.map(x=>x.path).join(', ')}`);
+        if(Array.isArray(d.open_ports_details))bits.push(`open_ports=${d.open_ports_details.map(p=>p.port!==undefined?p.port:p).join(', ')}`);
+        if(d.score_percent!==undefined)bits.push(`header_score=${d.score_percent}`);
+        if(d.summary_by_category)bits.push(`tech=${JSON.stringify(d.summary_by_category).slice(0,300)}`);
+        if(d.subdomains&&Array.isArray(d.subdomains))bits.push(`subdomains=${d.subdomains.length}`);
+        if(d.error)bits.push(`error=${d.error}`);
+        lines.push(`- ${k}: ${bits.join('; ')||'no notable data'}`);
+    }
+    return lines.join('\n');
+}
+
+function attachScanToAi(entry){
+    aiAttachedContext={entryId:String(entry.id),target:entry.target||'unknown',summary:summarizeScanForAi(entry)};
+    aiAttachedIds.add(String(entry.id));persistAiAttached();
+    renderAiContextBar();refreshAssetKpis();
+    showToast(`Scan #${entry.id} attached to AI context`);
+    navigateToSection('chat');
+}
+
+function attachAllScansToAi(entries){
+    const done=(entries||[]).filter(e=>(e.status||'completed')==='completed');
+    if(!done.length){showToast('No completed scans to attach','error');return;}
+    const summary=done.map(summarizeScanForAi).join('\n\n---\n\n');
+    aiAttachedContext={entryId:'batch',target:`${done.length} scans`,summary:summary.slice(0,50000)};
+    done.forEach(e=>aiAttachedIds.add(String(e.id)));persistAiAttached();
+    renderAiContextBar();refreshAssetKpis();
+    showToast(`${done.length} scans attached to AI context`);
+    navigateToSection('chat');
+}
+
+function detachAiContext(){
+    aiAttachedContext=null;
+    renderAiContextBar();refreshAssetKpis();
+}
+
+function renderAiContextBar(){
+    const bar=document.getElementById('aiContextBar');
+    const summary=document.getElementById('aiContextSummary');
+    if(!bar)return;
+    if(aiAttachedContext){
+        bar.hidden=false;
+        if(summary)summary.textContent=`Context: ${aiAttachedContext.target}${aiAttachedContext.entryId==='batch'?' (batch)':''} — ${aiAttachedContext.summary.length.toLocaleString()} chars`;
+    }else{bar.hidden=true;}
+}
+
+function refreshAssetKpis(){
+    const kpi=document.getElementById('assetKpiAiAttached');
+    if(kpi)kpi.textContent=aiAttachedIds.size;
+    document.querySelectorAll('.asset-ai-btn').forEach(btn=>{
+        btn.classList.toggle('is-attached',aiAttachedIds.has(String(btn.dataset.id)));
+        const lbl=btn.querySelector('span');
+        if(lbl)lbl.textContent=aiAttachedIds.has(String(btn.dataset.id))?'Attached to AI':'AI';
+    });
+}
+
+const aiContextBtn=document.getElementById('aiContextBtn');
+if(aiContextBtn)aiContextBtn.addEventListener('click',detachAiContext);
+const aiContextRemove=document.getElementById('aiContextRemove');
+if(aiContextRemove)aiContextRemove.addEventListener('click',detachAiContext);
+const assetsSendAllAiBtn=document.getElementById('assetsSendAllAiBtn');
+if(assetsSendAllAiBtn)assetsSendAllAiBtn.addEventListener('click',()=>attachAllScansToAi(allHistory||[]));
 
 // ---- main Chat section rendering (shared history with the popup) ----
 function renderChatWindow(){
@@ -2112,16 +2200,17 @@ function addThinkingBubble(container){
 }
 async function sendChatMessage(promptText,container,inputEl,sendBtn){
     if(!promptText)return;
+    const model=document.getElementById('aiModelSelect')?.value||null;
     appendChatHistory('user',promptText);
     addChatBubble(container,'user',promptText);
     if(inputEl){inputEl.value='';inputEl.style.height='auto';}
     if(sendBtn)sendBtn.disabled=true;
     const thinkingRow=addThinkingBubble(container);
     try{
-        const reply=await askSiputzxAI(promptText);
+        const {reply:replyText, model:usedModel}=await askServerAI(promptText,model);
         thinkingRow.remove();
-        appendChatHistory('assistant',reply);
-        addChatBubble(container,'assistant',reply);
+        appendChatHistory('assistant',replyText,{model:usedModel});
+        addChatBubble(container,'assistant',replyText);
     }catch(err){
         thinkingRow.remove();
         const msg=`Could not get a reply: ${err.message}`;
@@ -2146,6 +2235,8 @@ document.getElementById('chatClearBtn').addEventListener('click',()=>{
     if(fwMsgs)fwMsgs.innerHTML='';
 });
 renderChatWindow();
+renderAiContextBar();
+refreshAssetKpis();
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  SEKOLAH SEARCH                                        ║
