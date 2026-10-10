@@ -1,26 +1,67 @@
-name: emergens-ci
+name: opencode
 channels:
   - conda-forge
   - defaults
+
 dependencies:
+  # ── Python runtime ─────────────────────────────────────
   - python=3.11
   - pip
-  # Lint
-  - flake8>=7.0
-  - pycodestyle>=2.14
-  - pyflakes>=3.4
-  - mccabe>=0.7
-  # Testing
-  - pytest>=8.0
-  - pytest-cov>=5.0
-  - pytest-flask>=1.3
-  - coverage>=7.0
-  - responses>=0.25
-  # Runtime inti (aman)
-  - flask>=3.0
-  - werkzeug>=3.0
-  - psutil>=5.9
-  - requests>=2.31
-  - beautifulsoup4>=4.12
+
+  # ── Build tools (needed for curl_cffi, psutil, etc.) ───
+  - gcc_linux-64        # Linux only; drop on macOS/Windows
+  - gxx_linux-64
+  - make
+  - git
+  - curl
+  - openssl
+  - libffi
+  - ca-certificates
+
+  # ── Core Python libraries (Conda versions preferred) ───
+  - flask
+  - werkzeug
+  - requests
+  - beautifulsoup4
+  - lxml
+  - psutil
+  - pyyaml
+  - jinja2
+  - itsdangerous
+  - click
+  - markupsafe
+
+  # ── Pip-only packages (not always in Conda) ────────────
   - pip:
-      - anthropic>=0.34
+      # Cloudflare bypass / TLS impersonation
+      - curl_cffi
+      - cloudscraper
+
+      # Environment loading
+      - python-dotenv
+
+      # Optional but commonly used by scanners
+      - dnspython
+      - tldextract
+      - python-nmap
+      - shodan
+      - cryptography
+      - pyOpenSSL
+      - sslyze
+
+      # AI / chat backends (used by ai_chat.chat_handler)
+      - anthropic
+      - openai
+
+      # Firebase (if using the Firebase config block)
+      - firebase-admin
+
+      # Utilities
+      - colorama
+      - tqdm
+      - tabulate
+
+      # Testing / linting (dev)
+      - flake8
+      - black
+      - pytest
