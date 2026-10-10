@@ -36,6 +36,24 @@ The project includes:
 - Logging, data storage, and local runtime state
 - Optional AI and integration hooks
 
+## Architecture
+
+<p align="center">
+  <img src="templates/artifact-structure.png" alt="Emergens artifact structure and component organization" width="900">
+</p>
+
+<p align="center">
+  <em>Emergens component structure and artifact flow</em>
+</p>
+
+At a high level, Emergens is organized around:
+
+- **Web application** — the dashboard, API endpoints, templates, and static assets.
+- **Core services** — configuration, logging, orchestration, authentication, and shared utilities.
+- **Modules** — focused reconnaissance and security-testing capabilities.
+- **Artifacts** — logs, wordlists, proxy data, scan output, and local application state.
+- **Optional integrations** — AI, messaging, database, and external service connectors.
+
 ## Highlights
 
 - Unified operator workspace for web and terminal workflows
@@ -257,7 +275,7 @@ Emergens/
 - `auth/` — authentication and access-related logic
 - `core/` — orchestration, utilities, and shared runtime components
 - `modules/` — reconnaissance and scanner modules
-- `templates/` — HTML dashboard and UI files
+- `templates/` — HTML dashboard and UI files (including `artifact-structure.png`)
 - `static/` — front-end assets
 - `data/` — runtime state, logs, and artifacts
 - `files/` — supporting wordlists, referers, user agents, and proxy-related data
