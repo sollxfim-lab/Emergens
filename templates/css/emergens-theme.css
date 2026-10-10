@@ -593,3 +593,32 @@ tbody tr:hover td{ background:var(--brand-surface-2) }
 
 
 
+
+/* ============================================================
+   AI MODEL PICKER — dashboard chat toolbar
+   ============================================================ */
+.ai-model-picker{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary,rgba(255,255,255,.04));}
+.ai-model-icon{color:var(--accent,#6366f1);font-size:.78rem;}
+.ai-model-select{background:transparent;border:none;color:var(--text-primary,#e5e7eb);font-size:.78rem;font-family:inherit;outline:none;cursor:pointer;max-width:190px;}
+.ai-model-select option{background:#111827;color:#e5e7eb;}
+.ai-model-ready{font-size:.5rem;color:var(--text-muted,#6b7280);}
+.ai-model-ready.ok{color:#22c55e;}
+.ai-model-ready.off{color:#ef4444;}
+
+/* ============================================================
+   AI CONTEXT BAR — attached scan results
+   ============================================================ */
+.ai-context-bar{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:8px 12px;border:1px dashed rgba(99,102,241,.5);border-radius:10px;background:rgba(99,102,241,.08);font-size:.78rem;color:var(--text-secondary,#9ca3af);}
+.ai-context-bar>i{color:var(--accent,#6366f1);}
+.ai-context-summary{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ai-context-remove{background:transparent;border:none;color:var(--text-muted,#6b7280);cursor:pointer;font-size:.85rem;padding:2px 6px;border-radius:6px;}
+.ai-context-remove:hover{color:#ef4444;background:rgba(239,68,68,.12);}
+
+/* ============================================================
+   ASSETS — AI attachment affordances
+   ============================================================ */
+.asset-kpi-ai .asset-kpi-val{color:#a78bfa;}
+.asset-ai-btn{position:relative;}
+.asset-ai-btn.is-attached{border-color:#a78bfa;color:#a78bfa;}
+.asset-ai-btn.is-attached i{color:#a78bfa;}
+.asset-ai-chip{display:inline-flex;align-items:center;gap:4px;font-size:.62rem;color:#a78bfa;border:1px solid rgba(167,139,250,.4);border-radius:999px;padding:1px 8px;}
