@@ -128,6 +128,8 @@ DEFAULT_BASIC_TOOLS: List[str] = [
     "subdomain_enum",
     "tech_fingerprint",
     "port_scan",
+    "wellknown_meta",
+    "cookie_audit",
 ]
 
 DEFAULT_EXPERT_TOOLS: Optional[List[str]] = None  # auto-filled
@@ -577,6 +579,8 @@ _INTRUSIVE_TOOLS: Set[str] = {
     "sqli_engine",
     "sniper",
     "dirfuzz",
+    "ssrf_scan",
+    "http_methods",
 }
 
 
